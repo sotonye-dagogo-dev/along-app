@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system
+> - last-verified-against-code: 2026-07-08
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -44,10 +44,11 @@
 > **Section summary:** User registration, login, profile management, and JWT auth flow.
 
 - [x] Auth API routes (register, login, logout, refresh, OTP, google, me) in `app/api/auth/`
-- [ ] Auth middleware for protected routes and API endpoints
+- [x] Auth middleware with JWT verification (jose) for edge-protected routes
 - [x] Auth pages (Login, Register, OTP verification) in `app/(auth)/`
 - [x] User profile pages and edit functionality in `app/(dashboard)/profile/`
 - [x] Avatar upload config (`app/lib/config/avatar.ts`)
+- [x] Auth "Remember Me" with configurable session durations
 - [ ] Follower/following system
 
 ---
@@ -58,12 +59,16 @@
 
 - [x] Post creation API (`app/api/posts/route.ts`)
 - [x] Feed with pagination (`app/api/posts/feed/`, `app/lib/services/feedService.ts`)
-- [ ] Like/unlike posts
+- [x] Like/unlike posts (`app/api/posts/[id]/like/`, PostCard, post detail page)
 - [x] Comment system (`app/components/features/comments/`)
 - [x] Bookmark/save posts (`app/(dashboard)/bookmarks/`)
 - [x] Post detail page (`app/(dashboard)/posts/[id]/`)
-- [x] Explore page (`app/(dashboard)/explore/`)
-- [ ] Explore page with map view
+- [x] ImageLightbox reusable component (`app/components/ui/ImageLightbox.tsx`)
+- [x] Explore page (`app/(dashboard)/explore/`) — full-viewport map, side panel, bottom sheet, filters
+- [x] NavigationGuide component (`app/components/features/posts/NavigationGuide.tsx`) — step-by-step directions
+- [x] RouteStepInput with live Nominatim geocoding (`app/components/features/posts/RouteStepInput.tsx`)
+- [x] Drag-and-drop route step reordering in ShareRouteModal
+- [x] Draft saving with localStorage auto-load in ShareRouteModal
 
 ---
 
@@ -75,8 +80,8 @@
 - [x] DraftingCoach for post quality guidance (`app/lib/services/DraftingCoachService.ts`)
 - [x] TrustBadge component for verified reporters (`app/components/ui/TrustBadge.tsx`)
 - [ ] Search with full-text Postgres indexes
-- [ ] Map integration with route polyline rendering
-- [ ] Clustering for dense map markers
+- [x] Map integration with route polyline rendering (`app/components/features/posts/RouteMap.tsx`, `app/lib/services/routeTracingService.ts`, `app/api/routes/trace/`)
+- [ ] Clustering for dense map markers (supercluster dependency listed but not wired)
 
 ---
 
@@ -96,11 +101,12 @@
 
 > **Section summary:** Platform management and business intelligence.
 
-- [x] Admin dashboard with metrics and charts (`app/admin/`, `AdminShell.tsx`)
+- [x] Admin dashboard with live API data, loading skeletons, error/retry states (`app/admin/`, `AdminShell.tsx`)
 - [x] User management (`app/admin/users/`, `app/api/admin/users/`)
 - [x] Bug report management (`app/admin/bugs/`, `app/api/bug-reports/`)
 - [x] User review management (`app/admin/reviews/`)
 - [x] Site configuration editor (`app/admin/config/`)
+- [x] GlobalConfirmModal wired into admin pages (replaces `confirm()` dialogs)
 - [ ] Analytics (route activity, user growth, engagement) — dashboard `/analytics` exists but needs content
 
 ---
@@ -111,7 +117,7 @@
 
 - [x] Reward tiers and badge system (`app/lib/config/rewards.ts`, `app/lib/services/rewardsService.ts`)
 - [x] Points accumulation via `app/api/rewards/`
-- [ ] Leaderboards
+- [x] Leaderboards — global leaderboard page + API (top 100 by rewardPoints)
 - [x] Profile trust scoring (integrated with ValidityEngine)
 
 ---
@@ -125,7 +131,7 @@
 - [ ] Integration tests for API routes
 - [ ] Performance audit (Lighthouse, bundle analysis)
 - [ ] Accessibility audit (WCAG AA)
-- [ ] Error states and loading states for all pages
+- [ ] Component tests for App* components
 - [ ] Production environment configuration
 - [ ] Security audit (auth, input validation, secrets management)
 - [ ] Documentation complete
@@ -139,3 +145,5 @@
 
 - [x] Infrastructure setup (Phase 0 — Ground Zero)
 - [x] Config registry & universal components (Phase 1 — Foundation Layer)
+- [x] Transact Marketplace integration — proxy API, webhook, /marketplace page
+- [x] Tega Events integration — proxy API, webhook, EventsWidget in feed sidebar

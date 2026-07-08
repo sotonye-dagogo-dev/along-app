@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system
+> - last-verified-against-code: 2026-07-08 (session 4)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -32,12 +32,20 @@ Page Components (app/(auth|dashboard|admin|public|admin)/)
 API Routes (app/api/*)
     → Zod Schemas (app/lib/schemas/*)
     → Services (business logic)
-        → RateLimiter → Redis
+        → RateLimiter → Redis / In-Memory Map
         → CacheLayer → Redis
         → Services → BaseRepository → Prisma
             → BaseRepository<T>
                 → Prisma Client
                 → CacheLayer (optional read-through)
+
+Integration API Routes (app/api/integrations/*)
+    → External services (Transact, Tega)
+    → Auth middleware (getUserFromRequest)
+
+Integration Webhooks (app/api/webhooks/*)
+    → HMAC signature verification
+    → QStash (background processing)
 
 Push API Routes (app/api/push/*)
     → pushSubscriptionService → Prisma (PushSubscription model)
@@ -77,8 +85,9 @@ PWA (public/sw.js)
 ```
 AuthService
     → UserModel (Prisma)
-    → JWTUtils (jsonwebtoken)
-    → Redis (session store, rate limit)
+    → JWTUtils (jsonwebtoken, jose for edge middleware)
+    → Redis (session store)
+    → In-Memory Map (rate limit — app/lib/utils/rateLimit.ts)
     → Config: auth config
 
 FeedService
@@ -156,14 +165,14 @@ siteConfig Utility
 | @prisma/adapter-pg | Postgres adapter | Prisma client initialization |
 | @upstash/redis | Caching, rate limiting, sessions | CacheLayer, AuthService, RateLimiter |
 | @upstash/qstash | Background job queue | NotificationService (push) |
-| jsonwebtoken / bcrypt | Auth (JWT signing, password hashing) | AuthService |
+| jsonwebtoken / jose / bcrypt | Auth (JWT signing, edge JWT verification, password hashing) | AuthService, middleware.ts |
 | zod | Input validation | All API routes |
 | cloudinary / next-cloudinary | Image upload and optimization | Avatar upload, post media |
 | resend | Transactional emails | AuthService (verification), notifications |
 | @sentry/nextjs | Error tracking | instrumentation, API routes, components |
 | web-push | Push notification sending | NotificationService |
 | lucide-react | UI icons | All UI components |
-| axios | HTTP client | Client-side API calls |
+| axios | HTTP client | Client-side API calls, integrations (transact, tega) |
 | js-cookie | Cookie management | AuthProvider (client-side) |
 | rxjs | Reactive streams | Feed service, real-time updates |
 | react-markdown / remark | Markdown rendering | Post content, about page |

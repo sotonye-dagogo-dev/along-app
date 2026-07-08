@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Route, ShieldCheck, Users } from "lucide-react";
 import { buildMetadata } from "@/app/lib/utils/metadata";
 import { websiteSchema } from "@/app/lib/utils/structuredData";
-import StructuredData from "@/app/components/ui/StructuredData";
+import { StructuredData } from "@/app/components/ui/StructuredData";
 import AppLogo from "../components/ui/AppLogo";
 import { HeroCtas, BottomCta } from "@/app/components/ui/LandingCtas";
 

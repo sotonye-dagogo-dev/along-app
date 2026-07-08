@@ -1,6 +1,6 @@
 import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import TrustBadge from "@/app/components/ui/TrustBadge";
+import { TrustBadge } from "@/app/components/ui/TrustBadge";
 
 describe("TrustBadge", () => {
   it("renders low trust level", () => {

@@ -1,12 +1,13 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { Camera, ThumbsUp, MessageCircle, Bell, BarChart3, UserPlus } from "lucide-react"
 import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import dynamic from "next/dynamic"
 import { RewardsPanel, EditProfileModal } from "@/app/components/features/profile"
+import { toastService } from "@/app/lib/services/toastService"
 
 const AvatarEditor = dynamic(() => import("@/app/components/features/profile/AvatarEditor").then((m) => m.AvatarEditor), { ssr: false })
 import { useAuth } from "@/app/hooks/useAuth"
@@ -57,52 +58,86 @@ export default function OwnProfilePage() {
 
   useEffect(() => {
     if (!authUser?.id) return
+    const abort = new AbortController()
     const load = async () => {
       try {
         const [profileRes, historyRes] = await Promise.all([
-          fetch(`/api/users/${authUser.id}`),
-          fetch("/api/rewards/history"),
+          fetch(`/api/users/${authUser.id}`, { signal: abort.signal }),
+          fetch("/api/rewards/history", { signal: abort.signal }),
         ])
+        if (!profileRes.ok) throw new Error("Failed to load profile")
         const profileData = await profileRes.json()
-        setProfile(profileData.user)
-        if (historyRes.ok) {
+        if (!abort.signal.aborted) setProfile(profileData.user)
+        if (historyRes.ok && !abort.signal.aborted) {
           const historyData = await historyRes.json()
           setRewardHistory(historyData.history ?? [])
         }
-      } catch { /* ignore */ } finally { setLoading(false) }
+      } catch (err: unknown) {
+        if (abort.signal.aborted) return
+        console.error("Failed to load profile")
+      } finally {
+        if (!abort.signal.aborted) setLoading(false)
+      }
     }
     load()
+    return () => abort.abort()
   }, [authUser?.id])
 
   useEffect(() => {
     if (!profile) return
+    const abort = new AbortController()
     const loadPosts = async () => {
       try {
-        const res = await fetch("/api/posts?limit=20")
+        const res = await fetch("/api/posts?limit=20", { signal: abort.signal })
+        if (!res.ok) throw new Error("Failed to load posts")
         const data = await res.json()
-        setPosts(data.posts ?? [])
-      } catch { /* ignore */ }
+        if (!abort.signal.aborted) setPosts(data.posts ?? [])
+      } catch (err: unknown) {
+        if (abort.signal.aborted) return
+        console.error("Failed to load posts")
+      }
     }
     loadPosts()
+    return () => abort.abort()
   }, [profile])
+
+  const loadProfile = useCallback(async () => {
+    if (!authUser?.id) return
+    try {
+      const res = await fetch(`/api/users/${authUser.id}`)
+      const data = await res.json()
+      setProfile(data.user)
+    } catch { /* ignore */ }
+  }, [authUser?.id])
 
   const handleEditProfile = async (data: Record<string, unknown>) => {
     if (!authUser?.id) return
-    await fetch(`/api/users/${authUser.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
-    setShowEditModal(false)
+    try {
+      await fetch(`/api/users/${authUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      toastService.success("Profile updated!")
+      await loadProfile()
+    } catch {
+      toastService.error("Failed to update profile")
+    }
   }
 
   const handleSaveAvatar = async (avatarConfig: { style: string; seed?: string; flip?: boolean; backgroundColor?: string }) => {
     if (!authUser?.id) return
-    await fetch(`/api/users/${authUser.id}/avatar`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ avatarConfig }),
-    })
+    try {
+      await fetch(`/api/users/${authUser.id}/avatar`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarConfig }),
+      })
+      toastService.success("Avatar saved!")
+      await loadProfile()
+    } catch {
+      toastService.error("Failed to save avatar")
+    }
   }
 
   if (loading) {

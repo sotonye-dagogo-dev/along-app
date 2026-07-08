@@ -1,8 +1,8 @@
 # Design System
 
 > **Metadata**
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system
+> - last-verified-against-code: 2026-07-08
 > - staleness-policy: re-verify if UI components or styling dependencies change
 
 > **Overview:** Along uses a dual design system — Ant Design 5 for complex UI components (tables, modals, forms, navigation) and Tailwind CSS 4 for layout, spacing, and utility styling. A universal component library of App* wrappers (AppButton, AppCard, AppInput, etc.) abstracts raw Ant Design imports, ensuring consistent theming and preventing direct Ant Design usage outside of `app/components/ui/`. Color tokens are defined as CSS custom properties supporting light and dark modes via a `class`-based dark mode toggle. Zero emoji policy — all icons use Lucide React exclusively.

@@ -1,8 +1,8 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system
+> - last-verified-against-code: 2026-07-08 (session 4)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
@@ -68,7 +68,7 @@ Client (Browser / PWA)
 
 | Module | Responsibility | Key Files | Dependencies |
 |--------|----------------|-----------|--------------|
-| Auth | JWT-based authentication, registration, login, OTP | `app/(auth)/`, `app/lib/services/auth*` | Prisma, JWT, bcrypt, Redis |
+| Auth | JWT-based authentication, registration, login, OTP, rate limiting, edge JWT verification via jose | `app/(auth)/`, `app/lib/services/auth*`, `middleware.ts`, `app/lib/utils/rateLimit.ts` | Prisma, jsonwebtoken, jose (edge), bcrypt, Redis, in-memory rate limit Map |
 | Feed | Social feed with posts, comments, likes, bookmarks | `app/(dashboard)/`, `app/lib/services/feed*` | Prisma, Redis (cache) |
 | Maps | Route visualization with MapLibre GL, clustering | `app/components/features/map*` | MapLibre GL, supercluster, polyline |
 | Notifications | Real-time + push notifications via Web Push API | `app/lib/services/notification*` | Prisma, web-push, QStash |
@@ -83,6 +83,8 @@ Client (Browser / PWA)
 | QStash Workers | Background job processing (feed, rewards, validity) | `app/api/workers/*`, `app/lib/services/qstashService.ts` | QStash SDK, Prisma, Redis |
 | Offline Queue | Client-side mutation queue with auto-flush | `app/lib/services/offlineQueue.ts`, `app/providers/OnlineStatusProvider.tsx` | localStorage, fetch |
 | Blog | Public blog with MDX posts, categories, featured posts | `app/(public)/blog/*`, `app/lib/utils/blog.ts`, `app/lib/config/blog.ts` | fs (build-time), MDX, remark |
+| Transact | External marketplace integration (listing proxy, webhook) | `app/lib/integrations/transact.ts`, `app/api/integrations/transact/`, `app/api/webhooks/transact/`, `app/(dashboard)/marketplace/` | Prisma, QStash (webhook) |
+| Tega | External events integration (events proxy, webhook, widget) | `app/lib/integrations/tega.ts`, `app/api/integrations/tega/`, `app/api/webhooks/tega/`, `app/components/features/events/` | Prisma, QStash (webhook) |
 | FAQ | Public FAQ page with categorized searchable Q&A | `app/(public)/faq/*`, `app/lib/config/faq.ts` | None (config-driven) |
 | Config | Centralized config registries for all domains (25 files) | `app/lib/config/*` | None |
 
@@ -103,16 +105,18 @@ Browser → Next.js Route Handler (page.tsx)
     → Client component renders with data
 ```
 
-### Authentication Flow
+### Authentication Flow (Server-Side)
 ```
 Login → POST /api/auth/login
+  → Rate limit check (in-memory Map, 10 req/15min per IP)
   → Validate credentials with Zod
   → Verify password with bcrypt
-  → Generate JWT token
+  → Generate JWT token (jsonwebtoken)
   → Set httpOnly cookie
   → Return user profile
   → Client stores session via AuthProvider context
-  → Subsequent requests: JWT verified middleware via cookies()
+  → Subsequent protected page loads: middleware.ts verifies JWT via jose (edge-compatible)
+  → Expired token → /api/auth/refresh → new access token
 ```
 
 ### Data Persistence Flow
@@ -163,7 +167,7 @@ All config points listed here should follow the fallback discipline from `standa
 | ORM | Prisma | 7.2.0 |
 | Database | PostgreSQL | — |
 | Cache | Upstash Redis | 1.35.8 |
-| Auth | JWT (jsonwebtoken + bcrypt) | 9.0.3 / 6.0.0 |
+| Auth | JWT (jsonwebtoken + jose + bcrypt) | 9.0.3 / 6.0.1 / 6.0.0 |
 | Validation | Zod | 4.2.1 |
 | Maps | MapLibre GL + react-map-gl | 4.7.1 / 7.1.9 |
 | Error Tracking | Sentry | 10.51.0 |

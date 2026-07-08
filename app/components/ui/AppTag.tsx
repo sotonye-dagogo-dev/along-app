@@ -32,7 +32,7 @@ const sizeClasses: Record<TagSize, string> = {
   default: 'px-3 py-1',
 }
 
-export default function AppTag({
+export function AppTag({
   variant = 'default',
   size = 'default',
   icon: Icon,

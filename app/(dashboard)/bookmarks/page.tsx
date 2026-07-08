@@ -49,8 +49,11 @@ export default function BookmarksPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        await fetch("/api/posts?limit=50")
-        setBookmarks([])
+        const res = await fetch("/api/bookmarks")
+        if (res.ok) {
+          const data = await res.json()
+          setBookmarks(data.bookmarks ?? [])
+        }
       } catch {
         console.error("Failed to load bookmarks")
       } finally {

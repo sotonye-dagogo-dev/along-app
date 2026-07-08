@@ -4,6 +4,7 @@ import { OTP_SCHEMA } from "@/app/lib/schemas/auth";
 import { verifyPassword } from "@/app/lib/utils/security";
 import { signAccessToken, signRefreshToken } from "@/app/lib/utils/auth";
 import { setAuthCookies } from "@/app/lib/utils/cookies";
+import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 
 const otpStore = new Map<string, { hash: string; expiry: number }>();
 
@@ -18,6 +19,8 @@ async function getRedis() {
 
 export async function POST(request: NextRequest) {
   try {
+    const rateCheck = checkRateLimit(request, "auth");
+    if (!rateCheck.allowed) return rateCheck.response;
     const body = await request.json();
     const parsed = OTP_SCHEMA.safeParse(body);
 
@@ -28,7 +31,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, otp } = parsed.data;
+    const { email, otp, rememberMe } = parsed.data;
 
     const otpKey = `otp:${email}`;
     let storedHash: string | null = null;
@@ -65,10 +68,10 @@ export async function POST(request: NextRequest) {
       otpStore.delete(otpKey);
     }
 
-    const accessToken = signAccessToken({ userId: user.id, role: user.role });
-    const refreshToken = signRefreshToken({ userId: user.id, role: user.role });
+    const accessToken = signAccessToken({ userId: user.id, role: user.role }, rememberMe);
+    const refreshToken = signRefreshToken({ userId: user.id, role: user.role }, rememberMe);
 
-    await setAuthCookies(accessToken, refreshToken);
+    await setAuthCookies(accessToken, refreshToken, rememberMe);
 
     const { password: _, ...userWithoutPassword } = user;
 

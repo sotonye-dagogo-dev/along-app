@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system
+> - last-verified-against-code: 2026-07-08 (session 4)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -54,7 +54,7 @@ along-app/
 │   ├── hooks/               → App-level custom hooks (useAuth, useFeedInteractions, useRequireAuth)
 │   ├── generated/           → Code-generated files
 │   ├── (auth)/              → Auth pages (login, register, OTP)
-│   ├── (dashboard)/         → Main app (feed, explore, profile, etc.)
+│   ├── (dashboard)/         → Main app (feed, explore, profile, leaderboard, marketplace, etc.)
 │   ├── (admin)/             → Admin dashboard
 │   ├── (public)/            → Landing, about, contact, legal, faq, blog
 │   │   ├── faq/             → FAQ page with categorized Q&A
@@ -73,7 +73,7 @@ along-app/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
 │   │   ├── ui/              → 34 App* universal component wrappers
-│   │   └── features/        → Domain-specific components (comments, posts, profile)
+│   │   └── features/        → Domain-specific components (comments, posts, profile, explore, events)
 │   ├── lib/                 → Shared code
 │   │   ├── services/        → 11 OOP services (feed, push sub, QStash, rewards, etc.)
 │   │   ├── config/          → 25 config registry files
@@ -82,6 +82,7 @@ along-app/
 │   │   ├── schemas/         → Zod validation schemas
 │   │   ├── streams/         → Reactive streams
 │   │   ├── types/           → TypeScript type definitions
+│   │   ├── integrations/    → External service clients (transact, tega)
 │   │   └── utils/           → 11 utility modules (blog, pushClient, siteConfig, etc.)
 │   └── providers/           → 6 context providers (Auth, OnlineStatus, Push, GlobalModal, GlobalToast, CookieConsent)
 │

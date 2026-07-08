@@ -27,23 +27,21 @@ export default function AdminEmailPreviewPage() {
     setLoading(true)
     try {
       const res = await fetch("/api/email/preview")
-      if (res.ok) {
-        const data = await res.json()
-        setTemplates(data.templates ?? [])
-        if (data.templates?.length > 0) {
-          setSelected(data.templates[0].name)
-        }
+      if (!res.ok) throw new Error("Request failed")
+      const data = await res.json()
+      setTemplates(data.templates ?? [])
+      if (data.templates?.length > 0) {
+        setSelected(data.templates[0].name)
       }
-    } catch { /* ignore */ } finally { setLoading(false) }
+    } catch (err) { console.error("[AdminError]", err) } finally { setLoading(false) }
   }, [])
 
   const loadPreview = useCallback(async (name: string) => {
     try {
       const res = await fetch(`/api/email/preview?template=${name}`)
-      if (res.ok) {
-        setPreview(await res.json())
-      }
-    } catch { /* ignore */ }
+      if (!res.ok) throw new Error("Request failed")
+      setPreview(await res.json())
+    } catch (err) { console.error("[AdminError]", err) }
   }, [])
 
   useEffect(() => { loadTemplates() }, [loadTemplates])

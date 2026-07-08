@@ -31,7 +31,7 @@ function DefaultSkeleton() {
   );
 }
 
-export default function ConfigDrivenList<T extends { id?: string }>({
+export function ConfigDrivenList<T extends { id?: string }>({
   items,
   renderItem,
   keyExtractor,

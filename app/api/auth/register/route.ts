@@ -5,6 +5,7 @@ import { REGISTER_SCHEMA } from "@/app/lib/schemas/auth";
 import { hashPassword } from "@/app/lib/utils/security";
 import { qstashService } from "@/app/lib/services/qstashService";
 import { sendOtpEmail, sendWelcomeEmail } from "@/app/lib/services/emailService";
+import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 
 const otpStore = new Map<string, { hash: string; expiry: number }>();
 
@@ -19,6 +20,8 @@ async function getRedis() {
 
 export async function POST(request: NextRequest) {
   try {
+    const rateCheck = checkRateLimit(request, "auth");
+    if (!rateCheck.allowed) return rateCheck.response;
     const body = await request.json();
     const parsed = REGISTER_SCHEMA.safeParse(body);
 
@@ -89,7 +92,7 @@ export async function POST(request: NextRequest) {
     const otpResult = await sendOtpEmail(email, otp);
     if (otpResult.sent) {
       await sendWelcomeEmail(email, firstName);
-    } else {
+    } else if (process.env.NODE_ENV !== "production") {
       console.log(`[DEV] OTP for ${email}: ${otp}`);
     }
 

@@ -4,10 +4,13 @@ import { useState, useEffect, useMemo } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { ArrowLeft, Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, Maximize2, MapPin, X } from "lucide-react"
-import { AppCard, TrustBadge, VehicleChip, AppEmptyState } from "@/app/components/ui"
+import { ArrowLeft, Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, Maximize2, MapPin, Navigation } from "lucide-react"
+import { AppCard, TrustBadge, VehicleChip, AppEmptyState, ImageLightbox } from "@/app/components/ui"
 import { VEHICLE_REGISTRY, EMPTY_STATES } from "@/app/lib/config"
 import { CommentInput, CommentList } from "@/app/components/features/comments"
+import { NavigationGuide } from "@/app/components/features/posts"
+import { undoService } from "@/app/lib/services/undoService"
+import { toastService } from "@/app/lib/services/toastService"
 import { useAuth } from "@/app/hooks/useAuth"
 import type { VehicleType } from "@/app/lib/types"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
@@ -95,37 +98,60 @@ export default function PostDetailPage() {
   const [likesCount, setLikesCount] = useState(0)
   const [bookmarked, setBookmarked] = useState(false)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
+  const [showNavigation, setShowNavigation] = useState(false)
 
   const postId = params.id as string
 
   useEffect(() => {
     if (!postId) return
+    const abort = new AbortController()
     const load = async () => {
       try {
         const [postRes, commentRes] = await Promise.all([
-          fetch(`/api/posts/${postId}`),
-          fetch(`/api/posts/${postId}/comments`),
+          fetch(`/api/posts/${postId}`, { signal: abort.signal }),
+          fetch(`/api/posts/${postId}/comments`, { signal: abort.signal }),
         ])
+        if (!postRes.ok || !commentRes.ok) throw new Error("Failed to load post")
         const postData = await postRes.json()
         const commentData = await commentRes.json()
+        if (abort.signal.aborted) return
         setPost(postData.post)
         setComments(commentData.comments)
         setLiked(postData.post._isLiked ?? false)
         setLikesCount(postData.post.likes)
         setBookmarked(postData.post._isBookmarked ?? false)
-      } catch {
+      } catch (err: unknown) {
+        if (abort.signal.aborted) return
         console.error("Failed to load post")
       } finally {
-        setLoading(false)
+        if (!abort.signal.aborted) setLoading(false)
       }
     }
     load()
+    return () => abort.abort()
   }, [postId])
 
   const handleLike = async () => {
     const newLiked = !liked
+    const prevLiked = liked
     setLiked(newLiked)
     setLikesCount((prev) => prev + (newLiked ? 1 : -1))
+    const undoId = `like:${postId}`
+    if (!newLiked) {
+      undoService.register({
+        id: undoId,
+        label: "Undo unlike",
+        onUndo: () => {
+          setLiked(true)
+          setLikesCount((p) => p + 1)
+          fetch(`/api/posts/${postId}/like`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "LIKE" }) }).catch(() => {})
+          toastService.success("Like restored!")
+        },
+      })
+      toastService.undo({ message: "Route unliked", undoLabel: "Undo", onUndo: () => undoService.execute(undoId) })
+    } else {
+      toastService.success("Route liked!")
+    }
     try {
       await fetch(`/api/posts/${postId}/like`, {
         method: "POST",
@@ -133,21 +159,37 @@ export default function PostDetailPage() {
         body: JSON.stringify({ type: "LIKE" }),
       })
     } catch {
-      setLiked(!newLiked)
-      setLikesCount((prev) => prev - (newLiked ? 1 : -1))
+      setLiked(prevLiked)
+      setLikesCount((prev) => prev + (prevLiked ? 1 : -1))
     }
   }
 
   const handleBookmark = async () => {
     const newBookmarked = !bookmarked
+    const prevBookmarked = bookmarked
     setBookmarked(newBookmarked)
+    const undoId = `bookmark:${postId}`
+    if (!newBookmarked) {
+      undoService.register({
+        id: undoId,
+        label: "Undo bookmark removal",
+        onUndo: () => {
+          setBookmarked(true)
+          fetch(`/api/posts/${postId}/bookmark`, { method: "POST", headers: { "Content-Type": "application/json" } }).catch(() => {})
+          toastService.success("Bookmark restored!")
+        },
+      })
+      toastService.undo({ message: "Bookmark removed", undoLabel: "Undo", onUndo: () => undoService.execute(undoId) })
+    } else {
+      toastService.success("Route bookmarked!")
+    }
     try {
       await fetch(`/api/posts/${postId}/bookmark`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       })
     } catch {
-      setBookmarked(!newBookmarked)
+      setBookmarked(prevBookmarked)
     }
   }
 
@@ -331,7 +373,7 @@ export default function PostDetailPage() {
           {post.images.slice(0, 3).map((img, i) => (
             <div key={i} className={`relative cursor-pointer overflow-hidden group ${i === 0 && post.images.length >= 3 ? "row-span-2" : ""}`} onClick={() => setExpandedImage(img)}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img} alt={`Route photo ${i + 1}`} className={`w-full object-cover ${i === 0 && post.images.length >= 3 ? "h-full min-h-[220px]" : post.images.length === 1 ? "h-[280px]" : "h-[110px]"}`} loading="lazy" />
+              <img src={img} alt={`Route photo ${i + 1}`} width={post.images.length === 1 ? 400 : 200} height={post.images.length === 1 ? 280 : i === 0 && post.images.length >= 3 ? 220 : 110} className={`w-full object-cover ${i === 0 && post.images.length >= 3 ? "h-full min-h-[220px]" : post.images.length === 1 ? "h-[280px]" : "h-[110px]"}`} loading="lazy" />
               <div className="absolute inset-0 bg-black/4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-fast">
                 <Maximize2 size={28} className="text-white bg-black/30 rounded-circle p-1" />
               </div>
@@ -342,10 +384,11 @@ export default function PostDetailPage() {
 
       {/* Image Lightbox */}
       {expandedImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm" onClick={() => setExpandedImage(null)}>
-          <button onClick={() => setExpandedImage(null)} className="absolute top-4 right-4 z-10 w-10 h-10 rounded-circle bg-black/50 text-white flex items-center justify-center border-none cursor-pointer" aria-label="Close"><X size={20} /></button>
-          <img src={expandedImage} alt="Expanded route photo" className="max-w-[90vw] max-h-[90vh] object-contain radius-sm" onClick={(e) => e.stopPropagation()} />
-        </div>
+        <ImageLightbox
+          images={post.images}
+          initialIndex={post.images.indexOf(expandedImage)}
+          onClose={() => setExpandedImage(null)}
+        />
       )}
 
       <div className="flex items-center gap-1 py-3 border-t border-border border-b mb-5">
@@ -370,18 +413,37 @@ export default function PostDetailPage() {
         </button>
       </div>
 
-      <AppCard variant="elevated" className="p-5 flex items-center gap-4 flex-wrap mb-5">
-        <div className="flex-1 min-w-[200px]">
-          <h3 className="text-base font-semibold mb-0.5">Buy Route Guide</h3>
-          <p className="text-sm text-text-secondary">Detailed turn-by-turn with landmark photos and driver contacts</p>
+      {showNavigation ? (
+        <div className="mb-5">
+          <NavigationGuide
+            steps={routes}
+            totalDistanceKm={post.totalDistanceKm}
+            estimatedMins={post.estimatedMins}
+            onClose={() => setShowNavigation(false)}
+          />
         </div>
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1 px-3 py-1 radius-pill bg-primary-muted text-primary text-sm font-bold">₦2,500</span>
-          <button className="h-10 px-5 radius-md bg-primary text-white border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-colors duration-fast">
-            Get Full Access
-          </button>
-        </div>
-      </AppCard>
+      ) : (
+        <AppCard variant="elevated" className="p-5 mb-5">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-3 flex-1 min-w-[200px]">
+              <div className="w-10 h-10 rounded-circle bg-primary-muted flex items-center justify-center">
+                <Navigation size={20} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">Navigation Guide</h3>
+                <p className="text-xs text-text-secondary">Step-by-step turn-by-turn directions for this route</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowNavigation(true)}
+              className="h-10 px-5 radius-md bg-primary text-white border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-colors duration-fast flex items-center gap-2"
+            >
+              <Navigation size={16} />
+              Start Navigation
+            </button>
+          </div>
+        </AppCard>
+      )}
 
       <div className="mb-6">
         <h3 className="text-base font-semibold mb-3">

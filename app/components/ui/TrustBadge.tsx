@@ -50,7 +50,7 @@ const METRICS = [
   { label: "Recency", key: "recency" },
 ];
 
-export default function TrustBadge({
+export function TrustBadge({
   level,
   score,
   size = "default",

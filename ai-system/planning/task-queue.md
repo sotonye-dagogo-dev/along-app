@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system
+> - last-verified-against-code: 2026-07-08
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -127,14 +127,52 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 
 ---
 
+## Sprint Remediation 2026-07-08 — Auth, Error Handling & Code Quality
+
+> **Section summary:** Comprehensive codebase audit remediation across 4 sprints. All Sprint A-D items complete except JWT middleware and explore page decomposition.
+
+| Size | Task | Status |
+|------|------|--------|
+| [S] | Forgot-password API + reset-password API + UI page | [x] |
+| [S] | Guard OTP console.log in register route | [x] |
+| [S] | Bookmarks page: fetch real data | [x] |
+| [M] | Profile/[username]: fetch real user + posts | [x] |
+| [S] | Create /api/users/by-username/[username] | [x] |
+| [S] | Create shared rateLimit.ts utility | [x] |
+| [M] | Wire rate limiting into login, register, otp, refresh | [x] |
+| [S] | AbortController + res.ok to notifications, post detail, profile, bookmarks | [x] |
+| [S] | AbortController to admin/users search | [x] |
+| [M] | Replace empty catch blocks in 6 admin pages | [x] |
+| [L] | PostCard useReducer refactor | [x] |
+| [L] | Export standardization: 17 UI components → named exports | [x] |
+| [S] | Add aria-labels to explore + home | [x] |
+| [S] | Add img width/height to PostCard + post detail | [x] |
+| [S] | Remove currentUserId prop from PostCard/home | [x] |
+| [S] | Remove unnecessary fragment wrappers (PushProvider, forgot-password layout) | [x] |
+| [S] | Guard email service console.logs | [x] |
+| [S] | JWT verification in middleware (jose) | [x] |
+| [M] | Decompose explore page into sub-components | [x] |
+
+---
+
+## Sprint 6 — Leaderboards
+
+> **Section summary:** Global leaderboard showing top contributors by reward points.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Leaderboard API route, page, layout, nav config, middleware | [x] |
+
+---
+
 ## Backlog
 
 > **Section summary:** Known work that needs to be done but hasn't been scheduled yet.
 
 | Size | Task |
 |------|------|
-| [XL] | Transact Marketplace integration (deferred) |
-| [XL] | Tega Events integration (deferred) |
+| [XL] | Transact Marketplace integration | [x] |
+| [XL] | Tega Events integration | [x] |
 
 ---
 

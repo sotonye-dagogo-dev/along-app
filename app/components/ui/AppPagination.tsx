@@ -37,7 +37,7 @@ function getPageNumbers(current: number, total: number): (number | '...')[] {
   return pages
 }
 
-export default function AppPagination({
+export function AppPagination({
   current,
   total,
   pageSize = 20,

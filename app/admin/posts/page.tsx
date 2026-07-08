@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { Trash2 } from "lucide-react"
+import { GlobalConfirmModal } from "@/app/components/ui/GlobalConfirmModal"
 
 interface AdminPost {
   id: string
@@ -25,34 +26,43 @@ interface AdminPost {
 export default function AdminPostsPage() {
   const [posts, setPosts] = useState<AdminPost[]>([])
   const [loading, setLoading] = useState(true)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
     try {
       const res = await fetch("/api/admin/posts")
-      if (res.ok) {
-        const data = await res.json()
-        setPosts(data.posts ?? [])
-      }
-    } catch { /* ignore */ } finally { setLoading(false) }
+      if (!res.ok) throw new Error("Request failed")
+      const data = await res.json()
+      setPosts(data.posts ?? [])
+    } catch (err) { console.error("[AdminError]", err) } finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
 
   const handleDelete = async (postId: string) => {
-    if (!confirm("Delete this post? This action cannot be undone.")) return
     try {
       const res = await fetch("/api/admin/posts", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ postId }),
       })
-      if (res.ok) load()
-    } catch { /* ignore */ }
+      if (!res.ok) throw new Error("Request failed")
+      load()
+    } catch (err) { console.error("[AdminError]", err) }
   }
 
   return (
     <>
+      <GlobalConfirmModal
+        open={confirmDeleteId !== null}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => { if (confirmDeleteId) handleDelete(confirmDeleteId); setConfirmDeleteId(null) }}
+        variant="destructive"
+        title="Delete Post"
+        description="Delete this post? This action cannot be undone."
+      />
+
       <div className="flex items-center justify-between mb-1">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Posts</h1>
@@ -104,7 +114,7 @@ export default function AdminPostsPage() {
                 </td>
                 <td className="px-4 py-3 border-b border-border">
                   <button
-                    onClick={() => handleDelete(p.id)}
+                    onClick={() => setConfirmDeleteId(p.id)}
                     className="inline-flex items-center gap-1 px-2 py-1 radius-sm text-[10px] font-semibold bg-error text-error-text border-none cursor-pointer hover:bg-error-text hover:text-text-inverse transition-all duration-fast"
                   >
                     <Trash2 size={10} /> Delete

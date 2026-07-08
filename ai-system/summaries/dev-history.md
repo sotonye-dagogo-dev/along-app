@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system
+> - last-verified-against-code: 2026-07-08 (session 4)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -176,3 +176,187 @@ Upgraded the `ai-system/` from v1 to v2 per MIGRATION.md. All project-specific c
 - Zero vendor references — tool-agnostic
 - Mandatory quality gate (9 criteria) and entry protocol
 - Interruption recovery via checkpoints/in-progress.md + resume-session.md
+
+---
+
+## 2026-07-08 — Map & Route Feature Tightening
+
+**Summary:**
+Tightened up map interactions, location input, route step reordering, and added navigation system. RouteStepInput now uses real Nominatim OSM geocoding instead of mock Lagos suggestions. RouteMap properly refits bounds on pin/polyline changes. ShareRouteModal step reordering via HTML5 drag-and-drop is now functional. Created NavigationGuide component with step-by-step directions mode. Post Detail page now has "Start Navigation" toggle. Explore page consolidated from duplicate MapViews to single responsive view.
+
+**Completed:**
+- RouteStepInput: Real Nominatim geocoding with AbortController
+- RouteMap: Auto-refit bounds on pin/polyline/encodedPolyline changes
+- ShareRouteModal: Drag-and-drop route step reordering
+- NavigationGuide: New step-by-step navigation component
+- Post Detail page: Start Navigation button and guide toggle
+- Explore page: Consolidated MapView, improved marker display
+
+**Key Changes:**
+- RouteStepInput no longer depends on hardcoded mock data — real geocoding API
+- Map now stays correctly zoomed/framed as pins change
+- Route steps can be reordered via drag-and-drop in ShareRouteModal
+- New NavigationGuide component provides turn-by-turn directions
+- "Buy Route Guide" CTA replaced with "Start Navigation"
+
+---
+
+## 2026-07-08 (Session 3) — ImageLightbox Component & Auth Remember Me
+
+**Summary:**
+Extracted duplicated inline image lightbox from PostCard and post detail page into a reusable `ImageLightbox` component with prev/next navigation for multi-image posts, keyboard Escape support, and image counter display. Fixed auth session duration: default access token extended from 15m to 1h, "Remember me" checkbox added to login page that extends access token to 7d and refresh token to 30d. Wired automatic token refresh in AuthProvider (retries /api/auth/me via /api/auth/refresh on 401). Added ImageLightbox to UI barrel exports.
+
+**Completed:**
+- Created reusable `app/components/ui/ImageLightbox.tsx` with prev/next, keyboard, image counter
+- Replaced inline lightbox in PostCard.tsx with ImageLightbox
+- Replaced inline lightbox in post detail page with ImageLightbox
+- Login page "Remember me" checkbox wired to API
+- LOGIN_SCHEMA and OTP_SCHEMA updated with rememberMe field
+- Auth utility: signAccessToken/RefreshToken accept rememberMe param (1h default, 7d/30d remember)
+- Cookies: setAuthCookies accepts rememberMe param with corresponding maxAge
+- OTP route and OTP page pass rememberMe through to session creation
+- AuthProvider: auto-calls /api/auth/refresh on 401 before falling back to null
+
+**Key Changes:**
+- Image viewer is now a reusable component with full gallery navigation
+- Session duration is user-configurable via Remember Me checkbox
+- Token refresh is now automatic client-side, fixing the unused refresh endpoint
+
+---
+
+
+
+## 2026-07-08 — Feature Tightening: Drafts, Map Expand, Undo, Profile, Routing, @mentions, Admin
+
+**Summary:**
+Second session on 2026-07-08 implementing 7 feature areas: local draft saving/restoration for ShareRouteModal (localStorage persistence with auto-load on open and clear on submit), expandable fullscreen map view for RouteMap (Maximize2/Minimize2 toggle with body scroll lock), undo/redo integration wired into post detail page like/unbookmark actions with toast-based undo prompts, profile editing with proper initialValues wiring and avatar save confirmation toasts, SPA routing fix in AppTable (router.push replaces window.location.href), inline @mention highlighting in CommentInput using textarea/overlay pattern, and admin dashboard with live API data users table replacing hardcoded dummy rows plus error/retry states and GlobalConfirmModal wired into admin posts page.
+
+**Completed:**
+- ShareRouteModal: localStorage draft save/restore with auto-load and clear-on-submit
+- RouteMap: Expandable fullscreen toggle with body scroll lock
+- Post detail page: Undo toast for unlike and unbookmark actions via undoService
+- Profile page: EditProfileModal now passes initialValues, save triggers toast + profile reload
+- AvatarEditor: Save confirmation toast with profile refresh
+- AppTable (ui): window.location.href replaced with router.push for SPA navigation
+- CommentInput: Inline @mention highlighting with textarea overlay pattern (primary bg color + link)
+- Admin dashboard: Live users table from API, error/retry state, loading skeleton
+- Admin posts: GlobalConfirmModal replaces native confirm() dialog
+
+**Key Changes:**
+- ShareRouteModal drafts persisted across browser sessions via localStorage
+- RouteMap can expand to fullscreen for detailed route inspection
+- Post detail like/bookmark actions now follow undo toast pattern from useFeedInteractions
+- Profile editing now properly reflects input defaults and gives feedback
+- CommentInput shows visual @mention highlights as you type
+- Admin dashboard shows real user data instead of hardcoded rows
+- All admin delete actions use GlobalConfirmModal consistently
+
+---
+
+## 2026-07-08 (Session 4) — Sprint A-D Remediation: Auth, Error Handling & Code Quality
+
+**Summary:**
+Completed comprehensive codebase remediation across 4 sprints: forgot-password/reset-password flows with rate limiting on all auth routes, AbortController on all async useEffects, catch-block hardening (console.error + toast) across admin and dashboard pages, PostCard state migrated to useReducer, export standardization (17 UI component files changed from default to named exports), aria-labels on explore/home pages, img width/height attributes added, currentUserId prop removed, unnecessary fragment wrappers removed, and email service console.logs guarded behind NODE_ENV production check.
+
+**Completed:**
+- Forgot-password API route + reset-password API route + reset-password page UI
+- OTP console.log guarded behind NODE_ENV check in register route
+- Bookmarks page now fetches real data from /api/bookmarks instead of empty set
+- Profile/[username] page fetches real user data from /api/users/by-username
+- Created /api/users/by-username/[username] route (Prisma lookup)
+- Shared rateLimit.ts utility (in-memory Map, 10 req/15min for auth)
+- Rate limiting wired into login, register, otp, refresh routes
+- AbortController + res.ok checks added to: notifications, post detail, profile, bookmarks pages
+- AbortController added to admin/users search debounce
+- Empty catch blocks replaced with console.error in 6 admin pages (reviews, posts, config, bugs, email-preview, users)
+- PostCard state refactored from 5 useStates to single useReducer
+- 17 UI component files: export default function → export function (named exports only)
+- aria-labels added to explore page search inputs, "Near me" button, home page clickable div
+- img width/height attributes added to PostCard images and post detail grid images
+- currentUserId prop removed from PostCard and home page
+- PushProvider and forgot-password layout fragment wrappers removed
+- Email service console.logs guarded behind NODE_ENV !== "production" (7 lines)
+
+**Key Changes:**
+- Auth routes now rate-limited — prevents brute force and OTP spam
+- AbortController pattern standardised across all async useEffects
+- Catch blocks across entire app are now actionable (console.error)
+- Export convention unified: all UI components use named exports only
+- PostCard now uses useReducer for cleaner state management
+- All img elements have explicit dimensions (prevents layout shift)
+- Console.logs suppressed in production email service
+
+**Key Changes:**
+- `ExplorePinCard` and `FilterChipsBar` extracted from 560-line explore page into reusable sub-components under `app/components/features/explore/`
+- Explore page reduced from 562 to 498 lines
+
+**Next Sprint Focus:**
+Search with full-text indexes, clustering for map markers, component tests, accessibility audit.
+
+---
+
+## 2026-07-08 (Session 4, cont.) — Leaderboard Feature
+
+**Summary:**
+Created global leaderboard feature: API route returning top 100 users by rewardPoints, leaderboard page with podium display for top 3, paginated list for ranks 4+, period selector (All time/This month/This week), and navigation integration. Added `/leaderboard` to middleware protected routes and registered `Trophy` nav item in navigation config.
+
+**Completed:**
+- `/api/leaderboard/route.ts` — GET returns top 100 users ordered by rewardPoints desc, excluding banned
+- `app/(dashboard)/leaderboard/page.tsx` — Podium display, ranked list, period selector, loading skeletons
+- `app/(dashboard)/leaderboard/layout.tsx` — metadata wrapper
+- `navigation.ts` — Added `Leaderboard` item with `Trophy` icon
+- `middleware.ts` — Added `/leaderboard` to protected routes
+
+**Key Changes:**
+- New route: /leaderboard with API backend
+- Sidebar now shows Leaderboard nav item for all authenticated users
+
+**Next Sprint Focus:**
+Search with full-text indexes, clustering for map markers, component tests, accessibility audit.
+
+---
+
+## 2026-07-08 (Session 4, cont.) — Backlog: Transact Marketplace & Tega Events
+
+**Summary:**
+Implemented both deferred backlog integrations: Transact Marketplace (listing grid, proxy API, webhook receiver) and Tega Events (events widget, proxy API, webhook receiver). Added Marketplace nav item and page, wired EventsWidget into home page sidebar.
+
+**Completed:**
+- `app/lib/integrations/transact.ts` — TransactConfig, TransactListing types, fetchListings helper
+- `app/api/integrations/transact/route.ts` — GET listings proxy to Transact API
+- `app/api/webhooks/transact/route.ts` — HMAC-verified webhook receiver
+- `app/(dashboard)/marketplace/page.tsx` — Listing grid with AppCard, loading/empty states
+- `app/(dashboard)/marketplace/layout.tsx` — Metadata
+- `app/lib/integrations/tega.ts` — TegaConfig, TegaEvent types, fetchEvents helper
+- `app/api/integrations/tega/route.ts` — GET events proxy to Tega API
+- `app/api/webhooks/tega/route.ts` — HMAC-verified webhook receiver
+- `app/components/features/events/EventsWidget.tsx` — "Events near you" sidebar widget
+- `app/(dashboard)/home/page.tsx` — Wired EventsWidget into sidebar
+- `navigation.ts` — Added Marketplace item with ShoppingBag icon
+- `middleware.ts` — Added /marketplace to protected routes
+
+**Key Changes:**
+- Two new feature directories: `app/lib/integrations/` and `app/components/features/events/`
+- New route: /marketplace with listing grid UI
+- Home page sidebar now shows EventsWidget alongside SuggestionsPanel
+- Webhook handlers ready for Transact and Tega callbacks (signature-verified)
+
+**Backlog Status:**
+All backlog items concluded.
+
+**Summary:**
+Created global leaderboard feature: API route returning top 100 users by rewardPoints, leaderboard page with podium display for top 3, paginated list for ranks 4+, period selector (All time/This month/This week), and navigation integration. Added `/leaderboard` to middleware protected routes and registered `Trophy` nav item in navigation config.
+
+**Completed:**
+- `/api/leaderboard/route.ts` — GET returns top 100 users ordered by rewardPoints desc, excluding banned
+- `app/(dashboard)/leaderboard/page.tsx` — Podium display, ranked list, period selector, loading skeletons
+- `app/(dashboard)/leaderboard/layout.tsx` — metadata wrapper
+- `navigation.ts` — Added `Leaderboard` item with `Trophy` icon
+- `middleware.ts` — Added `/leaderboard` to protected routes
+
+**Key Changes:**
+- New route: /leaderboard with API backend
+- Sidebar now shows Leaderboard nav item for all authenticated users
+
+**Next Sprint Focus:**
+Search with full-text indexes, clustering for map markers, component tests, accessibility audit.

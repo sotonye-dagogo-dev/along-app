@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useContext } from "react"
+import { useState, useReducer, useContext } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, MoreHorizontal, BadgeDollarSign, X } from "lucide-react"
-import { AppCard, AppUserLabel, AppDropdown, TrustBadge, VehicleChip } from "@/app/components/ui"
+import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, MoreHorizontal, BadgeDollarSign } from "lucide-react"
+import { AppCard, AppUserLabel, AppDropdown, TrustBadge, VehicleChip, ImageLightbox } from "@/app/components/ui"
 import { AuthContext } from "@/app/providers/AuthProvider"
 import type { VehicleType } from "@/app/lib/types"
 
@@ -60,7 +60,6 @@ interface PostCardProps {
   onBookmark?: (postId: string, bookmarked: boolean) => void
   onShare?: (postId: string) => void
   onComment?: (postId: string) => void
-  currentUserId?: string
 }
 
 function getTimeAgo(date: string | Date): string {
@@ -93,12 +92,65 @@ function extractVehicles(routes: unknown): string[] {
   return Array.from(vehicles)
 }
 
+interface PostCardState {
+  liked: boolean
+  likesCount: number
+  disliked: boolean
+  dislikesCount: number
+  bookmarked: boolean
+}
+
+type PostCardAction =
+  | { type: "TOGGLE_LIKE" }
+  | { type: "TOGGLE_DISLIKE" }
+  | { type: "TOGGLE_BOOKMARK" }
+  | { type: "SET_FROM_PROPS"; payload: PostCardPost }
+
+function postCardReducer(state: PostCardState, action: PostCardAction): PostCardState {
+  switch (action.type) {
+    case "TOGGLE_LIKE": {
+      const newLiked = !state.liked
+      return {
+        ...state,
+        liked: newLiked,
+        likesCount: state.likesCount + (newLiked ? 1 : -1),
+        disliked: newLiked ? false : state.disliked,
+        dislikesCount: newLiked && state.disliked ? state.dislikesCount - 1 : state.dislikesCount,
+      }
+    }
+    case "TOGGLE_DISLIKE": {
+      const newDisliked = !state.disliked
+      return {
+        ...state,
+        disliked: newDisliked,
+        dislikesCount: state.dislikesCount + (newDisliked ? 1 : -1),
+        liked: newDisliked ? false : state.liked,
+        likesCount: newDisliked && state.liked ? state.likesCount - 1 : state.likesCount,
+      }
+    }
+    case "TOGGLE_BOOKMARK":
+      return { ...state, bookmarked: !state.bookmarked }
+    case "SET_FROM_PROPS":
+      return {
+        liked: action.payload._isLiked ?? false,
+        likesCount: action.payload.likes,
+        disliked: false,
+        dislikesCount: action.payload.dislikes,
+        bookmarked: action.payload._isBookmarked ?? false,
+      }
+    default:
+      return state
+  }
+}
+
 export default function PostCard({ post, onLike, onDislike, onBookmark, onShare, onComment }: PostCardProps) {
-  const [liked, setLiked] = useState(post._isLiked ?? false)
-  const [likesCount, setLikesCount] = useState(post.likes)
-  const [disliked, setDisliked] = useState(false)
-  const [dislikesCount, setDislikesCount] = useState(post.dislikes)
-  const [bookmarked, setBookmarked] = useState(post._isBookmarked ?? false)
+  const [state, dispatch] = useReducer(postCardReducer, {
+    liked: post._isLiked ?? false,
+    likesCount: post.likes,
+    disliked: false,
+    dislikesCount: post.dislikes,
+    bookmarked: post._isBookmarked ?? false,
+  })
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const auth = useContext(AuthContext)
 
@@ -110,32 +162,22 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
 
   const handleLike = () => {
     if (!auth?.requireAuth("like routes")) return
-    const newLiked = !liked
-    setLiked(newLiked)
-    setLikesCount((prev) => prev + (newLiked ? 1 : -1))
-    if (disliked) {
-      setDisliked(false)
-      setDislikesCount((prev) => prev - 1)
-    }
+    const newLiked = !state.liked
+    dispatch({ type: "TOGGLE_LIKE" })
     onLike?.(post.id, newLiked)
   }
 
   const handleDislike = () => {
     if (!auth?.requireAuth("dislike routes")) return
-    const newDisliked = !disliked
-    setDisliked(newDisliked)
-    setDislikesCount((prev) => prev + (newDisliked ? 1 : -1))
-    if (liked) {
-      setLiked(false)
-      setLikesCount((prev) => prev - 1)
-    }
+    const newDisliked = !state.disliked
+    dispatch({ type: "TOGGLE_DISLIKE" })
     onDislike?.(post.id, newDisliked)
   }
 
   const handleBookmarkClick = () => {
     if (!auth?.requireAuth("bookmark routes")) return
-    const newBookmarked = !bookmarked
-    setBookmarked(newBookmarked)
+    const newBookmarked = !state.bookmarked
+    dispatch({ type: "TOGGLE_BOOKMARK" })
     onBookmark?.(post.id, newBookmarked)
   }
 
@@ -305,24 +347,24 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         <div className="px-4 pb-2.5">
           {images.length === 1 && (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={images[0]} alt="Route" className="w-full h-[200px] object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" onClick={() => setExpandedImage(images[0])} />
+            <img src={images[0]} alt="Route" width={400} height={200} className="w-full h-[200px] object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" onClick={() => setExpandedImage(images[0])} />
           )}
           {images.length === 2 && (
             <div className="grid grid-cols-2 gap-1">
               {images.map((img, i) => (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img key={i} src={img} alt={`Route photo ${i + 1}`} className="w-full h-[140px] object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" onClick={() => setExpandedImage(img)} />
+                <img key={i} src={img} alt={`Route photo ${i + 1}`} width={200} height={140} className="w-full h-[140px] object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" onClick={() => setExpandedImage(img)} />
               ))}
             </div>
           )}
           {images.length >= 3 && (
             <div className="grid grid-cols-2 gap-1" style={{ gridTemplateRows: "auto auto" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={images[0]} alt="Route photo 1" className="row-span-2 w-full h-full object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" style={{ minHeight: "148px" }} onClick={() => setExpandedImage(images[0])} />
+              <img src={images[0]} alt="Route photo 1" width={200} height={148} className="row-span-2 w-full h-full object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" style={{ minHeight: "148px" }} onClick={() => setExpandedImage(images[0])} />
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={images[1]} alt="Route photo 2" className="w-full h-[72px] object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" onClick={() => setExpandedImage(images[1])} />
+              <img src={images[1]} alt="Route photo 2" width={200} height={72} className="w-full h-[72px] object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" onClick={() => setExpandedImage(images[1])} />
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={images[2]} alt="Route photo 3" className="w-full h-[72px] object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" onClick={() => setExpandedImage(images[2])} />
+              <img src={images[2]} alt="Route photo 3" width={200} height={72} className="w-full h-[72px] object-cover radius-sm bg-bg-elevated cursor-pointer" loading="lazy" onClick={() => setExpandedImage(images[2])} />
             </div>
           )}
         </div>
@@ -330,21 +372,21 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
 
       {/* Image Lightbox */}
       {expandedImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm" onClick={() => setExpandedImage(null)}>
-          <button onClick={() => setExpandedImage(null)} className="absolute top-4 right-4 z-10 w-10 h-10 rounded-circle bg-black/50 text-white flex items-center justify-center border-none cursor-pointer" aria-label="Close"><X size={20} /></button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={expandedImage} alt="Expanded route photo" className="max-w-[90vw] max-h-[90vh] object-contain radius-sm" onClick={(e) => e.stopPropagation()} />
-        </div>
+        <ImageLightbox
+          images={images}
+          initialIndex={images.indexOf(expandedImage)}
+          onClose={() => setExpandedImage(null)}
+        />
       )}
 
       <div className="flex items-center gap-1 px-4 py-2 border-t border-border">
         <button
           onClick={(e) => { e.stopPropagation(); handleLike(); }}
-          className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${liked ? "liked text-error-text" : ""}`}
+          className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${state.liked ? "liked text-error-text" : ""}`}
           aria-label="Like"
         >
-          <Heart size={16} className={liked ? "fill-error-text stroke-error-text" : ""} />
-          {likesCount > 0 && <span>{formatCount(likesCount)}</span>}
+          <Heart size={16} className={state.liked ? "fill-error-text stroke-error-text" : ""} />
+          {state.likesCount > 0 && <span>{formatCount(state.likesCount)}</span>}
         </button>
 
         <button
@@ -353,7 +395,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
           aria-label="Dislike"
         >
           <ThumbsDown size={16} />
-          {dislikesCount > 0 && <span>{formatCount(dislikesCount)}</span>}
+          {state.dislikesCount > 0 && <span>{formatCount(state.dislikesCount)}</span>}
         </button>
 
         <button
@@ -368,10 +410,10 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         <div className="flex items-center gap-1 ml-auto">
           <button
             onClick={(e) => { e.stopPropagation(); handleBookmarkClick(); }}
-            className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${bookmarked ? "bookmarked text-primary" : ""}`}
+            className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${state.bookmarked ? "bookmarked text-primary" : ""}`}
             aria-label="Bookmark"
           >
-            <Bookmark size={16} className={bookmarked ? "fill-primary stroke-primary" : ""} />
+            <Bookmark size={16} className={state.bookmarked ? "fill-primary stroke-primary" : ""} />
           </button>
 
           <button

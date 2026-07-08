@@ -1,6 +1,7 @@
 export { default as PostCard } from "./PostCard"
 export { default as ShareRouteModal } from "./ShareRouteModal"
 export { default as DraftingCoach } from "./DraftingCoach"
+export { default as NavigationGuide } from "./NavigationGuide"
 export { RouteMap, MapSkeleton } from "./RouteMap"
 export type { RouteMapProps, RoutePin } from "./RouteMap"
 export { RouteStepInput } from "./RouteStepInput"

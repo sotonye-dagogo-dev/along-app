@@ -11,18 +11,25 @@ interface AdminStats {
   openBugs: number
   signups7d: { date: string; count: number }[]
   topPosts: { id: string; title: string; validityScore: number }[]
+  recentUsers: { id: string; userName: string; firstName: string; lastName: string; email: string; role: string; rewardTier: string; _count: { posts: number }; createdAt: string }[]
 }
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   const load = async () => {
     setLoading(true)
+    setError(false)
     try {
       const res = await fetch("/api/admin/stats")
-      if (res.ok) setStats(await res.json())
-    } catch { /* ignore */ } finally { setLoading(false) }
+      if (res.ok) {
+        setStats(await res.json())
+      } else {
+        setError(true)
+      }
+    } catch { setError(true) } finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
@@ -43,9 +50,18 @@ export default function AdminDashboard() {
     )
   }
 
-  if (!stats) {
-    return <div className="text-center py-12 text-text-muted">Failed to load dashboard data</div>
+  if (!stats && error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-4">
+        <div className="text-text-muted text-sm">Failed to load dashboard data</div>
+        <button onClick={load} className="px-4 py-2 radius-md bg-primary text-white text-xs font-medium border-none cursor-pointer hover:bg-primary-light transition-colors">
+          Retry
+        </button>
+      </div>
+    )
   }
+
+  if (!stats) return null
 
   const svgW = 500
   const svgH = 160
@@ -233,57 +249,51 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {[1, 2, 3, 4].map((i) => (
-                <tr key={i} className="hover:bg-bg-elevated transition-colors duration-fast cursor-pointer">
+              {stats.recentUsers.length === 0 ? (
+                <tr><td colSpan={7} className="text-center py-8 text-text-muted text-sm">No recent users</td></tr>
+              ) : stats.recentUsers.map((u) => (
+                <tr key={u.id} className="hover:bg-bg-elevated transition-colors duration-fast cursor-pointer">
                   <td className="px-4 py-3 border-b border-border">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-circle flex items-center justify-center text-sm font-bold shrink-0" style={{
-                        background: i === 1 ? "var(--color-error)" : i === 2 ? "var(--color-info)" : "var(--color-warning)",
-                        color: i === 1 ? "var(--color-error-text)" : i === 2 ? "var(--color-info-text)" : "var(--color-warning-text)",
-                      }}>
-                        {i === 1 ? "AD" : i === 2 ? "KO" : i === 3 ? "FO" : "BS"}
-                      </div>
+                      <Link href={`/profile/${u.userName}`} className="no-underline">
+                        <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-sm font-bold shrink-0 text-primary">
+                          {u.firstName[0]}{u.lastName[0]}
+                        </div>
+                      </Link>
                       <div>
-                        <div className="text-xs font-semibold">
-                          {i === 1 ? "Adaobi Duru" : i === 2 ? "Kelechi Okafor" : i === 3 ? "Femi Ogunlade" : "Blessing Samuel"}
-                        </div>
-                        <div className="text-[10px] text-text-muted">
-                          {i === 1 ? "adaobi@along.ng" : i === 2 ? "kelechi@along.ng" : i === 3 ? "femi@gmail.com" : "blessing@yahoo.com"}
-                        </div>
+                        <Link href={`/profile/${u.userName}`} className="text-xs font-semibold no-underline hover:underline text-text-primary">{u.firstName} {u.lastName}</Link>
+                        <div className="text-[10px] text-text-muted">{u.email}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 border-b border-border text-text-primary">
-                    {i === 1 ? "adaobi@along.ng" : i === 2 ? "kelechi@along.ng" : i === 3 ? "femi@gmail.com" : "blessing@yahoo.com"}
+                  <td className="px-4 py-3 border-b border-border text-text-primary">{u.email}</td>
+                  <td className="px-4 py-3 border-b border-border">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[10px] font-semibold ${
+                      u.role === "ADMIN" ? "bg-error text-error-text" : u.role === "MOD" ? "bg-info text-info-text" : "bg-bg-elevated text-text-secondary"
+                    }`}>
+                      {u.role}
+                    </span>
                   </td>
                   <td className="px-4 py-3 border-b border-border">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[10px] font-semibold ${
-                      i === 1 ? "bg-error text-error-text" : i === 2 ? "bg-info text-info-text" : "bg-bg-elevated text-text-secondary"
+                      u.rewardTier === "GOLD" ? "bg-warning text-warning-text" : "bg-bg-elevated text-text-secondary"
                     }`}>
-                      {i === 1 ? "Admin" : i === 2 ? "Mod" : "User"}
-                    </span>
-                    {i === 4 && <span className="w-2 h-2 rounded-circle bg-error-text inline-block ml-1.5 align-middle" />}
-                  </td>
-                  <td className="px-4 py-3 border-b border-border">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[10px] font-semibold ${
-                      i === 1 ? "bg-warning text-warning-text" : i === 3 ? "bg-bg-elevated text-text-primary" : "bg-bg-elevated text-text-secondary"
-                    }`}>
-                      {i === 1 ? "Gold" : i === 2 ? "Bronze" : i === 3 ? "Silver" : "Bronze"}
+                      {u.rewardTier}
                     </span>
                   </td>
-                  <td className="px-4 py-3 border-b border-border">{i === 1 ? 284 : i === 2 ? 156 : i === 3 ? 47 : 12}</td>
+                  <td className="px-4 py-3 border-b border-border">{u._count.posts}</td>
                   <td className="px-4 py-3 border-b border-border text-text-muted">
-                    {i === 1 ? "Jan 2024" : i === 2 ? "Mar 2024" : i === 3 ? "Jun 2024" : "Aug 2024"}
+                    {new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                   </td>
                   <td className="px-4 py-3 border-b border-border">
                     <div className="relative inline-block">
-                      <button className="w-8 h-8 radius-md border-none bg-transparent text-text-muted hover:bg-bg-elevated hover:text-text-primary cursor-pointer grid place-items-center transition-colors duration-fast">
+                      <Link href="/admin/users" className="w-8 h-8 radius-md border-none bg-transparent text-text-muted hover:bg-bg-elevated hover:text-text-primary cursor-pointer grid place-items-center transition-colors duration-fast no-underline">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
                           <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
                           <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
                         </svg>
-                      </button>
+                      </Link>
                     </div>
                   </td>
                 </tr>

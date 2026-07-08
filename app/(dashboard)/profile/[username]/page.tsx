@@ -49,28 +49,36 @@ export default function OtherProfilePage() {
     if (!userName) return
     const load = async () => {
       try {
-        const res = await fetch(`/api/posts?limit=20`)
-        const data = await res.json()
-        const matchingPosts = (data.posts ?? []).filter(
-          (p: PostItem) => p.user.userName === userName
-        )
-        setPosts(matchingPosts)
-        setProfile({
-          id: userName,
-          userName,
-          firstName: matchingPosts[0]?.user.firstName ?? userName,
-          lastName: matchingPosts[0]?.user.lastName ?? "",
-          avatar: null,
-          avatarConfig: null,
-          bio: null,
-          verified: false,
-          rewardPoints: 0,
-          rewardTier: "BRONZE",
-          postCount: matchingPosts.length,
-          followerCount: 0,
-          followingCount: 0,
-          avgValidityScore: 0,
-        })
+        const [profileRes, postsRes] = await Promise.all([
+          fetch(`/api/users/by-username/${encodeURIComponent(userName)}`),
+          fetch("/api/posts?limit=20"),
+        ])
+        if (profileRes.ok) {
+          const profileData = await profileRes.json()
+          setProfile({
+            id: profileData.user.id,
+            userName: profileData.user.userName,
+            firstName: profileData.user.firstName,
+            lastName: profileData.user.lastName,
+            avatar: profileData.user.avatar,
+            avatarConfig: profileData.user.avatarConfig,
+            bio: profileData.user.bio,
+            verified: profileData.user.verified,
+            rewardPoints: profileData.user.rewardPoints,
+            rewardTier: profileData.user.rewardTier,
+            postCount: profileData.user._count.posts,
+            followerCount: profileData.user._count.followers,
+            followingCount: profileData.user._count.following,
+            avgValidityScore: profileData.user._count.posts > 0 ? Math.round(profileData.user.rewardPoints / profileData.user._count.posts) : 0,
+          })
+        }
+        if (postsRes.ok) {
+          const postsData = await postsRes.json()
+          const matchingPosts = (postsData.posts ?? []).filter(
+            (p: PostItem) => p.user.userName === userName
+          )
+          setPosts(matchingPosts)
+        }
       } catch { /* ignore */ } finally { setLoading(false) }
     }
     load()

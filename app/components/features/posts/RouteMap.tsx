@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback, useState, useEffect, useRef } from 'react'
-import { Navigation, Clock, DollarSign, Crosshair } from 'lucide-react'
+import { Navigation, Clock, DollarSign, Crosshair, Maximize2, Minimize2 } from 'lucide-react'
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import polyline from '@mapbox/polyline'
@@ -64,7 +64,9 @@ function RouteMap({
   const [isDark, setIsDark] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [mapError, setMapError] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const mapRef = useRef<MapRef>(null)
+  const pendingFitRef = useRef(false)
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'))
@@ -78,6 +80,22 @@ function RouteMap({
     observer.observe(document.documentElement, { attributes: true })
     return () => observer.disconnect()
   }, [])
+
+  const fitMapToBounds = useCallback(() => {
+    if (!mapRef.current || !bounds) return
+    mapRef.current.fitBounds(
+      [[bounds.minLng, bounds.minLat], [bounds.maxLng, bounds.maxLat]] as [[number, number], [number, number]],
+      { padding: 40, duration: 400 }
+    )
+  }, [bounds])
+
+  useEffect(() => {
+    if (mapLoaded && bounds) {
+      fitMapToBounds()
+    } else if (mapLoaded && !bounds && pins.length === 1) {
+      mapRef.current?.flyTo({ center: [pins[0].lng, pins[0].lat], zoom: 14, duration: 400 })
+    }
+  }, [mapLoaded, pins, encodedPolyline, bounds, fitMapToBounds])
 
   const mapStyle = {
     version: 8 as const,
@@ -162,13 +180,7 @@ function RouteMap({
 
   const handleMapLoad = useCallback(() => {
     setMapLoaded(true)
-    if (mapRef.current && bounds) {
-      mapRef.current.fitBounds(
-        [[bounds.minLng, bounds.minLat], [bounds.maxLng, bounds.maxLat]] as [[number, number], [number, number]],
-        { padding: 40, duration: 0 }
-      )
-    }
-  }, [bounds])
+  }, [])
 
   if (mapError) {
     return (
@@ -178,8 +190,27 @@ function RouteMap({
     )
   }
 
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (expanded) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [expanded])
+
+  const toggleExpanded = () => setExpanded((e) => !e)
+
   return (
-    <div className={`relative overflow-hidden rounded-md ${className} ${isDark ? "dark-map" : ""}`} style={{ height }}>
+    <div
+      ref={containerRef}
+      className={`relative overflow-hidden rounded-md ${className} ${isDark ? "dark-map" : ""} ${
+        expanded ? 'fixed inset-0 z-50 rounded-none' : ''
+      }`}
+      style={expanded ? { height: '100vh', width: '100vw' } : { height }}
+    >
       <style>{isDark ? `.dark-map .maplibregl-canvas { filter: brightness(1.35) contrast(1.1); }` : ""}</style>
       <Map
         ref={mapRef}
@@ -258,6 +289,16 @@ function RouteMap({
           )}
         </div>
       )}
+
+      <button
+        type="button"
+        className="absolute top-2 left-2 z-[3] flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-bg-card/80 backdrop-blur-sm border border-border text-text-secondary text-xs font-medium shadow-sm hover:bg-bg-card transition-colors"
+        onClick={toggleExpanded}
+        aria-label={expanded ? 'Minimize map' : 'Expand map'}
+      >
+        {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+        {expanded ? 'Minimize' : 'Expand'}
+      </button>
 
       {editable && onAutoTrace && (
         <button

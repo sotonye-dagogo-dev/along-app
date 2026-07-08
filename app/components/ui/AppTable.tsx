@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useMemo, useRef } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react'
 
 interface Column<T> {
@@ -76,6 +77,7 @@ function AppTable<T extends Record<string, unknown>>({
   className = '',
   rowKey,
 }: AppTableProps<T>) {
+  const router = useRouter()
   const [localSortKey, setLocalSortKey] = useState<string | null>(null)
   const [localSortDir, setLocalSortDir] = useState<'asc' | 'desc'>('asc')
   const lastClickedRef = useRef<number | null>(null)
@@ -241,7 +243,7 @@ function AppTable<T extends Record<string, unknown>>({
                   } ${isSelected ? 'bg-primary-muted' : ''} ${href ? 'cursor-pointer' : ''}`}
                   onClick={(e) => {
                     if (href && !(e.target as HTMLElement).closest('a, input, button, label')) {
-                      window.location.href = href
+                      router.push(href)
                     }
                   }}
                 >

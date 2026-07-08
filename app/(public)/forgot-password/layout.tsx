@@ -7,5 +7,5 @@ export const metadata = buildMetadata({
 })
 
 export default function ForgotPasswordLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>
+  return children
 }

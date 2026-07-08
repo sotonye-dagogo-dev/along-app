@@ -35,11 +35,10 @@ export default function AdminBugsPage() {
     try {
       const url = status ? `/api/admin/bugs?status=${status}` : "/api/admin/bugs"
       const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        setBugs(data.bugs ?? [])
-      }
-    } catch { /* ignore */ } finally { setLoading(false) }
+      if (!res.ok) throw new Error("Request failed")
+      const data = await res.json()
+      setBugs(data.bugs ?? [])
+    } catch (err) { console.error("[AdminError]", err) } finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
@@ -51,8 +50,9 @@ export default function AdminBugsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ bugId, status }),
       })
-      if (res.ok) load(statusFilter || undefined)
-    } catch { /* ignore */ }
+      if (!res.ok) throw new Error("Request failed")
+      load(statusFilter || undefined)
+    } catch (err) { console.error("[AdminError]", err) }
   }
 
   return (

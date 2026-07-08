@@ -1,7 +1,7 @@
 'use client'
 
 import { useOnlineStatus } from '@/app/providers/OnlineStatusProvider'
-import AppEmptyState from './AppEmptyState'
+import { AppEmptyState } from './AppEmptyState'
 
 export default function OfflineIndicator() {
   const { isOnline } = useOnlineStatus()

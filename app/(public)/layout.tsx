@@ -1,5 +1,5 @@
 import Link from "next/link";
-import AppFooter from "@/app/components/ui/AppFooter";
+import { AppFooter } from "@/app/components/ui/AppFooter";
 import AppLogo from "@/app/components/ui/AppLogo";
 import PublicNavActions from "@/app/components/ui/PublicNavActions";
 

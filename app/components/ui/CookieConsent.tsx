@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppButton } from "./";
 
-export default function CookieConsent() {
+export function CookieConsent() {
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 

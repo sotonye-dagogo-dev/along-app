@@ -8,7 +8,7 @@ export interface VehicleChipProps {
   size?: "sm" | "default";
 }
 
-export default function VehicleChip({
+export function VehicleChip({
   type,
   size = "default",
 }: VehicleChipProps) {

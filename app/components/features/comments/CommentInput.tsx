@@ -146,6 +146,16 @@ export default function CommentInput({ userName, onSubmit }: CommentInputProps) 
     .toUpperCase()
     .slice(0, 2)
 
+  const highlightedHtml = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br/>')
+    .replace(
+      /(@\w+)/g,
+      '<span class="mention-highlight" style="color:var(--color-primary);background:var(--color-primary-muted);border-radius:3px;padding:0 2px">$1</span>'
+    )
+
   return (
     <div className="flex items-start gap-2.5 mb-4 relative">
       <Link href={`/profile/${userName}`} className="no-underline">
@@ -154,16 +164,23 @@ export default function CommentInput({ userName, onSubmit }: CommentInputProps) 
         </div>
       </Link>
       <div className="flex-1 flex flex-col gap-1.5 relative">
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onInput={handleInput}
-          onClick={(e) => detectMention(text, e.currentTarget.selectionStart)}
-          placeholder="Add a comment... (use @ to mention)"
-          className="w-full min-h-[60px] px-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none resize-none bg-bg-base text-text-primary transition-colors duration-fast focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
-        />
+        <div className="relative">
+          <div
+            aria-hidden
+            className="w-full min-h-[60px] px-3 py-2.5 border border-border radius-sm text-sm font-sans pointer-events-none whitespace-pre-wrap break-words overflow-hidden"
+            dangerouslySetInnerHTML={{ __html: highlightedHtml + (text.endsWith('\n') ? '<br/>' : '') }}
+          />
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onInput={handleInput}
+            onClick={(e) => detectMention(text, e.currentTarget.selectionStart)}
+            placeholder="Add a comment... (use @ to mention)"
+            className="w-full min-h-[60px] px-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none resize-none bg-transparent text-transparent caret-current transition-colors duration-fast focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted absolute inset-0"
+          />
+        </div>
         {mentionResults.length > 0 && (
           <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-bg-card border border-border radius-md shadow-lg max-h-[160px] overflow-y-auto">
             {mentionResults.map((u, i) => (
