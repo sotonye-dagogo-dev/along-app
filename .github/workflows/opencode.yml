@@ -1,4 +1,4 @@
-name: opencode
+name: opencode local trigger
 
 on:
   issue_comment:
@@ -7,27 +7,35 @@ on:
     types: [created]
 
 jobs:
-  opencode:
+  # Routes to the design pipeline. Note this still contains /oc or
+  # /opencode — required unconditionally by anomalyco/opencode/github's
+  # own internal check, no way around it. The word immediately following
+  # is what disambiguates from opencode-dev below.
+  opencode-design:
     if: |
-      contains(github.event.comment.body, ' /oc') ||
-      startsWith(github.event.comment.body, '/oc') ||
-      contains(github.event.comment.body, ' /opencode') ||
-      startsWith(github.event.comment.body, '/opencode')
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-      pull-requests: read
-      issues: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          persist-credentials: false
+      github.event.comment.body != '' &&
+      (
+        contains(github.event.comment.body, '/oc design') ||
+        contains(github.event.comment.body, '/opencode design')
+      )
+    uses: sotonye-dagogo-dev/.github-workflows/.github/workflows/opendesign-runner.yml@main
+    secrets: inherit
 
-      - name: Run opencode
-        uses: anomalyco/opencode/github@latest
-        env:
-          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
-        with:
-          model: opencode/deepseek-v4-flash-free
+  # Everything else that mentions /oc or /opencode, EXCLUDING anything
+  # opencode-design already claimed above. Mutual exclusivity is what
+  # prevents both jobs firing on the same comment.
+  opencode-dev:
+    if: |
+      github.event.comment.body != '' &&
+      (
+        contains(github.event.comment.body, ' /oc') ||
+        startsWith(github.event.comment.body, '/oc') ||
+        contains(github.event.comment.body, ' /opencode') ||
+        startsWith(github.event.comment.body, '/opencode')
+      ) &&
+      !(
+        contains(github.event.comment.body, '/oc design') ||
+        contains(github.event.comment.body, '/opencode design')
+      )
+    uses: sotonye-dagogo-dev/.github-workflows/.github/workflows/opencode-runner.yml@main
+    secrets: inherit
