@@ -1,28 +1,29 @@
 # Update AI System Command
 
 > **Metadata**
+>
 > - last-updated-by: bootstrap-project
 > - last-verified-against-code: (set on first run)
 > - staleness-policy: re-verify if sync procedure changes
 
-> **Overview:** Sprint-end deep synchronization. Reads all `.ai-system/` files and compares them against the current repository state. Fixes drift that accumulated during the sprint. Heavier than `sync-context.md`.
+> **Overview:** Sprint-end deep synchronization. Reads all `ai-system/` files and compares them against the current repository state. Fixes drift that accumulated during the sprint. Heavier than `sync-context.md`.
 
 ---
 
 ## Contract
 
-| Guarantees | Does NOT |
-|------------|----------|
-| Reconciles all .ai-system docs with actual code state | Does not change code to match docs — only docs to match code |
-| Flags architecture drift for human review | Does not make assumptions about specific AI tools |
-| Updates all freshness metadata | Does not skip drift that is inconvenient to fix |
-| Produces a discrepancy report | Does not run automatically — must be explicitly invoked |
+| Guarantees                                           | Does NOT                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------ |
+| Reconciles all ai-system docs with actual code state | Does not change code to match docs — only docs to match code |
+| Flags architecture drift for human review            | Does not make assumptions about specific AI tools            |
+| Updates all freshness metadata                       | Does not skip drift that is inconvenient to fix              |
+| Produces a discrepancy report                        | Does not run automatically — must be explicitly invoked      |
 
 ---
 
 ## Required Inputs
 
-None — operates on the full `.ai-system/` directory and the repo.
+None — operates on the full `ai-system/` directory and the repo.
 
 ## Optional Directives
 
@@ -38,7 +39,7 @@ Directive: Specifically check for architecture drift in the services layer
 
 ## Execution
 
-1. Read all files in `.ai-system/` and compare against repo state.
+1. Read all files in `ai-system/` and compare against repo state.
 
 2. Update:
    - `index/repo-map.md` — reflect new/removed directories, update purpose descriptions

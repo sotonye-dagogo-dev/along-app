@@ -1,6 +1,7 @@
 # Repository Map
 
 > **Metadata**
+>
 > - last-updated-by: bootstrap-project
 > - last-verified-against-code: 2026-07-01
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
@@ -14,7 +15,7 @@
 ```
 along-app/
 │
-├── .ai-system/              → AI development orchestration system
+├── ai-system/              → AI development orchestration system
 │   ├── agents/              → Role-based agent instruction files
 │   ├── checkpoints/         → Session log and in-progress marker
 │   ├── commands/            → Executable AI commands
@@ -104,26 +105,26 @@ along-app/
 
 ## Directory Descriptions
 
-| Directory | Purpose | Key Files |
-|-----------|---------|-----------|
-| `.ai-system/` | AI development orchestration — agent instructions, plans, protocols, designs | `protocols/entry-protocol.md`, `planning/task-queue.md`, `designs/*.html` |
-| `.github/` | GitHub CI and project documentation | `workflows/ci.yml`, `plan.md`, `project-context.md` |
-| `prisma/` | Database schema, migrations, and seed data | `schema.prisma` (14 models), `seed.ts`, `migrations/` |
-| `public/` | Static assets served at root path | `sw.js` (service worker), `manifest.json`, `offline.html` |
-| `app/` | Next.js App Router pages, API routes, components, providers, config registries | `layout.tsx`, `globals.css`, `providers/`, `api/`, `components/ui/`, `lib/config/` |
-| `node_modules/` | NPM dependencies | — |
+| Directory       | Purpose                                                                        | Key Files                                                                          |
+| --------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `ai-system/`    | AI development orchestration — agent instructions, plans, protocols, designs   | `protocols/entry-protocol.md`, `planning/task-queue.md`, `designs/*.html`          |
+| `.github/`      | GitHub CI and project documentation                                            | `workflows/ci.yml`, `plan.md`, `project-context.md`                                |
+| `prisma/`       | Database schema, migrations, and seed data                                     | `schema.prisma` (14 models), `seed.ts`, `migrations/`                              |
+| `public/`       | Static assets served at root path                                              | `sw.js` (service worker), `manifest.json`, `offline.html`                          |
+| `app/`          | Next.js App Router pages, API routes, components, providers, config registries | `layout.tsx`, `globals.css`, `providers/`, `api/`, `components/ui/`, `lib/config/` |
+| `node_modules/` | NPM dependencies                                                               | —                                                                                  |
 
 ---
 
 ## Entry Points
 
-| Purpose | File |
-|---------|------|
-| Application root | `app/layout.tsx` |
-| Global styles | `app/globals.css` |
-| Next.js configuration | `next.config.mjs` |
-| Database schema | `prisma/schema.prisma` |
-| Server instrumentation | `instrumentation.ts` |
-| Environment validation | `.env` / `.env.example` |
-| CI pipeline | `.github/workflows/ci.yml` |
-| AI agent instructions | `.ai-system/protocols/entry-protocol.md` |
+| Purpose                | File                                    |
+| ---------------------- | --------------------------------------- |
+| Application root       | `app/layout.tsx`                        |
+| Global styles          | `app/globals.css`                       |
+| Next.js configuration  | `next.config.mjs`                       |
+| Database schema        | `prisma/schema.prisma`                  |
+| Server instrumentation | `instrumentation.ts`                    |
+| Environment validation | `.env` / `.env.example`                 |
+| CI pipeline            | `.github/workflows/ci.yml`              |
+| AI agent instructions  | `ai-system/protocols/entry-protocol.md` |

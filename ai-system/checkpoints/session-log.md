@@ -1,6 +1,7 @@
 # Development Checkpoints — Session Log
 
 > **Metadata**
+>
 > - last-updated-by: bootstrap-project
 > - last-verified-against-code: 2026-07-01
 > - staleness-policy: append-only — never modify past entries
@@ -39,10 +40,11 @@
 ## Session 1 — 2026-06-02
 
 **Completed:**
-Initial .ai-system setup and project bootstrap
+Initial ai-system setup and project bootstrap
 
 **Files Modified:**
-- .ai-system/ (entire directory created)
+
+- ai-system/ (entire directory created)
 
 **Next Task:**
 Run dev-cycle.md to begin first development task from task-queue.md
@@ -58,36 +60,43 @@ None — fresh project start
 ## Session 2026-06-02 — Phase 3: Maps & Discovery + Profiles
 
 ### Summary
+
 Implemented Phase 3 (Maps & Discovery) and remaining Phase 1 profile items. Created map infrastructure, profile pages, and user API routes.
 
 ### Files Created
 
 **Map Infrastructure:**
+
 - `app/components/features/posts/RouteMap.tsx` — MapLibre GL with SSR-disabled dynamic import, origin (green)/waypoint (white/green)/destination (dark green) markers with numbered badges, polyline from @mapbox/polyline, glass overlay card, dark mode detection, editable mode with Auto-Trace button, MapSkeleton loading state
 - `app/lib/services/routeTracingService.ts` — OpenRouteService /directions API integration, fallback straight-line haversine distance, custom polyline encoder
 - `app/api/routes/trace/route.ts` — POST endpoint, rate limited 20/hour via RATE_LIMITS.trace config
 - `app/components/features/posts/RouteStepInput.tsx` — Location autocomplete input with MapPin prefix, mock suggestions for Lagos locations, debounced search
 
 **Explore Page:**
+
 - `app/(dashboard)/explore/page.tsx` — Full-viewport MapLibre map, desktop glass top bar (search + filter chips + LocateFixed button), desktop left side panel 320px (glass, collapsible with toggle, sort select, mini post cards), mobile glass top bar (search + filter button), mobile bottom sheet (draggable 25-80vh, handle bar, post list), pin popup card (280px glass with avatar, name, TrustBadge, View Route button), "Share this view" button (bottom-right), URL state sync via lat/lng/zoom query params
 
 **User API Routes:**
+
 - `app/api/users/[id]/route.ts` — GET (public profile with post/follower/following counts, avg validity), PATCH (own profile only, firstName/lastName/bio/avatar)
 - `app/api/users/[id]/avatar/route.ts` — PATCH (save AvatarConfig JSON)
 - `app/api/users/[id]/follow/route.ts` — POST (ACID: Follow + Notification), DELETE (ACID: unfollow + cleanup notifications)
 - `app/api/users/search/route.ts` — GET ?q= for @mention autocomplete
 
 **Profile Pages:**
+
 - `app/(dashboard)/profile/page.tsx` — Own profile: 180px gradient cover, 80px avatar with camera overlay, name + verified badge, @handle, bio, stats row (Posts/Followers/Following/Avg Score), Edit Profile button, RewardsPanel, tabs (Posts/Liked/Bookmarks/Routes), post card list
 - `app/(dashboard)/profile/[username]/page.tsx` — Other profile: same layout without camera/edit, Follow/Following button with hover Unfollow state, mutual follows count, tabs (Posts/Liked/Routes, no Bookmarks)
 
 **Profile Components:**
+
 - `app/components/features/profile/RewardsPanel.tsx` — Tier badge with icon, points display, gradient progress bar, next tier label, recent activity
 - `app/components/features/profile/EditProfileModal.tsx` — AppModal + ConfigDrivenForm with EDIT_PROFILE_FIELDS
 - `app/components/features/profile/AvatarEditor.tsx` — 2-column modal: style grid (3-col AVATAR_STYLES cards with DiceBear preview), live 120px AppAvatar preview, seed input
 - `app/components/features/profile/index.ts` — barrel exports
 
 **Wiring Updates:**
+
 - `app/components/features/posts/index.ts` — Added RouteMap, MapSkeleton, RouteStepInput exports
 - `app/components/features/posts/ShareRouteModal.tsx` — Replaced SVG placeholder with dynamic RouteMap, computes pins from steps
 - `app/components/features/posts/PostCard.tsx` — Added mini RouteMap (100px) when routes exist
@@ -96,15 +105,18 @@ Implemented Phase 3 (Maps & Discovery) and remaining Phase 1 profile items. Crea
 
 **Subtle Links Audit:**
 Fixed 6 instances across 4 files:
+
 1. `bookmarks/page.tsx` — @handle → Link to /profile/[userName]
 2. `posts/[id]/page.tsx` — @handle → Link to /profile/[userName]
 3. `profile/page.tsx` — post card user info + tags → Links with e.stopPropagation()
 4. `profile/[username]/page.tsx` — post card user info + tags → Links with e.stopPropagation()
 
 ### Config Changes
+
 - Added `@types/mapbox__polyline` devDependency
 
 ### Build Results
+
 - `npx tsc --noEmit` — zero errors
 - `npx next lint` — zero errors (warnings only)
 - `npm run build` — ✓ Compiled successfully, 24 static pages generated (up from 20)
@@ -114,15 +126,18 @@ Fixed 6 instances across 4 files:
 ## Session 2026-06-02 (cont.) — Phase 4: Rewards, Invite, Analytics + Phase 5: Admin
 
 ### Summary
+
 Implemented Phase 4 (Rewards Engine, Invite System, Analytics) and Phase 5 (Admin Dashboard, Users, Posts, Config, Bugs, Reviews pages + API routes).
 
 ### Files Created
 
 **Rewards Engine:**
+
 - `app/lib/services/rewardsService.ts` — Singleton RewardsService with awardPoints (ACID transaction, cooldown/maxPerDay checks via AnalyticsEvent), computeTier (config-driven from REWARD_TIERS), checkTierUpgrade, getHistory (10 items from AnalyticsEvent)
 - `app/api/rewards/history/route.ts` — GET returns last 10 reward events for current user
 
 **Rewards Wiring:**
+
 - `app/api/posts/route.ts` — awardPoints(CREATE_POST) after post creation
 - `app/api/posts/[id]/like/route.ts` — awardPoints(RECEIVE_LIKE) to post author on new LIKE (not self)
 - `app/api/posts/[id]/bookmark/route.ts` — awardPoints(RECEIVE_BOOKMARK) to post author on new bookmark (not self)
@@ -131,14 +146,17 @@ Implemented Phase 4 (Rewards Engine, Invite System, Analytics) and Phase 5 (Admi
 - `app/(dashboard)/profile/page.tsx` — Fetches reward history from /api/rewards/history, passes to RewardsPanel
 
 **Invite System:**
+
 - `app/api/invite/route.ts` — GET returns user invite code, invite count, max invites, points per invite; GET ?section=leaderboard returns top 20 inviters with counts
 - `app/(dashboard)/invite/page.tsx` — Invite page with copy/Share link, rewards card (invite count/max), leaderboard
 
 **Analytics:**
+
 - `app/api/analytics/user/route.ts` — GET ?period=7|30|90 returns KPI (totalViews, totalLikes, totalBookmarks, avgValidity, totalPosts), topPosts by validity, engagementData (daily views/likes/bookmarks), followerGrowth (daily)
 - `app/(dashboard)/analytics/page.tsx` — Analytics page pixel-precise from 16-analytics.html: period selector, 4 KPI cards, Engagement over time line chart (3-line SVG with legend), Top posts by validity horizontal bar chart, Follower growth area chart, Quick stats grid
 
 **Admin API Routes (all guarded by role check):**
+
 - `app/api/admin/stats/route.ts` — GET totalUsers, postsToday, avgValidity, openBugs, signups7d, topPosts
 - `app/api/admin/users/route.ts` — GET (paginated, searchable), PATCH (change role), DELETE (soft-ban, reset role/verified)
 - `app/api/admin/posts/route.ts` — GET (paginated), DELETE (hard delete)
@@ -147,6 +165,7 @@ Implemented Phase 4 (Rewards Engine, Invite System, Analytics) and Phase 5 (Admi
 - `app/api/admin/reviews/route.ts` — GET (filterable by status), PATCH (approve/reject)
 
 **Admin Pages (all pixel-precise from 15-admin-dashboard.html design):**
+
 - `app/admin/layout.tsx` — Sidebar layout (240px) with top nav (Home, Explore, Notifications, Bookmarks, Analytics) and admin nav (Dashboard, Users, Posts, Config, Bugs, Reviews), brand, user section at bottom. Role guard (ADMIN/MODERATOR only).
 - `app/admin/page.tsx` — Dashboard: 4-stat Bento grid (Total Users, Posts Today, Avg Validity, Open Bugs), Signups 7-day SVG line chart, Top Routes by Validity SVG bar chart, Users AppTable preview
 - `app/admin/users/page.tsx` — User management table with search, role badges with colors, tier badges, Make Admin button
@@ -156,6 +175,7 @@ Implemented Phase 4 (Rewards Engine, Invite System, Analytics) and Phase 5 (Admi
 - `app/admin/reviews/page.tsx` — User reviews moderation with PENDING/APPROVED/REJECTED filter, approve/reject buttons
 
 ### Build Results
+
 - `npx tsc --noEmit` — zero errors
 - `npx next lint` — warnings only (existing pre-existing warnings)
 - `npm run build` — ✓ Compiled successfully, 41 static pages generated (up from 24)
@@ -166,17 +186,20 @@ Implemented Phase 4 (Rewards Engine, Invite System, Analytics) and Phase 5 (Admi
 ## Session 2026-06-02 (cont.) — Phase 6: Public Pages & SEO
 
 ### Summary
+
 Implemented Phase 6 (Public Pages & SEO): Landing page, About, Contact, Privacy, Terms, Report Bug pages plus SEO infrastructure (metadata utilities, StructuredData, sitemap, robots, per-page metadata).
 
 ### Files Created
 
 **SEO Infrastructure:**
+
 - `app/lib/utils/metadata.ts` — `buildMetadata()` for static pages, `buildPostMetadata()` for post detail (Article schema), `buildProfileMetadata()` for profile pages (ProfilePage schema). Includes canonical URLs, OG tags, Twitter cards, noIndex support.
 - `app/lib/utils/structuredData.ts` — `websiteSchema()`, `articleSchema()`, `profilePageSchema()` JSON-LD helpers
 - `app/sitemap.ts` — Dynamic sitemap listing static + published posts + active profiles
 - `app/robots.ts` — Disallows /admin, /api, /login, /register, /otp, /home, /bookmarks, /notifications, /profile/, /posts/
 
 **Public Pages:**
+
 - `app/(public)/layout.tsx` — Shared public layout with AppFooter, no dashboard nav, `force-static`
 - `app/(public)/page.tsx` — Landing page pixel-precise from 03-landing-light.html + 04-landing-dark.html: Green gradient hero (135deg #004A2C->#00623B->#00A862), white logo (64px), "Navigate Together" tagline, CTA row, decorative SVG background with grid/circles/route lines, 3 feature cards (Route/ShieldCheck/Users), glass social proof strip, 2 PostCard previews (standard + suggestion variant), bottom CTA section. `buildMetadata()` export + WebSite StructuredData.
 - `app/(public)/about/AboutPageClient.tsx` — Client component: Green gradient hero "Our Story", feature highlights, team grid from TEAM_MEMBERS config, glass reviews carousel with prev/next arrows + dot indicators + 5s auto-rotation.
@@ -188,6 +211,7 @@ Implemented Phase 6 (Public Pages & SEO): Landing page, About, Contact, Privacy,
 - `app/(public)/report-bug/page.tsx` — Client component: ConfigDrivenForm (BUG_REPORT_FIELDS), success -> checkmark AppEmptyState
 
 **Per-Page Metadata Layouts (all client component pages get server wrapper metadata):**
+
 - `app/(dashboard)/home/layout.tsx` — noIndex metadata
 - `app/(dashboard)/explore/layout.tsx` — Explore metadata
 - `app/(dashboard)/bookmarks/layout.tsx` — Bookmarks metadata
@@ -203,6 +227,7 @@ Implemented Phase 6 (Public Pages & SEO): Landing page, About, Contact, Privacy,
 - `app/admin/layout.tsx` — Replaced client layout with server component that exports noIndex metadata + renders AdminShell
 
 **Files Modified:**
+
 - `app/(dashboard)/layout.tsx` — Added AppFooter to dashboard layout
 - `app/middleware.ts` — Updated route protection: public routes (/, /about, /contact, /privacy, /terms, /report-bug) allowed without auth; protected routes (/home, /explore, /bookmarks, /notifications, /analytics, /invite, /posts/, /profile/, /admin) require auth; auth routes redirect to /home if logged in
 - `app/components/ui/AppInput.tsx` — Fixed label prop type (string -> React.ReactNode) for ConfigDrivenForm compatibility
@@ -212,12 +237,14 @@ Implemented Phase 6 (Public Pages & SEO): Landing page, About, Contact, Privacy,
 - `app/admin/AdminShell.tsx` — Renamed from layout.tsx (now a regular component imported by the new server layout)
 
 ### Build Results
+
 - `npx tsc --noEmit` — zero errors
 - `npx next lint` — zero errors (warnings only, all pre-existing)
 - `npm run build` — ✓ Compiled successfully, 49 static pages generated (up from 41)
 - New routes: /, /about, /contact, /privacy, /terms, /report-bug, /sitemap.xml, /robots.txt
 
 ### Notes
+
 - AppInput/AppTextarea/AppSelect had `label?: string` but ConfigDrivenForm passed JSX `<span>` — caused `toLowerCase` crash during prerendering. Fixed to `React.ReactNode` with safe string extraction for ID generation.
 - ConfigDrivenForm passed `field.icon` (LucideIcon component type) directly as ReactNode — caused `Objects are not valid as a React child` error. Fixed to render as `<IconComponent size={16} />`.
 - Admin layout split into server layout.tsx (metadata) + AdminShell.tsx (client sidebar/guard) to support metadata export from server component.
@@ -229,16 +256,19 @@ Implemented Phase 6 (Public Pages & SEO): Landing page, About, Contact, Privacy,
 ## Session 2026-06-03 — OC-8: Production Readiness Audit & Hardening
 
 ### Summary
+
 Completed OC-8 production-readiness audit: emoji cleanup, subtle links, N+1 fixes, cursor pagination, dynamic imports, PWA offline indicator, and comprehensive test suite. All quality gates pass.
 
 ### Changes
 
 **Phase 6 API Handlers (previously missing):**
+
 - `app/api/contact/route.ts` — POST handler validates name/email/message, stores in `ContactSubmission`
 - `app/api/bug-reports/route.ts` — POST handler validates title/category/description, stores in `BugReport` with `reporterId: null`
 - Schema: `ContactSubmission` model added; `BugReport.reporterId` made optional
 
 **Phase 7 — QStash Background Workers:**
+
 - `app/lib/services/qstashService.ts` — Client (publish) + Receiver (verify), methods: `publishFeedInvalidation`, `publishValidityRecompute`, `publishRewardsAward`
 - `app/api/workers/feed-invalidate/route.ts` — QStash-verified Redis cache invalidation for user feeds/post cache/follower feeds
 - `app/api/workers/validity-recompute/route.ts` — QStash-verified ValidityEngine score computation from DB, updates post + clears Redis caches
@@ -247,28 +277,35 @@ Completed OC-8 production-readiness audit: emoji cleanup, subtle links, N+1 fixe
 - Wired 4 API routes to use QStash instead of fire-and-forget: POST /api/posts, POST /api/posts/[id]/like, POST /api/posts/[id]/bookmark, POST /api/auth/register
 
 **OC-8 Emoji Audit:**
+
 - Fixed 8 violations
 
 **OC-8 Component Compliance:**
+
 - Zero violations — no raw `antd`/`@ant-design` imports in any page or feature file
 
 **OC-8 Subtle Links (19 violations fixed in 8 files)**
 
 **OC-8 N+1 Query Fix:**
+
 - `/api/admin/stats/route.ts` — signups7d reduced from 7 individual queries to 1 batch + in-memory filter (7x reduction)
 
 **OC-8 Cursor Pagination:**
+
 - `/api/posts/[id]/comments/route.ts`, `/api/notifications/route.ts`, `/api/admin/bugs/route.ts`, `/api/admin/reviews/route.ts`
 
 **OC-8 Dynamic Imports:**
+
 - `profile/page.tsx` — AvatarEditor, `home/page.tsx` — ShareRouteModal
 
 **OC-8 PWA:**
+
 - manifest.json verified, OnlineStatusProvider, OfflineIndicator created
 
 **OC-8 Test Suite (91 tests, 9 suites)**
 
 ### Build Results
+
 - `npx tsc --noEmit` — zero errors
 - `npx next lint` — pre-existing warnings only, zero errors
 - `npm run build` — ✓ Compiled, 54 static pages, 28 API routes
@@ -280,23 +317,27 @@ Completed OC-8 production-readiness audit: emoji cleanup, subtle links, N+1 fixe
 ## Session 2026-06-09 — Sprint 4: Production Audit Fixes
 
 ### Summary
+
 Comprehensive production audit addressing runtime errors, broken OAuth, double navbar, dead links, missing theme toggle, guest CTAs, brand logo consistency, Sentry integration, and error handling improvements. All 14 issues resolved across 12 files.
 
 ### Changes
 
 **Critical Fixes:**
+
 1. **PostCard `length` crash** — Added `?? []` guards for `post.tags` and `post.images` (`PostCard.tsx:99-100`)
 2. **OAuth buttons** — Added `onClick` handlers linking to `/api/auth/google` on login + register pages
 3. **Double navbar** — Removed redundant inline `<nav>` from landing page (relies on `(public)/layout.tsx` header)
 4. **Dead links** — Fixed `/dashboard`->`/home` redirect in AdminShell; created `/forgot-password` page; redirected `/share`->`/home`, `/settings`->`/profile`
 
 **New Files Created:**
+
 - `app/providers/ThemeProvider.tsx`
 - `app/components/ui/ThemeToggle.tsx`
 - `app/global-error.tsx`
 - `app/(public)/forgot-password/page.tsx` + `layout.tsx`
 
 **Enhancements:**
+
 - Guest CTAs added to landing, login, and register pages
 - Logo config updated with brand file URLs
 - Auth layout and AdminShell inline SVGs replaced with `<AppLogo />`
@@ -304,6 +345,7 @@ Comprehensive production audit addressing runtime errors, broken OAuth, double n
 - Root layout metadata now includes full OG image, Twitter card, apple-touch-icon
 
 ### Build Results
+
 - `npx tsc --noEmit` — zero errors
 - `npx next lint` — zero errors (pre-existing warnings)
 - `npm run build` — ✓ 65 static pages (up from 54), 28 API routes
@@ -315,24 +357,29 @@ Comprehensive production audit addressing runtime errors, broken OAuth, double n
 ## Session 2026-06-09 (cont.) — Sprint 5: RxJS Feed, i18n, Lighthouse Audit
 
 ### Summary
+
 Implemented three backlog items: RxJS reactive feed stream, i18n foundation (English + Pidgin), and Lighthouse performance improvements. All quality gates pass.
 
 ### Changes
 
 **RxJS Reactive Feed:**
+
 - `app/lib/streams/feedStream.ts` — Created FeedStream class with feedState$, interactionCache$, 30s polling
 - `app/(dashboard)/home/page.tsx` — Replaced direct fetch + setInterval with feedStream
 
 **i18n Foundation:**
+
 - `app/lib/config/i18n.ts`, `public/locales/en.json`, `public/locales/pcm.json`, `app/providers/I18nProvider.tsx`, `app/components/ui/LocaleSwitcher.tsx`
 - Wired into root layout and middleware
 
 **Lighthouse Audit:**
+
 - `app/loading.tsx`, `app/error.tsx`, `app/not-found.tsx`
 - `next.config.mjs` — Security headers, asset caching headers
 - `app/layout.tsx` — Preconnect/dns-prefetch resource hints
 
 ### Build Results
+
 - `npx tsc --noEmit` — zero errors
 - `npm run build` — ✓ Compiled successfully, 65 static pages
 - `npm test` — 91/91 passing (9 test suites)
@@ -343,9 +390,11 @@ Implemented three backlog items: RxJS reactive feed stream, i18n foundation (Eng
 ## Session 2026-06-10 — Sprint 5 Fixes: Footer Grid, ShareRouteModal Responsive, Prisma Connection
 
 ### Summary
+
 Fixed footer grid to show 3 columns on mobile, made ShareRouteModal responsive for tablet/mobile, and resolved Prisma 7 Accelerate vs direct connection mismatch causing 30s login timeout.
 
 ### Changes
+
 - **AppFooter.tsx** — Changed `grid-cols-1 md:grid-cols-3` -> `grid-cols-3` (3 columns on mobile)
 - **ShareRouteModal.tsx** — Made responsive: `w-[280px]` -> `w-full lg:w-[280px]`
 - **prisma.ts** — Always uses `accelerateUrl`, switches URL by env
@@ -353,6 +402,7 @@ Fixed footer grid to show 3 columns on mobile, made ShareRouteModal responsive f
 - **Login route** — Added PrismaClientInitializationError detection
 
 ### Notes
+
 - Env now has `DIRECT_LOCAL_DB`, `LOCAL_DB`, `DIRECT_URL`, `DATABASE_URL`
 
 ---
@@ -360,15 +410,18 @@ Fixed footer grid to show 3 columns on mobile, made ShareRouteModal responsive f
 ## Session 2026-06-13 — Dashboard Navigation, Seed Image Fixes, Prisma Type Fix
 
 ### Summary
+
 Added responsive dashboard navigation (mobile bottom tab bar + desktop collapsible sidebar). Fixed all broken Cloudinary image URLs in seed data. Fixed Prisma accelerateUrl TypeScript type error.
 
 ### Changes
+
 - Created `DashboardNav` component (mobile bottom tabs + desktop sidebar)
 - Updated dashboard layout to integrate DashboardNav
 - Replaced 16 broken Cloudinary seed image URLs with valid Unsplash URLs
 - Fixed Prisma accelerateUrl type error (TS2345)
 
 ### Build Results
+
 - `npx tsc --noEmit` — zero errors
 - `npx next lint` — zero errors
 - `npm test` — 91/91 passing (9 test suites)
@@ -378,19 +431,21 @@ Added responsive dashboard navigation (mobile bottom tab bar + desktop collapsib
 ## Session 2026-06-09 (cont.) — Sprint 5 Bug Fixes: Feed Crash, Guest Auth, Styling, Login
 
 ### Summary
+
 Fixed 7 production bugs: feed stream crash on error responses, guest auth blocking feed, PostCard crash on missing user, "Rendered more hooks" Sentry error, missing Tailwind Typography plugin, landing page logo, and documented Prisma migration issue.
 
 ### Changes
 
 **Critical Fixes:**
+
 1. **Feed stream crash** — `state.posts.length` on undefined, fixed with `?? []` guard
 2. **Feed API blocking guests** — Restructured to fall back to public posts when no auth token
 3. **PostCard missing user crash** — Added `const user = post.user` guard + optional chaining
 
-**Styling Fixes:**
-4. **Missing prose styling** — Installed `@tailwindcss/typography`, added `@plugin` to globals.css
+**Styling Fixes:** 4. **Missing prose styling** — Installed `@tailwindcss/typography`, added `@plugin` to globals.css
 
 ### Quality Gate
+
 - `npx tsc --noEmit` — zero errors
 - `npx next lint` — zero errors
 - `npm test` — 91/91 passing
@@ -400,14 +455,17 @@ Fixed 7 production bugs: feed stream crash on error responses, guest auth blocki
 ## Session 2026-06-10 (cont.) — Auth UX: Toast, Redirect, Auth-Aware Nav
 
 ### Summary
+
 Fixed three auth UX issues: login now redirects to `/home`, success toast shown on login/register, and public navbar + landing page CTAs detect auth state.
 
 ### Changes
+
 - Login page — redirect to `/home`, added toast
 - Register page — added toast before OTP redirect
 - Created `PublicNavActions.tsx` and `LandingCtas.tsx` — auth-aware components
 
 ### Files Affected
+
 - `app/(auth)/login/page.tsx`, `app/(auth)/register/page.tsx`
 - `app/(public)/layout.tsx`, `app/(public)/page.tsx`
 - `app/components/ui/PublicNavActions.tsx` (new)

@@ -168,11 +168,11 @@ Comprehensive documentation is available:
 - **[API Documentation](API.md)** - Complete API reference
 - **[Components Documentation](app/components/COMPONENTS.md)** - Component usage guide
 - **[Contributing Guidelines](CONTRIBUTING.md)** - How to contribute
-- **[Project Context](.ai-system/docs/PROJECT_CONTEXT.md)** - Product and architecture context
-- **[Engineering Roadmap](.ai-system/docs/Along_PRD_Engineering_Roadmap_v2.md)** - PRD and engineering plan
-- **[Design Brief](.ai-system/docs/Along_Stitch_Design_Brief.md)** - Design system source of truth
-- **[Entry Protocol](.ai-system/protocols/entry-protocol.md)** - AI agent session start procedure
-- **[Repo Map](.ai-system/index/repo-map.md)** - Codebase navigation map
+- **[Project Context](ai-system/docs/PROJECT_CONTEXT.md)** - Product and architecture context
+- **[Engineering Roadmap](ai-system/docs/Along_PRD_Engineering_Roadmap_v2.md)** - PRD and engineering plan
+- **[Design Brief](ai-system/docs/Along_Stitch_Design_Brief.md)** - Design system source of truth
+- **[Entry Protocol](ai-system/protocols/entry-protocol.md)** - AI agent session start procedure
+- **[Repo Map](ai-system/index/repo-map.md)** - Codebase navigation map
 - **[PWA Features](app/components/features/pwa/README.md)** - Progressive Web App guide
 
 ## 📁 Project Structure

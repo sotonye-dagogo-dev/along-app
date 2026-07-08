@@ -1,13 +1,15 @@
 # PROMPTS.md — Along AI Tool Prompts
+
 > Feed these prompts in sequence. Each section is labelled by tool and stage.
 > Always attach the files listed under "Attach" before submitting the prompt.
-> Design prompts → Open Design. Development prompts → Open Code (with .ai-system active).
+> Design prompts → Open Design. Development prompts → Open Code (with ai-system active).
 
 ---
 
 ## ─── OPEN DESIGN ──────────────────────────────────────────────────────────────
 
 ### PROMPT OD-1 — Design System Bootstrap
+
 **Attach:** `DESIGN.md`
 **Purpose:** Establish the full Along design system before generating any screens.
 
@@ -62,13 +64,14 @@ Export each page as a self-contained HTML file:
 - Include in each file's <head>:
   <meta name="along-route" content="design-system">
   <meta name="along-component" content="[comma-separated component names featured]">
-Save to: .ai-system/designs/ as 01-design-system-tokens.html and 02-design-system-components.html
-Create .ai-system/designs/README.md with index table: | File | Screen | Components | Status |
+Save to: ai-system/designs/ as 01-design-system-tokens.html and 02-design-system-components.html
+Create ai-system/designs/README.md with index table: | File | Screen | Components | Status |
 ```
 
 ---
 
 ### PROMPT OD-2 — Landing Page + Auth Flow
+
 **Attach:** `DESIGN.md`
 **Purpose:** Generate the public entry points.
 
@@ -105,13 +108,14 @@ Design rules:
 - Auth form card: AppCard elevated, 40px padding
 - Google sign-in button: white bg, Google G SVG, border-color, full width
 
-EXPORT: Save as 03-landing-light.html, 04-landing-dark.html, 05-auth-flow.html to .ai-system/designs/
+EXPORT: Save as 03-landing-light.html, 04-landing-dark.html, 05-auth-flow.html to ai-system/designs/
 Annotate sections with <!-- §7.x Zone --> comments. Update README.md index.
 ```
 
 ---
 
 ### PROMPT OD-3 — Home Feed + PostCard System + ShareRouteModal
+
 **Attach:** `DESIGN.md`
 **Purpose:** Design the core social feed — the heart of the product.
 
@@ -154,13 +158,14 @@ Design rules:
 - Annotate every subtle link: "title links to /posts/[id]", "tag chips link to /explore?tag=", "avatar links to /profile/[userName]"
 - Back-to-top FAB: AppButton icon ArrowUp, primary bg, fixed bottom-right in desktop frame
 
-EXPORT: Save as 06-home-feed-light.html, 07-home-feed-dark.html, 08-share-route-modal.html to .ai-system/designs/
+EXPORT: Save as 06-home-feed-light.html, 07-home-feed-dark.html, 08-share-route-modal.html to ai-system/designs/
 Annotate with <!-- §6.9 PostCard — [variant] --> and <!-- §7.3 [Zone] --> comments. Update README.md.
 ```
 
 ---
 
 ### PROMPT OD-4 — Explore Map + Post Detail
+
 **Attach:** `DESIGN.md`
 **Purpose:** Design the map discovery experience and full route detail view.
 
@@ -202,13 +207,14 @@ Full layout in order:
 
 Dark: same layout, dark surface tokens, map dark tile style annotated.
 
-EXPORT: Save as 09-explore-map.html, 10-post-detail-light.html, 11-post-detail-dark.html to .ai-system/designs/
+EXPORT: Save as 09-explore-map.html, 10-post-detail-light.html, 11-post-detail-dark.html to ai-system/designs/
 Annotate with <!-- §7.4/§7.5 [Zone] --> comments. Update README.md.
 ```
 
 ---
 
 ### PROMPT OD-5 — Profile + Notifications + Bookmarks
+
 **Attach:** `DESIGN.md`
 **Purpose:** Design user identity and social notification surfaces.
 
@@ -252,13 +258,14 @@ PAGE C: Bookmarks (/bookmarks)
 Mobile (375px) — Light theme only.
 Page heading + 2 PostCards + dimmed AppEmptyState noBookmarks at bottom (for reference).
 
-EXPORT: Save as 12-profile-page.html, 13-notifications.html, 14-bookmarks.html to .ai-system/designs/
+EXPORT: Save as 12-profile-page.html, 13-notifications.html, 14-bookmarks.html to ai-system/designs/
 Annotate with <!-- §7.6/§7.9 [Zone] --> comments. Update README.md.
 ```
 
 ---
 
 ### PROMPT OD-6 — Admin Dashboard + Analytics + Public Pages
+
 **Attach:** `DESIGN.md`
 **Purpose:** Admin-facing surfaces, analytics, and public informational pages.
 
@@ -297,7 +304,7 @@ Contact (/contact) — Mobile (375px) — Light theme:
 2. Form: Name AppInput, Email AppInput, Subject AppInput, Message AppTextarea 4 rows, "Send Message" AppButton primary full-width
 3. Success state: AppEmptyState CheckCircle icon "Message sent!"
 
-EXPORT: Save as 15-admin-dashboard.html, 16-analytics.html, 17-about-contact.html to .ai-system/designs/
+EXPORT: Save as 15-admin-dashboard.html, 16-analytics.html, 17-about-contact.html to ai-system/designs/
 Annotate with <!-- §7.8/§7.12/§7.10 [Zone] --> comments.
 Update README.md — verify the index table is complete with all 17 files (01 through 17).
 ```
@@ -310,46 +317,47 @@ Update README.md — verify the index table is complete with all 17 files (01 th
 
 After completing all Open Design prompts (OD-1 through OD-6):
 
-1. All HTML exports must be in `.ai-system/designs/` with the naming convention above
-2. `.ai-system/designs/README.md` must be fully populated with the 17-file index table
-3. When running Open Code prompts, **always attach the relevant HTML files** from `.ai-system/designs/` alongside `DESIGN.md` and `ROADMAP.md`
+1. All HTML exports must be in `ai-system/designs/` with the naming convention above
+2. `ai-system/designs/README.md` must be fully populated with the 17-file index table
+3. When running Open Code prompts, **always attach the relevant HTML files** from `ai-system/designs/` alongside `DESIGN.md` and `ROADMAP.md`
 4. Open Code treats the attached HTML files as the pixel-precise reference — DESIGN.md prose is secondary
 5. The HTML annotations (`<!-- §7.x Zone -->`, token references) are what Open Code reads to extract exact values
 
 **File attachment guide per Open Code prompt:**
 
-| OC Prompt | HTML files to attach |
-|---|---|
-| OC-2 (Universal Components) | 01-design-system-tokens.html, 02-design-system-components.html |
-| OC-3 (Auth) | 05-auth-flow.html |
-| OC-4 (Posts + Feed) | 06-home-feed-light.html, 07-home-feed-dark.html, 08-share-route-modal.html, 10-post-detail-light.html, 11-post-detail-dark.html, 13-notifications.html, 14-bookmarks.html |
-| OC-5 (Maps + Profiles) | 09-explore-map.html, 12-profile-page.html |
-| OC-6 (Admin + Analytics + Rewards) | 15-admin-dashboard.html, 16-analytics.html |
-| OC-7 (Public Pages) | 03-landing-light.html, 04-landing-dark.html, 17-about-contact.html |
+| OC Prompt                          | HTML files to attach                                                                                                                                                      |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OC-2 (Universal Components)        | 01-design-system-tokens.html, 02-design-system-components.html                                                                                                            |
+| OC-3 (Auth)                        | 05-auth-flow.html                                                                                                                                                         |
+| OC-4 (Posts + Feed)                | 06-home-feed-light.html, 07-home-feed-dark.html, 08-share-route-modal.html, 10-post-detail-light.html, 11-post-detail-dark.html, 13-notifications.html, 14-bookmarks.html |
+| OC-5 (Maps + Profiles)             | 09-explore-map.html, 12-profile-page.html                                                                                                                                 |
+| OC-6 (Admin + Analytics + Rewards) | 15-admin-dashboard.html, 16-analytics.html                                                                                                                                |
+| OC-7 (Public Pages)                | 03-landing-light.html, 04-landing-dark.html, 17-about-contact.html                                                                                                        |
 
 ---
 
 ## ─── OPEN CODE ────────────────────────────────────────────────────────────────
 
-### PROMPT OC-1 — Project Bootstrap + .ai-system Verification
-**Attach:** `ROADMAP.md`, `DESIGN.md`, `.ai-context.md`
-**Purpose:** Verify the .ai-system is correctly configured and the project foundation is solid before writing any feature code.
+### PROMPT OC-1 — Project Bootstrap + ai-system Verification
+
+**Attach:** `ROADMAP.md`, `DESIGN.md`, `ai-context.md`
+**Purpose:** Verify the ai-system is correctly configured and the project foundation is solid before writing any feature code.
 
 ```
 Read the following files before anything else, in this order:
-1. .ai-context.md — project identity and stack
+1. ai-context.md — project identity and stack
 2. ROADMAP.md — full architecture, file structure, phases, and principles
 3. DESIGN.md — design system (required before any UI work)
-4. .ai-system/agents/general-instructions.md — coding standards
-5. .ai-system/planning/task-queue.md — current sprint tasks
-6. .ai-system/checkpoints/session-log.md — what was last completed
+4. ai-system/agents/general-instructions.md — coding standards
+5. ai-system/planning/task-queue.md — current sprint tasks
+6. ai-system/checkpoints/session-log.md — what was last completed
 
 Report what you find in each file. Then execute:
 
 TASK 1 — Dependency audit
 Compare package.json against ROADMAP.md §DEPENDENCY CHECKLIST.
 List every package that is missing, outdated, or needs removal.
-Run `npm install`. Resolve peer conflicts. Document resolutions in .ai-system/memory/project-decisions.md.
+Run `npm install`. Resolve peer conflicts. Document resolutions in ai-system/memory/project-decisions.md.
 
 TASK 2 — Tailwind v4 migration
 Check globals.css for `@import "tailwindcss"` and `@theme {}` block.
@@ -374,19 +382,20 @@ TASK 5 — Quality gate
 Run: `npm run build && npx tsc --noEmit && npx next lint`
 Fix every error. Show the final clean output of all three commands.
 
-Log everything in .ai-system/checkpoints/session-log.md.
-Update .ai-system/planning/task-queue.md — mark Phase 0 tasks complete.
+Log everything in ai-system/checkpoints/session-log.md.
+Update ai-system/planning/task-queue.md — mark Phase 0 tasks complete.
 ```
 
 ---
 
 ### PROMPT OC-2 — Universal Component Library
+
 **Attach:** `ROADMAP.md`, `DESIGN.md`, `01-design-system-tokens.html`, `02-design-system-components.html`
-**Purpose:** Build the complete App* component library. All feature code consumes these wrappers exclusively.
+**Purpose:** Build the complete App\* component library. All feature code consumes these wrappers exclusively.
 
 ```
 Read ROADMAP.md and DESIGN.md. Open the attached HTML design files as pixel-precise visual references for every component.
-Read .ai-system/agents/general-instructions.md and .ai-system/planning/task-queue.md.
+Read ai-system/agents/general-instructions.md and ai-system/planning/task-queue.md.
 
 COMPONENT RULE: All page and feature files import ONLY from '@/components/ui'. Never raw Ant Design in feature files.
 DESIGN REPLICATION: Extract exact spacing, colour token references, border radius, and shadow from HTML annotations.
@@ -417,17 +426,18 @@ TrustBadge (4 trust levels, sm/default sizes, AppTooltip breakdown with 4 AppPro
 
 Create app/components/ui/index.ts barrel exporting everything.
 Run `npm run build && npx tsc --noEmit`. Fix all errors.
-Log in .ai-system/checkpoints/session-log.md. Update task-queue.md.
+Log in ai-system/checkpoints/session-log.md. Update task-queue.md.
 ```
 
 ---
 
 ### PROMPT OC-3 — Authentication System
+
 **Attach:** `ROADMAP.md`, `DESIGN.md`, `05-auth-flow.html`
 **Purpose:** Complete auth — API, pages, context, and middleware.
 
 ```
-Read ROADMAP.md, DESIGN.md, and .ai-system/planning/task-queue.md.
+Read ROADMAP.md, DESIGN.md, and ai-system/planning/task-queue.md.
 Open 05-auth-flow.html as the pixel-precise visual reference for all auth pages.
 
 DESIGN REPLICATION: Extract exact form layout, left panel gradient, OTP box dimensions and spacing, Google button styling from 05-auth-flow.html annotations. Replicate with App* components.
@@ -465,17 +475,18 @@ Global services — implement if not done:
 - Update app/layout.tsx: correct provider nesting + CookieConsent + GlobalConfirmModal + GlobalUndoToast mounted
 
 Run `npm run build && npx tsc --noEmit`. Fix all errors.
-Log in .ai-system/checkpoints/session-log.md. Update task-queue.md.
+Log in ai-system/checkpoints/session-log.md. Update task-queue.md.
 ```
 
 ---
 
 ### PROMPT OC-4 — Posts, Feed + Core Social Interactions
+
 **Attach:** `ROADMAP.md`, `DESIGN.md`, `06-home-feed-light.html`, `07-home-feed-dark.html`, `08-share-route-modal.html`, `10-post-detail-light.html`, `11-post-detail-dark.html`, `13-notifications.html`, `14-bookmarks.html`
 **Purpose:** Build the entire post system — the core product loop.
 
 ```
-Read ROADMAP.md, DESIGN.md, and .ai-system/planning/task-queue.md.
+Read ROADMAP.md, DESIGN.md, and ai-system/planning/task-queue.md.
 Open all attached HTML files. These are pixel-precise references — extract exact values from their annotations.
 
 DESIGN REPLICATION:
@@ -513,17 +524,18 @@ FRONTEND:
 - app/(dashboard)/bookmarks/page.tsx: pixel-precise to 14-bookmarks.html.
 
 Run `npm run build && npx tsc --noEmit && npm test -- --passWithNoTests && npx next lint`
-Fix every error. Log in .ai-system/checkpoints/session-log.md. Update task-queue.md.
+Fix every error. Log in ai-system/checkpoints/session-log.md. Update task-queue.md.
 ```
 
 ---
 
 ### PROMPT OC-5 — Maps, Explore + User Profiles
+
 **Attach:** `ROADMAP.md`, `DESIGN.md`, `09-explore-map.html`, `12-profile-page.html`
 **Purpose:** MapLibre migration, explore page, user profile system, and avatar editor.
 
 ```
-Read ROADMAP.md, DESIGN.md, and .ai-system/planning/task-queue.md.
+Read ROADMAP.md, DESIGN.md, and ai-system/planning/task-queue.md.
 Open 09-explore-map.html and 12-profile-page.html as pixel-precise references.
 
 DESIGN REPLICATION:
@@ -557,17 +569,18 @@ SUBTLE LINKS FULL-CODEBASE AUDIT:
 Find every user name, @handle, avatar, post title, tag chip, and region chip that is NOT a Next.js Link. Fix every instance. List every change by file.
 
 Run `npm run build && npx tsc --noEmit && npx next lint`
-Log in .ai-system/checkpoints/session-log.md. Update task-queue.md.
+Log in ai-system/checkpoints/session-log.md. Update task-queue.md.
 ```
 
 ---
 
 ### PROMPT OC-6 — Admin, Analytics, Rewards + Invite
+
 **Attach:** `ROADMAP.md`, `DESIGN.md`, `15-admin-dashboard.html`, `16-analytics.html`
 **Purpose:** Admin surface, analytics, rewards engine, invite system.
 
 ```
-Read ROADMAP.md, DESIGN.md, and .ai-system/planning/task-queue.md.
+Read ROADMAP.md, DESIGN.md, and ai-system/planning/task-queue.md.
 Open 15-admin-dashboard.html and 16-analytics.html as pixel-precise references.
 
 DESIGN REPLICATION: Extract Bento grid cell sizes, chart card proportions, table column widths, stat card layout, AppStatusDot colours from HTML annotations.
@@ -597,17 +610,18 @@ ANALYTICS:
 - app/(dashboard)/analytics/page.tsx: Bento grid pixel-precise to 16-analytics.html. @ant-design/charts. Dark mode compatible.
 
 Run `npm run build && npx tsc --noEmit && npm test -- --passWithNoTests && npx next lint`
-Log in .ai-system/checkpoints/session-log.md. Update task-queue.md.
+Log in ai-system/checkpoints/session-log.md. Update task-queue.md.
 ```
 
 ---
 
 ### PROMPT OC-7 — Public Pages, Footer + SEO Completion
+
 **Attach:** `ROADMAP.md`, `DESIGN.md`, `03-landing-light.html`, `04-landing-dark.html`, `17-about-contact.html`
 **Purpose:** All public pages, footer, complete SEO, cookie consent.
 
 ```
-Read ROADMAP.md, DESIGN.md, and .ai-system/planning/task-queue.md.
+Read ROADMAP.md, DESIGN.md, and ai-system/planning/task-queue.md.
 Open 03-landing-light.html, 04-landing-dark.html, 17-about-contact.html as pixel-precise references.
 
 DESIGN REPLICATION: Hero gradient exact values, decorative SVG style, feature card dimensions, review carousel glass card, contact form layout — all from HTML annotations.
@@ -635,19 +649,20 @@ SEO COMPLETION:
 - CookieConsent: verify appears on first visit, links to /privacy, sets cookie on dismiss, does not reappear after acceptance
 
 Run `npm run build && npx tsc --noEmit && npx next lint`
-Log in .ai-system/checkpoints/session-log.md. Update task-queue.md.
+Log in ai-system/checkpoints/session-log.md. Update task-queue.md.
 ```
 
 ---
 
 ### PROMPT OC-8 — Performance, Testing + Production Hardening
-**Attach:** `ROADMAP.md`, all `.ai-system/designs/*.html` files
+
+**Attach:** `ROADMAP.md`, all `ai-system/designs/*.html` files
 **Purpose:** Design-to-code delta, performance, tests, PWA, final gate.
 
 ```
-Read ROADMAP.md. Open .ai-system/designs/README.md and verify all 17 HTML files are present.
-Design-to-code delta check: for each HTML file, compare annotated sections against the implemented pages. Log every gap in .ai-system/checkpoints/session-log.md. Fix every gap before continuing.
-Read .ai-system/agents/repair-system.md and fix all known patterns logged there.
+Read ROADMAP.md. Open ai-system/designs/README.md and verify all 17 HTML files are present.
+Design-to-code delta check: for each HTML file, compare annotated sections against the implemented pages. Log every gap in ai-system/checkpoints/session-log.md. Fix every gap before continuing.
+Read ai-system/agents/repair-system.md and fix all known patterns logged there.
 
 1. EMOJI AUDIT — final sweep
    Grep entire codebase for any emoji (Unicode ranges or literal emoji characters). Replace every one with the Lucide icon from DESIGN.md §5.1. List every file changed.
@@ -688,10 +703,10 @@ Read .ai-system/agents/repair-system.md and fix all known patterns logged there.
 7. FINAL GATE
    Run: `npm run build && npx tsc --noEmit && npm test && npx next lint`
    All must pass with zero errors and zero warnings.
-   Update .ai-system/agents/system-architecture.md — current live state.
-   Update .ai-system/memory/project-decisions.md — all architectural decisions.
-   Update .ai-system/planning/task-queue.md — all tasks marked [x].
-   Write final entry in .ai-system/checkpoints/session-log.md: "OC-8 COMPLETE — Production ready."
+   Update ai-system/agents/system-architecture.md — current live state.
+   Update ai-system/memory/project-decisions.md — all architectural decisions.
+   Update ai-system/planning/task-queue.md — all tasks marked [x].
+   Write final entry in ai-system/checkpoints/session-log.md: "OC-8 COMPLETE — Production ready."
 ```
 
 ---
@@ -699,23 +714,24 @@ Read .ai-system/agents/repair-system.md and fix all known patterns logged there.
 ## ─── SESSION CONTINUITY PROMPT (use at the start of every new session) ────────
 
 ### PROMPT SC-1 — Resume Session
-**Attach:** `ROADMAP.md`, `DESIGN.md`, `.ai-context.md`, plus the `.ai-system/designs/*.html` files relevant to your current task
+
+**Attach:** `ROADMAP.md`, `DESIGN.md`, `ai-context.md`, plus the `ai-system/designs/*.html` files relevant to your current task
 
 ```
 Read the following files before anything else, in this order:
-1. .ai-context.md — project identity and stack
+1. ai-context.md — project identity and stack
 2. ROADMAP.md — architecture, patterns, conventions, phases
 3. DESIGN.md — design system (before any UI work)
-4. .ai-system/agents/general-instructions.md — coding standards
-5. .ai-system/planning/task-queue.md — current sprint tasks
-6. .ai-system/checkpoints/session-log.md — what was last completed and any blockers
-7. .ai-system/designs/README.md — design index (open the relevant HTML files for your current task)
+4. ai-system/agents/general-instructions.md — coding standards
+5. ai-system/planning/task-queue.md — current sprint tasks
+6. ai-system/checkpoints/session-log.md — what was last completed and any blockers
+7. ai-system/designs/README.md — design index (open the relevant HTML files for your current task)
 
 Report:
 - What is the current task from task-queue.md?
 - What was last completed per session-log.md?
 - Are there any design-to-code deltas or repair patterns logged?
-- Which .ai-system/designs/*.html file applies to the current task?
+- Which ai-system/designs/*.html file applies to the current task?
 
 Then proceed with the next task from the queue.
 
@@ -738,40 +754,40 @@ DESIGN:
 - CSS variables only — never raw hex values in component or style files.
 - Zero emoji — Lucide React per DESIGN.md §5.1 exclusively.
 - Role-aware not role-specific: filterNavItems() from nav config.
-- .ai-system/designs/*.html is the pixel-precise reference. DESIGN.md prose is secondary.
+- ai-system/designs/*.html is the pixel-precise reference. DESIGN.md prose is secondary.
 
 QUALITY:
 - npm run build passes before marking any task done.
 - npx tsc --noEmit — zero TypeScript errors.
 - npx next lint — zero warnings.
-- Log session in .ai-system/checkpoints/session-log.md.
-- Update .ai-system/planning/task-queue.md — mark [x] on completed tasks.
+- Log session in ai-system/checkpoints/session-log.md.
+- Update ai-system/planning/task-queue.md — mark [x] on completed tasks.
 ```
 
 ---
 
 ## ─── DESIGN FILE INDEX ────────────────────────────────────────────────────────
 
-After completing all OD prompts, `.ai-system/designs/` must contain:
+After completing all OD prompts, `ai-system/designs/` must contain:
 
-| File | Screen | OD Prompt | OC Prompt |
-|---|---|---|---|
-| 01-design-system-tokens.html | Token reference | OD-1 | OC-2 |
-| 02-design-system-components.html | Component library | OD-1 | OC-2 |
-| 03-landing-light.html | Landing (light) | OD-2 | OC-7 |
-| 04-landing-dark.html | Landing (dark) | OD-2 | OC-7 |
-| 05-auth-flow.html | Login / Register / OTP | OD-2 | OC-3 |
-| 06-home-feed-light.html | Home feed (light) | OD-3 | OC-4 |
-| 07-home-feed-dark.html | Home feed (dark) | OD-3 | OC-4 |
-| 08-share-route-modal.html | ShareRouteModal | OD-3 | OC-4 |
-| 09-explore-map.html | Explore map | OD-4 | OC-5 |
-| 10-post-detail-light.html | Post detail (light) | OD-4 | OC-4 |
-| 11-post-detail-dark.html | Post detail (dark) | OD-4 | OC-4 |
-| 12-profile-page.html | Profile page | OD-5 | OC-5 |
-| 13-notifications.html | Notifications | OD-5 | OC-4 |
-| 14-bookmarks.html | Bookmarks | OD-5 | OC-4 |
-| 15-admin-dashboard.html | Admin dashboard | OD-6 | OC-6 |
-| 16-analytics.html | Analytics | OD-6 | OC-6 |
-| 17-about-contact.html | About + Contact | OD-6 | OC-7 |
+| File                             | Screen                 | OD Prompt | OC Prompt |
+| -------------------------------- | ---------------------- | --------- | --------- |
+| 01-design-system-tokens.html     | Token reference        | OD-1      | OC-2      |
+| 02-design-system-components.html | Component library      | OD-1      | OC-2      |
+| 03-landing-light.html            | Landing (light)        | OD-2      | OC-7      |
+| 04-landing-dark.html             | Landing (dark)         | OD-2      | OC-7      |
+| 05-auth-flow.html                | Login / Register / OTP | OD-2      | OC-3      |
+| 06-home-feed-light.html          | Home feed (light)      | OD-3      | OC-4      |
+| 07-home-feed-dark.html           | Home feed (dark)       | OD-3      | OC-4      |
+| 08-share-route-modal.html        | ShareRouteModal        | OD-3      | OC-4      |
+| 09-explore-map.html              | Explore map            | OD-4      | OC-5      |
+| 10-post-detail-light.html        | Post detail (light)    | OD-4      | OC-4      |
+| 11-post-detail-dark.html         | Post detail (dark)     | OD-4      | OC-4      |
+| 12-profile-page.html             | Profile page           | OD-5      | OC-5      |
+| 13-notifications.html            | Notifications          | OD-5      | OC-4      |
+| 14-bookmarks.html                | Bookmarks              | OD-5      | OC-4      |
+| 15-admin-dashboard.html          | Admin dashboard        | OD-6      | OC-6      |
+| 16-analytics.html                | Analytics              | OD-6      | OC-6      |
+| 17-about-contact.html            | About + Contact        | OD-6      | OC-7      |
 
-*End of PROMPTS.md*
+_End of PROMPTS.md_

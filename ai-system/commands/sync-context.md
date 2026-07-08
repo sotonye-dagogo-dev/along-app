@@ -1,21 +1,22 @@
 # Sync Context Command
 
 > **Metadata**
+>
 > - last-updated-by: bootstrap-project
 > - last-verified-against-code: (set on first run)
 > - staleness-policy: re-verify if sync triggers change
 
-> **Overview:** Lightweight mid-work documentation sync. Invoked *during* work (not just at sprint end) whenever the agent notices docs and code diverging. Prevents context-rot accumulation across long sessions. Commands like `execute-feature.md` and `dev-cycle.md` explicitly invoke this at internal checkpoints.
+> **Overview:** Lightweight mid-work documentation sync. Invoked _during_ work (not just at sprint end) whenever the agent notices docs and code diverging. Prevents context-rot accumulation across long sessions. Commands like `execute-feature.md` and `dev-cycle.md` explicitly invoke this at internal checkpoints.
 
 ---
 
 ## Contract
 
-| Guarantees | Does NOT |
-|------------|----------|
-| Detects and flags drift between .ai-system docs and actual code | Does not deep-verify every doc (use audit-drift for that) |
-| Updates freshness metadata on changed files | Does not rewrite architecture from scratch |
-| Logs what was updated and why | Does not make assumptions about specific AI tools |
+| Guarantees                                                     | Does NOT                                                  |
+| -------------------------------------------------------------- | --------------------------------------------------------- |
+| Detects and flags drift between ai-system docs and actual code | Does not deep-verify every doc (use audit-drift for that) |
+| Updates freshness metadata on changed files                    | Does not rewrite architecture from scratch                |
+| Logs what was updated and why                                  | Does not make assumptions about specific AI tools         |
 
 ---
 
@@ -37,7 +38,7 @@ Directive: Only update if code changes affected system-architecture.md claims
 
 ## Execution
 
-1. Check which `.ai-system/` docs may have drifted from the actual code:
+1. Check which `ai-system/` docs may have drifted from the actual code:
    - Compare `index/repo-map.md` with current folder structure
    - Compare `index/dependency-graph.md` with actual imports/dependencies
    - Compare `system-architecture.md` module claims with actual module boundaries

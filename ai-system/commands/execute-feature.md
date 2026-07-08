@@ -1,6 +1,7 @@
 # Execute Feature Command
 
 > **Metadata**
+>
 > - last-updated-by: bootstrap-project
 > - last-verified-against-code: (set on first run)
 > - staleness-policy: re-verify if pipeline steps or quality criteria change
@@ -11,12 +12,12 @@
 
 ## Contract
 
-| Guarantees | Does NOT |
-|------------|----------|
-| Produces working, QA-verified code for the feature | Does not change architecture without documenting it first |
-| Creates or updates all relevant .ai-system docs | Does not skip the quality gate under any circumstance |
+| Guarantees                                           | Does NOT                                                    |
+| ---------------------------------------------------- | ----------------------------------------------------------- |
+| Produces working, QA-verified code for the feature   | Does not change architecture without documenting it first   |
+| Creates or updates all relevant ai-system docs       | Does not skip the quality gate under any circumstance       |
 | Logs assumptions and decisions made during execution | Does not make assumptions about specific AI tools or models |
-| Writes in-progress.md before starting risky work | Does not proceed if the QA gate fails |
+| Writes in-progress.md before starting risky work     | Does not proceed if the QA gate fails                       |
 
 ---
 
@@ -39,6 +40,7 @@ Directive: Build a configurable export module supporting CSV, PDF, and JSON
 ## Pipeline
 
 ### Step 1 — Internal Planning Pass
+
 1. Read `planning/task-queue.md`, `system-architecture.md`, `design-system.md`, `repair-system.md`
 2. Decompose the feature into concrete tasks (files to create/modify, test cases, doc updates)
 3. Identify architecture impact — does the feature require structural changes?
@@ -46,12 +48,14 @@ Directive: Build a configurable export module supporting CSV, PDF, and JSON
 5. Write `checkpoints/in-progress.md` with the plan
 
 ### Step 2 — Self-Check Against Architecture + Scope
+
 1. Verify the feature fits within `project-context.md` scope boundaries
 2. Verify no conflicts with `memory/project-decisions.md`
 3. If any check fails, **stop and flag** — do not proceed to implementation
 4. If all checks pass, proceed
 
 ### Step 3 — Implementation
+
 1. Implement per `agents/implementer.md` role rules
 2. Follow `design-system.md` patterns for UI work
 3. Avoid `repair-system.md` known pitfalls
@@ -60,11 +64,13 @@ Directive: Build a configurable export module supporting CSV, PDF, and JSON
 6. Run `sync-context.md` at internal checkpoints (not just at the end)
 
 ### Step 4 — QA Gate (mandatory)
+
 1. Run `verify-work.md` — the full quality gate checklist
 2. Fix any issues found (or revert if fix is more expensive than redo)
 3. If the gate fails and cannot be resolved, write a residual risk note and do not mark complete
 
 ### Step 5 — Documentation & Close
+
 1. Update `checkpoints/session-log.md`
 2. Update `summaries/dev-history.md`
 3. Mark tasks complete in `planning/task-queue.md`

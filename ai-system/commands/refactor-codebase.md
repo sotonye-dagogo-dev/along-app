@@ -1,6 +1,7 @@
 # Refactor Codebase Command
 
 > **Metadata**
+>
 > - last-updated-by: bootstrap-project
 > - last-verified-against-code: (set on first run)
 > - staleness-policy: re-verify if refactoring conventions change
@@ -11,12 +12,12 @@
 
 ## Contract
 
-| Guarantees | Does NOT |
-|------------|----------|
-| Preserves all existing behaviour | Does not change logic — only structure |
-| Updates all relevant .ai-system docs | Does not skip the quality gate |
-| Moves one module at a time with verification steps | Does not add new features during refactor |
-| Writes in-progress.md before starting | Does not make assumptions about specific AI tools |
+| Guarantees                                         | Does NOT                                          |
+| -------------------------------------------------- | ------------------------------------------------- |
+| Preserves all existing behaviour                   | Does not change logic — only structure            |
+| Updates all relevant ai-system docs                | Does not skip the quality gate                    |
+| Moves one module at a time with verification steps | Does not add new features during refactor         |
+| Writes in-progress.md before starting              | Does not make assumptions about specific AI tools |
 
 ---
 

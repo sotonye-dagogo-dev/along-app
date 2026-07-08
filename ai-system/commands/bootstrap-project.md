@@ -1,22 +1,23 @@
 # Bootstrap Project Command
 
 > **Metadata**
+>
 > - last-updated-by: bootstrap-project
 > - last-verified-against-code: (set on completion)
 > - staleness-policy: run once per project — re-run only if project structure fundamentally changes
 
-> **Overview:** One-time project initialization. Analyzes the actual codebase and generates all `.ai-system` documentation files with project-specific content. Vendor-neutral — works with any AI tool.
+> **Overview:** One-time project initialization. Analyzes the actual codebase and generates all `ai-system` documentation files with project-specific content. Vendor-neutral — works with any AI tool.
 
 ---
 
 ## Contract
 
-| What this command guarantees | What it does NOT do |
-|------------------------------|---------------------|
-| Populates all .ai-system files with accurate, codebase-derived content | Does not install software, modify code, or set up tooling |
-| Creates freshness metadata on every file | Does not configure editor extensions or API keys |
-| Seeds the task queue with real, actionable next steps | Does not assume any specific AI product or model |
-| Produces architecture docs that reflect actual code | Does not invent structure that isn't there |
+| What this command guarantees                                          | What it does NOT do                                       |
+| --------------------------------------------------------------------- | --------------------------------------------------------- |
+| Populates all ai-system files with accurate, codebase-derived content | Does not install software, modify code, or set up tooling |
+| Creates freshness metadata on every file                              | Does not configure editor extensions or API keys          |
+| Seeds the task queue with real, actionable next steps                 | Does not assume any specific AI product or model          |
+| Produces architecture docs that reflect actual code                   | Does not invent structure that isn't there                |
 
 ---
 
@@ -42,8 +43,8 @@ Directive: This is greenfield — suggest an ideal architecture for a REST API
 
 1. **Scan the repository.** Detect languages, frameworks, entry points, folder structure, dependencies, architectural patterns (MVC, service layer, monorepo, etc.).
 
-2. **For each file in `.ai-system/`**, produce project-specific content:
-   - `.ai-context.md` — project overview with actual stack, key modules
+2. **For each file in `ai-system/`**, produce project-specific content:
+   - `ai-context.md` — project overview with actual stack, key modules
    - `protocols/` — populate freshness metadata (these files are pre-written, just update the metadata header)
    - `standards/engineering-principles.md` — stamp the metadata header (static doctrine file, no project-specific content needed)
    - `system-architecture.md` — architecture diagram, module breakdown, data flow, config points
@@ -54,7 +55,7 @@ Directive: This is greenfield — suggest an ideal architecture for a REST API
    - `planning/task-queue.md` — immediate actionable tasks
    - `index/repo-map.md` — folder structure with purpose of each directory
    - `index/dependency-graph.md` — module relationships as text diagram
-   - `checkpoints/session-log.md` — first entry: "initial project scan and .ai-system setup"
+   - `checkpoints/session-log.md` — first entry: "initial project scan and ai-system setup"
    - `checkpoints/in-progress.md` — clear/empty state
    - `memory/project-decisions.md` — empty, ready for entries
    - `memory/lessons-learned.md` — empty, ready for entries
