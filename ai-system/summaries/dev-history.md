@@ -3,7 +3,7 @@
 > **Metadata**
 >
 > - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 4)
+> - last-verified-against-code: 2026-07-08 (session 5)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -316,47 +316,30 @@ Search with full-text indexes, clustering for map markers, component tests, acce
 
 ---
 
-## 2026-07-08 (Session 4, cont.) — Backlog: Transact Marketplace & Tega Events
+## 2026-07-08 (Session 5) — Follower System Wiring & Integration Freeze
 
 **Summary:**
-Implemented both deferred backlog integrations: Transact Marketplace (listing grid, proxy API, webhook receiver) and Tega Events (events widget, proxy API, webhook receiver). Added Marketplace nav item and page, wired EventsWidget into home page sidebar.
+Wired the follower/following system end-to-end: follow button now calls the API instead of being a stub, `isFollowing` returned from profile API, followers/following counts are clickable links to dedicated list pages (with UserList component). Created follower/following list API routes and pages. Also froze Transact Marketplace and Tega Events integration access points (removed nav item, removed EventsWidget from sidebar) while preserving all code infrastructure.
 
 **Completed:**
-- `app/lib/integrations/transact.ts` — TransactConfig, TransactListing types, fetchListings helper
-- `app/api/integrations/transact/route.ts` — GET listings proxy to Transact API
-- `app/api/webhooks/transact/route.ts` — HMAC-verified webhook receiver
-- `app/(dashboard)/marketplace/page.tsx` — Listing grid with AppCard, loading/empty states
-- `app/(dashboard)/marketplace/layout.tsx` — Metadata
-- `app/lib/integrations/tega.ts` — TegaConfig, TegaEvent types, fetchEvents helper
-- `app/api/integrations/tega/route.ts` — GET events proxy to Tega API
-- `app/api/webhooks/tega/route.ts` — HMAC-verified webhook receiver
-- `app/components/features/events/EventsWidget.tsx` — "Events near you" sidebar widget
-- `app/(dashboard)/home/page.tsx` — Wired EventsWidget into sidebar
-- `navigation.ts` — Added Marketplace item with ShoppingBag icon
-- `middleware.ts` — Added /marketplace to protected routes
+- `by-username/[username]` API now returns `isFollowing` status
+- Profile `[username]/page.tsx` follow button now calls POST/DELETE /api/users/[id]/follow
+- Follower count updates optimistically on follow/unfollow
+- Created `GET /api/users/[id]/followers` — returns follower list
+- Created `GET /api/users/[id]/following` — returns following list
+- Created `app/components/features/profile/UserList.tsx` — reusable list component
+- Created `app/(dashboard)/profile/[username]/followers/page.tsx`
+- Created `app/(dashboard)/profile/[username]/following/page.tsx`
+- Both profile pages: followers/following stats are now clickable links
+- Added `following` empty state preset to emptyStates config
+- Removed `Marketplace` nav item from navigation config
+- Removed `EventsWidget` import and usage from home page
+- Integration code fully preserved — only access points removed
 
 **Key Changes:**
-- Two new feature directories: `app/lib/integrations/` and `app/components/features/events/`
-- New route: /marketplace with listing grid UI
-- Home page sidebar now shows EventsWidget alongside SuggestionsPanel
-- Webhook handlers ready for Transact and Tega callbacks (signature-verified)
-
-**Backlog Status:**
-All backlog items concluded.
-
-**Summary:**
-Created global leaderboard feature: API route returning top 100 users by rewardPoints, leaderboard page with podium display for top 3, paginated list for ranks 4+, period selector (All time/This month/This week), and navigation integration. Added `/leaderboard` to middleware protected routes and registered `Trophy` nav item in navigation config.
-
-**Completed:**
-- `/api/leaderboard/route.ts` — GET returns top 100 users ordered by rewardPoints desc, excluding banned
-- `app/(dashboard)/leaderboard/page.tsx` — Podium display, ranked list, period selector, loading skeletons
-- `app/(dashboard)/leaderboard/layout.tsx` — metadata wrapper
-- `navigation.ts` — Added `Leaderboard` item with `Trophy` icon
-- `middleware.ts` — Added `/leaderboard` to protected routes
-
-**Key Changes:**
-- New route: /leaderboard with API backend
-- Sidebar now shows Leaderboard nav item for all authenticated users
+- Follow button is no longer a stub — fully functional follow/unfollow
+- Followers/following have dedicated list pages
+- Integration code frozen and isolated
 
 **Next Sprint Focus:**
 Search with full-text indexes, clustering for map markers, component tests, accessibility audit.

@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-verified-against-code: 2026-07-08 (session 5)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -259,3 +259,26 @@ The `offlineQueue` service existed but had no trigger to flush queued requests w
 - `OnlineStatusProvider` must wrap all children (placed in root layout)
 - `useOnlineStatus()` hook available for any component
 - `OfflineIndicator` component shows `AppEmptyState preset="offline"` overlay when offline
+
+---
+
+## Freeze-Without-Delete for Unready External Integrations
+
+**Decision:** When an external platform is not ready, remove only the user-facing access points (nav, sidebar) while preserving all infrastructure code.
+**Date:** 2026-07-08
+**Made by:** AI agent (opencode)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Transact Marketplace and Tega Events integrations were fully implemented but the external platforms aren't available. Deleting the code would require reimplementing it later. Keeping everything but removing nav/sidebar access points prevents user confusion while preserving the implementation for activation with one-line changes.
+
+**Alternatives Considered:**
+- **Full code deletion**: Loses all implementation work, must be redone
+- **Leave everything live**: Users see empty listings/pages with no value
+- **Feature flags using env vars**: Adds runtime complexity to simple gating
+
+**Implications:**
+- All integration code stays in the repository — compilation passes but routes are unreachable via normal UX
+- Re-activation requires only: re-add nav item + re-add component import
+- Document frozen modules with `[FROZEN]` tag in architecture docs

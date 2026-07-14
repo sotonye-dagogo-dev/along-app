@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08
+> - last-verified-against-code: 2026-07-08 (session 5)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -171,8 +171,9 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 
 | Size | Task |
 |------|------|
-| [XL] | Transact Marketplace integration | [x] |
-| [XL] | Tega Events integration | [x] |
+| [XL] | Transact Marketplace integration | [x] — frozen (code preserved, nav removed) |
+| [XL] | Tega Events integration | [x] — frozen (code preserved, sidebar removed) |
+| [M] | Follower/following system (wire follow button, list pages) | [x] |
 
 ---
 

@@ -1,6 +1,6 @@
 import {
   Home, Compass, MapPin, Bookmark, Bell, User, BarChart3,
-  UserPlus, ShoppingBag, Settings, Shield, ShieldCheck, Trophy,
+  UserPlus, Shield, ShieldCheck, Trophy,
 } from "lucide-react";
 import type { NavItem } from "@/app/lib/types";
 
@@ -13,7 +13,6 @@ export const NAV_REGISTRY: NavItem[] = [
   { label: "Analytics", href: "/analytics", icon: BarChart3, section: "main" },
   { label: "Leaderboard", href: "/leaderboard", icon: Trophy, section: "main" },
   { label: "Invite", href: "/invite", icon: UserPlus, section: "main" },
-  { label: "Marketplace", href: "/marketplace", icon: ShoppingBag, section: "main" },
   { label: "Admin", href: "/admin", icon: Shield, section: "admin", roles: ["admin"] },
   { label: "Moderation", href: "/admin/posts", icon: ShieldCheck, section: "admin", roles: ["admin"] },
 ];

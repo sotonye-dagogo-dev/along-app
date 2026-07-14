@@ -473,6 +473,61 @@ Fixed three auth UX issues: login now redirects to `/home`, success toast shown 
 
 ---
 
+## Session 2026-07-08 (Session 5) — Follower System Wiring & Integration Freeze
+
+### Summary
+
+Wired the follower/following system end-to-end: follow button now functional via API, `isFollowing` returned from profile API, dedicated followers/following list pages with UserList component. Froze Transact and Tega integrations by removing access points only.
+
+### Changes
+
+**Follower System Wiring:**
+- `app/api/users/by-username/[username]/route.ts` — Added `isFollowing` lookup via `getUserFromRequest` + Follow model
+- `app/(dashboard)/profile/[username]/page.tsx` — `handleFollow` now calls fetch POST/DELETE /api/users/[id]/follow; optimistic followerCount update
+- `app/api/users/[id]/followers/route.ts` — New: GET followers list (desc by createdAt)
+- `app/api/users/[id]/following/route.ts` — New: GET following list (desc by createdAt)
+- `app/components/features/profile/UserList.tsx` — New: shared client component with loading skeleton, empty state, user links
+- `app/(dashboard)/profile/[username]/followers/page.tsx` — New: server component, prisma user lookup, renders UserList
+- `app/(dashboard)/profile/[username]/following/page.tsx` — New: same pattern for following
+- `app/components/features/profile/index.ts` — Added UserList to barrel exports
+- `app/(dashboard)/profile/[username]/page.tsx` — Followers/Following stats now Link to list pages
+- `app/(dashboard)/profile/page.tsx` — Same stats-as-links pattern
+- `app/lib/config/emptyStates.ts` — Added `following` preset with UserPlus icon
+
+**Integration Freeze:**
+- `app/lib/config/navigation.ts` — Removed MarketPlace nav item + ShoppingBag import
+- `app/(dashboard)/home/page.tsx` — Removed EventsWidget import + usage (kept SuggestionsPanel)
+- All Transact/Tega code in `app/lib/integrations/`, `app/api/integrations/`, `app/api/webhooks/`, `app/(dashboard)/marketplace/`, `app/components/features/events/` — preserved intact
+
+### Build Results
+
+- `npm test` — 91/91 passing (9 test suites)
+
+### Files Modified
+
+- `app/api/users/by-username/[username]/route.ts`
+- `app/(dashboard)/profile/[username]/page.tsx`
+- `app/(dashboard)/profile/page.tsx`
+- `app/lib/config/navigation.ts`
+- `app/(dashboard)/home/page.tsx`
+- `app/lib/config/emptyStates.ts`
+- `app/components/features/profile/index.ts`
+
+### Files Created
+
+- `app/api/users/[id]/followers/route.ts`
+- `app/api/users/[id]/following/route.ts`
+- `app/components/features/profile/UserList.tsx`
+- `app/(dashboard)/profile/[username]/followers/page.tsx`
+- `app/(dashboard)/profile/[username]/following/page.tsx`
+
+### Notes
+
+- Followers/following pages use a server component wrapper to resolve username→id via Prisma, then pass to the client-side UserList component which fetches the actual list from the API
+- Integration freeze follows the "Freeze-Without-Delete" pattern documented in lessons-learned.md
+
+---
+
 ## Session 2026-07-08 — Map & Route Feature Tightening
 
 ### Summary

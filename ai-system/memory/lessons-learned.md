@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08
+> - last-verified-against-code: 2026-07-08 (session 5)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -159,6 +159,29 @@ useEffect(() => {
 
 **Apply When:**
 Any new `useEffect` that makes async calls (fetch, timers, subscriptions). Always pass the signal to fetch and guard against AbortError. The cleanup function must abort on unmount.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Freeze-Without-Delete Pattern for Unready External Integrations
+
+**Context:**
+Transact Marketplace and Tega Events were implemented with full infrastructure (proxy APIs, webhooks, UI pages, sidebar widgets) but the external platforms aren't ready yet. Rather than reverting the code, we removed only the access points (nav item, sidebar widget import) while keeping all files intact.
+
+**What We Learned:**
+When an external dependency isn't ready but the integration code is correct:
+1. **Remove user-facing access points only** (nav, sidebar, routing links)
+2. **Keep all infrastructure** (API routes, webhooks, components, pages)
+3. **Document the frozen state** in system-architecture.md with `[FROZEN]` tag
+4. **No code deletion** — the code is compiled but unreachable via normal UX
+5. **To re-activate**: re-add the nav/sidebar entries (one-line changes)
+
+This avoids the cost of deletion-plus-reimplementation while preventing user confusion from dead UI.
+
+**Apply When:**
+Any feature gated on an external platform that isn't available yet. Remove surface area, keep depth, tag as frozen.
 
 **Supersedes:** None
 **Superseded by:** None

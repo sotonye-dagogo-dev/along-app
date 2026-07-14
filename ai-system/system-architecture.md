@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 4)
+> - last-verified-against-code: 2026-07-08 (session 5)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
@@ -74,7 +74,7 @@ Client (Browser / PWA)
 | Notifications | Real-time + push notifications via Web Push API | `app/lib/services/notification*` | Prisma, web-push, QStash |
 | Admin | Dashboard, user management, site config, bug reports | `app/(admin)/` | Prisma, Sentry |
 | Search | Route and post search with full-text indexes | `app/lib/services/search*` | Prisma (full-text search) |
-| Profile | User profiles, follower system, rewards | `app/lib/services/profile*` | Prisma, Cloudinary |
+| Profile | User profiles, follower/following system, rewards | `app/(dashboard)/profile/*`, `app/api/users/[id]/follow*`, `app/api/users/[id]/followers`, `app/api/users/[id]/following`, `app/components/features/profile/UserList.tsx` | Prisma (Follow model), Cloudinary |
 | Rewards | Gamification: tiers, badges, points | `app/lib/services/rewards*` | Prisma |
 | ValidityEngine | Route verification and trust scoring | `app/lib/services/validity*` | Prisma, Redis |
 | DraftingCoach | AI-assisted post composition guidance | `app/lib/services/drafting*` | N/A (rule-based) |
@@ -83,8 +83,8 @@ Client (Browser / PWA)
 | QStash Workers | Background job processing (feed, rewards, validity) | `app/api/workers/*`, `app/lib/services/qstashService.ts` | QStash SDK, Prisma, Redis |
 | Offline Queue | Client-side mutation queue with auto-flush | `app/lib/services/offlineQueue.ts`, `app/providers/OnlineStatusProvider.tsx` | localStorage, fetch |
 | Blog | Public blog with MDX posts, categories, featured posts | `app/(public)/blog/*`, `app/lib/utils/blog.ts`, `app/lib/config/blog.ts` | fs (build-time), MDX, remark |
-| Transact | External marketplace integration (listing proxy, webhook) | `app/lib/integrations/transact.ts`, `app/api/integrations/transact/`, `app/api/webhooks/transact/`, `app/(dashboard)/marketplace/` | Prisma, QStash (webhook) |
-| Tega | External events integration (events proxy, webhook, widget) | `app/lib/integrations/tega.ts`, `app/api/integrations/tega/`, `app/api/webhooks/tega/`, `app/components/features/events/` | Prisma, QStash (webhook) |
+| Transact | [FROZEN] External marketplace integration — code preserved, nav removed | `app/lib/integrations/transact.ts`, `app/api/integrations/transact/`, `app/api/webhooks/transact/`, `app/(dashboard)/marketplace/` | Prisma, QStash (webhook) |
+| Tega | [FROZEN] External events integration — code preserved, removed from sidebar | `app/lib/integrations/tega.ts`, `app/api/integrations/tega/`, `app/api/webhooks/tega/`, `app/components/features/events/` | Prisma, QStash (webhook) |
 | FAQ | Public FAQ page with categorized searchable Q&A | `app/(public)/faq/*`, `app/lib/config/faq.ts` | None (config-driven) |
 | Config | Centralized config registries for all domains (25 files) | `app/lib/config/*` | None |
 

@@ -3,7 +3,7 @@
 > **Metadata**
 >
 > - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 4)
+> - last-verified-against-code: 2026-07-08 (session 5)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -63,17 +63,26 @@ along-app/
 │   │   │   └── [slug]/      → Blog post detail page
 │   ├── api/                 → REST API routes
 │   │   ├── push/            → Push notification API
-│   │   │   ├── subscribe/   → POST: subscribe to push
-│   │   │   ├── unsubscribe/ → POST: unsubscribe from push
-│   │   │   ├── send/        → POST: QStash-triggered push delivery
-│   │   │   └── vapid-public-key/ → GET: VAPID public key
+   │   │   │   ├── subscribe/   → POST: subscribe to push
+   │   │   │   ├── unsubscribe/ → POST: unsubscribe from push
+   │   │   │   ├── send/        → POST: QStash-triggered push delivery
+   │   │   │   └── vapid-public-key/ → GET: VAPID public key
+   │   │   ├── users/
+   │   │   │   ├── [id]/
+   │   │   │   │   ├── route.ts        → GET (profile), PATCH (edit)
+   │   │   │   │   ├── avatar/        → PATCH avatar config
+   │   │   │   │   ├── follow/        → POST/DELETE follow/unfollow
+   │   │   │   │   ├── followers/     → GET followers list
+   │   │   │   │   └── following/     → GET following list
+   │   │   │   └── by-username/[username]/
+   │   │   │       └── route.ts       → GET user by username + isFollowing
 │   │   ├── workers/         → QStash background worker endpoints
 │   │   │   ├── feed-invalidate/
 │   │   │   ├── rewards/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
 │   │   ├── ui/              → 34 App* universal component wrappers
-│   │   └── features/        → Domain-specific components (comments, posts, profile, explore, events)
+   │   │   └── features/        → Domain-specific components (comments, posts, profile, explore, events [frozen])
 │   ├── lib/                 → Shared code
 │   │   ├── services/        → 11 OOP services (feed, push sub, QStash, rewards, etc.)
 │   │   ├── config/          → 25 config registry files

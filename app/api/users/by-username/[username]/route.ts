@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
+import { getUserFromRequest } from "@/app/lib/utils/auth";
 
 export async function GET(
   _request: NextRequest,
@@ -30,7 +31,16 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ user });
+    const currentUser = await getUserFromRequest();
+    let isFollowing = false;
+    if (currentUser && currentUser.id !== user.id) {
+      const follow = await prisma.follow.findUnique({
+        where: { followerId_followingId: { followerId: currentUser.id as string, followingId: user.id } },
+      });
+      isFollowing = !!follow;
+    }
+
+    return NextResponse.json({ user, isFollowing });
   } catch (error) {
     console.error("Error fetching user by username:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

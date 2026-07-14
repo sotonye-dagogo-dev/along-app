@@ -1,5 +1,5 @@
 import {
-  Compass, BookmarkX, BellOff, Inbox, SearchX, Users,
+  Compass, BookmarkX, BellOff, Inbox, SearchX, Users, UserPlus,
   MessageCircle, Heart, MapPin, FileText, WifiOff, AlertTriangle,
 } from "lucide-react";
 import type { EmptyStateConfig } from "@/app/lib/types";
@@ -38,6 +38,13 @@ export const EMPTY_STATES: Record<string, EmptyStateConfig> = {
     icon: Users,
     title: "No followers yet",
     description: "Share quality routes to build your reputation and gain followers.",
+  },
+  following: {
+    icon: UserPlus,
+    title: "Not following anyone yet",
+    description: "Explore the community and follow users to see their routes in your feed.",
+    actionLabel: "Explore",
+    actionHref: "/explore",
   },
   comments: {
     icon: MessageCircle,

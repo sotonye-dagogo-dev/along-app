@@ -203,14 +203,23 @@ export default function OwnProfilePage() {
         <div className="flex items-center py-3.5 border-t border-border border-b mb-3.5">
           {[
             { num: profile.postCount, label: "Posts" },
-            { num: profile.followerCount, label: "Followers" },
-            { num: profile.followingCount, label: "Following" },
+            { num: profile.followerCount, label: "Followers", href: `/profile/${profile.userName}/followers` },
+            { num: profile.followingCount, label: "Following", href: `/profile/${profile.userName}/following` },
             { num: profile.avgValidityScore, label: "Avg Score" },
           ].map((s, i, arr) => (
             <React.Fragment key={s.label}>
               <div className="flex-1 text-center">
-                <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
-                <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
+                {s.href ? (
+                  <Link href={s.href} className="no-underline inline-block hover:opacity-80 transition-opacity">
+                    <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
+                    <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
+                  </Link>
+                ) : (
+                  <>
+                    <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
+                    <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
+                  </>
+                )}
               </div>
               {i < arr.length - 1 && <div className="w-px h-8 bg-border shrink-0" />}
             </React.Fragment>

@@ -9,7 +9,6 @@ import { PostCard } from "@/app/components/features/posts"
 const ShareRouteModal = dynamic(() => import("@/app/components/features/posts/ShareRouteModal"), { ssr: false })
 import { AppEmptyState, PostCardSkeleton } from "@/app/components/ui"
 import SuggestionsPanel from "@/app/components/ui/SuggestionsPanel"
-import { EventsWidget } from "@/app/components/features/events"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useFeedInteractions } from "@/app/hooks/useFeedInteractions"
@@ -205,7 +204,6 @@ function HomeContent() {
         </div>
 
         <SuggestionsPanel />
-        <EventsWidget />
       </div>
 
       <ShareRouteModal
