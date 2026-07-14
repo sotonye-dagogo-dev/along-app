@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { Search, Shield } from "lucide-react"
 import { AppInput } from "@/app/components/ui"
@@ -25,19 +25,33 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
 
+  const loadRef = useRef<AbortController | null>(null)
+
   const load = async (q?: string) => {
+    loadRef.current?.abort()
+    loadRef.current = new AbortController()
+    const signal = loadRef.current.signal
     setLoading(true)
     try {
       const url = q ? `/api/admin/users?q=${encodeURIComponent(q)}` : "/api/admin/users"
-      const res = await fetch(url)
+      const res = await fetch(url, { signal })
       if (res.ok) {
         const data = await res.json()
         setUsers(data.users ?? [])
       }
-    } catch { /* ignore */ } finally { setLoading(false) }
+    } catch (err: unknown) {
+      if ((err as Error)?.name === "AbortError") return
+      console.error("Failed to load users")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    return () => { loadRef.current?.abort() }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => { if (search) load(search); else load() }, 300)
@@ -52,7 +66,9 @@ export default function AdminUsersPage() {
         body: JSON.stringify({ userId, role }),
       })
       if (res.ok) load(search || undefined)
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error("Failed to update role", err)
+    }
   }
 
   const tierColors: Record<string, string> = {

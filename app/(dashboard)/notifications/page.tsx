@@ -52,21 +52,26 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const abort = new AbortController()
     const load = async () => {
       try {
         const params = new URLSearchParams()
         if (activeTab !== "all") params.set("filter", activeTab)
-        const res = await fetch(`/api/notifications?${params}`)
+        const res = await fetch(`/api/notifications?${params}`, { signal: abort.signal })
+        if (!res.ok) throw new Error("Failed to load notifications")
         const data = await res.json()
+        if (abort.signal.aborted) return
         setNotifications(data.notifications ?? [])
         setUnreadCount(data.unreadCount ?? 0)
-      } catch {
+      } catch (err: unknown) {
+        if (abort.signal.aborted) return
         console.error("Failed to load notifications")
       } finally {
-        setLoading(false)
+        if (!abort.signal.aborted) setLoading(false)
       }
     }
     load()
+    return () => abort.abort()
   }, [activeTab])
 
   const markAllRead = async () => {

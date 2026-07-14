@@ -26,7 +26,7 @@ const sizeClasses: Record<ModalSize, string> = {
   fullscreen: 'max-w-full max-h-full rounded-none mx-0',
 }
 
-export default function AppModal({
+export function AppModal({
   open,
   onClose,
   size = 'default',

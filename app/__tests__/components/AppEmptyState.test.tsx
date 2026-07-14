@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import AppEmptyState from "@/app/components/ui/AppEmptyState";
+import { AppEmptyState } from "@/app/components/ui/AppEmptyState";
 
 describe("AppEmptyState", () => {
   it("renders preset content when preset prop is provided", () => {

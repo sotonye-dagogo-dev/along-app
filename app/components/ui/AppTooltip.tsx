@@ -19,7 +19,7 @@ const positionClasses: Record<TooltipPosition, string> = {
   right: 'left-full ml-2 top-1/2 -translate-y-1/2',
 }
 
-export default function AppTooltip({
+export function AppTooltip({
   content,
   children,
   position = 'top',

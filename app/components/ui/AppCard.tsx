@@ -19,7 +19,7 @@ const variantClasses: Record<CardVariant, string> = {
   suggestion: 'bg-primary-muted border border-border shadow-sm border-l-4 border-l-primary',
 }
 
-export default function AppCard({
+export function AppCard({
   variant = 'default',
   hover = false,
   className,

@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
 
   const validate = () => {
@@ -32,7 +33,7 @@ export default function LoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, rememberMe }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -106,6 +107,18 @@ export default function LoginPage() {
               Forgot password?
             </Link>
           </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 accent-primary cursor-pointer"
+            />
+            <span className="text-sm font-medium text-text-secondary">Remember me</span>
+          </label>
         </div>
 
         <AppButton type="submit" variant="primary" size="lg" fullWidth loading={loading}>

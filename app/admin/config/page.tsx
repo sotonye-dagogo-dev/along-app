@@ -22,36 +22,37 @@ export default function AdminConfigPage() {
     setLoading(true)
     try {
       const res = await fetch("/api/admin/config")
-      if (res.ok) {
-        const data = await res.json()
-        setConfigs(data.configs ?? [])
-      }
-    } catch { /* ignore */ } finally { setLoading(false) }
+      if (!res.ok) throw new Error("Request failed")
+      const data = await res.json()
+      setConfigs(data.configs ?? [])
+    } catch (err) { console.error("[AdminError]", err) } finally { setLoading(false) }
   }
 
   useEffect(() => { load() }, [])
 
   const handleSave = async (key: string, value: unknown) => {
     try {
-      await fetch("/api/admin/config", {
+      const res = await fetch("/api/admin/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key, value }),
       })
+      if (!res.ok) throw new Error("Request failed")
       load()
-    } catch { /* ignore */ }
+    } catch (err) { console.error("[AdminError]", err) }
   }
 
   const handleDelete = async (key: string) => {
     if (!confirm(`Delete config "${key}"?`)) return
     try {
-      await fetch("/api/admin/config", {
+      const res = await fetch("/api/admin/config", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key }),
       })
+      if (!res.ok) throw new Error("Request failed")
       load()
-    } catch { /* ignore */ }
+    } catch (err) { console.error("[AdminError]", err) }
   }
 
   const handleAdd = () => {

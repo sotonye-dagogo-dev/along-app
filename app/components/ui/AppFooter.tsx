@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FOOTER_CONFIG } from "@/app/lib/config";
 import LocaleSwitcher from "./LocaleSwitcher";
 
-export default function AppFooter() {
+export function AppFooter() {
   return (
     <footer className="border-t border-border bg-bg-card">
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">

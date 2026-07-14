@@ -14,23 +14,23 @@ export { AppUserLabel } from "./AppUserLabel";
 export { AppSkeleton, PostCardSkeleton, UserCardSkeleton, TableRowSkeleton, StatCardSkeleton, MapSkeleton } from "./AppSkeleton";
 export { AppTable, SkeletonRow } from "./AppTable";
 
-// Default exports re-exported as named
-export { default as AppCard } from "./AppCard";
-export { default as AppFooter } from "./AppFooter";
-export { default as AppModal } from "./AppModal";
-export { default as AppEmptyState } from "./AppEmptyState";
-export { default as AppTooltip } from "./AppTooltip";
-export { default as AppDropdown } from "./AppDropdown";
-export { default as AppPagination } from "./AppPagination";
-export { default as AppTag } from "./AppTag";
-export { default as ConfigDrivenForm } from "./ConfigDrivenForm";
-export { default as ConfigDrivenList } from "./ConfigDrivenList";
-export { default as GlobalConfirmModal } from "./GlobalConfirmModal";
-export { default as GlobalUndoToast } from "./GlobalUndoToast";
-export { default as CookieConsent } from "./CookieConsent";
-export { default as TrustBadge } from "./TrustBadge";
-export { default as VehicleChip } from "./VehicleChip";
-export { default as StructuredData } from "./StructuredData";
+export { AppCard } from "./AppCard";
+export { AppFooter } from "./AppFooter";
+export { AppModal } from "./AppModal";
+export { AppEmptyState } from "./AppEmptyState";
+export { AppTooltip } from "./AppTooltip";
+export { AppDropdown } from "./AppDropdown";
+export { AppPagination } from "./AppPagination";
+export { AppTag } from "./AppTag";
+export { ConfigDrivenForm } from "./ConfigDrivenForm";
+export { ConfigDrivenList } from "./ConfigDrivenList";
+export { GlobalConfirmModal } from "./GlobalConfirmModal";
+export { GlobalUndoToast } from "./GlobalUndoToast";
+export { ImageLightbox } from "./ImageLightbox";
+export { CookieConsent } from "./CookieConsent";
+export { TrustBadge } from "./TrustBadge";
+export { VehicleChip } from "./VehicleChip";
+export { StructuredData } from "./StructuredData";
 
 // Type re-exports
 export type { AppButtonProps } from "./AppButton";

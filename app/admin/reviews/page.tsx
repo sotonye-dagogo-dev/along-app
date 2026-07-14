@@ -24,11 +24,10 @@ export default function AdminReviewsPage() {
     try {
       const url = status ? `/api/admin/reviews?status=${status}` : "/api/admin/reviews"
       const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        setReviews(data.reviews ?? [])
-      }
-    } catch { /* ignore */ } finally { setLoading(false) }
+      if (!res.ok) throw new Error("Request failed")
+      const data = await res.json()
+      setReviews(data.reviews ?? [])
+    } catch (err) { console.error("[AdminError]", err) } finally { setLoading(false) }
   }
 
   useEffect(() => { load("PENDING") }, [])
@@ -40,8 +39,9 @@ export default function AdminReviewsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reviewId, status }),
       })
-      if (res.ok) load(statusFilter || undefined)
-    } catch { /* ignore */ }
+      if (!res.ok) throw new Error("Request failed")
+      load(statusFilter || undefined)
+    } catch (err) { console.error("[AdminError]", err) }
   }
 
   return (

@@ -1,13 +1,19 @@
 'use client'
 
 import React, { useCallback, useRef, useState } from 'react'
-import { MapPin } from 'lucide-react'
+import { MapPin, Navigation } from 'lucide-react'
 
 interface RoutePin {
   lat: number
   lng: number
   label: string
   type: 'origin' | 'waypoint' | 'destination'
+}
+
+interface GeoResult {
+  display_name: string
+  lat: string
+  lon: string
 }
 
 interface RouteStepInputProps {
@@ -18,17 +24,6 @@ interface RouteStepInputProps {
   disabled?: boolean
 }
 
-const MOCK_SUGGESTIONS = [
-  { label: 'Marina, Lagos', lat: 6.4551, lng: 3.3948 },
-  { label: 'Yaba, Lagos', lat: 6.5088, lng: 3.3763 },
-  { label: 'Ikeja, Lagos', lat: 6.6018, lng: 3.3515 },
-  { label: 'Lekki Phase 1, Lagos', lat: 6.4376, lng: 3.4669 },
-  { label: 'Victoria Island, Lagos', lat: 6.4281, lng: 3.4216 },
-  { label: 'Oshodi, Lagos', lat: 6.5459, lng: 3.3491 },
-  { label: 'Surulere, Lagos', lat: 6.4989, lng: 3.3505 },
-  { label: 'Mile 2, Lagos', lat: 6.4699, lng: 3.3066 },
-]
-
 function RouteStepInput({
   value,
   onChange,
@@ -37,10 +32,41 @@ function RouteStepInput({
   disabled = false,
 }: RouteStepInputProps) {
   const [query, setQuery] = useState(value?.label ?? '')
-  const [suggestions, setSuggestions] = useState<{ label: string; lat: number; lng: number }[]>([])
+  const [suggestions, setSuggestions] = useState<GeoResult[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [loading, setLoading] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  const doGeocode = useCallback(async (q: string) => {
+    if (q.length < 3) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    setLoading(true)
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=en`,
+        { headers: { "User-Agent": "AlongApp/1.0" }, signal: controller.signal }
+      )
+      const results: GeoResult[] = await res.json()
+      setSuggestions(results)
+      setShowSuggestions(results.length > 0)
+    } catch {
+      if (!controller.signal.aborted) {
+        setSuggestions([])
+        setShowSuggestions(false)
+      }
+    } finally {
+      if (!controller.signal.aborted) setLoading(false)
+    }
+  }, [])
 
   const handleQueryChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,33 +75,26 @@ function RouteStepInput({
 
       if (timerRef.current) clearTimeout(timerRef.current)
 
-      if (val.length < 2) {
+      if (val.length < 3) {
         setSuggestions([])
         setShowSuggestions(false)
         return
       }
 
       setLoading(true)
-      timerRef.current = setTimeout(() => {
-        const filtered = MOCK_SUGGESTIONS.filter((s) =>
-          s.label.toLowerCase().includes(val.toLowerCase())
-        )
-        setSuggestions(filtered)
-        setShowSuggestions(filtered.length > 0)
-        setLoading(false)
-      }, 300)
+      timerRef.current = setTimeout(() => doGeocode(val), 400)
     },
-    []
+    [doGeocode]
   )
 
   const selectSuggestion = useCallback(
-    (suggestion: { label: string; lat: number; lng: number }) => {
-      setQuery(suggestion.label)
+    (suggestion: GeoResult) => {
+      setQuery(suggestion.display_name)
       setShowSuggestions(false)
       onChange({
-        label: suggestion.label,
-        lat: suggestion.lat,
-        lng: suggestion.lng,
+        label: suggestion.display_name,
+        lat: parseFloat(suggestion.lat),
+        lng: parseFloat(suggestion.lon),
         type,
       })
     },
@@ -101,7 +120,7 @@ function RouteStepInput({
         />
         {loading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-circle animate-spin" />
+            <Navigation size={14} className="animate-spin text-primary" />
           </div>
         )}
       </div>
@@ -116,7 +135,7 @@ function RouteStepInput({
               onMouseDown={() => selectSuggestion(s)}
             >
               <MapPin size={14} className="text-text-muted shrink-0" />
-              {s.label}
+              {s.display_name}
             </button>
           ))}
         </div>

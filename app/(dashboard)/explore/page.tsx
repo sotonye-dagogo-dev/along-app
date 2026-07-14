@@ -5,7 +5,8 @@ import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import type { MapRef } from "react-map-gl/maplibre"
-import { Search, LocateFixed, SlidersHorizontal, Link2, X, ChevronLeft, MapPin, Heart } from "lucide-react"
+import { Search, LocateFixed, SlidersHorizontal, Link2, X, ChevronLeft } from "lucide-react"
+import { ExplorePinCard, FilterChipsBar } from "@/app/components/features/explore"
 
 const MapView = dynamic(() => import("react-map-gl/maplibre"), { ssr: false })
 const Marker = dynamic(() => import("react-map-gl/maplibre").then((m) => ({ default: m.Marker })), { ssr: false })
@@ -24,12 +25,6 @@ interface PostPin {
   region: string | null
   createdAt: string
   user: { userName: string; firstName: string; lastName: string }
-}
-
-function formatCount(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
-  return String(n)
 }
 
 function getTimeAgo(date: string): string {
@@ -235,8 +230,8 @@ export default function ExplorePage() {
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-bg-elevated">
-      {/* Desktop Map View */}
-      <div className={`hidden lg:block w-full h-full ${isDark ? "dark-map" : ""}`}>
+      {/* Single Map View for all screen sizes */}
+      <div className={`w-full h-full ${isDark ? "dark-map" : ""}`}>
         <MapView
           ref={mapRef}
           mapLib={import("maplibre-gl")}
@@ -258,38 +253,9 @@ export default function ExplorePage() {
             <Marker key={pin.id} latitude={pin.lat} longitude={pin.lng} onClick={() => setSelectedPin(pin)}>
               <div
                 className="w-[24px] h-[24px] rounded-circle bg-primary text-white text-[10px] font-bold flex items-center justify-center shadow-sm border-2 border-white cursor-pointer hover:scale-110 transition-transform"
-                title={pin.title}
+                title={`${pin.title} - ${pin.validityTier ?? "developing"} (${pin.validityScore})`}
               >
-                {pin.likes > 0 ? Math.min(pin.likes, 99) : "•"}
-              </div>
-            </Marker>
-          ))}
-        </MapView>
-      </div>
-
-      {/* Mobile Map View */}
-      <div className={`lg:hidden w-full h-full ${isDark ? "dark-map" : ""}`}>
-        <MapView
-          ref={mapRef}
-          mapLib={import("maplibre-gl")}
-          {...viewState}
-          mapStyle={mapStyle}
-          style={{ width: "100%", height: "100%" }}
-          attributionControl={false}
-          onMoveEnd={(e: { viewState: { latitude: number; longitude: number; zoom: number } }) =>
-            handleViewportChange(e.viewState)
-          }
-          reuseMaps
-        >
-          {userLocation && (
-            <Marker latitude={userLocation.lat} longitude={userLocation.lng}>
-              <div className="w-4 h-4 rounded-circle bg-primary border-2 border-white shadow-md" />
-            </Marker>
-          )}
-          {filteredPins.map((pin) => (
-            <Marker key={pin.id} latitude={pin.lat} longitude={pin.lng} onClick={() => setSelectedPin(pin)}>
-              <div className="w-[24px] h-[24px] rounded-circle bg-primary text-white text-[10px] font-bold flex items-center justify-center shadow-sm border-2 border-white cursor-pointer hover:scale-110 transition-transform">
-                {pin.likes > 0 ? Math.min(pin.likes, 99) : "•"}
+                {pin.tags.length > 0 ? Math.min(pin.tags.length, 99) : "•"}
               </div>
             </Marker>
           ))}
@@ -305,27 +271,12 @@ export default function ExplorePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search routes, places..."
+            aria-label="Search routes"
             className="w-full h-10 pl-9 pr-3 border border-border radius-sm text-sm font-sans outline-none bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
           />
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
-          {filters.map((f) => (
-            <button
-              key={f.label}
-              onClick={() =>
-                setFilters((prev) =>
-                  prev.map((x) => (x.label === f.label ? { ...x, active: !x.active } : x))
-                )
-              }
-              className={`inline-flex items-center gap-1 px-3 py-1.25 radius-pill text-xs font-medium border font-sans cursor-pointer whitespace-nowrap transition-all duration-fast ${
-                f.active
-                  ? "bg-primary text-white border-primary"
-                  : "bg-bg-card text-text-secondary border-border hover:border-primary-muted hover:bg-primary-muted hover:text-primary"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+          <FilterChipsBar filters={filters} onToggle={(label) => setFilters((prev) => prev.map((x) => (x.label === label ? { ...x, active: !x.active } : x)))} />
         </div>
         <button
           onClick={handleNearMe}
@@ -345,6 +296,7 @@ export default function ExplorePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search routes, places..."
+            aria-label="Search routes"
             className="w-full h-10 pl-9 pr-3 border border-border radius-sm text-sm font-sans outline-none bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
           />
         </div>
@@ -381,38 +333,17 @@ export default function ExplorePage() {
             </select>
           </div>
           {filteredPins.map((pin) => (
-            <Link
+            <ExplorePinCard
               key={pin.id}
-              href={`/posts/${pin.id}`}
-              className="bg-bg-card border border-border radius-lg p-3 cursor-pointer transition-shadow duration-base hover:shadow-md no-underline block"
-            >
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Link href={`/profile/${pin.user.userName}`} onClick={(e) => e.stopPropagation()} className="no-underline">
-                  <div className="w-6 h-6 rounded-circle bg-primary-muted flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                    {pin.user.firstName[0]}{pin.user.lastName[0]}
-                  </div>
-                </Link>
-                <Link href={`/profile/${pin.user.userName}`} onClick={(e) => e.stopPropagation()} className="text-xs font-semibold text-text-primary flex-1 no-underline hover:underline">{pin.user.firstName} {pin.user.lastName}</Link>
-                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 radius-pill text-[10px] font-semibold ${
-                  (pin.validityTier ?? "developing") === "verified" ? "bg-success text-success-text" :
-                  (pin.validityTier ?? "developing") === "trusted" ? "bg-info text-info-text" :
-                  (pin.validityTier ?? "developing") === "low" ? "bg-error text-error-text" :
-                  "bg-warning text-warning-text"
-                }`}>
-                  {pin.validityScore}
-                </span>
-              </div>
-              <div className="text-xs font-semibold text-text-primary mb-1">{pin.title}</div>
-              <div className="flex items-center gap-2 text-[11px] text-text-muted mb-1">
-                <span className="flex items-center gap-0.5"><MapPin size={11} />{(pin.tags.length)} steps</span>
-                <span className="flex items-center gap-0.5"><Heart size={11} />{formatCount(pin.likes)}</span>
-              </div>
-              <div className="flex gap-1 flex-wrap">
-                {pin.tags.slice(0, 2).map((t) => (
-                  <Link key={t} href={`/explore?tag=${encodeURIComponent(t)}`} onClick={(e) => e.stopPropagation()} className="inline-flex px-1.5 py-0.5 radius-pill text-[10px] font-medium bg-bg-elevated text-text-secondary no-underline hover:bg-primary-muted hover:text-primary">#{t}</Link>
-                ))}
-              </div>
-            </Link>
+              id={pin.id}
+              title={pin.title}
+              user={pin.user}
+              validityScore={pin.validityScore}
+              validityTier={pin.validityTier}
+              tags={pin.tags}
+              likes={pin.likes}
+              createdAt={pin.createdAt}
+            />
           ))}
         </div>
       </div>
@@ -504,29 +435,17 @@ export default function ExplorePage() {
         </div>
         <div className="flex flex-col gap-2 px-4 pb-3">
           {filteredPins.map((pin) => (
-            <Link
+            <ExplorePinCard
               key={pin.id}
-              href={`/posts/${pin.id}`}
-              className="bg-bg-card border border-border radius-lg p-3 cursor-pointer transition-shadow duration-base hover:shadow-md no-underline block"
-            >
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Link href={`/profile/${pin.user.userName}`} onClick={(e) => e.stopPropagation()} className="no-underline">
-                  <div className="w-6 h-6 rounded-circle bg-primary-muted flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{pin.user.firstName[0]}{pin.user.lastName[0]}</div>
-                </Link>
-                <Link href={`/profile/${pin.user.userName}`} onClick={(e) => e.stopPropagation()} className="text-xs font-semibold text-text-primary flex-1 no-underline hover:underline">{pin.user.firstName} {pin.user.lastName}</Link>
-                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 radius-pill text-[10px] font-semibold ${
-                  (pin.validityTier ?? "developing") === "verified" ? "bg-success text-success-text" :
-                  (pin.validityTier ?? "developing") === "trusted" ? "bg-info text-info-text" :
-                  (pin.validityTier ?? "developing") === "low" ? "bg-error text-error-text" :
-                  "bg-warning text-warning-text"
-                }`}>{pin.validityScore}</span>
-              </div>
-              <div className="text-xs font-semibold text-text-primary mb-1">{pin.title}</div>
-              <div className="flex items-center gap-2 text-[11px] text-text-muted">
-                <span className="flex items-center gap-0.5"><MapPin size={11} />{(pin.tags.length)} steps</span>
-                <span className="flex items-center gap-0.5"><Heart size={11} />{formatCount(pin.likes)}</span>
-              </div>
-            </Link>
+              id={pin.id}
+              title={pin.title}
+              user={pin.user}
+              validityScore={pin.validityScore}
+              validityTier={pin.validityTier}
+              tags={pin.tags}
+              likes={pin.likes}
+              createdAt={pin.createdAt}
+            />
           ))}
         </div>
       </div>
@@ -551,19 +470,9 @@ export default function ExplorePage() {
               <button onClick={() => setMobileFilterOpen(false)} className="w-7 h-7 rounded-circle flex items-center justify-center border-none bg-bg-elevated text-text-secondary cursor-pointer"><X size={14} /></button>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mb-2">
-              {filters.map((f) => (
-                <button
-                  key={f.label}
-                  onClick={() => setFilters((prev) => prev.map((x) => (x.label === f.label ? { ...x, active: !x.active } : x)))}
-                  className={`inline-flex items-center gap-1 px-3 py-1.5 radius-pill text-xs font-medium border font-sans cursor-pointer whitespace-nowrap transition-all duration-fast ${
-                    f.active ? "bg-primary text-white border-primary" : "bg-bg-card text-text-secondary border-border hover:border-primary-muted hover:bg-primary-muted hover:text-primary"
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+              <FilterChipsBar filters={filters} onToggle={(label) => setFilters((prev) => prev.map((x) => (x.label === label ? { ...x, active: !x.active } : x)))} />
             </div>
-            <button onClick={handleNearMe} className="w-full h-9 flex items-center justify-center gap-2 radius-md border border-border bg-bg-card text-text-secondary text-xs font-medium cursor-pointer hover:bg-bg-elevated mt-1">
+            <button onClick={handleNearMe} className="w-full h-9 flex items-center justify-center gap-2 radius-md border border-border bg-bg-card text-text-secondary text-xs font-medium cursor-pointer hover:bg-bg-elevated mt-1" aria-label="Near me">
               <LocateFixed size={14} />
               Use my location
             </button>

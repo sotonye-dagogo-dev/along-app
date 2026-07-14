@@ -13,7 +13,7 @@ export interface GlobalConfirmModalProps {
   description: string;
 }
 
-export default function GlobalConfirmModal({
+export function GlobalConfirmModal({
   open,
   onClose,
   onConfirm,

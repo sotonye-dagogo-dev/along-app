@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { jwtVerify } from "jose";
 
 function isExactPath(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(route + "/");
 }
 
-export function middleware(request: NextRequest) {
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "dev-jwt-secret");
+
+async function verifyToken(token: string): Promise<boolean> {
+  try {
+    await jwtVerify(token, JWT_SECRET);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("access_token")?.value;
   const localeCookie = request.cookies.get("along-locale")?.value;
   const { pathname } = request.nextUrl;
@@ -46,20 +58,23 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // Auth routes: redirect to home if already logged in
+  // Auth routes: redirect to home if already logged in with valid token
   if (["/login", "/register", "/otp"].some((r) => pathname.startsWith(r))) {
     if (accessToken) {
-      return NextResponse.redirect(new URL("/home", request.url));
+      const valid = await verifyToken(accessToken);
+      if (valid) {
+        return NextResponse.redirect(new URL("/home", request.url));
+      }
     }
     return response;
   }
 
-  // Protected routes: require auth
+  // Protected routes: require valid auth
   const protectedRoutes = [
-    "/bookmarks", "/notifications", "/analytics", "/invite", "/admin", "/profile",
+    "/bookmarks", "/notifications", "/analytics", "/invite", "/marketplace", "/admin", "/profile", "/leaderboard",
   ];
   if (protectedRoutes.some((r) => isExactPath(pathname, r))) {
-    if (!accessToken) {
+    if (!accessToken || !(await verifyToken(accessToken))) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirect", pathname);
       return NextResponse.redirect(loginUrl);

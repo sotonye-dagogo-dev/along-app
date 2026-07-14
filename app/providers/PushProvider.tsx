@@ -18,5 +18,5 @@ export function PushProvider({ children }: { children: React.ReactNode }) {
     }
   }, [auth?.isAuthenticated, auth?.user])
 
-  return <>{children}</>
+  return children
 }

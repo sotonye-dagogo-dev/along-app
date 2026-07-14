@@ -12,7 +12,7 @@ export interface GlobalUndoToastProps {
   duration?: number;
 }
 
-export default function GlobalUndoToast({
+export function GlobalUndoToast({
   open,
   message,
   undoLabel = "Undo",

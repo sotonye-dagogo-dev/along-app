@@ -49,35 +49,59 @@ export default function OtherProfilePage() {
     if (!userName) return
     const load = async () => {
       try {
-        const res = await fetch(`/api/posts?limit=20`)
-        const data = await res.json()
-        const matchingPosts = (data.posts ?? []).filter(
-          (p: PostItem) => p.user.userName === userName
-        )
-        setPosts(matchingPosts)
-        setProfile({
-          id: userName,
-          userName,
-          firstName: matchingPosts[0]?.user.firstName ?? userName,
-          lastName: matchingPosts[0]?.user.lastName ?? "",
-          avatar: null,
-          avatarConfig: null,
-          bio: null,
-          verified: false,
-          rewardPoints: 0,
-          rewardTier: "BRONZE",
-          postCount: matchingPosts.length,
-          followerCount: 0,
-          followingCount: 0,
-          avgValidityScore: 0,
-        })
+        const [profileRes, postsRes] = await Promise.all([
+          fetch(`/api/users/by-username/${encodeURIComponent(userName)}`),
+          fetch("/api/posts?limit=20"),
+        ])
+        if (profileRes.ok) {
+          const profileData = await profileRes.json()
+          setProfile({
+            id: profileData.user.id,
+            userName: profileData.user.userName,
+            firstName: profileData.user.firstName,
+            lastName: profileData.user.lastName,
+            avatar: profileData.user.avatar,
+            avatarConfig: profileData.user.avatarConfig,
+            bio: profileData.user.bio,
+            verified: profileData.user.verified,
+            rewardPoints: profileData.user.rewardPoints,
+            rewardTier: profileData.user.rewardTier,
+            postCount: profileData.user._count.posts,
+            followerCount: profileData.user._count.followers,
+            followingCount: profileData.user._count.following,
+            avgValidityScore: profileData.user._count.posts > 0 ? Math.round(profileData.user.rewardPoints / profileData.user._count.posts) : 0,
+          })
+          setIsFollowing(profileData.isFollowing ?? false)
+        }
+        if (postsRes.ok) {
+          const postsData = await postsRes.json()
+          const matchingPosts = (postsData.posts ?? []).filter(
+            (p: PostItem) => p.user.userName === userName
+          )
+          setPosts(matchingPosts)
+        }
       } catch { /* ignore */ } finally { setLoading(false) }
     }
     load()
   }, [userName])
 
   const handleFollow = async () => {
-    setIsFollowing((prev) => !prev)
+    if (!profile) return
+    const method = isFollowing ? "DELETE" : "POST"
+    try {
+      const res = await fetch(`/api/users/${profile.id}/follow`, { method })
+      if (res.ok) {
+        setIsFollowing(!isFollowing)
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                followerCount: prev.followerCount + (isFollowing ? -1 : 1),
+              }
+            : prev
+        )
+      }
+    } catch { /* ignore */ }
   }
 
   if (loading) {
@@ -136,13 +160,22 @@ export default function OtherProfilePage() {
         <div className="flex items-center py-3.5 border-t border-border border-b mb-3.5">
           {[
             { num: profile.postCount, label: "Posts" },
-            { num: profile.followerCount, label: "Followers" },
-            { num: profile.followingCount, label: "Following" },
+            { num: profile.followerCount, label: "Followers", href: `/profile/${profile.userName}/followers` },
+            { num: profile.followingCount, label: "Following", href: `/profile/${profile.userName}/following` },
             { num: profile.avgValidityScore, label: "Avg Score" },
           ].map((s, i, arr) => (
             <div key={s.label} className="flex-1 text-center">
-              <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
-              <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
+              {s.href ? (
+                <Link href={s.href} className="no-underline inline-block hover:opacity-80 transition-opacity">
+                  <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
+                  <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
+                </Link>
+              ) : (
+                <>
+                  <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
+                  <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
+                </>
+              )}
               {i < arr.length - 1 && <div className="w-px h-8 bg-border shrink-0 inline-block ml-0" />}
             </div>
           ))}

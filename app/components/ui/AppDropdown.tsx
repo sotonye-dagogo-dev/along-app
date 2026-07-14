@@ -17,7 +17,7 @@ interface AppDropdownProps {
   align?: 'start' | 'end'
 }
 
-export default function AppDropdown({
+export function AppDropdown({
   trigger,
   items,
   align = 'start',

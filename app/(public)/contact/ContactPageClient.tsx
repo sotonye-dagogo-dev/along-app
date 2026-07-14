@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { CheckCircle } from "lucide-react";
 import { CONTACT_FIELDS } from "@/app/lib/config";
-import ConfigDrivenForm from "@/app/components/ui/ConfigDrivenForm";
-import AppEmptyState from "@/app/components/ui/AppEmptyState";
+import { ConfigDrivenForm } from "@/app/components/ui/ConfigDrivenForm";
+import { AppEmptyState } from "@/app/components/ui/AppEmptyState";
 import { AppButton } from "@/app/components/ui";
 
 export default function ContactPageClient() {

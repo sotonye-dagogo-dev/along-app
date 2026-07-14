@@ -165,6 +165,8 @@ function HomeContent() {
 
         <div
           onClick={() => setShowShareModal(true)}
+          role="button"
+          aria-label="Share a route"
           className="bg-bg-card border border-border radius-lg px-4 py-3 flex items-center gap-2.5 cursor-pointer transition-shadow duration-base shadow-sm hover:shadow-md"
         >
           <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-sm font-bold text-primary shrink-0">
@@ -184,7 +186,6 @@ function HomeContent() {
               onDislike={handleDislike}
               onBookmark={handleBookmark}
               onComment={handleComment}
-              currentUserId={user?.id as string}
             />
           ))
         ) : loading ? (

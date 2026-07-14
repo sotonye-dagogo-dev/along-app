@@ -10,12 +10,12 @@ interface JwtPayload {
   role: string;
 }
 
-export function signAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "15m" });
+export function signAccessToken(payload: JwtPayload, rememberMe?: boolean): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: rememberMe ? "7d" : "1h" });
 }
 
-export function signRefreshToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: "7d" });
+export function signRefreshToken(payload: JwtPayload, rememberMe?: boolean): string {
+  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: rememberMe ? "30d" : "7d" });
 }
 
 export function verifyAccessToken(token: string): JwtPayload {

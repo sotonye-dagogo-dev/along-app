@@ -16,6 +16,7 @@ function OtpForm() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const searchParams = useSearchParams()
   const email = searchParams.get("email") || ""
+  const rememberMe = searchParams.get("rememberMe") === "true"
 
   useEffect(() => {
     inputRefs.current[0]?.focus()
@@ -81,7 +82,7 @@ function OtpForm() {
       const res = await fetch("/api/auth/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp: code }),
+        body: JSON.stringify({ email, otp: code, rememberMe }),
       })
       if (!res.ok) {
         const data = await res.json()

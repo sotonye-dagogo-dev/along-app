@@ -48,8 +48,8 @@ export async function sendEmail(options: {
   const resend = await getResend();
 
   if (!resend) {
-    console.log(`[EMAIL SKIPPED] ${type} to ${to}: ${subject}`);
-    console.log(`[EMAIL BODY]\n${text}`);
+    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] ${type} to ${to}: ${subject}`);
+    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL BODY]\n${text}`);
     await logEmail({ to, subject, type, status: "skipped", metadata });
     return { sent: false, reason: "RESEND_API_KEY not configured" };
   }
@@ -83,7 +83,7 @@ export async function sendEmail(options: {
 export async function sendOtpEmail(to: string, otp: string) {
   const template = await findTemplate("otp");
   if (!template) {
-    console.log(`[EMAIL SKIPPED] otp to ${to}: template not found`);
+    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] otp to ${to}: template not found`);
     return { sent: false, reason: "Template not found" };
   }
 
@@ -101,7 +101,7 @@ export async function sendOtpEmail(to: string, otp: string) {
 export async function sendWelcomeEmail(to: string, firstName: string) {
   const template = await findTemplate("welcome");
   if (!template) {
-    console.log(`[EMAIL SKIPPED] welcome to ${to}: template not found`);
+    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] welcome to ${to}: template not found`);
     return { sent: false, reason: "Template not found" };
   }
 
@@ -120,7 +120,7 @@ export async function sendWelcomeEmail(to: string, firstName: string) {
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
   const template = await findTemplate("passwordReset");
   if (!template) {
-    console.log(`[EMAIL SKIPPED] passwordReset to ${to}: template not found`);
+    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] passwordReset to ${to}: template not found`);
     return { sent: false, reason: "Template not found" };
   }
 
@@ -139,7 +139,7 @@ export async function sendContactNotification(senderName: string, senderEmail: s
   const recipient = process.env.PLATFORM_USER_EMAIL ?? "alongtoanywhere@gmail.com";
   const template = await findTemplate("contactNotification");
   if (!template) {
-    console.log(`[EMAIL SKIPPED] contactNotification: template not found`);
+    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] contactNotification: template not found`);
     return { sent: false, reason: "Template not found" };
   }
 
@@ -158,7 +158,7 @@ export async function sendBugReportNotification(title: string, category: string,
   const recipient = process.env.PLATFORM_USER_EMAIL ?? "alongtoanywhere@gmail.com";
   const template = await findTemplate("bugReportNotification");
   if (!template) {
-    console.log(`[EMAIL SKIPPED] bugReportNotification: template not found`);
+    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] bugReportNotification: template not found`);
     return { sent: false, reason: "Template not found" };
   }
 

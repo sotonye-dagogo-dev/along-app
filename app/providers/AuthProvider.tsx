@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const fetchingRef = useRef(false);
 
-  const fetchUser = useCallback(async () => {
+  const fetchUser = useCallback(async (retried = false) => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
@@ -48,7 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user ?? data);
-      } else if (res.status === 401) {
+      } else if (res.status === 401 && !retried) {
+        const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
+        if (refreshRes.ok) {
+          fetchingRef.current = false;
+          return fetchUser(true);
+        }
         setUser(null);
       }
     } catch {

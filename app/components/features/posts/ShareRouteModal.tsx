@@ -1,14 +1,17 @@
 "use client"
 
-import { useState, useMemo, useRef, useCallback } from "react"
+import { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { X, MapPin, GripVertical, Plus, Upload, Navigation } from "lucide-react"
+import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { draftingCoachService } from "@/app/lib/services/DraftingCoachService"
+import { toastService } from "@/app/lib/services/toastService"
 import type { VehicleType } from "@/app/lib/types"
 import DraftingCoach from "./DraftingCoach"
 import type { RoutePin } from "./RouteMap"
+
+const DRAFT_KEY = "along_route_draft"
 
 
 const RouteMap = dynamic(() => import("./RouteMap").then((m) => ({ default: m.RouteMap })), { ssr: false })
@@ -54,6 +57,7 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
     { location: "", description: "", vehicle: "bus", fare: 0, _geoResults: [], _geoLoading: false },
     { location: "", description: "", vehicle: "", fare: 0, _geoResults: [], _geoLoading: false },
   ])
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
   const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -142,13 +146,57 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
   const evaluation = draftingCoachService.evaluate(draftInput)
 
   const addStep = () => {
-    setSteps([...steps, { location: "", description: "", vehicle: "", fare: 0 }])
+    setSteps([...steps, { location: "", description: "", vehicle: "", fare: 0, _geoResults: [], _geoLoading: false }])
   }
 
   const removeStep = (index: number) => {
     if (steps.length <= 2) return
     setSteps(steps.filter((_, i) => i !== index))
   }
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === index) return
+    const reordered = [...steps]
+    const [moved] = reordered.splice(dragIndex, 1)
+    reordered.splice(index, 0, moved)
+    setSteps(reordered)
+    setDragIndex(index)
+  }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+  }
+
+  const saveDraft = useCallback(() => {
+    const draft = { title, steps, tags }
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+      toastService.success("Draft saved locally")
+    } catch {
+      toastService.error("Failed to save draft")
+    }
+  }, [title, steps, tags])
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) return
+    try {
+      const stored = localStorage.getItem(DRAFT_KEY)
+      if (!stored) return
+      const draft = JSON.parse(stored) as { title?: string; steps?: (RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean })[]; tags?: string[] }
+      if (draft.title) setTitle(draft.title)
+      if (draft.steps && draft.steps.length >= 2) setSteps(draft.steps)
+      if (draft.tags) setTags(draft.tags)
+    } catch { /* ignore */ }
+  }, [isOpen])
 
   const updateStep = (index: number, field: keyof RouteStep, value: string | number) => {
     setSteps((prev) => {
@@ -198,6 +246,7 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
       endLng: last?.lng && last !== first ? last.lng : undefined,
       waypoints: waypoints.length > 0 ? waypoints : undefined,
     })
+    clearDraft()
     onClose()
   }
 
@@ -232,9 +281,23 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
               </label>
               <div className="flex flex-col gap-3">
                 {steps.map((step, index) => (
-                  <div key={index} className="bg-bg-elevated border border-border radius-lg p-4 relative">
+                  <div
+                    key={index}
+                    draggable
+                    onDragStart={() => handleDragStart(index)}
+                    onDragOver={(e) => handleDragOver(e, index)}
+                    onDragEnd={handleDragEnd}
+                    className={`bg-bg-elevated border radius-lg p-4 relative transition-all duration-fast ${
+                      dragIndex === index ? "border-primary opacity-60 shadow-md" : "border-border"
+                    }`}
+                  >
                     <div className="flex items-center gap-2 mb-2.5">
-                      <span className="flex text-text-muted cursor-grab"><GripVertical size={16} /></span>
+                      <span
+                        className="flex text-text-muted cursor-grab active:cursor-grabbing touch-none"
+                        onDragStart={() => handleDragStart(index)}
+                      >
+                        <GripVertical size={16} />
+                      </span>
                       <span className="w-6 h-6 rounded-circle bg-primary text-white text-xs font-bold flex items-center justify-center shrink-0">
                         {index + 1}
                       </span>
@@ -368,7 +431,8 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
             <div className="flex items-center justify-between pt-2 border-t border-border">
               <span className="text-xs text-text-muted">Drafts are saved locally</span>
               <div className="flex gap-2">
-                <button className="h-10 px-4 radius-md bg-transparent text-text-secondary border-none text-sm font-semibold cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast">
+                <button onClick={saveDraft} className="inline-flex items-center gap-1.5 h-10 px-4 radius-md bg-transparent text-text-secondary border-none text-sm font-semibold cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast">
+                  <Save size={14} />
                   Save Draft
                 </button>
                 <button

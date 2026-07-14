@@ -24,7 +24,7 @@ const variantClasses: Record<EmptyStateVariant, { container: string; iconContain
   lg: { container: 'min-h-[360px] py-16', iconContainer: 'p-4', iconSize: 64 },
 }
 
-export default function AppEmptyState({
+export function AppEmptyState({
   icon: IconProp,
   title: titleProp,
   description: descriptionProp,

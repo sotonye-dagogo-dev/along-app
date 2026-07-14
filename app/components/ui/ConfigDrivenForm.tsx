@@ -45,7 +45,7 @@ function buildFieldSchema(field: FieldConfig): z.ZodTypeAny {
   return schema;
 }
 
-export default function ConfigDrivenForm({
+export function ConfigDrivenForm({
   fields,
   onSubmit,
   submitLabel = "Submit",

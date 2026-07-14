@@ -1,10 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { signAccessToken, verifyRefreshToken } from "@/app/lib/utils/auth";
 import { setAuthCookies, clearAuthCookies } from "@/app/lib/utils/cookies";
+import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const rateCheck = checkRateLimit(request, "auth");
+    if (!rateCheck.allowed) return rateCheck.response;
     const cookieStore = await cookies();
     const refreshToken = cookieStore.get("refresh_token")?.value;
 

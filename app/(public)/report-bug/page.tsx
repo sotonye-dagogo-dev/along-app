@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { BUG_REPORT_FIELDS } from "@/app/lib/config";
-import ConfigDrivenForm from "@/app/components/ui/ConfigDrivenForm";
-import AppEmptyState from "@/app/components/ui/AppEmptyState";
+import { ConfigDrivenForm } from "@/app/components/ui/ConfigDrivenForm";
+import { AppEmptyState } from "@/app/components/ui/AppEmptyState";
 import { CheckCircle } from "lucide-react";
 
 export default function ReportBugPage() {
