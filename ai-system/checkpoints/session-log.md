@@ -595,3 +595,52 @@ Tightened up map interactions, location input, route step reordering, and added 
 - Full `tsc` and `build` verification timed out due to dev machine resource constraints
 - No new dependencies added
 - All changes follow existing patterns in the codebase
+
+---
+
+## Session 2026-07-15 (Session 6 — fix-build)
+
+### Summary
+
+Fixed 5 build errors found during Vercel deployment: duplicate `formatCount` function, invalid Sentry auth token (401), Prisma enum filter type error, `bounds` TDZ in RouteMap, and missing `initialValues` prop on ConfigDrivenForm.
+
+### Changes
+
+**Fix 1: Duplicate `formatCount` in ExplorePinCard** (`app/components/features/explore/ExplorePinCard.tsx`)
+- Removed second copy of `formatCount` function at line 29 (declared twice in same module scope)
+
+**Fix 2: Sentry Auth Token 401** (`.env`, `next.config.mjs`)
+- Cleared invalid/expired `SENTRY_AUTH_TOKEN` from `.env`
+- Added `dryRun: true` when auth token or DSN is missing
+- Fixed deprecated options: `disableLogger` → `webpack.treeshake.removeDebugLogging`, `automaticVercelMonitors` → `webpack.automaticVercelMonitors`
+
+**Fix 3: Prisma Enum Type Error** (`app/api/leaderboard/route.ts`)
+- Removed `where: { role: { not: "banned" } }` filter — `UserRole` enum only has `USER` | `ADMIN`, no `BANNED` value
+
+**Fix 4: `bounds` TDZ Error** (`app/components/features/posts/RouteMap.tsx`)
+- Moved `mapStyle`, `routeCoords`, `bounds`, `centerLat`, `centerLng` declarations above `fitMapToBounds` callback and `useEffect` that referenced `bounds`
+
+**Fix 5: Missing `initialValues` Prop** (`app/components/ui/ConfigDrivenForm.tsx`)
+- Added `initialValues?: Record<string, unknown>` to `ConfigDrivenFormProps`
+- Used to initialize `formValues` state
+
+### Files Modified
+
+- `app/components/features/explore/ExplorePinCard.tsx` — Removed duplicate formatCount
+- `.env` — Cleared invalid SENTRY_AUTH_TOKEN
+- `next.config.mjs` — Conditional dryRun, fixed deprecated Sentry options
+- `app/api/leaderboard/route.ts` — Removed invalid Prisma enum filter
+- `app/components/features/posts/RouteMap.tsx` — Fixed TDZ by reordering declarations
+- `app/components/ui/ConfigDrivenForm.tsx` — Added initialValues prop
+
+### QA Gate
+
+- `npm run build` — ✓ Compiled successfully, 74 static pages, 56 API routes
+- Zero TS type errors
+- Sentry deprecation warnings remain (non-blocking)
+- Redis warnings during static generation (expected — no Redis in build env)
+
+### Notes
+
+- Sentry build operations now skipped automatically when auth token is missing
+- Vercel project should set valid `SENTRY_AUTH_TOKEN` in env vars to re-enable source map upload

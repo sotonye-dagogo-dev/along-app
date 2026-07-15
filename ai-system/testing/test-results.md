@@ -9,23 +9,17 @@
 
 ---
 
-## Last Run
+## Last Run (Build)
 
-**Date:** 2026-06-13
+**Date:** 2026-07-15
 **Run by:** AI agent (opencode)
 
-**Results:**
-| Suite | Passed | Failed | Skipped |
-|-------|--------|--------|---------|
-| Unit (services) | 27 | 0 | 0 |
-| Unit (config) | 11 | 0 | 0 |
-| Unit (utils) | 7 | 0 | 0 |
-| Component | 25 | 0 | 0 |
-| Integration | 0 | 0 | 0 |
-| E2E | 0 | 0 | 0 |
-| **Total** | **91** | **0** | **0** |
-
-**Overall Status:** Passing
+**Build Result:**
+- `npm run build` — ✓ Compiled successfully
+- 74 static pages generated
+- 56 API routes (ƒ)
+- Zero TypeScript type errors
+- Zero lint errors (pre-existing warnings only)
 
 ---
 

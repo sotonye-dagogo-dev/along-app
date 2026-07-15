@@ -7,6 +7,7 @@ import { AppInput, AppTextarea, AppSelect, AppButton } from "./";
 
 export interface ConfigDrivenFormProps {
   fields: FieldConfig[];
+  initialValues?: Record<string, unknown>;
   onSubmit: (data: Record<string, unknown>) => Promise<void>;
   submitLabel?: string;
   isLoading?: boolean;
@@ -47,12 +48,15 @@ function buildFieldSchema(field: FieldConfig): z.ZodTypeAny {
 
 export function ConfigDrivenForm({
   fields,
+  initialValues,
   onSubmit,
   submitLabel = "Submit",
   isLoading = false,
 }: ConfigDrivenFormProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [formValues, setFormValues] = useState<Record<string, string>>({});
+  const [formValues, setFormValues] = useState<Record<string, string>>(
+    initialValues as Record<string, string> ?? {},
+  );
 
   const schema = z.object(
     Object.fromEntries(fields.map((f) => [f.name, buildFieldSchema(f)])),

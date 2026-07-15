@@ -97,15 +97,21 @@ const nextConfig = {
   },
 };
 
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
+const sentryDsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
+
 export default withSentryConfig(nextConfig, {
-    // Sentry organisation + project (set in env or .sentryclirc)
     org: process.env.SENTRY_ORG,
     project: process.env.SENTRY_PROJECT,
-    silent: !process.env.CI,
-    // Upload source maps only when an auth token is present
-    authToken: process.env.SENTRY_AUTH_TOKEN,
+    authToken: sentryAuthToken,
+    dryRun: !sentryAuthToken || !sentryDsn, // Skip Sentry operations when unconfigured
+    silent: !process.env.CI && (!sentryAuthToken || !sentryDsn),
     widenClientFileUpload: true,
     hideSourceMaps: true,
-    disableLogger: true,
-    automaticVercelMonitors: false,
+    webpack: {
+        treeshake: {
+            removeDebugLogging: true,
+        },
+        automaticVercelMonitors: false,
+    },
 });
