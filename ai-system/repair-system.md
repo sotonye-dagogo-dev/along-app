@@ -242,6 +242,120 @@ Always install `@tailwindcss/typography` when using `prose` classes in Tailwind 
 
 ---
 
+### Build Failure — Duplicate Function Declaration (formatCount)
+
+**Symptom:**
+Vercel build failed with `Module parse failed: Identifier 'formatCount' has already been declared (9:9)` in `ExplorePinCard.tsx`.
+
+**Root Cause:**
+The `formatCount` helper function was defined twice in the same file — first at line 6 and again at line 29. Both declarations used `function` keyword in the same module scope.
+
+**Fix Applied:**
+Removed the second (duplicate) declaration, keeping only the first.
+
+**Prevention:**
+When extracting helpers to module scope, check for existing declarations before adding new ones. Use IDE "find references" to detect duplicates.
+
+**Files Affected:**
+- `app/components/features/explore/ExplorePinCard.tsx`
+
+**Date:** 2026-07-15
+**Status:** Active
+
+---
+
+### Build Failure — Sentry Auth Token Invalid (401)
+
+**Symptom:**
+Vercel build logged `sentry reported an error: Invalid token (http status: 401)` for release creation and source map upload operations. Build continued but with noisy errors and wasted time.
+
+**Root Cause:**
+The `SENTRY_AUTH_TOKEN` in environment was present but expired/invalid, causing the Sentry CLI to fail with 401 on every API call. The `@sentry/nextjs` webpack plugin attempted release creation and source map upload even with a bad token.
+
+**Fix Applied:**
+1. Cleared the invalid `SENTRY_AUTH_TOKEN` from `.env`
+2. Updated `next.config.mjs` to set `dryRun: true` when auth token or DSN is missing, preventing Sentry build-time operations
+3. Fixed deprecated Sentry options (`disableLogger` → `webpack.treeshake.removeDebugLogging`, `automaticVercelMonitors` → `webpack.automaticVercelMonitors`)
+
+**Prevention:**
+Never commit Sentry auth tokens to `.env`. Set `dryRun` conditionally based on whether Sentry is actually configured. Use Vercel environment variables for production tokens.
+
+**Files Affected:**
+- `.env`
+- `next.config.mjs`
+
+**Date:** 2026-07-15
+**Status:** Active
+
+---
+
+### Build Failure — Prisma Role Filter Invalid Enum Value
+
+**Symptom:**
+TypeScript error: `Type '"banned"' is not assignable to type 'UserRole'` in `app/api/leaderboard/route.ts`.
+
+**Root Cause:**
+The `UserRole` Prisma enum only defines `USER` and `ADMIN` — there is no `BANNED` value. The query filter `role: { not: "banned" }` references a non-existent enum member.
+
+**Fix Applied:**
+Removed the `where: { role: { not: "banned" } }` filter entirely, since the schema doesn't support excluding banned users via the role field.
+
+**Prevention:**
+Keep Prisma enum filters in sync with the schema. If banning is needed, add an `isBanned` boolean field to the User model instead of misusing the Role enum.
+
+**Files Affected:**
+- `app/api/leaderboard/route.ts`
+
+**Date:** 2026-07-15
+**Status:** Active
+
+---
+
+### Build Failure — TDZ Error in RouteMap.tsx (bounds used before declaration)
+
+**Symptom:**
+TypeScript error: `Block-scoped variable 'bounds' used before its declaration` at `RouteMap.tsx:90`.
+
+**Root Cause:**
+The `bounds` constant was declared at line 125 but referenced earlier in `fitMapToBounds`'s `useCallback` dependency array (line 90) and a `useEffect` dependency array (line 98). `const`/`let` declarations have a Temporal Dead Zone — they cannot be referenced before their declaration line.
+
+**Fix Applied:**
+Moved the `mapStyle`, `routeCoords`, `bounds`, `centerLat`, and `centerLng` variable declarations above the `fitMapToBounds` callback and the `useEffect` that reference them.
+
+**Prevention:**
+Declare all computed variables before any hooks (useCallback, useEffect) that reference them. Keep data declarations at the top of the component.
+
+**Files Affected:**
+- `app/components/features/posts/RouteMap.tsx`
+
+**Date:** 2026-07-15
+**Status:** Active
+
+---
+
+### Build Failure — Missing initialValues Prop on ConfigDrivenForm
+
+**Symptom:**
+TypeScript error: `Property 'initialValues' does not exist on type 'ConfigDrivenFormProps'` in `EditProfileModal.tsx`.
+
+**Root Cause:**
+`ConfigDrivenFormProps` interface didn't define an `initialValues` prop, but `EditProfileModal` was passing it.
+
+**Fix Applied:**
+1. Added `initialValues?: Record<string, unknown>` to `ConfigDrivenFormProps`
+2. Used it to initialize the `formValues` state: `initialValues as Record<string, string> ?? {}`
+
+**Prevention:**
+When adding a new prop to component usage, update the component's TypeScript interface first. Run type checking after every edit.
+
+**Files Affected:**
+- `app/components/ui/ConfigDrivenForm.tsx`
+
+**Date:** 2026-07-15
+**Status:** Active
+
+--- 
+
 ### Prisma 7 Accelerate URL Used as datasourceUrl (P2022 / Timeout)
 
 **Symptom:**

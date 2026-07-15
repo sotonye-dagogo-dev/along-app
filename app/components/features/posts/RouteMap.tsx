@@ -81,22 +81,6 @@ function RouteMap({
     return () => observer.disconnect()
   }, [])
 
-  const fitMapToBounds = useCallback(() => {
-    if (!mapRef.current || !bounds) return
-    mapRef.current.fitBounds(
-      [[bounds.minLng, bounds.minLat], [bounds.maxLng, bounds.maxLat]] as [[number, number], [number, number]],
-      { padding: 40, duration: 400 }
-    )
-  }, [bounds])
-
-  useEffect(() => {
-    if (mapLoaded && bounds) {
-      fitMapToBounds()
-    } else if (mapLoaded && !bounds && pins.length === 1) {
-      mapRef.current?.flyTo({ center: [pins[0].lng, pins[0].lat], zoom: 14, duration: 400 })
-    }
-  }, [mapLoaded, pins, encodedPolyline, bounds, fitMapToBounds])
-
   const mapStyle = {
     version: 8 as const,
     sources: {
@@ -136,6 +120,22 @@ function RouteMap({
 
   const centerLat = bounds ? (bounds.minLat + bounds.maxLat) / 2 : pins[0]?.lat ?? 6.5244
   const centerLng = bounds ? (bounds.minLng + bounds.maxLng) / 2 : pins[0]?.lng ?? 3.3792
+
+  const fitMapToBounds = useCallback(() => {
+    if (!mapRef.current || !bounds) return
+    mapRef.current.fitBounds(
+      [[bounds.minLng, bounds.minLat], [bounds.maxLng, bounds.maxLat]] as [[number, number], [number, number]],
+      { padding: 40, duration: 400 }
+    )
+  }, [bounds])
+
+  useEffect(() => {
+    if (mapLoaded && bounds) {
+      fitMapToBounds()
+    } else if (mapLoaded && !bounds && pins.length === 1) {
+      mapRef.current?.flyTo({ center: [pins[0].lng, pins[0].lat], zoom: 14, duration: 400 })
+    }
+  }, [mapLoaded, pins, encodedPolyline, bounds, fitMapToBounds])
 
   const renderMarker = useCallback(
     (pin: RoutePin, index: number) => {
