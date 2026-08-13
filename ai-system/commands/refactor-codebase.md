@@ -19,6 +19,8 @@
 | Moves one module at a time with verification steps | Does not add new features during refactor         |
 | Writes in-progress.md before starting              | Does not make assumptions about specific AI tools |
 
+**Chains to:** `update-ai-system.md` — mandatory, unconditionally, on completion (Step 8). Refactors are architecture-affecting by this command's own definition, so the deep sync always runs — no conditional logic needed. `verify-work.md` also runs (Step 8). A skipped chain invocation is a compliance violation (per §10 of the v3 spec).
+
 ---
 
 ## Required Inputs
@@ -55,3 +57,5 @@ Directive: Standardise all API responses through a single response formatter uti
 7. **After completion** — update `index/repo-map.md`, `index/dependency-graph.md`, log in `summaries/dev-history.md`.
 
 8. **Quality gate** — run `verify-work.md` to confirm behaviour is preserved.
+
+9. **Deep sync (mandatory, unconditional)** — run `update-ai-system.md`. A refactor is structural change by definition; the full deep sync always runs here, never skipped. Ran without it? That is a compliance violation, logged in `session-log.md`.

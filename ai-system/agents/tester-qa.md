@@ -38,3 +38,16 @@
 - Integration tests must cover: the full request-response cycle for each API endpoint
 - Tests must be deterministic — no flaky tests depending on timing, random data, or external state
 - Test results must show actual pass/fail counts, not "all tests pass" without evidence
+
+---
+
+## Live-Preview / Browsing Capability
+
+When a browsing-capable tool is available in the session (per `tools/registry.md` and the tool-discovery step of `protocols/entry-protocol.md`), the QA role may verify running output in addition to static code:
+
+- Open a deployed preview or local dev URL and compare rendered output against `design-system.md` tokens and any pulled `design-references/*/DESIGN.md`.
+- Spot-check responsive breakpoints and the required universal components (principle §13) actually render per spec.
+- Flag any drift as a normal quality-gate finding — same severity language, same report location — not a separate report.
+- When a finding is hard to describe (animation glitch, breakpoint collapse), capture screen-recording evidence via the session's registered evidence-capture tool (see `tools/registry.md` → evidence-capture row).
+
+**Degradation rule:** if no browsing tool is registered, the QA role states that live browsing is not available in this session and falls back to static comparison (reading the component code against `design-system.md`). It never pretends a live visual check happened. See `commands/visual-review.md` for the full command contract.

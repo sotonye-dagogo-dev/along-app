@@ -3,6 +3,7 @@
 > **Metadata**
 > - last-updated-by: update-ai-system
 > - last-verified-against-code: 2026-07-08 (session 5)
+> - last-synced: 2026-08-13 (v3 template update — pull-template-update)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.

@@ -18,6 +18,8 @@
 | Updates all relevant docs after completion | Does not make assumptions about specific AI products |
 | Writes in-progress.md for interruption safety | Does not refactor unrelated code |
 
+**Chains to:** `sync-context.md` — mandatory at close (Step 7), checkable in `session-log.md`. `update-ai-system.md` — mandatory if completing this task empties `planning/task-queue.md`'s "Current Sprint" table (the sprint-end deep sync its overview already describes); invoke it before the final `sync-context.md`, not after. A skipped chain invocation is a compliance violation (per §10 of the v3 spec).
+
 ---
 
 ## Required Inputs
@@ -50,7 +52,7 @@ Directive: Prioritise fixing the broken API response formatter before new featur
 
 6. **QA gate.** Run the quality gate checklist. Fix issues. If gate fails and cannot be resolved, write residual risk and flag.
 
-7. **Document.** Update session-log, mark task done in task queue, update dev-history. Run `sync-context.md`.
+7. **Document.** Update session-log, mark task done in task queue (and the `last-synced` marker), update dev-history. **Sprint boundary check:** if this task empties the "Current Sprint" table in `planning/task-queue.md`, run `update-ai-system.md` before `sync-context.md` — the sprint-end deep sync fires here, not just the lightweight sync. Otherwise run `sync-context.md`.
 
 8. **Clear in-progress.md.**
 

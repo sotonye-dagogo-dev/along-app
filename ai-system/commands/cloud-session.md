@@ -17,6 +17,8 @@
 | Includes a human-handoff summary on completion | Does not make assumptions about specific AI tools |
 | Respects pre-authorized scope boundaries strictly | Does not perform destructive ops without explicit pre-authorization |
 
+**Chains to:** `sync-context.md` and `update-ai-system.md` — both mandatory on completion. An unattended session gets the deep sync unconditionally, every time: there is no human available later to notice drift and trigger it manually. `update-ai-system.md` runs before writing the handoff summary. A skipped chain invocation is a compliance violation (per §10 of the v3 spec).
+
 ---
 
 ## Required Inputs
@@ -58,11 +60,12 @@ Directive: Refactor the user module service layer. Pre-authorized: change servic
 
 ### Completion
 1. Run the quality gate from `protocols/quality-gate.md`.
-2. Write a **human-handoff summary**:
+2. Run `sync-context.md`.
+3. Run `update-ai-system.md` — the deep sync runs unconditionally in an unattended session (mandatory chain, see Contract).
+4. Write a **human-handoff summary**:
    - What was attempted
    - What was completed
    - What was stopped (and why)
    - Remaining work
    - Any decisions made that should be reviewed
-3. Update all docs per standard procedure.
-4. Clear `checkpoints/in-progress.md`.
+5. Clear `checkpoints/in-progress.md`.
