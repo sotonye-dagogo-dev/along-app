@@ -19,6 +19,8 @@
 | Logs assumptions and decisions made during execution | Does not make assumptions about specific AI tools or models |
 | Writes in-progress.md before starting risky work     | Does not proceed if the QA gate fails                       |
 
+**Chains to:** `sync-context.md` — mandatory, mid-work (Step 3) and again at close (Step 5), checkable in `session-log.md`. `update-ai-system.md` — mandatory when Step 1 finds architecture impact or the originating task-queue entry is tagged `[L]`/`[XL]`; invoke it in Step 5, not just `sync-context.md`. A skipped chain invocation is a compliance violation (per §10 of the v3 spec), logged as one in `session-log.md`.
+
 ---
 
 ## Required Inputs
@@ -73,7 +75,8 @@ Directive: Build a configurable export module supporting CSV, PDF, and JSON
 
 1. Update `checkpoints/session-log.md`
 2. Update `summaries/dev-history.md`
-3. Mark tasks complete in `planning/task-queue.md`
+3. Mark tasks complete in `planning/task-queue.md` (and the `last-synced` metadata marker)
 4. Update `memory/project-decisions.md` if assumptions were made
-5. Clear `checkpoints/in-progress.md`
+5. **Deep sync condition:** if Step 1 found architecture impact, or the originating task-queue entry was tagged `[L]`/`[XL]`, run `update-ai-system.md` now — the full deep sync, not just `sync-context.md`.
 6. Run `sync-context.md` one final time to catch any drift
+7. Clear `checkpoints/in-progress.md`

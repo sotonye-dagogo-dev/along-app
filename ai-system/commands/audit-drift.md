@@ -18,6 +18,9 @@
 | Produces a structured discrepancy report              | Does not make assumptions about specific AI tools   |
 | Recommends which command to run for each discrepancy  | Does not modify any files                           |
 | Tracks freshness metadata staleness across all files  | Does not skip discrepancies that are hard to detect |
+| Detects mandatory-chain and checkpoint-coupling violations | Does not silently fix them — only reports       |
+
+**Chains to:** `None` — read-only by contract ("does not modify any files"), the deliberately-manual escalation point.
 
 ---
 
@@ -51,7 +54,11 @@ Directive: Verify repair-system entries against current code
 
 6. **Freshness metadata audit.** For every `ai-system/` file, check `last-verified-against-code`. If it is older than the staleness policy allows, flag it.
 
-7. **Produce report:**
+7. **Chain compliance drift.** For every command's `Contract` table that names a mandatory `Chains to` target, verify `session-log.md` shows the chained command's entry immediately following that command's own entry. A command ran (per `session-log.md`) without its mandated chain target appearing afterward is a discrepancy — log order is the check, no judgment call needed.
+
+8. **Checkpoint coupling audit.** Compare `planning/task-queue.md`'s `last-synced` marker against `checkpoints/in-progress.md` and `checkpoints/session-log.md` timestamps. A task-queue mutation this session with no corresponding checkpoint write or session-log entry is a compliance violation — the exact "silently half-done work" failure the checkpoint system prevents.
+
+9. **Produce report:**
 
    ```
    ## Drift Audit Report — [date]
@@ -59,6 +66,11 @@ Directive: Verify repair-system entries against current code
    ### Drift Found
    | File | Claim | Actual | Severity | Recommended Action |
    |------|-------|--------|----------|-------------------|
+
+   ### Compliance Violations
+   | Category | Command | Mandated Chain / Coupling | Found in session-log? |
+   |----------|---------|---------------------------|----------------------|
+   (Chain compliance drift / task-queue coupling — new §9/§10 checks)
 
    ### Stale Docs
    | File | Last Verified | Policy | Action |
@@ -68,4 +80,4 @@ Directive: Verify repair-system entries against current code
     [list of docs that passed audit]
    ```
 
-8. **Clear in-progress.md** after the report is produced.
+10. **Clear in-progress.md** after the report is produced.

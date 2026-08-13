@@ -4,6 +4,7 @@
 >
 > - last-updated-by: bootstrap-project
 > - last-verified-against-code: 2026-07-01
+> - installed-ai-system-version: 3.0.0
 > - staleness-policy: re-verify before trusting if project structure has changed
 
 > **Overview:** Along is a social travel-intelligence platform — "Twitter x Google Maps" — for sharing, verifying, and discovering transport routes. It targets Nigerian/West African urban commuters, providing real-time route info, user-generated route reports, and community-driven transit intelligence. Built with Next.js 15 (App Router), TypeScript, Ant Design 5, and Tailwind CSS 4, backed by PostgreSQL via Prisma 7, Upstash Redis, and MapLibre GL.
@@ -52,6 +53,10 @@
 The AI system documentation lives in `ai-system/`.
 
 Start with: `ai-system/protocols/entry-protocol.md`
+
+Two catalogs worth knowing exist (read on demand, not up front):
+- Skills catalog: `ai-system/skills/README.md` (Tier 3 — load a skill's `SKILL.md` when its trigger matches)
+- Tool/resource registry: `ai-system/tools/registry.md` (Tier 3 — check before doing by hand what a registered tool does)
 
 ---
 

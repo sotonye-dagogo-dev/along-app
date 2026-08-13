@@ -18,6 +18,8 @@
 | Produces a clear "resume from here" plan | Does not make assumptions about specific AI tools |
 | Flags any discrepancies found during drift check | Does not silently overwrite checkpoint data |
 
+**Chains to:** `sync-context.md` — mandatory; Step 2's drift check **is** a `sync-context.md` invocation, not a bespoke re-implementation. `update-ai-system.md` — mandatory if Step 3 classifies drift as "major"; invoke it before proposing the new plan, not after. A skipped chain invocation is a compliance violation (per §10 of the v3 spec).
+
 ---
 
 ## Required Inputs
@@ -44,7 +46,7 @@ Directive: The context was reset mid-implementation of the export feature
 3. Read `planning/task-queue.md` for task state.
 
 ### Step 2 — Drift Check
-Compare the checkpoint claims against actual repo state:
+Run `sync-context.md`, focused on the checkpoint claims (this replaces the bespoke inline drift check this command used to re-implement):
 - Do the files listed as "modified so far" still exist and contain the expected changes?
 - Has `git log` shown any commits since the checkpoint was written (other agent/human activity)?
 - Do the task queue items still match the current code state?
@@ -53,7 +55,7 @@ Compare the checkpoint claims against actual repo state:
 ### Step 3 — Resume or Flag
 - **If no drift detected**: Continue from the `Current Step` in in-progress.md. Re-read only the files needed for the current step.
 - **If minor drift detected** (e.g., a file was renamed but the intent is the same): Update in-progress.md with corrected state, continue.
-- **If major drift detected** (e.g., architecture changed, task was completed by someone else, files no longer exist): Write a flag in session-log.md, propose a new plan, and await confirmation before proceeding.
+- **If major drift detected** (e.g., architecture changed, task was completed by someone else, files no longer exist): run `update-ai-system.md` first to reconcile the docs with reality, then write a flag in `session-log.md`, propose a new plan, and await confirmation before proceeding.
 
 ### Step 4 — If No In-Progress Mark
 If `checkpoints/in-progress.md` is empty or missing:
