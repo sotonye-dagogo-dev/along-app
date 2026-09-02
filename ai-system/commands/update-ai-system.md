@@ -17,7 +17,9 @@
 | Reconciles all ai-system docs with actual code state | Does not change code to match docs — only docs to match code |
 | Flags architecture drift for human review            | Does not make assumptions about specific AI tools            |
 | Updates all freshness metadata                       | Does not skip drift that is inconvenient to fix              |
-| Produces a discrepancy report                        | Does not run automatically — must be explicitly invoked      |
+| Produces a discrepancy report                        | Does not run on a fixed schedule — invoked explicitly, or automatically via another command's mandated chain trigger (see the `Chains to` rows on `execute-feature.md`, `dev-cycle.md`, `refactor-codebase.md`, `resume-session.md`, `cloud-session.md`) |
+
+**Chains to:** `None` — this is the terminal deep sync (the heavier end of the `sync-context.md` / `update-ai-system.md` pair). Its findings feed the next human decision; it does not auto-trigger further commands.
 
 ---
 

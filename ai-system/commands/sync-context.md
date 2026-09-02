@@ -18,6 +18,8 @@
 | Updates freshness metadata on changed files                    | Does not rewrite architecture from scratch                |
 | Logs what was updated and why                                  | Does not make assumptions about specific AI tools         |
 
+**Chains to:** `checkpoints/in-progress.md` — when this sync coincides with or is triggered by a `task-queue.md` mutation. A task-queue edit without a checkpoint update (or, for planning-only commands, a session-log entry) is a compliance violation. Lightweight standalone syncs with no task-queue mutation carry no mandatory chain.
+
 ---
 
 ## Required Inputs
@@ -52,4 +54,6 @@ Directive: Only update if code changes affected system-architecture.md claims
 
 3. Log: what was synced, what was flagged, and what (if anything) was left intentionally out of sync.
 
-4. This command is **not** a substitute for `update-ai-system.md` (the sprint-end deep sync). It is a lighter, faster check.
+4. **Checkpoint compliance check.** If this sync was triggered by, or coincides with, a `task-queue.md` mutation, `checkpoints/in-progress.md` must be written/updated in the same pass. A task-queue edit without a checkpoint update (or, for planning-only commands, a session-log entry) is a compliance violation — log it as one in `session-log.md`, don't silently fix and move on.
+
+5. This command is **not** a substitute for `update-ai-system.md` (the sprint-end deep sync). It is a lighter, faster check.

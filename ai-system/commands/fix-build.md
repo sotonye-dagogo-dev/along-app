@@ -18,6 +18,8 @@
 | Verifies the fix resolves the error | Does not skip documenting the fix in repair-system.md |
 | Logs error, root cause, fix, and prevention | Does not make assumptions about specific AI tools |
 
+**Chains to:** `sync-context.md` — mandatory if the fix touched more than one file, or a `repair-system.md` pattern was added/changed; invoke it before clearing `in-progress.md`. A skipped chain invocation is a compliance violation (per §10 of the v3 spec).
+
 ---
 
 ## Required Inputs
@@ -62,4 +64,6 @@ Directive: Next.js hydration mismatch on the dashboard page
 
 9. **If the fix introduces assumptions** — log them in `memory/project-decisions.md`.
 
-10. **Clear in-progress.md** on clean completion.
+10. **Chain check** — if the fix touched more than one file, or a `repair-system.md` pattern was added/changed, run `sync-context.md` before clearing `in-progress.md`.
+
+11. **Clear in-progress.md** on clean completion.

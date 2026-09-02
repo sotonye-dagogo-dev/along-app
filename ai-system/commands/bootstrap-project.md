@@ -18,6 +18,9 @@
 | Creates freshness metadata on every file                              | Does not configure editor extensions or API keys          |
 | Seeds the task queue with real, actionable next steps                 | Does not assume any specific AI product or model          |
 | Produces architecture docs that reflect actual code                   | Does not invent structure that isn't there                |
+| Records the installed template version for later update propagation   | Does not pull template updates itself                     |
+
+**Chains to:** `None` — terminal, first-run only. It records the installed kit version in `ai-context.md` metadata so a later `pull-template-update.md` comparison is possible.
 
 ---
 
@@ -64,9 +67,11 @@ Directive: This is greenfield — suggest an ideal architecture for a REST API
    - `testing/test-plan.md` — template filled for detected stack
    - `testing/test-results.md` — empty
 
-3. **Update freshness metadata** on every file: set `last-updated-by: bootstrap-project` and `last-verified-against-code: [current date]`.
+3. **Record the installed template version.** Read `ai-system-kit/VERSION` (or the kit's `VERSION` file at its install location) and write it to `ai-context.md`'s metadata as `installed-ai-system-version: [semver]`. Without this, `pull-template-update.md` has no baseline to compare against.
 
-4. **Report.** List:
+4. **Update freshness metadata** on every file: set `last-updated-by: bootstrap-project` and `last-verified-against-code: [current date]`.
+
+5. **Report.** List:
    - What was generated
    - Key architecture findings
    - Recommended first tasks

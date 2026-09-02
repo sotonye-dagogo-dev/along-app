@@ -644,3 +644,55 @@ Fixed 5 build errors found during Vercel deployment: duplicate `formatCount` fun
 
 - Sentry build operations now skipped automatically when auth token is missing
 - Vercel project should set valid `SENTRY_AUTH_TOKEN` in env vars to re-enable source map upload
+
+---
+
+## Session 24 — 2026-08-13
+
+**Completed:**
+- Ran `pull-template-update.md` against `Sotonye0808/ai-system-template` (main @ 1966ff7). Installed version was unrecorded (v2, no `installed-ai-system-version` metadata) → compared against upstream `VERSION: 3.0.0`. Result: **upgrade needed (v2 → v3)**.
+- Applied the v3 kit update per `V2_TO_V3_MIGRATION.md` (pull-based template update propagation, never silent overwrite).
+
+**Files Modified:**
+- `VERSION` — added (3.0.0), template root addition
+- `CHANGELOG.md` — added, template root addition
+- `ai-system/skills/` — added (9 skills), new in v3
+- `ai-system/tools/` — added (`registry.md` + 12 `integrations/` docs), new in v3
+- `ai-system/design-references/` — added (`README.md` + `TEMPLATE/DESIGN.md`), new in v3
+- `ai-system/commands/audit-sources.md` — added, new in v3
+- `ai-system/commands/visual-review.md` — added, new in v3
+- `ai-system/commands/generate-design-md.md` — added, new in v3
+- `ai-system/commands/pull-template-update.md` — added, new in v3
+- `ai-system/standards/engineering-principles.md` — v3: +§11–§24, enforcement §10→§25, doc-style addendum
+- `ai-system/protocols/entry-protocol.md` — v3: tool-discovery-first step, closing-turn advisory
+- `ai-system/protocols/context-tiering.md` — v3: Tier 3 rows for skills/tools, Tier 4 rows for design-references/registry
+- `ai-system/protocols/verification-rules.md` — v3: §11–§24 principle checks + §9/§10 contract-compliance checks
+- `ai-system/protocols/quality-gate.md` — v3: §11–§24 cross-checks in criterion #9
+- `ai-system/agents/tester-qa.md` — v3: Live-Preview / Browsing capability section
+- `ai-system/commands/bootstrap-project.md` — v3: records installed kit version
+- `ai-system/commands/plan-feature.md` — v3: mandatory session-log trace for task-queue mutations
+- `ai-system/commands/sync-context.md` — v3: checkpoint-compliance step, `Chains to` row
+- `ai-system/commands/execute-feature.md` — v3: deep-sync chain to `update-ai-system.md`
+- `ai-system/commands/dev-cycle.md` — v3: sprint-boundary deep-sync chain
+- `ai-system/commands/refactor-codebase.md` — v3: unconditional deep-sync chain
+- `ai-system/commands/fix-build.md` — v3: `sync-context.md` chain check
+- `ai-system/commands/resume-session.md` — v3: drift check via `sync-context.md`, major drift → `update-ai-system.md`
+- `ai-system/commands/cloud-session.md` — v3: mandatory `sync-context.md` + `update-ai-system.md` on completion
+- `ai-system/commands/update-ai-system.md` — v3: `Chains to` row
+- `ai-system/commands/verify-work.md` — v3: `Chains to` row
+- `ai-system/commands/audit-drift.md` — v3: chain-compliance + checkpoint-coupling audits
+- `ai-system/design-system.md` — v3: Reference Library + Design Asset Viewer sections (appended to local content)
+- `ai-system/system-architecture.md` — v3: `ENABLE_DESIGN_VIEWER` config, Verification CLI section, Rollback & Undo section (appended to local content)
+- `ai-system/planning/task-queue.md` — v3: `last-synced` metadata marker (local content preserved)
+- `ai-context.md` — added `installed-ai-system-version: 3.0.0`, skills/tools catalog pointers
+
+**Next Task:**
+- Run `ai-system/commands/verify-work.md` or `ai-system/commands/audit-drift.md` to mechanically confirm the v3 chains/compliance checks; then run `sync-context.md` to refresh freshness metadata.
+
+**Assumptions Made:**
+- Local files with real project content (`planning/task-queue.md`, `memory/`, `checkpoints/session-log.md`, `summaries/dev-history.md`, `testing/`, `index/`, `project-context.md`, `repair-system.md`) were preserved; template placeholders were NOT copied over them.
+- `design-system.md` and `system-architecture.md` are heavily customized; only the v3 sections were appended, local content intact.
+- `memory/project-decisions.md` was NOT seeded with the template's placeholder PDF-extraction decision (local decisions are real project data).
+
+**Notes / Blockers:**
+- No blockers. `pull-template-update.md` never auto-applies — this entry records the comparison result per its contract; human review of the resulting diff is the final gate.

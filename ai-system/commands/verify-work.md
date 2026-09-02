@@ -18,6 +18,8 @@
 | Identifies specific issues with locations and severity | Does not make assumptions about specific AI tools |
 | Recommends rollback or patch-forward for each failure | Does not modify code |
 
+**Chains to:** `None` — deliberately. `verify-work.md` is read-only by contract ("does not modify code"); it is the human-in-the-loop escalation point, not a chain trigger. Fixes triggered by its findings are separate, deliberate invocations.
+
 ---
 
 ## Required Inputs

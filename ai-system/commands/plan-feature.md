@@ -18,6 +18,8 @@
 | Flags risks, edge cases, and conflicts with prior decisions | Does not make assumptions about specific AI tools |
 | Checks scope against project-context.md | Does not skip reading existing architecture docs |
 
+**Chains to:** `checkpoints/session-log.md` — mandatory. A `task-queue.md` mutation with zero trace is a compliance violation (per §9 of the v3 spec). Planning-only work does not need a full `in-progress.md` checkpoint; the session-log entry is the required minimum trace. Checkable by `verify-work.md` / `audit-drift.md`.
+
 ---
 
 ## Required Inputs
@@ -52,3 +54,5 @@ Directive: Build a configurable export module that supports CSV, PDF, and JSON
    - **Architecture doc updates** — note what needs to change in `system-architecture.md`
 
 3. Do **not** write any code. Planning only.
+
+4. **Log the trace.** Append a `checkpoints/session-log.md` entry recording the tasks added to `planning/task-queue.md` this session and why. This is the required minimum trace for a task-queue mutation (mandatory, not optional — see the Contract above).

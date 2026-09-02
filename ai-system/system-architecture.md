@@ -150,8 +150,33 @@ Write operation → API route
 | RATE_LIMIT_WINDOW | API rate limit window (ms) | `app/lib/config/rateLimits` | 60000 |
 | RATE_LIMIT_MAX | Max requests per window | `app/lib/config/rateLimits` | 100 |
 | CACHE_TTL | Default Redis TTL (s) | `app/lib/config/cache` | 300 |
+| ENABLE_DESIGN_VIEWER | Mounts the dev-only design-asset viewer at `/__design/*`; must be false in production builds | .env | false |
 
 All config points listed here should follow the fallback discipline from `standards/engineering-principles.md` §1 and §3 — every config-driven value must have a documented, safe fallback so the system degrades gracefully if the value is missing or malformed.
+
+---
+
+## Verification CLI (agent-verifiable behavior)
+
+If the project exposes a CLI for observing/verifying application behavior end-to-end (engineering principle §24), list its commands here so agents know it exists before reaching for a manual check:
+
+| Command | What it proves | When to use |
+|---------|---------------|-------------|
+| [none currently] | — | — |
+
+The project currently has no agent-extensible verification CLI. `npm run build` / `npx tsc --noEmit` / `npm test` / `npx next lint` are the available ground-truth checks; a dedicated verification CLI is a candidate per §24 if new verification needs recur.
+
+---
+
+## Rollback & Undo (deployment level)
+
+This is the "undo" instinct applied one layer up from data (§22 covers user-facing undo; this covers deployments). Document the project's actual rollback mechanism here so `commands/fix-build.md` knows it exists as an escalation option, not just "fix forward":
+
+- **Previous-build promotion** — Vercel preview/production re-deploy of the last known-good build.
+- **DB migration reversibility** — Prisma migrations are down-migratable; `prisma migrate down`/reset recover prior schema state.
+- **Feature-flag kill switch** — no explicit flag system yet; rollback is by redeploying the previous build.
+
+If the project has no documented rollback mechanism, say so explicitly here — that is itself a known constraint.
 
 ---
 
