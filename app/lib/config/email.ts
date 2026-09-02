@@ -14,7 +14,7 @@ export interface EmailTemplate {
 
 export const DEFAULT_EMAIL_CONFIG: EmailConfig = {
   fromName: "Along",
-  fromEmail: "noreply@along.app",
+  fromEmail: "mail@along.app",
   replyTo: "support@along.app",
 };
 
