@@ -14,19 +14,22 @@ const ThemeContext = createContext<ThemeContextValue | null>(null)
 
 const STORAGE_KEY = "along-theme"
 
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") return "light"
-  const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
-  if (stored === "light" || stored === "dark") return stored
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
-}
-
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme)
+  const [theme, setThemeState] = useState<Theme>("light")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
+      if (stored === "light" || stored === "dark") {
+        setThemeState(stored)
+      } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        setThemeState("dark")
+      }
+    } catch {
+      // ignore
+    }
   }, [])
 
   useEffect(() => {

@@ -21,9 +21,18 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://along.app"),
-  title: "Along — Navigate Together",
+  title: {
+    default: "Along — Navigate Together",
+    template: "%s | Along",
+  },
   description:
     "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",
+  keywords: ["transport", "routes", "West Africa", "navigation", "travel", "community", "Lagos", "Nigeria"],
+  authors: [{ name: "Along" }],
+  creator: "Along",
+  publisher: "Along",
+  formatDetection: { email: false, address: false, telephone: false },
+  alternates: { canonical: "/" },
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
@@ -34,17 +43,24 @@ export const metadata: Metadata = {
     description: "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",
     url: process.env.NEXT_PUBLIC_APP_URL ?? "https://along.app",
     siteName: "Along",
-    images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Along — Navigate Together" }],
     type: "website",
+    locale: "en_NG",
   },
   twitter: {
     card: "summary_large_image",
     title: "Along — Navigate Together",
     description: "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",
     images: ["/og-image.png"],
+    creator: "@along_app",
   },
-  other: {
-    "google-site-verification": process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? "",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? undefined,
   },
 };
 
@@ -55,6 +71,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Inline theme script to prevent FOUC / hydration mismatch */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var k="along-theme";var s=localStorage.getItem(k);var d=s? s==="dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;if(d)document.documentElement.classList.add("dark")}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body>
         <Script id="resource-hints" strategy="afterInteractive">
           {`

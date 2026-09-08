@@ -7,14 +7,18 @@ interface TraceResult {
   polyline: string
   distance: number
   duration: number
+  provider?: string
 }
 
 class RouteTracingService {
   private baseUrl = 'https://api.openrouteservice.org/v2/directions/driving-car'
   private apiKey: string | null = null
+  private mapboxToken: string | null = null
 
   constructor() {
     this.apiKey = process.env.OPEN_ROUTE_SERVICE_KEY ?? null
+    // NEXT_PUBLIC_ not available on server for ORS fallback check, but we try both
+    this.mapboxToken = process.env.MAPBOX_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? null
   }
 
   async trace(pins: RoutePin[]): Promise<TraceResult> {
@@ -22,15 +26,54 @@ class RouteTracingService {
       throw new Error('At least 2 pins required')
     }
 
+    // Validate pins
+    for (const p of pins) {
+      if (typeof p.lat !== 'number' || typeof p.lng !== 'number' || isNaN(p.lat) || isNaN(p.lng)) {
+        throw new Error('Invalid pin coordinates')
+      }
+      if (p.lat < -90 || p.lat > 90 || p.lng < -180 || p.lng > 180) {
+        throw new Error('Pin coordinates out of bounds')
+      }
+    }
+
+    // Prefer Mapbox if configured — more accurate for West Africa than ORS straight-line fallback
+    if (this.mapboxToken) {
+      try {
+        return await this.traceWithMapbox(pins)
+      } catch (e) {
+        console.warn('[RouteTracing] Mapbox failed, trying ORS', e)
+      }
+    }
+
     if (this.apiKey) {
       try {
         return await this.traceWithOpenRouteService(pins)
-      } catch {
-        return this.traceStraightLine(pins)
+      } catch (e) {
+        console.warn('[RouteTracing] ORS failed, falling back to straight line', e)
       }
     }
 
     return this.traceStraightLine(pins)
+  }
+
+  private async traceWithMapbox(pins: RoutePin[]): Promise<TraceResult> {
+    // Mapbox Directions API supports up to 25 coordinates
+    const limited = pins.slice(0, 25)
+    const coords = limited.map((p) => `${p.lng},${p.lat}`).join(';')
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?alternatives=false&geometries=polyline&overview=full&access_token=${this.mapboxToken}`
+
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`Mapbox error: ${res.status}`)
+    const data = await res.json()
+    const route = data.routes?.[0]
+    if (!route) throw new Error('No route from Mapbox')
+
+    // Mapbox polyline is polyline5 with precision 5 — compatible with @mapbox/polyline
+    const polyline: string = route.geometry ?? this.encodePolyline(limited.map((p) => [p.lng, p.lat]))
+    const distance = route.distance ? Math.round((route.distance / 1000) * 10) / 10 : this.approximateDistance(limited)
+    const duration = route.duration ? Math.round(route.duration / 60) : Math.round(distance * 2)
+
+    return { polyline, distance, duration, provider: 'mapbox' }
   }
 
   private async traceWithOpenRouteService(pins: RoutePin[]): Promise<TraceResult> {
@@ -64,14 +107,14 @@ class RouteTracingService {
       ? Math.round(route.summary.duration / 60)
       : Math.round(distance * 15)
 
-    return { polyline, distance, duration }
+    return { polyline, distance, duration, provider: 'ors' }
   }
 
   private traceStraightLine(pins: RoutePin[]): TraceResult {
     const distance = this.approximateDistance(pins)
     const duration = Math.round(distance * 15)
     const polyline = this.encodePolyline(pins.map((p) => [p.lng, p.lat]))
-    return { polyline, distance, duration }
+    return { polyline, distance, duration, provider: 'straight' }
   }
 
   private approximateDistance(pins: RoutePin[]): number {

@@ -66,7 +66,8 @@ function OtpForm() {
     if (!canResend) return
     setCountdown(RESEND_COOLDOWN)
     setCanResend(false)
-    fetch("/api/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }).catch(() => {})
+    // Resend OTP — use forgot-password style or re-trigger register OTP flow via new endpoint
+    fetch("/api/auth/otp/resend", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }).catch(() => {})
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,12 +86,25 @@ function OtpForm() {
         body: JSON.stringify({ email, otp: code, rememberMe }),
       })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Invalid verification code")
+        let msg = "Invalid verification code"
+        try {
+          const text = await res.text()
+          const data = text ? JSON.parse(text) as { error?: string } : null
+          if (data?.error) msg = data.error
+          else if (res.status === 504) msg = "Server is busy. Please try again."
+        } catch {
+          msg = res.status === 504 ? "Server is busy. Please try again." : "Verification failed. Please try again."
+        }
+        throw new Error(msg)
       }
       window.location.href = "/"
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong")
+      const msg = err instanceof Error ? err.message : "Something went wrong"
+      if (msg.includes("Unexpected token") || msg.includes("is not valid JSON")) {
+        setError("Server is busy. Please try again in a moment.")
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }
