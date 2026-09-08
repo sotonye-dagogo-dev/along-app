@@ -59,6 +59,32 @@ export async function GET(request: NextRequest) {
     const email = userInfo.email;
     const firstName = userInfo.given_name || "";
     const lastName = userInfo.family_name || "";
+    const state = request.nextUrl.searchParams.get("state");
+
+    // Handle "link" flow: if state=link and user already authenticated, link Google to existing account
+    if (state === "link") {
+      const { verifyAccessToken } = await import("@/app/lib/utils/auth");
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const token = cookieStore.get("access_token")?.value;
+      if (token) {
+        try {
+          const payload = verifyAccessToken(token);
+          const existingUser = await prisma.user.findUnique({ where: { id: payload.userId } });
+          if (existingUser) {
+            // Check if googleId already taken by another user
+            const taken = await prisma.user.findUnique({ where: { googleId } });
+            if (taken && taken.id !== existingUser.id) {
+              return NextResponse.redirect(`${appUrl}/profile?error=google_already_linked`, { status: 307 });
+            }
+            await prisma.user.update({ where: { id: existingUser.id }, data: { googleId } });
+            return NextResponse.redirect(`${appUrl}/profile?success=google_linked`, { status: 307 });
+          }
+        } catch {
+          // fall through to normal flow
+        }
+      }
+    }
 
     let user = await prisma.user.findUnique({ where: { googleId } });
 
@@ -74,6 +100,10 @@ export async function GET(request: NextRequest) {
     user = await prisma.user.findUnique({ where: { email } });
 
     if (user) {
+      // Prevent overwriting an already linked googleId
+      if (user.googleId && user.googleId !== googleId) {
+        return NextResponse.redirect(`${appUrl}/login?error=account_exists`, { status: 307 });
+      }
       user = await prisma.user.update({
         where: { id: user.id },
         data: { googleId },

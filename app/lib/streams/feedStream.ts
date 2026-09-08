@@ -91,7 +91,14 @@ export class FeedStream {
       if (cursorVal) params.set("cursor", cursorVal)
       params.set("limit", String(LIMIT))
       const res = await fetch(`/api/posts/feed?${params}`)
-      const data = await res.json() as { posts?: FeedPost[]; nextCursor?: string | null }
+      if (!res.ok) return { posts: [], cursor: null, hasMore: false, loading: false }
+      let data: { posts?: FeedPost[]; nextCursor?: string | null } = {}
+      try {
+        const text = await res.text()
+        data = text ? (JSON.parse(text) as { posts?: FeedPost[]; nextCursor?: string | null }) : {}
+      } catch {
+        return { posts: [], cursor: null, hasMore: false, loading: false }
+      }
       return {
         posts: data.posts ?? [],
         cursor: data.nextCursor ?? null,

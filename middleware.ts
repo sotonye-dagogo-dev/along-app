@@ -6,7 +6,10 @@ function isExactPath(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(route + "/");
 }
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || "dev-jwt-secret");
+// Use same secret as app/lib/utils/auth.ts — fallback order must match server auth
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || process.env.JWT_ACCESS_SECRET || "dev-jwt-secret"
+);
 
 async function verifyToken(token: string): Promise<boolean> {
   try {

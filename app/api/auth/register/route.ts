@@ -4,8 +4,10 @@ import { prisma } from "@/app/lib/db/prisma";
 import { REGISTER_SCHEMA } from "@/app/lib/schemas/auth";
 import { hashPassword } from "@/app/lib/utils/security";
 import { qstashService } from "@/app/lib/services/qstashService";
-import { sendOtpEmail, sendWelcomeEmail } from "@/app/lib/services/emailService";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
+
+export const maxDuration = 30;
+export const dynamic = "force-dynamic";
 
 const otpStore = new Map<string, { hash: string; expiry: number }>();
 
@@ -89,21 +91,46 @@ export async function POST(request: NextRequest) {
       otpStore.set(otpKey, { hash: otpHash, expiry: Date.now() + 900000 });
     }
 
-    const otpResult = await sendOtpEmail(email, otp);
-    if (otpResult.sent) {
-      await sendWelcomeEmail(email, firstName);
-    } else if (process.env.NODE_ENV !== "production") {
-      console.log(`[DEV] OTP for ${email}: ${otp}`);
+    // Non-blocking email send — never hold request waiting for Resend
+    const sendInBackground = async () => {
+      try {
+        const { sendOtpEmail, sendWelcomeEmail } = await import("@/app/lib/services/emailService");
+        const otpResult = await sendOtpEmail(email, otp);
+        if (otpResult.sent) {
+          await sendWelcomeEmail(email, firstName);
+        } else if (process.env.NODE_ENV !== "production") {
+          console.log(`[DEV] OTP for ${email}: ${otp}`);
+        }
+      } catch (e) {
+        console.error("[REGISTER] background email failed", e);
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`[DEV] OTP for ${email}: ${otp}`);
+        }
+      }
+    };
+
+    // Use waitUntil if available (Vercel), otherwise fire-and-forget
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const maybeWaitUntil = (globalThis as any)?.waitUntil as ((p: Promise<void>) => void) | undefined;
+    if (maybeWaitUntil) {
+      maybeWaitUntil(sendInBackground());
+    } else {
+      // Don't await — respond immediately
+      void sendInBackground();
     }
 
     return NextResponse.json({ message: "OTP sent to email" }, { status: 201 });
   } catch (error) {
     Sentry.captureException(error);
+    // Don't leak internal details to client — sanitize all messages
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid request format. Please check your input." }, { status: 400 });
+    }
     if (error instanceof Error) {
-      if (error.name === "PrismaClientKnownRequestError") {
-        return NextResponse.json({ error: "Database error. Please try again." }, { status: 500 });
+      if (error.name === "PrismaClientKnownRequestError" || error.name === "PrismaClientInitializationError") {
+        return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
       }
     }
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

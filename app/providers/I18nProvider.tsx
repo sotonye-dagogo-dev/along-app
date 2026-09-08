@@ -15,14 +15,7 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null)
 
-function getInitialLocale(): Locale {
-  if (typeof window === "undefined") return DEFAULT_LOCALE
-  const stored = localStorage.getItem(STORAGE_KEY) as Locale | null
-  if (stored === "en" || stored === "pcm") return stored
-  const lang = navigator.language?.toLowerCase()
-  if (lang?.startsWith("pcm") || lang === "en-pcm") return "pcm"
-  return DEFAULT_LOCALE
-}
+
 
 function interpolate(text: string, params?: Record<string, string | number>): string {
   if (!params) return text
@@ -30,9 +23,23 @@ function interpolate(text: string, params?: Record<string, string | number>): st
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(getInitialLocale)
+  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE)
   const [translations, setTranslations] = useState<Translations>({})
   const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY) as Locale | null
+      if (stored === "en" || stored === "pcm") {
+        setLocaleState(stored)
+        return
+      }
+      const lang = navigator.language?.toLowerCase()
+      if (lang?.startsWith("pcm") || lang === "en-pcm") setLocaleState("pcm")
+    } catch {
+      // ignore
+    }
+  }, [])
 
   useEffect(() => {
     const loadTranslations = async () => {

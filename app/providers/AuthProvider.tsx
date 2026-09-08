@@ -46,14 +46,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch("/api/auth/me");
       if (res.ok) {
-        const data = await res.json();
-        setUser(data.user ?? data);
-      } else if (res.status === 401 && !retried) {
-        const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
-        if (refreshRes.ok) {
-          fetchingRef.current = false;
-          return fetchUser(true);
+        try {
+          const data = await res.json();
+          setUser(data.user ?? data);
+        } catch {
+          // Non-JSON response (e.g. gateway timeout HTML) — treat as not authenticated
+          setUser(null);
         }
+      } else if (res.status === 401 && !retried) {
+        try {
+          const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
+          if (refreshRes.ok) {
+            fetchingRef.current = false;
+            return fetchUser(true);
+          }
+        } catch {
+          // refresh failed due to network / HTML error page
+        }
+        setUser(null);
+      } else if (res.status === 504 || res.status === 502 || res.status === 503) {
+        // Transient server error — don't clear user aggressively, keep guest state quiet
+        // Log but don't treat as auth failure
+        console.warn(`[AuthProvider] /api/auth/me ${res.status} — transient`);
+      } else {
         setUser(null);
       }
     } catch {

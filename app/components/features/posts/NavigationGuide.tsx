@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Navigation, ChevronLeft, ChevronRight, MapPin, BadgeDollarSign, X } from "lucide-react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
+import { Navigation, ChevronLeft, ChevronRight, MapPin, BadgeDollarSign, X, LocateFixed, AlertTriangle, Compass } from "lucide-react"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import type { VehicleType } from "@/app/lib/types"
 
@@ -12,11 +12,18 @@ interface RouteStep {
   fare?: number
 }
 
+interface RoutePinCoord {
+  lat: number
+  lng: number
+}
+
 interface NavigationGuideProps {
   steps: RouteStep[]
   totalDistanceKm?: number | null
   estimatedMins?: number | null
   onClose?: () => void
+  pins?: RoutePinCoord[]
+  onUserLocationChange?: (loc: { lat: number; lng: number; accuracy: number; heading: number | null } | null) => void
 }
 
 function formatDistance(km: number): string {
@@ -33,16 +40,37 @@ function formatDuration(min: number): string {
   return `${min} min`
 }
 
-export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins, onClose }: NavigationGuideProps) {
+function haversineKm(a: RoutePinCoord, b: RoutePinCoord): number {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(b.lat - a.lat)
+  const dLng = toRad(b.lng - a.lng)
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
+}
+
+export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins, onClose, pins, onUserLocationChange }: NavigationGuideProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [isNavigating, setIsNavigating] = useState(false)
+  const [userLoc, setUserLoc] = useState<{ lat: number; lng: number; accuracy: number; heading: number | null } | null>(null)
+  const [geoError, setGeoError] = useState<string | null>(null)
+  const [autoAdvance, setAutoAdvance] = useState(true)
+  const watchIdRef = useRef<number | null>(null)
+  const hasCenteredRef = useRef(false)
 
   const validSteps = useMemo(() => steps.filter((s) => s.location), [steps])
+  const validPins = useMemo(() => (pins ?? []).filter((p) => p.lat !== 0 || p.lng !== 0), [pins])
 
   const currentStep = validSteps[currentStepIndex]
   const isFirst = currentStepIndex === 0
   const isLast = currentStepIndex === validSteps.length - 1
   const progress = validSteps.length > 1 ? (currentStepIndex / (validSteps.length - 1)) * 100 : 100
+
+  const currentPin = validPins[currentStepIndex] ?? null
+  const distanceToNext = useMemo(() => {
+    if (!userLoc || !currentPin) return null
+    return haversineKm(userLoc, currentPin)
+  }, [userLoc, currentPin])
 
   const handlePrev = () => {
     if (!isFirst) setCurrentStepIndex((i) => i - 1)
@@ -52,8 +80,69 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
     if (!isLast) setCurrentStepIndex((i) => i + 1)
   }
 
-  const handleStart = () => setIsNavigating(true)
-  const handleStop = () => setIsNavigating(false)
+  const handleStart = useCallback(() => {
+    setIsNavigating(true)
+    setGeoError(null)
+    hasCenteredRef.current = false
+  }, [])
+  const handleStop = useCallback(() => {
+    setIsNavigating(false)
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current)
+      watchIdRef.current = null
+    }
+    setUserLoc(null)
+    onUserLocationChange?.(null)
+  }, [onUserLocationChange])
+
+  // Live geolocation tracking when navigating
+  useEffect(() => {
+    if (!isNavigating) return
+    if (!("geolocation" in navigator)) {
+      setGeoError("Geolocation is not supported on this device.")
+      return
+    }
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const loc = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          heading: pos.coords.heading,
+        }
+        setUserLoc(loc)
+        onUserLocationChange?.(loc)
+        setGeoError(null)
+        // Auto-advance if within 80m of current pin and not last
+        if (autoAdvance && validPins.length > 0) {
+          const target = validPins[currentStepIndex]
+          if (target) {
+            const d = haversineKm(loc, target)
+            if (d < 0.08 && currentStepIndex < validSteps.length - 1) {
+              setCurrentStepIndex((i) => Math.min(i + 1, validSteps.length - 1))
+            }
+          }
+        }
+      },
+      (err) => {
+        if (err.code === 1) setGeoError("Location permission denied. Enable it to use live tracking.")
+        else if (err.code === 2) setGeoError("Unable to determine your location.")
+        else setGeoError(err.message ?? "Location error")
+      },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+    )
+    return () => {
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
+      watchIdRef.current = null
+    }
+  }, [isNavigating, autoAdvance, currentStepIndex, validPins, validSteps.length, onUserLocationChange])
+
+  // Stop tracking on unmount / close
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current)
+    }
+  }, [])
 
   const stepDistance = totalDistanceKm
     ? totalDistanceKm / Math.max(validSteps.length - 1, 1)
@@ -70,16 +159,45 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
           <div className="flex items-center justify-between px-4 py-3 bg-primary text-white">
             <div className="flex items-center gap-2">
               <Navigation size={18} className="animate-pulse" />
-              <span className="text-sm font-semibold">Navigation Active</span>
+              <span className="text-sm font-semibold">Live Navigation</span>
+              {userLoc && (
+                <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 radius-pill bg-white/20 text-[11px] font-medium">
+                  <LocateFixed size={10} />
+                  Live
+                </span>
+              )}
             </div>
-            <button
-              onClick={handleStop}
-              className="flex items-center gap-1 px-3 py-1 radius-pill bg-white/20 text-white text-xs font-medium hover:bg-white/30 transition-colors border-none cursor-pointer"
-            >
-              <X size={14} />
-              Stop
-            </button>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1 text-[11px] cursor-pointer select-none">
+                <input type="checkbox" checked={autoAdvance} onChange={(e) => setAutoAdvance(e.target.checked)} className="w-3 h-3 accent-white" />
+                Auto
+              </label>
+              <button
+                onClick={handleStop}
+                className="flex items-center gap-1 px-3 py-1 radius-pill bg-white/20 text-white text-xs font-medium hover:bg-white/30 transition-colors border-none cursor-pointer"
+              >
+                <X size={14} />
+                Stop
+              </button>
+            </div>
           </div>
+
+          {geoError && (
+            <div className="mx-3 mt-3 flex items-start gap-2 px-3 py-2 radius-md bg-error-muted border border-error-border text-error-text text-xs leading-relaxed">
+              <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+              <span>{geoError}</span>
+            </div>
+          )}
+
+          {userLoc && distanceToNext !== null && (
+            <div className="mx-3 mt-3 flex items-center justify-between px-3 py-2 radius-md bg-bg-elevated border border-border">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                <Compass size={14} className={userLoc.heading !== null ? "text-primary" : "text-text-muted"} style={userLoc.heading !== null ? { transform: `rotate(${userLoc.heading}deg)` } : undefined} />
+                {distanceToNext < 1 ? `${Math.round(distanceToNext * 1000)} m to next` : `${distanceToNext.toFixed(1)} km to next`}
+              </span>
+              <span className="text-[11px] text-text-muted">±{Math.round(userLoc.accuracy)}m</span>
+            </div>
+          )}
 
           <div className="px-4 py-3 bg-bg-elevated">
             <div className="flex items-center justify-between mb-1">

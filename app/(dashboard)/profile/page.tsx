@@ -7,6 +7,7 @@ import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import dynamic from "next/dynamic"
 import { RewardsPanel, EditProfileModal } from "@/app/components/features/profile"
+import { AuthLinkPanel } from "@/app/components/features/profile/AuthLinkPanel"
 import { toastService } from "@/app/lib/services/toastService"
 
 const AvatarEditor = dynamic(() => import("@/app/components/features/profile/AvatarEditor").then((m) => m.AvatarEditor), { ssr: false })
@@ -231,6 +232,8 @@ export default function OwnProfilePage() {
             Edit Profile
           </AppButton>
         </div>
+
+        <AuthLinkPanel />
 
         <RewardsPanel
           tier={profile.rewardTier}
