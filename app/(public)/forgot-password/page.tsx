@@ -28,11 +28,21 @@ export default function ForgotPasswordPage() {
       if (res.ok) {
         setSent(true)
       } else {
-        const data = await res.json()
-        throw new Error(data.error || "Something went wrong")
+        let msg = "Something went wrong"
+        try {
+          const text = await res.text()
+          const data = text ? JSON.parse(text) as { error?: string } : null
+          if (data?.error) msg = data.error
+        } catch {
+          msg = res.status === 504 ? "Server is busy. Please try again." : "Something went wrong"
+        }
+        throw new Error(msg)
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong")
+      const m = err instanceof Error ? err.message : "Something went wrong"
+      if (m.includes("Unexpected token") || m.includes("is not valid JSON")) {
+        setError("Server is busy. Please try again in a moment.")
+      } else setError(m)
     } finally {
       setLoading(false)
     }

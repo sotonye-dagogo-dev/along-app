@@ -99,6 +99,7 @@ export default function PostDetailPage() {
   const [bookmarked, setBookmarked] = useState(false)
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [showNavigation, setShowNavigation] = useState(false)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number; heading: number | null } | null>(null)
 
   const postId = params.id as string
 
@@ -227,6 +228,16 @@ export default function PostDetailPage() {
   const initials = post ? `${post.user.firstName[0]}${post.user.lastName[0]}`.toUpperCase() : ""
 
   const routePins: RoutePin[] = useMemo(() => {
+    // Use actual waypoints if stored, otherwise fall back to start/end
+    if (post && Array.isArray((post as unknown as { waypoints?: unknown }).waypoints) && ((post as unknown as { waypoints: unknown[] }).waypoints.length > 0)) {
+      const wps = (post as unknown as { waypoints: { lat: number; lng: number }[] }).waypoints
+      return wps.map((w, i) => ({
+        lat: w.lat,
+        lng: w.lng,
+        label: routes[i]?.location ?? `Stop ${i + 1}`,
+        type: i === 0 ? "origin" as const : i === wps.length - 1 ? "destination" as const : "waypoint" as const,
+      })).filter((p) => p.lat !== 0 || p.lng !== 0)
+    }
     if (post?.startLat && post?.startLng) {
       const pins: RoutePin[] = [
         { lat: post.startLat, lng: post.startLng, label: routes[0]?.location ?? "Start", type: "origin" as const },
@@ -234,14 +245,14 @@ export default function PostDetailPage() {
       if (post.endLat && post.endLng && routes.length > 1) {
         pins.push({ lat: post.endLat, lng: post.endLng, label: routes[routes.length - 1]?.location ?? "End", type: "destination" as const })
       }
-      return pins
+      // If we have more than 2 steps but only start/end coords, interpolate intermediate for navigation
+      if (routes.length > 2 && pins.length === 2) {
+        // Keep only start/end; navigation will still step through descriptions
+      }
+      return pins.filter((p) => !(p.lat === 0 && p.lng === 0))
     }
-    return routes.map((r, i) => ({
-      lat: 0,
-      lng: 0,
-      label: r.location ?? "",
-      type: i === 0 ? "origin" as const : i === routes.length - 1 ? "destination" as const : "waypoint" as const,
-    }))
+    // No coords: return empty to avoid 0,0 markers in ocean
+    return []
   }, [routes, post?.startLat, post?.startLng, post?.endLat, post?.endLng])
 
   if (loading) {
@@ -331,6 +342,8 @@ export default function PostDetailPage() {
           showOverlay={true}
           distance={post.totalDistanceKm ?? undefined}
           duration={post.estimatedMins ?? undefined}
+          userLocation={userLocation}
+          followUser={showNavigation && !!userLocation}
         />
       </div>
 
@@ -419,7 +432,9 @@ export default function PostDetailPage() {
             steps={routes}
             totalDistanceKm={post.totalDistanceKm}
             estimatedMins={post.estimatedMins}
-            onClose={() => setShowNavigation(false)}
+            pins={routePins.map((p) => ({ lat: p.lat, lng: p.lng }))}
+            onUserLocationChange={setUserLocation}
+            onClose={() => { setShowNavigation(false); setUserLocation(null) }}
           />
         </div>
       ) : (

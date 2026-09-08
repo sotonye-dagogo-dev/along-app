@@ -36,13 +36,29 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password, rememberMe }),
       })
       if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error || "Invalid email or password")
+        let msg = "Invalid email or password"
+        try {
+          const text = await res.text()
+          const data = text ? JSON.parse(text) as { error?: string } : null
+          if (data?.error) msg = data.error
+          else if (res.status === 504 || res.status === 503) msg = "Server is busy. Please try again in a moment."
+          else if (res.status === 429) msg = "Too many attempts. Please wait and try again."
+        } catch {
+          if (res.status === 504 || res.status === 503) msg = "Server is busy. Please try again in a moment."
+          else msg = `Request failed (${res.status}). Please try again.`
+        }
+        throw new Error(msg)
       }
       toastService.success("Signed in successfully")
       setTimeout(() => { window.location.href = "/home" }, 300)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Something went wrong")
+      const msg = err instanceof Error ? err.message : "Something went wrong"
+      // Sanitize raw JSON parse errors like "Unexpected token 'A'..."
+      if (msg.includes("Unexpected token") || msg.includes("is not valid JSON")) {
+        setError("Server is busy. Please try again in a moment.")
+      } else {
+        setError(msg)
+      }
     } finally {
       setLoading(false)
     }

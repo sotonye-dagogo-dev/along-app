@@ -2,14 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 import { prisma } from "@/app/lib/db/prisma";
 
-webpush.setVapidDetails(
-  "mailto:support@along.app",
-  process.env.VAPID_PUBLIC_KEY ?? "",
-  process.env.VAPID_PRIVATE_KEY ?? "",
-);
+function ensureVapid() {
+  const pub = process.env.VAPID_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+  const priv = process.env.VAPID_PRIVATE_KEY ?? "";
+  const mail = process.env.VAPID_MAILTO ?? "mailto:support@along.app";
+  if (!pub || !priv) return false;
+  try {
+    webpush.setVapidDetails(mail, pub, priv);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
+    if (!ensureVapid()) {
+      return NextResponse.json({ error: "Push not configured" }, { status: 503 });
+    }
     const authHeader = request.headers.get("authorization");
     if (authHeader !== `Bearer ${process.env.QSTASH_TOKEN}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

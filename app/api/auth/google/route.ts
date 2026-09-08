@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -12,6 +12,9 @@ export async function GET() {
       );
     }
 
+    const url = new URL(request.url);
+    const state = url.searchParams.get("state") ?? "";
+
     const redirectUri = `${appUrl}/api/auth/google/callback`;
 
     const params = new URLSearchParams({
@@ -19,6 +22,7 @@ export async function GET() {
       redirect_uri: redirectUri,
       response_type: "code",
       scope: "openid email profile",
+      ...(state ? { state } : {}),
     });
 
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;

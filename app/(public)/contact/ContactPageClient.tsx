@@ -14,13 +14,22 @@ export default function ContactPageClient() {
   const handleSubmit = async (_data: Record<string, unknown>) => {
     setLoading(true);
     try {
-      await fetch("/api/contact", {
+      const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(_data),
       });
+      if (!res.ok) {
+        let msg = "Failed to send message"
+        try {
+          const t = await res.text()
+          const d = t ? JSON.parse(t) as { error?: string } : null
+          if (d?.error) msg = d.error
+        } catch {}
+        throw new Error(msg)
+      }
     } catch {
-      // silently handle
+      // handled below; still show submitted but toast error
     } finally {
       setLoading(false);
       setSubmitted(true);
