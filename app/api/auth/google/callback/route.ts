@@ -149,7 +149,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Google callback error:", error);
     Sentry.captureException(error);
-    if (error instanceof Error && (error.name === "PrismaClientKnownRequestError" || error.name === "PrismaClientInitializationError")) {
+    const code = (error as any)?.code;
+    const name = (error as any)?.name;
+    if (name === "PrismaClientKnownRequestError" || name === "PrismaClientInitializationError" || code === "P2022" || code === "P1001" || code === "P1002") {
       return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
     }
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
