@@ -1,9 +1,16 @@
 import jwt from "jsonwebtoken";
 import { prisma } from "@/app/lib/db/prisma";
 import { cookies } from "next/headers";
-const JWT_SECRET = process.env.JWT_SECRET || "dev-jwt-secret";
+const JWT_SECRET =
+  process.env.JWT_SECRET ||
+  process.env.JWT_ACCESS_SECRET ||
+  process.env.NEXT_PUBLIC_JWT_SECRET ||
+  "dev-jwt-secret";
 const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || "dev-refresh-secret";
+  process.env.JWT_REFRESH_SECRET ||
+  process.env.JWT_SECRET ||
+  process.env.JWT_ACCESS_SECRET ||
+  "dev-refresh-secret";
 
 interface JwtPayload {
   userId: string;
