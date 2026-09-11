@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { hashPassword } from "@/app/lib/utils/security";
@@ -42,6 +43,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: hasPassword ? "Password updated" : "Password added. You can now sign in with email and password." }, { status: 200 });
   } catch (error) {
     console.error("Link password error:", error);
+    Sentry.captureException(error);
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid request format. Please check your input." }, { status: 400 });
+    }
+    if (error instanceof Error && (error.name === "PrismaClientKnownRequestError" || error.name === "PrismaClientInitializationError")) {
+      return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+    }
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

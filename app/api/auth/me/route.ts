@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { verifyAccessToken } from "@/app/lib/utils/auth";
 import { clearAuthCookies } from "@/app/lib/utils/cookies";
@@ -17,7 +18,7 @@ export async function GET() {
     try {
       payload = verifyAccessToken(token);
     } catch {
-      clearAuthCookies();
+      await clearAuthCookies();
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
@@ -44,13 +45,17 @@ export async function GET() {
     });
 
     if (!user) {
-      clearAuthCookies();
+      await clearAuthCookies();
       return NextResponse.json({ error: "User not found" }, { status: 401 });
     }
 
     return NextResponse.json({ user }, { status: 200 });
   } catch (error) {
     console.error("Me error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    Sentry.captureException(error);
+    if (error instanceof Error && (error.name === "PrismaClientKnownRequestError" || error.name === "PrismaClientInitializationError")) {
+      return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+    }
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import * as Sentry from "@sentry/nextjs";
 import { signAccessToken, verifyRefreshToken } from "@/app/lib/utils/auth";
 import { setAuthCookies, clearAuthCookies } from "@/app/lib/utils/cookies";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     try {
       payload = verifyRefreshToken(refreshToken);
     } catch {
-      clearAuthCookies();
+      await clearAuthCookies();
       return NextResponse.json({ error: "Invalid refresh token" }, { status: 401 });
     }
 
@@ -30,6 +31,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ accessToken: newAccessToken }, { status: 200 });
   } catch (error) {
     console.error("Token refresh error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    Sentry.captureException(error);
+    if (error instanceof Error && (error.name === "PrismaClientKnownRequestError" || error.name === "PrismaClientInitializationError")) {
+      return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+    }
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
