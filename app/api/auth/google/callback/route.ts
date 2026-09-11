@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { signAccessToken, signRefreshToken } from "@/app/lib/utils/auth";
 import { setAuthCookies } from "@/app/lib/utils/cookies";
@@ -147,6 +148,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${appUrl}/home`, { status: 307 });
   } catch (error) {
     console.error("Google callback error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    Sentry.captureException(error);
+    if (error instanceof Error && (error.name === "PrismaClientKnownRequestError" || error.name === "PrismaClientInitializationError")) {
+      return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+    }
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

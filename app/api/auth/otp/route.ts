@@ -1,21 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { OTP_SCHEMA } from "@/app/lib/schemas/auth";
 import { verifyPassword } from "@/app/lib/utils/security";
 import { signAccessToken, signRefreshToken } from "@/app/lib/utils/auth";
 import { setAuthCookies } from "@/app/lib/utils/cookies";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
-
-const otpStore = new Map<string, { hash: string; expiry: number }>();
-
-async function getRedis() {
-  try {
-    const { Redis } = await import("@upstash/redis");
-    return new Redis({ url: process.env.UPSTASH_REDIS_REST_URL!, token: process.env.UPSTASH_REDIS_REST_TOKEN! });
-  } catch {
-    return null;
-  }
-}
+import { getOtp, delOtp } from "@/app/lib/services/otpStore";
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,18 +25,7 @@ export async function POST(request: NextRequest) {
     const { email, otp, rememberMe } = parsed.data;
 
     const otpKey = `otp:${email}`;
-    let storedHash: string | null = null;
-
-    const redis = await getRedis();
-
-    if (redis) {
-      storedHash = await redis.get(otpKey);
-    } else {
-      const entry = otpStore.get(otpKey);
-      if (entry && entry.expiry > Date.now()) {
-        storedHash = entry.hash;
-      }
-    }
+    const storedHash = await getOtp(otpKey);
 
     if (!storedHash) {
       return NextResponse.json({ error: "OTP expired or invalid" }, { status: 400 });
@@ -62,11 +42,7 @@ export async function POST(request: NextRequest) {
       data: { verified: true },
     });
 
-    if (redis) {
-      await redis.del(otpKey);
-    } else {
-      otpStore.delete(otpKey);
-    }
+    await delOtp(otpKey);
 
     const accessToken = signAccessToken({ userId: user.id, role: user.role }, rememberMe);
     const refreshToken = signRefreshToken({ userId: user.id, role: user.role }, rememberMe);
@@ -78,6 +54,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ user: userWithoutPassword }, { status: 200 });
   } catch (error) {
     console.error("OTP verification error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    Sentry.captureException(error);
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid request format. Please check your input." }, { status: 400 });
+    }
+    if (error instanceof Error) {
+      if (error.name === "PrismaClientKnownRequestError" || error.name === "PrismaClientInitializationError") {
+        return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+      }
+    }
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

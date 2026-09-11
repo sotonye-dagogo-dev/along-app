@@ -5,20 +5,10 @@ import { REGISTER_SCHEMA } from "@/app/lib/schemas/auth";
 import { hashPassword } from "@/app/lib/utils/security";
 import { qstashService } from "@/app/lib/services/qstashService";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
+import { setOtp } from "@/app/lib/services/otpStore";
 
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
-
-const otpStore = new Map<string, { hash: string; expiry: number }>();
-
-async function getRedis() {
-  try {
-    const { Redis } = await import("@upstash/redis");
-    return new Redis({ url: process.env.UPSTASH_REDIS_REST_URL!, token: process.env.UPSTASH_REDIS_REST_TOKEN! });
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,14 +72,7 @@ export async function POST(request: NextRequest) {
     const otpHash = await hashPassword(otp);
 
     const otpKey = `otp:${email}`;
-
-    const redis = await getRedis();
-
-    if (redis) {
-      await redis.set(otpKey, otpHash, { ex: 900 });
-    } else {
-      otpStore.set(otpKey, { hash: otpHash, expiry: Date.now() + 900000 });
-    }
+    await setOtp(otpKey, otpHash, 900);
 
     // Non-blocking email send — never hold request waiting for Resend
     const sendInBackground = async () => {

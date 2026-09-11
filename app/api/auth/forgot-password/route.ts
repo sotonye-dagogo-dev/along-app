@@ -4,18 +4,8 @@ import { prisma } from "@/app/lib/db/prisma";
 import { hashPassword } from "@/app/lib/utils/security";
 import { sendPasswordResetEmail } from "@/app/lib/services/emailService";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
+import { setResetToken } from "@/app/lib/services/otpStore";
 import crypto from "crypto";
-
-const resetTokenStore = new Map<string, { email: string; hash: string; expiry: number }>();
-
-async function getRedis() {
-  try {
-    const { Redis } = await import("@upstash/redis");
-    return new Redis({ url: process.env.UPSTASH_REDIS_REST_URL!, token: process.env.UPSTASH_REDIS_REST_TOKEN! });
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,15 +24,8 @@ export async function POST(request: NextRequest) {
 
     const token = crypto.randomBytes(32).toString("hex");
     const tokenHash = await hashPassword(token);
-    const expiry = Date.now() + 3600000;
     const key = `reset:${email}`;
-
-    const redis = await getRedis();
-    if (redis) {
-      await redis.set(key, tokenHash, { ex: 3600 });
-    } else {
-      resetTokenStore.set(key, { email, hash: tokenHash, expiry });
-    }
+    await setResetToken(key, tokenHash, 3600);
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const resetLink = `${appUrl}/reset-password/${token}?email=${encodeURIComponent(email)}`;
@@ -53,6 +36,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Forgot password error:", error);
     Sentry.captureException(error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid request format. Please check your input." }, { status: 400 });
+    }
+    if (error instanceof Error && (error.name === "PrismaClientKnownRequestError" || error.name === "PrismaClientInitializationError")) {
+      return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+    }
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

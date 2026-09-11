@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET(request: Request) {
   try {
@@ -30,6 +31,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(googleAuthUrl, { status: 307 });
   } catch (error) {
     console.error("Google auth error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    Sentry.captureException(error);
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

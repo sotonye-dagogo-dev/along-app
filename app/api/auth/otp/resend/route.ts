@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { hashPassword } from "@/app/lib/utils/security";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
-
-const otpStore = new Map<string, { hash: string; expiry: number }>();
-
-async function getRedis() {
-  try {
-    const { Redis } = await import("@upstash/redis");
-    return new Redis({ url: process.env.UPSTASH_REDIS_REST_URL!, token: process.env.UPSTASH_REDIS_REST_TOKEN! });
-  } catch {
-    return null;
-  }
-}
+import { setOtp } from "@/app/lib/services/otpStore";
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,12 +21,7 @@ export async function POST(request: NextRequest) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await hashPassword(otp);
     const otpKey = `otp:${email}`;
-    const redis = await getRedis();
-    if (redis) {
-      await redis.set(otpKey, otpHash, { ex: 900 });
-    } else {
-      otpStore.set(otpKey, { hash: otpHash, expiry: Date.now() + 900000 });
-    }
+    await setOtp(otpKey, otpHash, 900);
 
     // Non-blocking send
     void (async () => {
@@ -51,6 +37,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: "OTP resent" }, { status: 200 });
   } catch (error) {
     console.error("OTP resend error:", error);
+    Sentry.captureException(error);
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid request format. Please check your input." }, { status: 400 });
+    }
+    if (error instanceof Error && (error.name === "PrismaClientKnownRequestError" || error.name === "PrismaClientInitializationError")) {
+      return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+    }
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
