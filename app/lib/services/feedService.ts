@@ -37,6 +37,51 @@ interface FeedOptions {
   limit?: number;
 }
 
+function isMissingColumnError(error: unknown): boolean {
+  return error instanceof Error && ((error as any).code === "P2022" || error.name === "PrismaClientKnownRequestError" && (error as any).code === "P2022");
+}
+
+async function safeFindManyPosts(args: Parameters<typeof prisma.post.findMany>[0]): Promise<any[]> {
+  try {
+    return await (prisma.post.findMany as any)(args);
+  } catch (error) {
+    if (isMissingColumnError(error) && (args as any)?.include?.user?.select?.avatarConfig) {
+      // Retry without avatarConfig — production DB may not yet have this column if migration not applied
+      const fallbackArgs = {
+        ...args,
+        include: {
+          ...(args as any).include,
+          user: {
+            select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
+          },
+        },
+      };
+      return await (prisma.post.findMany as any)(fallbackArgs);
+    }
+    throw error;
+  }
+}
+
+async function safeFindUniquePost(args: Parameters<typeof prisma.post.findUnique>[0]): Promise<any> {
+  try {
+    return await (prisma.post.findUnique as any)(args);
+  } catch (error) {
+    if (isMissingColumnError(error) && (args as any)?.include?.user?.select?.avatarConfig) {
+      const fallbackArgs = {
+        ...args,
+        include: {
+          ...(args as any).include,
+          user: {
+            select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
+          },
+        },
+      };
+      return await (prisma.post.findUnique as any)(fallbackArgs);
+    }
+    throw error;
+  }
+}
+
 class FeedService {
   async getFeed(userId: string, options: FeedOptions = {}): Promise<{ posts: FeedPost[]; nextCursor: string | null }> {
     const config = DEFAULT_FEED_CONFIG;
@@ -78,7 +123,7 @@ class FeedService {
     const activeTags = [...new Set(userActivities.filter(a => a.tagId).map(a => a.tagId as string))];
 
     // Fetch posts from following users (weighted highest)
-    const followingPosts = followingIds.length > 0 ? await prisma.post.findMany({
+    const followingPosts = followingIds.length > 0 ? await safeFindManyPosts({
       where: { userId: { in: followingIds } },
       include: {
         user: {
@@ -90,7 +135,7 @@ class FeedService {
     }) : [];
 
     // Trending posts (high engagement)
-    const trendingPosts = await prisma.post.findMany({
+    const trendingPosts = await safeFindManyPosts({
       where: {
         ...(cursor ? { id: { lt: cursor } } : {}),
         ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}),
@@ -106,7 +151,7 @@ class FeedService {
     });
 
     // Tag-matched posts
-    const tagPosts = activeTags.length > 0 ? await prisma.post.findMany({
+    const tagPosts = activeTags.length > 0 ? await safeFindManyPosts({
       where: {
         tags: { hasSome: activeTags },
         ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}),
@@ -187,7 +232,7 @@ class FeedService {
   }
 
   async getPostById(postId: string, userId?: string): Promise<FeedPost | null> {
-    const post = await prisma.post.findUnique({
+    const post = await safeFindUniquePost({
       where: { id: postId },
       include: {
         user: {
