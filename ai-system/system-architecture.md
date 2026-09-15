@@ -1,8 +1,8 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 5)
+> - last-updated-by: execute-feature 2026-09-15
+> - last-verified-against-code: 2026-09-15
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
@@ -215,7 +215,9 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - Prior codebase with Phases 1-7 was removed as part of a planned clean rebuild
 - Two `useRequireAuth` hooks exist: one in `app/hooks/` (router-based redirect) and one in `app/lib/hooks/` (permission check) — potential confusion
 - Blog posts are read from the filesystem at request time (no CMS integration yet)
-- `app/lib/streams/` directory is empty — placeholder for future reactive streams
+- `app/lib/streams/feedStream.ts` now implements RxJS reactive feed with 30s polling
+- Image upload is now Cloudinary-backed via `app/api/upload` (multipart, 5MB/file, 10 files max) — requires CLOUDINARY_* env vars; `next.config.mjs` now allowlists only known image hosts (was wildcard `**`)
+- QStash workers now use cloned request body to avoid double-consume `request.text()` / `request.json()` race (fixed 500 on every worker invocation)
 
 ---
 

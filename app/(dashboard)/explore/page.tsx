@@ -86,18 +86,35 @@ export default function ExplorePage() {
     const load = async () => {
       try {
         const res = await fetch("/api/posts?limit=100")
-        const data = await res.json()
-        const posts = data.posts ?? []
+        let data: { posts?: unknown[]; error?: string } = { posts: [] }
+        try {
+          const text = await res.text()
+          data = text ? JSON.parse(text) : { posts: [] }
+        } catch {
+          // Non-JSON response (e.g. 500 HTML) — treat as empty but log
+          console.error("Explore feed returned non-JSON")
+          data = { posts: [] }
+        }
+        if (!res.ok) {
+          console.error("Explore fetch failed:", (data as { error?: string }).error ?? res.status)
+          return
+        }
+        const posts = (data.posts ?? []) as Array<{
+          id: string; title: string; startLat?: number | null; startLng?: number | null;
+          likes: number; comments: number; tags: string[]; validityScore: number; validityTier: string | null;
+          region: string | null; routes?: unknown; createdAt: string; user: { userName: string; firstName: string; lastName: string }
+        }>
+        // Only pins with coordinates are map-placeable; keep all for list but filter for map
         const mapped: PostPin[] = posts
-          .filter((p: { startLat?: number | null; startLng?: number | null }) => p.startLat && p.startLng)
-          .map((p: { id: string; title: string; startLat: number; startLng: number; likes: number; comments: number; tags: string[]; validityScore: number; validityTier: string | null; region: string | null; routes?: unknown; createdAt: string; user: { userName: string; firstName: string; lastName: string } }) => {
+          .filter((p) => p.startLat != null && p.startLng != null && Number.isFinite(p.startLat) && Number.isFinite(p.startLng))
+          .map((p) => {
             const routes = Array.isArray(p.routes) ? p.routes as { vehicle?: string }[] : []
             const vehicles = [...new Set(routes.map((r) => r.vehicle).filter(Boolean))] as string[]
             return {
               id: p.id,
               title: p.title,
-              lat: p.startLat,
-              lng: p.startLng,
+              lat: p.startLat as number,
+              lng: p.startLng as number,
               likes: p.likes,
               comments: p.comments,
               tags: p.tags,
@@ -110,7 +127,9 @@ export default function ExplorePage() {
             }
           })
         setPins(mapped)
-      } catch { /* ignore */ }
+      } catch (e) {
+        console.error("Explore load error:", e)
+      }
     }
     load()
   }, [])

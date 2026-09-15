@@ -106,64 +106,57 @@ class FeedService {
       }
     }
 
-    // Get users the current user follows
-    const following = await prisma.follow.findMany({
-      where: { followerId: userId },
-      select: { followingId: true },
-    });
+    // Get users the current user follows + activity tags in parallel
+    const [following, userActivities] = await Promise.all([
+      prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } }),
+      prisma.userActivity.findMany({ where: { userId }, select: { tagId: true }, take: 50, orderBy: { createdAt: "desc" } }),
+    ]);
     const followingIds = following.map((f) => f.followingId);
-
-    // Get user's activity tags for personalization
-    const userActivities = await prisma.userActivity.findMany({
-      where: { userId },
-      select: { tagId: true },
-      take: 50,
-      orderBy: { createdAt: "desc" },
-    });
     const activeTags = [...new Set(userActivities.filter(a => a.tagId).map(a => a.tagId as string))];
 
-    // Fetch posts from following users (weighted highest)
-    const followingPosts = followingIds.length > 0 ? await safeFindManyPosts({
-      where: { userId: { in: followingIds } },
-      include: {
-        user: {
-          select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: Math.ceil(limit * 2),
-    }) : [];
+    // Resolve cursor to createdAt for correct pagination (cuid is time-sortable but not lexical lt)
+    let cursorCreatedAt: Date | null = null;
+    if (cursor) {
+      try {
+        const cursorPost = await prisma.post.findUnique({ where: { id: cursor }, select: { createdAt: true } });
+        if (cursorPost) cursorCreatedAt = cursorPost.createdAt;
+      } catch { /* ignore */ }
+    }
+    const cursorFilter = cursorCreatedAt ? { createdAt: { lt: cursorCreatedAt } } : {};
+    const recentCursorFilter = cursorCreatedAt ? { createdAt: { lt: cursorCreatedAt } } : {};
 
-    // Trending posts (high engagement)
-    const trendingPosts = await safeFindManyPosts({
-      where: {
-        ...(cursor ? { id: { lt: cursor } } : {}),
-        ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}),
-        createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-      },
-      include: {
-        user: {
-          select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
+    // Fetch posts in parallel: following, trending, tag-matched, plus recent fallback for cold-start
+    const [followingPosts, trendingPosts, tagPosts, recentPosts] = await Promise.all([
+      followingIds.length > 0 ? safeFindManyPosts({
+        where: { userId: { in: followingIds }, ...cursorFilter },
+        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } },
+        orderBy: { createdAt: "desc" },
+        take: Math.ceil(limit * 2),
+      }) : Promise.resolve([]),
+      safeFindManyPosts({
+        where: {
+          ...cursorFilter,
+          ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}),
+          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), ...(cursorCreatedAt ? { lt: cursorCreatedAt } : {}) },
         },
-      },
-      orderBy: [{ likes: "desc" }, { comments: "desc" }],
-      take: Math.ceil(limit * 1.5),
-    });
-
-    // Tag-matched posts
-    const tagPosts = activeTags.length > 0 ? await safeFindManyPosts({
-      where: {
-        tags: { hasSome: activeTags },
-        ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}),
-      },
-      include: {
-        user: {
-          select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: Math.ceil(limit * 1.5),
-    }) : [];
+        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } },
+        orderBy: [{ likes: "desc" }, { comments: "desc" }],
+        take: Math.ceil(limit * 1.5),
+      }),
+      activeTags.length > 0 ? safeFindManyPosts({
+        where: { tags: { hasSome: activeTags }, ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}), ...cursorFilter },
+        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } },
+        orderBy: { createdAt: "desc" },
+        take: Math.ceil(limit * 1.5),
+      }) : Promise.resolve([]),
+      // Recent posts fallback ensures new posts always surface, even for cold-start users
+      safeFindManyPosts({
+        where: { ...recentCursorFilter },
+        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      }),
+    ]);
 
     // Get user's likes and bookmarks for enrichment
     const [userLikes, userBookmarks] = await Promise.all([
@@ -179,13 +172,16 @@ class FeedService {
     const likedPostIds = new Set(userLikes.map((l) => l.postId));
     const bookmarkedPostIds = new Set(userBookmarks.map((b) => b.postId));
 
-    // Merge and score posts
+    // Merge and score posts — include recency bonus and recent fallback
     const postMap = new Map<string, { post: FeedPost; score: number }>();
 
-    const addWithScore = (posts: typeof followingPosts, weight: number) => {
+    const addWithScore = (posts: typeof trendingPosts, weight: number, recencyBonus = 0) => {
       for (const p of posts) {
         const existing = postMap.get(p.id);
-        const increment = weight * (p.isPlatformGen ? 0.5 : 1.0);
+        // Recency bonus: posts within last 24h get extra 0.05, decaying linearly over 7 days
+        const ageHours = (Date.now() - new Date(p.createdAt).getTime()) / 3600000;
+        const recency = recencyBonus > 0 ? Math.max(0, recencyBonus * (1 - ageHours / (7 * 24))) : 0;
+        const increment = weight * (p.isPlatformGen ? 0.5 : 1.0) + recency;
         if (existing) {
           existing.score += increment;
         } else {
@@ -202,12 +198,31 @@ class FeedService {
     };
 
     addWithScore(followingPosts, config.followingWeight);
-    addWithScore(trendingPosts, config.trendingWeight);
+    addWithScore(trendingPosts, config.trendingWeight, 0.03);
     addWithScore(tagPosts, config.matchingTagsWeight);
+    // Recent posts with higher recency bonus ensures new posts surface immediately
+    addWithScore(recentPosts, 0.15, 0.08);
 
-    // Sort by score, then remove score property
+    // If total scored posts < limit (e.g. cold-start with few posts), ensure we still fill up to limit with recent posts not yet scored
+    if (postMap.size < limit) {
+      for (const p of recentPosts) {
+        if (!postMap.has(p.id)) {
+          const ageHours = (Date.now() - new Date(p.createdAt).getTime()) / 3600000;
+          const recency = Math.max(0, 0.08 * (1 - ageHours / (7 * 24)));
+          postMap.set(p.id, {
+            post: { ...p, _isLiked: likedPostIds.has(p.id), _isBookmarked: bookmarkedPostIds.has(p.id) } as FeedPost,
+            score: 0.15 + recency,
+          });
+        }
+      }
+    }
+
+    // Sort by score, then by recency as tie-breaker
     const scored = Array.from(postMap.values())
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return new Date(b.post.createdAt).getTime() - new Date(a.post.createdAt).getTime();
+      })
       .slice(0, limit);
 
     const posts = scored.map((s) => s.post);

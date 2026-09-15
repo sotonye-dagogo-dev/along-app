@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 5)
+> - last-updated-by: execute-feature 2026-09-15
+> - last-verified-against-code: 2026-09-15
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -62,6 +62,7 @@ along-app/
 │   │   │   ├── posts/       → MDX blog post files
 │   │   │   └── [slug]/      → Blog post detail page
 │   ├── api/                 → REST API routes
+│   │   ├── upload/          → Image upload (Cloudinary multipart)
 │   │   ├── push/            → Push notification API
    │   │   │   ├── subscribe/   → POST: subscribe to push
    │   │   │   ├── unsubscribe/ → POST: unsubscribe from push

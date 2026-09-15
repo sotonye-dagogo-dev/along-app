@@ -696,3 +696,39 @@ Fixed 5 build errors found during Vercel deployment: duplicate `formatCount` fun
 
 **Notes / Blockers:**
 - No blockers. `pull-template-update.md` never auto-applies — this entry records the comparison result per its contract; human review of the resulting diff is the final gate.
+
+---
+
+## Session 2026-09-15 — Fix: Image Upload + Feed/Explore Visibility + Production Audit (execute-feature)
+
+**Completed:**
+- Tester feedback resolved: image upload now functional via Cloudinary (/api/upload), ShareRouteModal handles drag-drop/browse/preview/remove/fallback geocode; feed now shows new posts for cold-start users (recent fallback + recency scoring, parallel queries, cursor fix, cache bust); explore no longer silently filters/allows HTML errors via safe parse
+- Platform audit: QStash body-consumption fixed, error sanitization (safeFetch/safeJsonParse patterns adopted in feed/explore/home), image wildcard allowlist tightened, vercel headers de-duped, JWT secret handling hardened, env missing QSTASH_TOKEN added
+- QA gate: `npx tsc --noEmit` 0 errors, `next build` 77 pages, `npm test` 91/91 passing
+
+**Files Modified:**
+- `app/api/upload/route.ts` — new, Cloudinary multipart upload
+- `app/components/features/posts/ShareRouteModal.tsx` — image upload wiring, fallback geocode, validation, draft
+- `app/lib/services/feedService.ts` — parallel queries, cursor→createdAt, recent fallback, recency scoring
+- `app/api/posts/route.ts` — SyntaxError guard, avatarConfig fallback, cache bust, sanitized errors
+- `app/lib/services/qstashService.ts` — clone-before-text, {valid,bodyText}
+- `app/api/workers/feed-invalidate/route.ts`, `validity-recompute/route.ts`, `rewards/route.ts` — use bodyText
+- `app/lib/streams/feedStream.ts` — refresh robustness
+- `app/(dashboard)/explore/page.tsx` — safe JSON parse
+- `app/(dashboard)/home/page.tsx` — toast + double refresh
+- `app/lib/utils/auth.ts`, `middleware.ts` — secret handling
+- `next.config.mjs` — image allowlist
+- `vercel.json` — headers + maxDuration
+- `.env.example` — QSTASH_TOKEN
+- `ai-system/index/repo-map.md`, `system-architecture.md`, `summaries/dev-history.md` — freshness + docs
+
+**Next Task:**
+Live map tracking navigation, carto.com basemap API key wiring, auth provider linking
+
+**Assumptions Made:**
+- Cloudinary env vars (CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET) will be set in production; upload returns 503 with friendly message if missing
+- Upstash Redis env vars are set in production; feed caching gracefully falls back to DB if unavailable
+- Nominatim OSM remains available for fallback geocode on submit
+
+**Notes / Blockers:**
+- Remaining P1 audit items (in-memory rate limiter → Upstash Redis, supercluster for explore clustering, axios/cors unused deps) intentionally deferred — non-blocking for current release but tracked in Next Sprint Focus above

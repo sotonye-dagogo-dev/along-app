@@ -1,16 +1,19 @@
 import jwt from "jsonwebtoken";
 import { prisma } from "@/app/lib/db/prisma";
 import { cookies } from "next/headers";
-const JWT_SECRET =
-  process.env.JWT_SECRET ||
-  process.env.JWT_ACCESS_SECRET ||
-  process.env.NEXT_PUBLIC_JWT_SECRET ||
-  "dev-jwt-secret";
-const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET ||
-  process.env.JWT_SECRET ||
-  process.env.JWT_ACCESS_SECRET ||
-  "dev-refresh-secret";
+function resolveSecret(envKey: string, fallbacks: string[], devDefault: string): string {
+  const val = (process.env[envKey] as string | undefined) || fallbacks.map((k) => process.env[k] as string | undefined).find(Boolean);
+  if (!val && process.env.NODE_ENV === "production") {
+    console.error(`${envKey} missing in production — using insecure fallback. Set ${envKey} env var.`);
+  }
+  return val || devDefault;
+}
+const JWT_SECRET = resolveSecret("JWT_SECRET", ["JWT_ACCESS_SECRET"], "dev-jwt-secret");
+// Do not expose JWT via NEXT_PUBLIC_*; warn if present to prevent secret leak
+if (process.env.NEXT_PUBLIC_JWT_SECRET && process.env.NODE_ENV === "production") {
+  console.warn("NEXT_PUBLIC_JWT_SECRET is set — this exposes JWT secret to the client. Remove it.");
+}
+const JWT_REFRESH_SECRET = resolveSecret("JWT_REFRESH_SECRET", ["JWT_SECRET", "JWT_ACCESS_SECRET"], "dev-refresh-secret");
 
 interface JwtPayload {
   userId: string;
