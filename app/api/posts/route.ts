@@ -73,16 +73,11 @@ export async function POST(request: NextRequest) {
     qstashService.publishFeedInvalidation({ followersOfUserId: user.id as string, userIds: [user.id as string] });
     qstashService.publishValidityRecompute({ postId: post.id });
 
-    // Optimistically clear Redis cache for author so immediate refresh sees the new post even before QStash worker runs
+    // Optimistically clear Redis cache for author so immediate refresh sees the new post even before QStash worker runs — never blocks response
     try {
-      const { Redis } = await import("@upstash/redis");
-      const url = process.env.UPSTASH_REDIS_REST_URL;
-      const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-      if (url && token) {
-        const redis = new Redis({ url, token });
-        const { CACHE_KEYS } = await import("@/app/lib/config");
-        await redis.del(CACHE_KEYS.feed(user.id as string));
-      }
+      const { redis } = await import("@/app/lib/db/redis");
+      const { CACHE_KEYS } = await import("@/app/lib/config");
+      await redis.del(CACHE_KEYS.feed(user.id as string));
     } catch { /* non-critical */ }
 
     return NextResponse.json({ post: { ...post, validityScore: validityResult.score, validityTier: validityResult.tier } }, { status: 201 });

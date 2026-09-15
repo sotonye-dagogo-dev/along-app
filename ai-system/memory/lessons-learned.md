@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-09-15
+> - last-updated-by: fix-build 2026-09-15
 > - last-verified-against-code: 2026-09-15
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -230,6 +230,24 @@ Installed deps + polished UI do not imply wiring. Every file-input UI must have:
 
 **Apply When:**
 Building any file/media upload — verify end-to-end (input → FormData → API → Cloudinary/storage → URL → persisted record) rather than trusting UI copy.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Redis Timeout Must Not Block User-Facing Requests
+
+**Context:**
+`POST /api/auth/forgot-password` hung for 10s and returned 504 because `otpStore.setResetToken` awaited `redis.set()` to a deprovisioned Upstash host (`willing-gazelle-101748.upstash.io` DNS ENOTFOUND, 6s fetch timeout) and then awaited `sendPasswordResetEmail` sequentially. The same blocking pattern existed in `feedService`, `posts/route`, and QStash workers which used `new Redis({ url: process.env.UPSTASH_REDIS_REST_URL!, token: ...! })` with no timeout.
+
+**What We Learned:**
+1. Wrap every Redis operation in `Promise.race` with <1.5s timeout and fallback to in-memory or DB — cache must be non-critical.
+2. Use a lazy singleton (`app/lib/db/redis.ts`) that resolves `UPSTASH_REDIS_REST_URL || REDIS_URL` and never `new Redis` at import time; guard `replace_me` and non-https values.
+3. Never `await` email sending on the hot path — use `waitUntil` background pattern as in `register`.
+
+**Apply When:**
+Any route that touches Redis or Resend on the request hot path — always timeout-guard and make side effects (email, feed invalidation) background work.
 
 **Supersedes:** None
 **Superseded by:** None

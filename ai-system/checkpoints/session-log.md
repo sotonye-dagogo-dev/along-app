@@ -732,3 +732,40 @@ Live map tracking navigation, carto.com basemap API key wiring, auth provider li
 
 **Notes / Blockers:**
 - Remaining P1 audit items (in-memory rate limiter → Upstash Redis, supercluster for explore clustering, axios/cors unused deps) intentionally deferred — non-blocking for current release but tracked in Next Sprint Focus above
+
+---
+
+## Session 2026-09-15 — Fix-Build: Forgot-Password 504 & Platform-Wide Redis Hardening
+
+**Completed:**
+- Diagnosed 504 FUNCTION_INVOCATION_TIMEOUT on `POST /api/auth/forgot-password`: eager `new Redis` with wrong env names (`REDIS_URL` vs `UPSTASH_REDIS_REST_URL`) + no per-op timeout causing DNS `ENOTFOUND willing-gazelle-101748.upstash.io` to hang 6s and email await to exceed 10s Vercel limit
+- Hardened Redis layer: `app/lib/db/redis.ts` now lazy singleton with `UPSTASH_REDIS_REST_URL || REDIS_URL` fallback, guards `replace_me`/non-https, 1.2s `withTimeout` wrapper, safe `get/set/del` that warn+no-op; `otpStore.ts` singleton cached client + 1.5s timeout per op with fallback to in-memory Map
+- Platform-wide audit: `feedService.ts`, `app/api/posts/route.ts`, `app/api/workers/feed-invalidate` & `validity-recompute` migrated from direct `new Redis(!)` to shared wrapper; `siteConfig.ts` now inherits safe wrapper
+- Made forgot-password non-blocking: `maxDuration=15`, `force-dynamic`, email lowercasing + format validation, `setResetToken` now <1.5s, `sendPasswordResetEmail` via `waitUntil` background task (fire-and-forget) matching register pattern, generic 200 for unknown emails
+- Updated `vercel.json` maxDuration map for forgot/reset-password
+- Logged pattern in `repair-system.md`, verified `npx tsc --noEmit` 0 errors, `npm test` 91/91, `next build` 76 pages
+
+**Files Modified:**
+- app/lib/db/redis.ts — lazy singleton, env alias, timeout-guarded wrapper
+- app/lib/services/otpStore.ts — singleton cache, withTimeout, in-memory fallback <1.5s
+- app/lib/services/feedService.ts — uses shared redis wrapper for cache get/set
+- app/api/auth/forgot-password/route.ts — non-blocking email, validation, maxDuration
+- app/api/posts/route.ts — safe redis.del via wrapper
+- app/api/workers/feed-invalidate/route.ts — uses shared wrapper
+- app/api/workers/validity-recompute/route.ts — uses shared wrapper
+- vercel.json — added forgot/reset-password maxDuration
+- ai-system/repair-system.md — new entry: Forgot-Password 504 Redis hardening
+- ai-system/testing/test-results.md — updated build/test metadata
+- ai-system/summaries/dev-history.md — added session entry (via update-ai-system chain)
+
+**Next Task:**
+- Execute update-ai-system.md deep sync (repo-map, dependency-graph, system-architecture, project-plan freshness) — already run as part of this fix-build chain
+- Live map tracking, carto basemap API key wiring, auth provider linking remain in next sprint backlog
+
+**Assumptions Made:**
+- Upstash Redis may be absent or point at deprovisioned host in production until env var rotation; all hot-path Redis must degrade to memory/DB within 1.5s
+- `RESEND_API_KEY` may be absent; forgot-password background email logs reset link in dev and returns generic success in prod
+
+**Notes / Blockers:**
+- Vercel env var `UPSTASH_REDIS_REST_URL` currently points at `willing-gazelle-101748.upstash.io` which is ENOTFOUND — needs rotation to valid Upstash instance or removal to rely on in-memory fallback
+- Rate limiter remains in-memory (`app/lib/utils/rateLimit.ts`) — tracked as P1 to migrate to Upstash Redis with sliding window
