@@ -60,6 +60,11 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
+  const [images, setImages] = useState<string[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const doGeocode = useCallback(async (query: string, stepIndex: number) => {
@@ -138,7 +143,7 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
   const draftInput = {
     title,
     steps: steps.filter((s) => s.location),
-    images: [],
+    images,
     tags,
     description,
   }
@@ -172,15 +177,67 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
     setDragIndex(null)
   }
 
+  const uploadFiles = useCallback(async (files: FileList | File[]) => {
+    const arr = Array.from(files)
+    if (arr.length === 0) return
+    if (images.length + arr.length > 10) {
+      setUploadError("You can upload up to 10 images")
+      return
+    }
+    const oversized = arr.find((f) => f.size > 5 * 1024 * 1024)
+    if (oversized) {
+      setUploadError(`${oversized.name} exceeds 5MB`)
+      return
+    }
+    const invalid = arr.find((f) => !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(f.type))
+    if (invalid) {
+      setUploadError(`${invalid.name}: unsupported format. Use JPEG, PNG, WebP or GIF.`)
+      return
+    }
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const formData = new FormData()
+      arr.forEach((f) => formData.append("file", f))
+      const res = await fetch("/api/upload", { method: "POST", body: formData })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error((data as { error?: string })?.error ?? "Upload failed")
+      }
+      const urls = (data as { urls: string[] }).urls ?? []
+      setImages((prev) => [...prev, ...urls].slice(0, 10))
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Upload failed. Check your connection."
+      setUploadError(msg)
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }, [images.length])
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) uploadFiles(e.target.files)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDraggingOver(false)
+    if (e.dataTransfer.files) uploadFiles(e.dataTransfer.files)
+  }
+
+  const removeImage = (idx: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx))
+  }
+
   const saveDraft = useCallback(() => {
-    const draft = { title, steps, tags }
+    const draft = { title, steps, tags, images }
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
       toastService.success("Draft saved locally")
     } catch {
       toastService.error("Failed to save draft")
     }
-  }, [title, steps, tags])
+  }, [title, steps, tags, images])
 
   const clearDraft = useCallback(() => {
     try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
@@ -191,10 +248,11 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
     try {
       const stored = localStorage.getItem(DRAFT_KEY)
       if (!stored) return
-      const draft = JSON.parse(stored) as { title?: string; steps?: (RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean })[]; tags?: string[] }
+      const draft = JSON.parse(stored) as { title?: string; steps?: (RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean })[]; tags?: string[]; images?: string[] }
       if (draft.title) setTitle(draft.title)
       if (draft.steps && draft.steps.length >= 2) setSteps(draft.steps)
       if (draft.tags) setTags(draft.tags)
+      if (draft.images) setImages(draft.images)
     } catch { /* ignore */ }
   }, [isOpen])
 
@@ -227,18 +285,47 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
     }
   }
 
-  const handleSubmit = () => {
-    const validSteps = steps.filter((s) => s.location)
-    const first = validSteps.find((s) => s.lat)
-    const last = [...validSteps].reverse().find((s) => s.lat)
-    const waypoints = validSteps
+  const handleSubmit = async () => {
+    if (!title.trim() || title.trim().length < 5) {
+      toastService.error("Title must be at least 5 characters")
+      return
+    }
+    const validSteps = steps.filter((s) => s.location.trim().length > 0)
+    if (validSteps.length < 2) {
+      toastService.error("Add at least 2 route steps")
+      return
+    }
+    if (uploading) {
+      toastService.error("Please wait for images to finish uploading")
+      return
+    }
+    // Fallback: geocode any step that has location string but no lat/lng
+    const stepsToSubmit = [...validSteps]
+    const missingGeo = stepsToSubmit.filter((s) => !s.lat || !s.lng)
+    if (missingGeo.length > 0) {
+      try {
+        await Promise.all(missingGeo.map(async (s) => {
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(s.location)}&limit=1&accept-language=en`, { headers: { "User-Agent": "AlongApp/1.0" } })
+            const results: GeoResult[] = await res.json()
+            if (results[0]) {
+              s.lat = parseFloat(results[0].lat)
+              s.lng = parseFloat(results[0].lon)
+            }
+          } catch { /* ignore per-step */ }
+        }))
+      } catch { /* ignore */ }
+    }
+    const first = stepsToSubmit.find((s) => s.lat && s.lng)
+    const last = [...stepsToSubmit].reverse().find((s) => s.lat && s.lng)
+    const waypoints = stepsToSubmit
       .filter((s) => s.lat && s.lng && s !== first && s !== last)
       .map((s) => ({ lat: s.lat!, lng: s.lng! }))
     onSubmit?.({
-      title,
+      title: title.trim(),
       description,
-      routes: validSteps.map(({ _geoResults, _geoLoading, ...rest }) => rest),
-      images: [],
+      routes: stepsToSubmit.map(({ _geoResults, _geoLoading, ...rest }) => rest),
+      images,
       tags,
       startLat: first?.lat,
       startLng: first?.lng,
@@ -393,16 +480,39 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5 text-text-primary">Images <span className="text-error-text">*</span></label>
-              <div className="border-2 border-dashed border-border radius-lg py-8 px-4 text-center cursor-pointer transition-colors duration-fast hover:border-primary hover:bg-primary-muted">
+              <label className="block text-sm font-medium mb-1.5 text-text-primary">Images <span className="text-text-muted font-normal">(optional)</span></label>
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple className="hidden" onChange={handleFileInputChange} />
+              <div
+                onClick={() => !uploading && fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setIsDraggingOver(true) }}
+                onDragLeave={() => setIsDraggingOver(false)}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed radius-lg py-8 px-4 text-center cursor-pointer transition-colors duration-fast ${isDraggingOver ? "border-primary bg-primary-muted" : "border-border hover:border-primary hover:bg-primary-muted"} ${uploading ? "opacity-60 pointer-events-none" : ""}`}
+                role="button"
+                aria-label="Upload images"
+              >
                 <div className="text-text-muted mb-2">
-                  <Upload size={28} className="mx-auto" />
+                  <Upload size={28} className={`mx-auto ${uploading ? "animate-pulse" : ""}`} />
                 </div>
                 <p className="text-sm text-text-secondary">
-                  Drag & drop or <strong className="text-text-primary">browse</strong> — Up to 10 images
+                  {uploading ? "Uploading..." : <>Drag & drop or <strong className="text-text-primary">browse</strong> — Up to 10 images</>}
                 </p>
                 <p className="text-xs text-text-muted mt-1">JPEG, PNG, WebP · Max 5MB each</p>
               </div>
+              {uploadError && <p className="text-xs text-error-text mt-2">{uploadError}</p>}
+              {images.length > 0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-3">
+                  {images.map((url, idx) => (
+                    <div key={url + idx} className="relative group radius-md overflow-hidden border border-border bg-bg-elevated">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`Upload ${idx + 1}`} className="w-full h-20 object-cover" />
+                      <button onClick={() => removeImage(idx)} className="absolute top-1 right-1 w-6 h-6 rounded-circle bg-black/60 text-white flex items-center justify-center border-none cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Remove image">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>

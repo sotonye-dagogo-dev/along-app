@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 5)
+> - last-updated-by: execute-feature 2026-09-15
+> - last-verified-against-code: 2026-09-15
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -182,6 +182,54 @@ This avoids the cost of deletion-plus-reimplementation while preventing user con
 
 **Apply When:**
 Any feature gated on an external platform that isn't available yet. Remove surface area, keep depth, tag as frozen.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## QStash Request Body Double-Consume Breaks Every Worker
+
+**Context:**
+`qstashService.verifySignature` called `await request.text()` to verify the HMAC, then workers called `await request.json()` — but the body stream is single-use. Every worker invocation 500'd with "body already used" because the second read throws.
+
+**What We Learned:**
+Always `request.clone()` before consuming for signature verification, and pass the already-read `bodyText` to the handler so it parses via `JSON.parse(bodyText)` instead of re-reading. Return `{ valid, bodyText }` from the verifier to make the pattern explicit.
+
+**Apply When:**
+Any webhook/worker that verifies a signature from the raw body before parsing JSON — QStash, Stripe, Svix, etc. Clone first, parse from the cloned text.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Feed Cold-Start Invisibility Due To Personalised-Only Ranking
+
+**Context:**
+Feed algorithm merged only `followingPosts` (0 if no follows), `trendingPosts` (likes-desc over 7d), and `tagPosts` (0 if no activity). A new user with 0 follows + 0 activity saw only trending, where a fresh post with 0 likes ranked beyond the top 10 and was invisible — including the author's own new post since `followersOfUserId` invalidation excluded the author.
+
+**What We Learned:**
+Always include a `recentPosts` stream (recency-ordered) as a fallback/weighted input to personalized ranking, give it recency-biased scoring, and ensure cache invalidation includes the author's own `feed:${authorId}:start` key (optimistic Redis del on create). Also parallelize the independent queries to cut feed latency.
+
+**Apply When:**
+Any personalized feed that could otherwise return zero or hide fresh content for new/cold-start users.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Decorative Upload Zone Masquerades As Functional Feature
+
+**Context:**
+`ShareRouteModal` rendered a dashed upload zone with "Drag & drop" text but had no `<input type=file>`, no handlers, no /api/upload endpoint, and always submitted `images: []`. Testers thought upload failed due to network; it was never implemented. `next-cloudinary` and `cloudinary` were installed but unused.
+
+**What We Learned:**
+Installed deps + polished UI do not imply wiring. Every file-input UI must have: hidden `<input type=file>` + `onChange`, `onDrop` + `onDragOver` for DnD, client upload to an API that does `cloudinary.uploader.upload` + returns URLs, preview grid with remove, and `images` persisted in the draft/submit payload. Validate size/type client-side and server-side.
+
+**Apply When:**
+Building any file/media upload — verify end-to-end (input → FormData → API → Cloudinary/storage → URL → persisted record) rather than trusting UI copy.
 
 **Supersedes:** None
 **Superseded by:** None

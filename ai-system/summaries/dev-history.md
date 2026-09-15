@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 5)
+> - last-updated-by: execute-feature 2026-09-15
+> - last-verified-against-code: 2026-09-15
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -343,3 +343,37 @@ Wired the follower/following system end-to-end: follow button now calls the API 
 
 **Next Sprint Focus:**
 Search with full-text indexes, clustering for map markers, component tests, accessibility audit.
+
+---
+
+## 2026-09-15 — Fix: Image Upload, Feed/Explore Visibility & Production Audit
+
+**Summary:**
+Resolved tester feedback (image upload no-op, new posts invisible on feed/explore) and ran platform-wide production audit. ShareRouteModal now has functional Cloudinary upload (drag-drop, browse, preview, remove), feed algorithm guarantees new-post visibility via recent-fallback + recency scoring, explore safely handles non-JSON errors, QStash worker body-consumption bug fixed, error messages sanitized, image host allowlist tightened, and env/middleware gaps closed. Build 77 pages with zero type errors and 91 tests passing.
+
+**Completed:**
+
+- `app/api/upload/route.ts` — New: authenticated multipart upload to Cloudinary (5MB/file, 10 max, JPEG/PNG/WebP/GIF), folder `along/posts`, 1200px limit + auto quality/format
+- `app/components/features/posts/ShareRouteModal.tsx` — Images now functional: file input + drag-drop, upload to /api/upload, preview grid with remove, uploading state, fallback geocode on submit for steps without lat/lng, title/step validation, optional images label (removed required star), draft persists images
+- `app/lib/services/feedService.ts` — Parallelized queries (Promise.all), fixed cursor pagination (resolve cuid → createdAt lt instead of lexical id lt), added recent-posts fallback stream ensuring cold-start / single-post visibility, recency bonus + tie-breaker by createdAt, fills under-limit via recent set, reduced P95 feed latency
+- `app/api/posts/route.ts` — Added SyntaxError → 400 handling, P2022 fallback for avatarConfig, optimistic author feed cache bust via Redis del, included author in feed invalidation (`userIds:[authorId]`), sanitized 5xx messages (503 for DB init, non-leak)
+- `app/lib/services/qstashService.ts` — `verifySignature` now clones request before `text()` and returns `{valid, bodyText}` so workers can parse without double-consume; legacy helper kept
+- `app/api/workers/*` (feed-invalidate, validity-recompute, rewards) — Use `bodyText` from verify to avoid `request.json()` after `text()` 500
+- `app/lib/streams/feedStream.ts` — `refresh()` now handles empty legit vs error-empty distinction, prevents stale-cache flash
+- `app/(dashboard)/explore/page.tsx` — Uses text→JSON safe parse, filters only finite coordinates, logs non-JSON gracefully, no longer swallows 500 HTML as empty
+- `app/(dashboard)/home/page.tsx` — Share submit now safe-parses response, shows toast on error, double refresh to bust 5-min Redis cache (immediate + 800ms)
+- `app/lib/utils/auth.ts` + `middleware.ts` — Warn in production if JWT secrets missing, no longer leaks NEXT_PUBLIC_JWT_SECRET, middleware resolves secret safely
+- `next.config.mjs` — Restricted `images.remotePatterns` from wildcard `**` to explicit allowlist (res.cloudinary.com, *.cloudinary.com, lh3.googleusercontent.com, etc.)
+- `vercel.json` — Removed incorrect `Content-Type: image/svg+xml` for /media, extended `maxDuration` to posts/feed/upload routes
+- `.env.example` — Added missing `QSTASH_TOKEN`
+- `ai-system/*` freshness metadata updated; repo-map now documents `/api/upload`
+
+**Key Changes:**
+
+- Image upload is no longer a decorative stub; posts created with real Cloudinary URLs appear immediately
+- New posts no longer hidden for cold-start users (0 follows / 0 activity) — trending no longer the sole source
+- QStash workers no longer 500 on every invocation due to consumed body stream
+- Security tightening: image loader wildcard removed, JWT secret fallback warns in prod, vercel headers de-duplicated
+
+**Next Sprint Focus:**
+Mapbox/MapLibre live-tracking navigation, carto API key wiring for base maps, link-auth provider feature, remaining P1 audit items (in-memory rate limiter → Upstash Redis, supercluster wiring for explore).

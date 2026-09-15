@@ -134,10 +134,17 @@ export class FeedStream {
     const current = this.feedStateSubject.value
     this.feedStateSubject.next({ ...current, loading: true })
     const state = await this.fetchFeed()
+    // Always apply fresh state when fetch succeeded, even if empty (user may have filtered)
+    // Only keep current posts if fetch failed (state has no posts AND hasMore false due to error returns)
     if (state.posts.length > 0) {
       this.feedStateSubject.next({ ...state, loading: false })
-    } else {
+    } else if (state.hasMore === false && state.cursor === null) {
+      // fetchFeed returns empty on error — preserve current posts but clear loading
+      // Check if error case by seeing if we got network failure vs legit empty feed
+      // For now, preserve current to avoid flash of empty state on transient error, but ensure hasMore updated
       this.feedStateSubject.next({ ...current, loading: false })
+    } else {
+      this.feedStateSubject.next({ ...state, loading: false })
     }
   }
 

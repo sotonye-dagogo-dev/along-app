@@ -12,7 +12,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        return NextResponse.json({ error: "Invalid request body. Please check your input." }, { status: 400 });
+      }
+      throw e;
+    }
     const parsed = CREATE_POST_SCHEMA.safeParse(body);
 
     if (!parsed.success) {
@@ -60,14 +68,35 @@ export async function POST(request: NextRequest) {
       data: { validityScore: validityResult.score, validityTier: validityResult.tier },
     });
 
+    // Invalidate author's own feed cache immediately as well as followers (fire-and-forget with error swallow inside service)
     qstashService.publishRewardsAward({ userId: user.id as string, actionKey: "CREATE_POST" });
-    qstashService.publishFeedInvalidation({ followersOfUserId: user.id as string });
+    qstashService.publishFeedInvalidation({ followersOfUserId: user.id as string, userIds: [user.id as string] });
     qstashService.publishValidityRecompute({ postId: post.id });
+
+    // Optimistically clear Redis cache for author so immediate refresh sees the new post even before QStash worker runs
+    try {
+      const { Redis } = await import("@upstash/redis");
+      const url = process.env.UPSTASH_REDIS_REST_URL;
+      const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+      if (url && token) {
+        const redis = new Redis({ url, token });
+        const { CACHE_KEYS } = await import("@/app/lib/config");
+        await redis.del(CACHE_KEYS.feed(user.id as string));
+      }
+    } catch { /* non-critical */ }
 
     return NextResponse.json({ post: { ...post, validityScore: validityResult.score, validityTier: validityResult.tier } }, { status: 201 });
   } catch (error) {
     console.error("Create post error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    }
+    const isPrismaKnown = error instanceof Error && ((error as unknown as { code?: string }).code === "P2022" || error.name === "PrismaClientKnownRequestError");
+    const isPrismaInit = error instanceof Error && error.name === "PrismaClientInitializationError";
+    if (isPrismaKnown || isPrismaInit) {
+      return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+    }
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }
 
@@ -77,7 +106,7 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get("cursor");
     const limit = Math.min(Number(searchParams.get("limit")) || 10, 50);
 
-    const posts = await prisma.post.findMany({
+    const fetchArgs = {
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       include: {
@@ -85,16 +114,40 @@ export async function GET(request: NextRequest) {
           select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
         },
       },
-      orderBy: { createdAt: "desc" },
-    });
+      orderBy: { createdAt: "desc" as const },
+    };
 
-    const hasMore = posts.length > limit;
-    const resultPosts = hasMore ? posts.slice(0, limit) : posts;
-    const nextCursor = hasMore ? resultPosts[resultPosts.length - 1].id : null;
+    let posts: unknown[];
+    try {
+      posts = await (prisma.post.findMany as unknown as (args: typeof fetchArgs) => Promise<unknown[]>)(fetchArgs);
+    } catch (e) {
+      const isP2022 = e instanceof Error && ((e as unknown as { code?: string }).code === "P2022" || e.name === "PrismaClientKnownRequestError");
+      if (isP2022) {
+        const fallbackArgs = {
+          ...fetchArgs,
+          include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } } },
+        };
+        posts = await (prisma.post.findMany as unknown as (args: typeof fallbackArgs) => Promise<unknown[]>)(fallbackArgs);
+      } else {
+        throw e;
+      }
+    }
+
+    const hasMore = (posts as { id: string }[]).length > limit;
+    const resultPosts = hasMore ? (posts as unknown[]).slice(0, limit) : posts;
+    const nextCursor = hasMore ? (resultPosts as { id: string }[])[resultPosts.length - 1].id : null;
 
     return NextResponse.json({ posts: resultPosts, nextCursor }, { status: 200 });
   } catch (error) {
     console.error("List posts error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    if (error instanceof SyntaxError) {
+      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+    }
+    const isPrismaKnown = error instanceof Error && ((error as unknown as { code?: string }).code === "P2022" || error.name === "PrismaClientKnownRequestError");
+    const isPrismaInit = error instanceof Error && error.name === "PrismaClientInitializationError";
+    if (isPrismaKnown || isPrismaInit) {
+      return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+    }
+    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

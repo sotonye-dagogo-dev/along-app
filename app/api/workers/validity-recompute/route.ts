@@ -5,12 +5,12 @@ import { CACHE_KEYS } from "@/app/lib/config";
 
 export async function POST(request: NextRequest) {
   try {
-    const isValid = await qstashService.verifySignature(request);
-    if (!isValid) {
+    const sigResult = await qstashService.verifySignature(request);
+    if (!sigResult.valid) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = sigResult.bodyText ? JSON.parse(sigResult.bodyText) : await request.json();
     const { postId } = body as { postId: string };
 
     if (!postId) {
