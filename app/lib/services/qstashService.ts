@@ -30,15 +30,24 @@ class QStashService {
     return this.receiver;
   }
 
-  async verifySignature(request: Request): Promise<boolean> {
+  async verifySignature(request: Request): Promise<{ valid: boolean; bodyText: string }> {
     try {
       const signature = request.headers.get("upstash-signature");
-      if (!signature) return false;
-      const body = await request.text();
-      return this.getReceiver().verify({ signature, body });
+      if (!signature) return { valid: false, bodyText: "" };
+      // Clone the request so downstream handlers can still read the body
+      const clone = request.clone();
+      const body = await clone.text();
+      const valid = await this.getReceiver().verify({ signature, body });
+      return { valid, bodyText: body };
     } catch {
-      return false;
+      return { valid: false, bodyText: "" };
     }
+  }
+
+  // Backwards-compatible helper for call sites that only need boolean
+  async verifySignatureLegacy(request: Request): Promise<boolean> {
+    const { valid } = await this.verifySignature(request);
+    return valid;
   }
 
   async publishFeedInvalidation(payload: { userIds?: string[]; postId?: string; followersOfUserId?: string }) {

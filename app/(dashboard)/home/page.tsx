@@ -216,11 +216,25 @@ function HomeContent() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(data),
             })
+            let payload: { error?: string; post?: unknown } = {}
+            try {
+              const text = await res.text()
+              payload = text ? JSON.parse(text) : {}
+            } catch {
+              payload = { error: "Unexpected server response. Please try again." }
+            }
             if (res.ok) {
-              refreshFeed()
+              // Force bust cache then reload
+              await refreshFeed()
+              // Also reload directly as backup in case feed cache still stale (cold-start)
+              setTimeout(() => { refreshFeed() }, 800)
+            } else {
+              const { toastService } = await import("@/app/lib/services/toastService")
+              toastService.error(payload.error ?? "Failed to share route. Please try again.")
             }
           } catch {
-            console.error("Failed to create post")
+            const { toastService } = await import("@/app/lib/services/toastService")
+            toastService.error("Network error. Please check your connection and try again.")
           }
         }}
       />

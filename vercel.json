@@ -3,7 +3,10 @@
     "app/api/auth/register/route.ts": { "maxDuration": 30 },
     "app/api/auth/login/route.ts": { "maxDuration": 15 },
     "app/api/auth/otp/route.ts": { "maxDuration": 15 },
-    "app/api/routes/trace/route.ts": { "maxDuration": 15 }
+    "app/api/routes/trace/route.ts": { "maxDuration": 15 },
+    "app/api/posts/route.ts": { "maxDuration": 15 },
+    "app/api/posts/feed/route.ts": { "maxDuration": 15 },
+    "app/api/upload/route.ts": { "maxDuration": 30 }
   },
   "headers": [
     {
@@ -12,33 +15,6 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
-        }
-      ]
-    },
-    {
-      "source": "/_next/static/css/(.*)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "text/css; charset=utf-8"
-        }
-      ]
-    },
-    {
-      "source": "/_next/static/chunks/(.*)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/javascript; charset=utf-8"
-        }
-      ]
-    },
-    {
-      "source": "/_next/static/media/(.*)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "image/svg+xml; charset=utf-8"
         }
       ]
     }

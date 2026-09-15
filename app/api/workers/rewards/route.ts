@@ -4,12 +4,12 @@ import { rewardsService } from "@/app/lib/services/rewardsService";
 
 export async function POST(request: NextRequest) {
   try {
-    const isValid = await qstashService.verifySignature(request);
-    if (!isValid) {
+    const sigResult = await qstashService.verifySignature(request);
+    if (!sigResult.valid) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = sigResult.bodyText ? JSON.parse(sigResult.bodyText) : await request.json();
     const { userId, actionKey, postAuthorId } = body as {
       userId: string;
       actionKey: string;

@@ -6,10 +6,17 @@ function isExactPath(pathname: string, route: string): boolean {
   return pathname === route || pathname.startsWith(route + "/");
 }
 
-// Use same secret as app/lib/utils/auth.ts — fallback order must match server auth
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || process.env.JWT_ACCESS_SECRET || "dev-jwt-secret"
-);
+function resolveJwtSecret(): Uint8Array {
+  const raw = process.env.JWT_SECRET || process.env.JWT_ACCESS_SECRET;
+  if (!raw) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("JWT_SECRET missing in production — auth will fail. Set JWT_SECRET env var.");
+    }
+    return new TextEncoder().encode("dev-jwt-secret");
+  }
+  return new TextEncoder().encode(raw);
+}
+const JWT_SECRET = resolveJwtSecret();
 
 async function verifyToken(token: string): Promise<boolean> {
   try {
