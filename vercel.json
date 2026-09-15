@@ -3,6 +3,8 @@
     "app/api/auth/register/route.ts": { "maxDuration": 30 },
     "app/api/auth/login/route.ts": { "maxDuration": 15 },
     "app/api/auth/otp/route.ts": { "maxDuration": 15 },
+    "app/api/auth/forgot-password/route.ts": { "maxDuration": 15 },
+    "app/api/auth/reset-password/route.ts": { "maxDuration": 15 },
     "app/api/routes/trace/route.ts": { "maxDuration": 15 },
     "app/api/posts/route.ts": { "maxDuration": 15 },
     "app/api/posts/feed/route.ts": { "maxDuration": 15 },
