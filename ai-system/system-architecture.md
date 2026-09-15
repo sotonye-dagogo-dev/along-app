@@ -1,7 +1,7 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-09-15
+> - last-updated-by: fix-build 2026-09-15
 > - last-verified-against-code: 2026-09-15
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
@@ -139,7 +139,7 @@ Write operation → API route
 | DATABASE_URL | PostgreSQL connection | .env | — |
 | JWT_SECRET | JWT signing key | .env | — |
 | JWT_EXPIRES_IN | Token expiration | .env | 7d |
-| REDIS_URL | Upstash Redis connection | .env | — |
+| UPSTASH_REDIS_REST_URL (alias REDIS_URL) | Upstash Redis connection — lazy singleton with 1.2s timeout, fallback to memory/DB | .env | — |
 | CLOUDINARY_URL | Cloudinary image upload | .env | — |
 | RESEND_API_KEY | Email service | .env | — |
 | SENTRY_DSN | Error tracking | .env | — |
@@ -218,6 +218,7 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - `app/lib/streams/feedStream.ts` now implements RxJS reactive feed with 30s polling
 - Image upload is now Cloudinary-backed via `app/api/upload` (multipart, 5MB/file, 10 files max) — requires CLOUDINARY_* env vars; `next.config.mjs` now allowlists only known image hosts (was wildcard `**`)
 - QStash workers now use cloned request body to avoid double-consume `request.text()` / `request.json()` race (fixed 500 on every worker invocation)
+- Redis layer is now timeout-hardened: `app/lib/db/redis.ts` lazy singleton + `withTimeout(1200ms)`, `otpStore.ts` 1500ms fallback to in-memory; forgot-password email is non-blocking via `waitUntil`
 
 ---
 

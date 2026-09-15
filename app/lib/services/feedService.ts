@@ -88,14 +88,10 @@ class FeedService {
     const limit = options.limit ?? config.pageSize;
     const cursor = options.cursor;
 
-    // Check Redis cache for non-cursor requests
+    // Check Redis cache for non-cursor requests — timeout-guarded, never blocks feed
     if (!cursor) {
       try {
-        const { Redis } = await import("@upstash/redis");
-        const redis = new Redis({
-          url: process.env.UPSTASH_REDIS_REST_URL!,
-          token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-        });
+        const { redis } = await import("@/app/lib/db/redis");
         const cacheKey = CACHE_KEYS.feed(userId);
         const cached = await redis.get<{ posts: FeedPost[]; nextCursor: string | null }>(cacheKey);
         if (cached) {
@@ -228,14 +224,10 @@ class FeedService {
     const posts = scored.map((s) => s.post);
     const nextCursor = posts.length === limit ? posts[posts.length - 1].id : null;
 
-    // Cache non-cursor results in Redis
+    // Cache non-cursor results in Redis — never blocks feed on failure
     if (!cursor) {
       try {
-        const { Redis } = await import("@upstash/redis");
-        const redis = new Redis({
-          url: process.env.UPSTASH_REDIS_REST_URL!,
-          token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-        });
+        const { redis } = await import("@/app/lib/db/redis");
         const cacheKey = CACHE_KEYS.feed(userId);
         await redis.set(cacheKey, { posts, nextCursor }, { ex: CACHE_TTL.feed });
       } catch {

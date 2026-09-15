@@ -1,8 +1,8 @@
 # Repair System — Error Knowledge Base
 
 > **Metadata**
-> - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08
+> - last-updated-by: fix-build 2026-09-15
+> - last-verified-against-code: 2026-09-15
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
 > **Overview:** A living knowledge base of errors encountered during development, their root causes, and how they were fixed. Agents should consult this before diagnosing new errors. Every fixed bug should be logged here to prevent recurrence. This file is pre-populated with known error patterns for the Along tech stack (Next.js 15 + React 19 + Ant Design 5 + Tailwind 4).
@@ -381,6 +381,49 @@ Never pass a `prisma+postgres://` Accelerate URL to `datasourceUrl`. Use `accele
 - `app/api/posts/feed/route.ts`
 
 **Date:** 2026-06-10
+**Status:** Active
+
+---
+
+### Forgot-Password 504 FUNCTION_INVOCATION_TIMEOUT — Redis Blocks Request for 10s
+
+**Symptom:**
+`POST /api/auth/forgot-password` returns `504 FUNCTION_INVOCATION_TIMEOUT` (Vercel 10s limit). Logs:
+`[Upstash Redis] The 'url' property is missing`, `[otpStore] redis set reset failed, falling back to memory [TypeError: fetch failed] getaddrinfo ENOTFOUND willing-gazelle-101748.upstash.io`, `Redis client was initialized without url or token. Failed to execute command.` then `Vercel Runtime Timeout Error: Task timed out after 10 seconds`. User sees generic 504 / "An error o..." truncated JSON. Occurred in production where `UPSTASH_REDIS_REST_URL` pointed at a deprovisioned host.
+
+**Root Cause:**
+Three interlocking issues:
+1. `app/lib/db/redis.ts` eagerly instantiated `new Redis({ url: process.env.REDIS_URL ?? "", token: process.env.REDIS_TOKEN ?? "" })` at import time. Production sets `UPSTASH_REDIS_REST_URL/TOKEN`, not `REDIS_URL/TOKEN`, so the client was always created with empty strings, triggering Upstash warnings and `Failed to execute command` on every use.
+2. `app/lib/services/otpStore.ts` created a fresh `new Redis({url, token})` per operation with no timeout. When `UPSTASH_REDIS_REST_URL` pointed at an invalid host, `redis.set()` hung on DNS/fetch for ~5-6s before throwing `fetch failed`, exceeding the 10s Vercel limit when combined with `await sendPasswordResetEmail()` (which also awaits Resend). No `Promise.race` timeout existed.
+3. `app/api/auth/forgot-password/route.ts` awaited both `setResetToken` and `sendPasswordResetEmail` sequentially on the hot path, so any slow Redis or Resend call blocked the response. Identical pattern existed platform-wide in `feedService.ts`, `app/api/posts/route.ts`, `app/api/workers/*` which used `new Redis({ url: UPSTASH_REDIS_REST_URL!, token: ...! })` with non-null assertions and no timeout.
+
+**Fix Applied:**
+- `app/lib/db/redis.ts` — Replaced eager instance with lazy singleton `getRedisClient()` that resolves `UPSTASH_REDIS_REST_URL || REDIS_URL` and `UPSTASH_REDIS_REST_TOKEN || REDIS_TOKEN`, guards `replace_me` and non-https URLs, exposes timeout-guarded `redis.get/set/del` wrappers (1.2s `Promise.race` timeout, warn + no-op on failure) via `withTimeout`.
+- `app/lib/services/otpStore.ts` — Singleton cached client, `resolveEnv()` guard, `withTimeout` 1.5s per op, fallback to in-memory `Map` within <1.5s on DNS/timeout, `__resetOtpStoreForTests` for tests.
+- `app/lib/services/feedService.ts` — Switched from direct `new Redis` to shared `await import("@/app/lib/db/redis").redis` for get/set cache paths.
+- `app/api/posts/route.ts` — Same; optimistic feed cache bust now uses safe wrapper.
+- `app/api/workers/feed-invalidate` & `validity-recompute` — Use shared wrapper instead of `new Redis(!)`.
+- `app/lib/utils/siteConfig.ts` — Now benefits from safe wrapper (no direct `new Redis` elsewhere).
+- `app/api/auth/forgot-password/route.ts` — Added `maxDuration=15`, `dynamic="force-dynamic"`, normalized email + format validation, made `sendPasswordResetEmail` non-blocking via `waitUntil` / `void` background task (matching `register` pattern), sanitized error handling, timeout-guarded `setResetToken` ensures <1.5s fallback.
+- `vercel.json` — Added `maxDuration` for `forgot-password` and `reset-password`.
+
+**Prevention:**
+- Never `new Redis` with `!` assertions or at import time. Always use `app/lib/db/redis.ts` wrapper which handles missing env, invalid host, and timeout.
+- Any Redis operation on a user-facing hot path must be `withTimeout` <2s and fall back to memory/DB; cache failures must be non-critical.
+- Auth routes that send email must not `await` Resend on the hot path — use `waitUntil` background pattern as in `register` and now `forgot-password`.
+- Env var names: `UPSTASH_REDIS_REST_URL/TOKEN` are canonical; `REDIS_URL/TOKEN` kept as fallback alias only.
+
+**Files Affected:**
+- app/lib/db/redis.ts
+- app/lib/services/otpStore.ts
+- app/lib/services/feedService.ts
+- app/api/auth/forgot-password/route.ts
+- app/api/posts/route.ts
+- app/api/workers/feed-invalidate/route.ts
+- app/api/workers/validity-recompute/route.ts
+- vercel.json
+
+**Date:** 2026-09-15
 **Status:** Active
 
 ---
