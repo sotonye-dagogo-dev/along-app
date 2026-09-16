@@ -20,14 +20,25 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://along.app"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://alongng.com",
+  ),
   title: {
     default: "Along — Navigate Together",
     template: "%s | Along",
   },
   description:
     "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",
-  keywords: ["transport", "routes", "West Africa", "navigation", "travel", "community", "Lagos", "Nigeria"],
+  keywords: [
+    "transport",
+    "routes",
+    "West Africa",
+    "navigation",
+    "travel",
+    "community",
+    "Lagos",
+    "Nigeria",
+  ],
   authors: [{ name: "Along" }],
   creator: "Along",
   publisher: "Along",
@@ -40,24 +51,38 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   openGraph: {
     title: "Along — Navigate Together",
-    description: "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",
-    url: process.env.NEXT_PUBLIC_APP_URL ?? "https://along.app",
+    description:
+      "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",
+    url: process.env.NEXT_PUBLIC_APP_URL ?? "https://alongng.com",
     siteName: "Along",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Along — Navigate Together" }],
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Along — Navigate Together",
+      },
+    ],
     type: "website",
     locale: "en_NG",
   },
   twitter: {
     card: "summary_large_image",
     title: "Along — Navigate Together",
-    description: "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",
+    description:
+      "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",
     images: ["/og-image.png"],
     creator: "@along_app",
   },
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ?? undefined,

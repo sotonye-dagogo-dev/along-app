@@ -1483,7 +1483,7 @@ Upgrade: use `TOTP` (time-based, no storage needed) via `otplib`.
 ```typescript
 // lib/integrations/transact.ts
 export interface TransactConfig {
-  baseUrl: string; // e.g. https://transact.along.app
+  baseUrl: string; // e.g. https://transact.alongng.com
   apiKey: string; // service-to-service key
   webhookSecret: string;
 }

@@ -8,7 +8,7 @@ export const DEFAULT_META = {
   title: "Along - Navigate Together",
   description:
     "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",
-  url: process.env.NEXT_PUBLIC_APP_URL ?? "https://along.app",
+  url: process.env.NEXT_PUBLIC_APP_URL ?? "https://alongng.com",
   siteName: "Along",
   ogImage: "/og-image.png",
   twitterHandle: "@along_app",
