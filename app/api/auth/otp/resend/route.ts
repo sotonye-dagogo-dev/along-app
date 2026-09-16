@@ -23,16 +23,26 @@ export async function POST(request: NextRequest) {
     const otpKey = `otp:${email}`;
     await setOtp(otpKey, otpHash, 900);
 
-    // Non-blocking send
-    void (async () => {
+    // Non-blocking send — tightly observed, no false-positive
+    const sendInBackground = async () => {
       try {
         const { sendOtpEmail } = await import("@/app/lib/services/emailService");
-        await sendOtpEmail(email, otp);
+        const result = await sendOtpEmail(email, otp);
+        if (!result.sent) {
+          console.error(`[OTP RESEND] failed for ${email}: ${result.reason}`);
+          Sentry.captureMessage(`OTP resend failed for ${email}: ${result.reason}`, "warning");
+        }
+        if (process.env.NODE_ENV !== "production") console.log(`[DEV] OTP for ${email}: ${otp}`);
       } catch (e) {
         console.error("[OTP RESEND] failed", e);
+        Sentry.captureException(e);
         if (process.env.NODE_ENV !== "production") console.log(`[DEV] OTP for ${email}: ${otp}`);
       }
-    })();
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const maybeWaitUntil = (globalThis as any)?.waitUntil as ((p: Promise<void>) => void) | undefined;
+    if (maybeWaitUntil) maybeWaitUntil(sendInBackground());
+    else void sendInBackground();
 
     return NextResponse.json({ message: "OTP resent" }, { status: 200 });
   } catch (error) {

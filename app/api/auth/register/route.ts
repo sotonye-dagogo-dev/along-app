@@ -74,18 +74,27 @@ export async function POST(request: NextRequest) {
     const otpKey = `otp:${email}`;
     await setOtp(otpKey, otpHash, 900);
 
-    // Non-blocking email send — never hold request waiting for Resend
+    // Non-blocking email send — never hold request waiting for Resend, but now tightly observed (no false-positive)
     const sendInBackground = async () => {
       try {
         const { sendOtpEmail, sendWelcomeEmail } = await import("@/app/lib/services/emailService");
         const otpResult = await sendOtpEmail(email, otp);
-        if (otpResult.sent) {
-          await sendWelcomeEmail(email, firstName);
-        } else if (process.env.NODE_ENV !== "production") {
+        if (!otpResult.sent) {
+          console.error(`[REGISTER] OTP email failed for ${email}: ${otpResult.reason}`);
+          Sentry.captureMessage(`OTP email failed for ${email}: ${otpResult.reason}`, "warning");
+        }
+        if (process.env.NODE_ENV !== "production") {
           console.log(`[DEV] OTP for ${email}: ${otp}`);
+        }
+        if (otpResult.sent) {
+          const welcomeResult = await sendWelcomeEmail(email, firstName);
+          if (!welcomeResult.sent) {
+            console.warn(`[REGISTER] welcome email failed for ${email}: ${welcomeResult.reason}`);
+          }
         }
       } catch (e) {
         console.error("[REGISTER] background email failed", e);
+        Sentry.captureException(e);
         if (process.env.NODE_ENV !== "production") {
           console.log(`[DEV] OTP for ${email}: ${otp}`);
         }

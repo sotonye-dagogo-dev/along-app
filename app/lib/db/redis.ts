@@ -6,6 +6,7 @@ type RedisClient = InstanceType<typeof Redis>;
 
 let _client: RedisClient | null = null;
 let _initialized = false;
+let _lastEnvKey: string | null = null;
 
 function resolveEnv(): { url: string; token: string } | null {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL || "";
@@ -15,6 +16,10 @@ function resolveEnv(): { url: string; token: string } | null {
   // Guard against placeholder / obviously invalid URLs (e.g. missing https)
   if (!url.startsWith("https://")) return null;
   return { url, token };
+}
+
+function envKeyOf(env: { url: string; token: string } | null): string {
+  return env ? `${env.url}::${env.token.slice(0, 8)}` : "__none__";
 }
 
 function withTimeout<T>(promise: Promise<T>, ms = REDIS_OP_TIMEOUT_MS): Promise<T> {
@@ -29,9 +34,16 @@ function withTimeout<T>(promise: Promise<T>, ms = REDIS_OP_TIMEOUT_MS): Promise<
 }
 
 export function getRedisClient(): RedisClient | null {
-  if (_initialized) return _client;
-  _initialized = true;
   const env = resolveEnv();
+  const key = envKeyOf(env);
+  if (_initialized && _lastEnvKey === key) return _client;
+  // Env rotated — invalidate cached client
+  if (_initialized && _lastEnvKey !== key) {
+    _client = null;
+    _initialized = false;
+  }
+  _initialized = true;
+  _lastEnvKey = key;
   if (!env) return null;
   try {
     _client = new Redis(env);
@@ -46,6 +58,7 @@ export function getRedisClient(): RedisClient | null {
 export function __resetRedisForTests() {
   _client = null;
   _initialized = false;
+  _lastEnvKey = null;
 }
 
 // Safe wrapper — always timeout-guarded, never throws, falls back to null/no-op

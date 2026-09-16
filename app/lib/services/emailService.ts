@@ -1,13 +1,39 @@
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { getEmailConfig, findTemplate, renderEmailHtml, renderEmailText } from "@/app/lib/utils/emailTemplates";
 
+const EMAIL_SEND_TIMEOUT_MS = 5000;
+
+function withEmailTimeout<T>(promise: Promise<T>, ms = EMAIL_SEND_TIMEOUT_MS): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Email send timeout after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise.finally(() => clearTimeout(timer)), timeout]) as Promise<T>;
+}
+
 async function getResend() {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    const msg = "RESEND_API_KEY not configured";
+    if (process.env.NODE_ENV === "production") {
+      console.error(`[EMAIL CONFIG] ${msg} — email delivery will fail`);
+      Sentry.captureMessage(msg, "error");
+    }
+    return null;
+  }
+  if (apiKey.length < 10 || apiKey.includes("replace_me")) {
+    const msg = "RESEND_API_KEY looks placeholder/invalid";
+    console.error(`[EMAIL CONFIG] ${msg}`);
+    Sentry.captureMessage(msg, "warning");
+    return null;
+  }
   try {
     const { Resend } = await import("resend");
     return new Resend(apiKey);
-  } catch {
+  } catch (e) {
+    console.error("[EMAIL CONFIG] Failed to init Resend", e);
+    Sentry.captureException(e);
     return null;
   }
 }
@@ -50,41 +76,54 @@ export async function sendEmail(options: {
   if (!resend) {
     if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] ${type} to ${to}: ${subject}`);
     if (process.env.NODE_ENV !== "production") console.log(`[EMAIL BODY]\n${text}`);
-    await logEmail({ to, subject, type, status: "skipped", metadata });
-    return { sent: false, reason: "RESEND_API_KEY not configured" };
+    await logEmail({ to, subject, type, status: "failed", error: "RESEND_API_KEY not configured", metadata });
+    return { sent: false, reason: "Email service not configured — RESEND_API_KEY missing" };
   }
 
   try {
     const config = await getEmailConfig();
-    const { data, error } = await resend.emails.send({
-      from: `${config.fromName} <${config.fromEmail}>`,
-      to: [to],
-      reply_to: config.replyTo,
-      subject,
-      html,
-      text,
-    });
+    // Validate from address — Resend rejects unverified domains silently in dashboard
+    if (!config.fromEmail || !config.fromEmail.includes("@") || config.fromEmail === "mail@along.app") {
+      console.warn(`[EMAIL WARN] fromEmail looks unverified/default: ${config.fromEmail}`);
+    }
+    const { data, error } = await withEmailTimeout(
+      resend.emails.send({
+        from: `${config.fromName} <${config.fromEmail}>`,
+        to: [to],
+        reply_to: config.replyTo,
+        subject,
+        html,
+        text,
+      })
+    );
 
     if (error) {
-      console.error(`[EMAIL FAILED] ${type} to ${to}:`, error);
-      await logEmail({ to, subject, type, status: "failed", error: String(error), metadata });
-      return { sent: false, reason: String(error) };
+      const errStr = typeof error === "object" ? JSON.stringify(error) : String(error);
+      console.error(`[EMAIL FAILED] ${type} to ${to}:`, errStr);
+      Sentry.captureMessage(`Email send failed (${type} to ${to}): ${errStr}`, "error");
+      await logEmail({ to, subject, type, status: "failed", error: errStr, metadata });
+      return { sent: false, reason: errStr };
     }
 
     await logEmail({ to, subject, type, status: "sent", metadata: { ...metadata, resendId: data?.id } });
     return { sent: true, id: data?.id };
   } catch (error) {
-    console.error(`[EMAIL FAILED] ${type} to ${to}:`, error);
-    await logEmail({ to, subject, type, status: "failed", error: String(error), metadata });
-    return { sent: false, reason: String(error) };
+    const errStr = String(error);
+    console.error(`[EMAIL FAILED] ${type} to ${to}:`, errStr);
+    Sentry.captureException(error);
+    await logEmail({ to, subject, type, status: "failed", error: errStr, metadata });
+    return { sent: false, reason: errStr };
   }
 }
 
 export async function sendOtpEmail(to: string, otp: string) {
   const template = await findTemplate("otp");
   if (!template) {
+    const reason = "Email template not found: otp";
+    console.error(`[EMAIL FAILED] ${reason}`);
+    Sentry.captureMessage(reason, "error");
     if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] otp to ${to}: template not found`);
-    return { sent: false, reason: "Template not found" };
+    return { sent: false, reason };
   }
 
   const vars = { otp };
@@ -101,8 +140,11 @@ export async function sendOtpEmail(to: string, otp: string) {
 export async function sendWelcomeEmail(to: string, firstName: string) {
   const template = await findTemplate("welcome");
   if (!template) {
+    const reason = "Email template not found: welcome";
+    console.error(`[EMAIL FAILED] ${reason}`);
+    Sentry.captureMessage(reason, "error");
     if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] welcome to ${to}: template not found`);
-    return { sent: false, reason: "Template not found" };
+    return { sent: false, reason };
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -120,8 +162,11 @@ export async function sendWelcomeEmail(to: string, firstName: string) {
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
   const template = await findTemplate("passwordReset");
   if (!template) {
+    const reason = "Email template not found: passwordReset";
+    console.error(`[EMAIL FAILED] ${reason}`);
+    Sentry.captureMessage(reason, "error");
     if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] passwordReset to ${to}: template not found`);
-    return { sent: false, reason: "Template not found" };
+    return { sent: false, reason };
   }
 
   const vars = { resetLink };
@@ -139,8 +184,11 @@ export async function sendContactNotification(senderName: string, senderEmail: s
   const recipient = process.env.PLATFORM_USER_EMAIL ?? "alongtoanywhere@gmail.com";
   const template = await findTemplate("contactNotification");
   if (!template) {
+    const reason = "Email template not found: contactNotification";
+    console.error(`[EMAIL FAILED] ${reason}`);
+    Sentry.captureMessage(reason, "error");
     if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] contactNotification: template not found`);
-    return { sent: false, reason: "Template not found" };
+    return { sent: false, reason };
   }
 
   const vars = { senderName, senderEmail, message };
@@ -158,8 +206,11 @@ export async function sendBugReportNotification(title: string, category: string,
   const recipient = process.env.PLATFORM_USER_EMAIL ?? "alongtoanywhere@gmail.com";
   const template = await findTemplate("bugReportNotification");
   if (!template) {
+    const reason = "Email template not found: bugReportNotification";
+    console.error(`[EMAIL FAILED] ${reason}`);
+    Sentry.captureMessage(reason, "error");
     if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] bugReportNotification: template not found`);
-    return { sent: false, reason: "Template not found" };
+    return { sent: false, reason };
   }
 
   const vars = { title, category, description };

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { sendBugReportNotification } from "@/app/lib/services/emailService";
 
@@ -38,11 +39,21 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await sendBugReportNotification(title, category, description);
+    try {
+      const emailResult = await sendBugReportNotification(title, category, description);
+      if (!emailResult.sent) {
+        console.warn(`[bug-report] notification failed: ${emailResult.reason}`);
+        Sentry.captureMessage(`Bug report notification failed: ${emailResult.reason}`, "warning");
+      }
+    } catch (e) {
+      console.error("[bug-report] notification exception", e);
+      Sentry.captureException(e);
+    }
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     console.error("Bug report submission error:", error);
+    Sentry.captureException(error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
