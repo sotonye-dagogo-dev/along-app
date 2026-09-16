@@ -1,47 +1,51 @@
 +-----------------------------------------------------------------------+
-| **ALONG**                                                             |
-|                                                                       |
-| **METADATA-DRIVEN STARTUP REVIVAL**                                   |
-|                                                                       |
-| Product Requirements Document · Engineering Roadmap · Architecture    |
-| Spec                                                                  |
-|                                                                       |
-| Version 2.0 · April 2026 · CONFIDENTIAL                               |
+| **ALONG** |
+| |
+| **METADATA-DRIVEN STARTUP REVIVAL** |
+| |
+| Product Requirements Document · Engineering Roadmap · Architecture |
+| Spec |
+| |
+| Version 2.0 · April 2026 · CONFIDENTIAL |
 +-----------------------------------------------------------------------+
 
 **DOCUMENT METADATA**
 
-  -----------------------------------------------------------------------
-  **Field**          **Value**
-  ------------------ ----------------------------------------------------
-  Document Title     Along --- Metadata-Driven Startup Revival PRD &
-                     Engineering Roadmap
+---
 
-  Version            2.0 (Production Candidate)
+**Field** **Value**
 
-  Status             Active Development
+---
 
-  Date               April 22, 2026
+Document Title Along --- Metadata-Driven Startup Revival PRD &
+Engineering Roadmap
 
-  Authors            Senior PM & Technical Architect
+Version 2.0 (Production Candidate)
 
-  Stack              Next.js 15 · React 19 · TypeScript 5 · Prisma 7 ·
-                     PostgreSQL · Upstash Redis
+Status Active Development
 
-  Classifier         CONFIDENTIAL --- Internal Engineering Use Only
-  -----------------------------------------------------------------------
+Date April 22, 2026
+
+Authors Senior PM & Technical Architect
+
+Stack Next.js 15 · React 19 · TypeScript 5 · Prisma 7 ·
+PostgreSQL · Upstash Redis
+
+Classifier CONFIDENTIAL --- Internal Engineering Use Only
+
+---
 
 +-----------------------------------------------------------------------+
-| **EXECUTIVE SUMMARY**                                                 |
-|                                                                       |
+| **EXECUTIVE SUMMARY** |
+| |
 | Along is a social travel-intelligence platform --- a Twitter × Google |
-| Maps hybrid --- where users share, verify, and discover transport     |
-| routes. This document supersedes all prior specs and defines the      |
-| complete architecture for a config-first, OOP-compliant,              |
-| production-grade rebuild. Scope covers: Config-Driven Engine,         |
-| Validity & Trust System, Maps & Travel Discovery, Global              |
-| Infrastructure, Ecosystem Integrations, Sustainable Rewards, and a    |
-| phased Execution Roadmap.                                             |
+| Maps hybrid --- where users share, verify, and discover transport |
+| routes. This document supersedes all prior specs and defines the |
+| complete architecture for a config-first, OOP-compliant, |
+| production-grade rebuild. Scope covers: Config-Driven Engine, |
+| Validity & Trust System, Maps & Travel Discovery, Global |
+| Infrastructure, Ecosystem Integrations, Sustainable Rewards, and a |
+| phased Execution Roadmap. |
 +-----------------------------------------------------------------------+
 
 **TABLE OF CONTENTS**
@@ -145,89 +149,93 @@
 **1. CONFIG-FIRST ARCHITECTURE**
 
 +-----------------------------------------------------------------------+
-| **PRINCIPLE**                                                         |
-|                                                                       |
-| Every UI component, business logic path, and page structure MUST      |
-| derive from a centralized Config Object. \'Adding a feature\' means   |
-| updating a config registry, never rewriting component logic. All      |
-| lists and modules are rendered via Object.values() mapping over       |
-| config arrays. The codebase is strictly OOP-compliant, modular, and   |
-| zero-hardcode.                                                        |
+| **PRINCIPLE** |
+| |
+| Every UI component, business logic path, and page structure MUST |
+| derive from a centralized Config Object. \'Adding a feature\' means |
+| updating a config registry, never rewriting component logic. All |
+| lists and modules are rendered via Object.values() mapping over |
+| config arrays. The codebase is strictly OOP-compliant, modular, and |
+| zero-hardcode. |
 +-----------------------------------------------------------------------+
 
 **1.1 Config-to-Code Principle**
 
 The Config-Driven Engine has four layers:
 
--   Config Layer --- lib/config/\* --- canonical source-of-truth
-    TypeScript objects
+- Config Layer --- lib/config/\* --- canonical source-of-truth
+  TypeScript objects
 
--   Engine Layer --- lib/services/\* --- classes that read config and
-    execute logic
+- Engine Layer --- lib/services/\* --- classes that read config and
+  execute logic
 
--   Component Layer --- components/ui/\* --- generic renderers that
-    iterate config
+- Component Layer --- components/ui/\* --- generic renderers that
+  iterate config
 
--   Data Layer --- lib/db/\* --- repositories wired through
-    BaseRepository\<T\>
+- Data Layer --- lib/db/\* --- repositories wired through
+  BaseRepository\<T\>
 
 **1.2 Master Config Registry Structure**
 
 All config files live in lib/config/. Each exports a typed constant +
 TypeScript interface.
 
-  ----------------------------------------------------------------------------
-  **File**              **Export**                 **Consumers**
-  --------------------- -------------------------- ---------------------------
-  vehicles.ts           VEHICLE_REGISTRY           PostCard, ShareRouteModal,
-                                                   FilterBar, RouteForm
+---
 
-  routeStatus.ts        ROUTE_STATUS_REGISTRY      PostCard, AdminDashboard,
-                                                   ValidityEngine
+**File** **Export** **Consumers**
 
-  navigation.ts         NAV_REGISTRY               DashboardNavbar,
-                                                   DesktopTopBar,
-                                                   MobileBottomNav, Sitemap
+---
 
-  forms.ts              REGISTER_FIELDS,           ConfigDrivenForm, Zod
-                        LOGIN_FIELDS, POST_FIELDS, validation
-                        ...                        
+vehicles.ts VEHICLE_REGISTRY PostCard, ShareRouteModal,
+FilterBar, RouteForm
 
-  notifications.ts      NOTIFICATION_REGISTRY      NotificationItem,
-                                                   NotificationDropdown,
-                                                   PushHandler
+routeStatus.ts ROUTE_STATUS_REGISTRY PostCard, AdminDashboard,
+ValidityEngine
 
-  feedAlgorithm.ts      DEFAULT_FEED_CONFIG        feedService.ts, SiteConfig
-                                                   DB override
+navigation.ts NAV_REGISTRY DashboardNavbar,
+DesktopTopBar,
+MobileBottomNav, Sitemap
 
-  draftingCoach.ts      QUALITY_CHECKPOINTS        DraftingCoach component,
-                                                   ValidityEngine
+forms.ts REGISTER_FIELDS, ConfigDrivenForm, Zod
+LOGIN_FIELDS, POST_FIELDS, validation
+...
 
-  avatar.ts             DICEBEAR_CONFIG,           AvatarEditor, ProfileCard,
-                        AVATAR_STYLES              UserAvatar
+notifications.ts NOTIFICATION_REGISTRY NotificationItem,
+NotificationDropdown,
+PushHandler
 
-  footer.ts             FOOTER_CONFIG              AppFooter component
+feedAlgorithm.ts DEFAULT_FEED_CONFIG feedService.ts, SiteConfig
+DB override
 
-  teamConfig.ts         TEAM_MEMBERS               About page, Admin team
-                                                   editor
+draftingCoach.ts QUALITY_CHECKPOINTS DraftingCoach component,
+ValidityEngine
 
-  mapIntegrations.ts    MAP_INTEGRATION_REGISTRY   RouteMap, ExploreMap,
-                                                   SuggestionEngine
+avatar.ts DICEBEAR_CONFIG, AvatarEditor, ProfileCard,
+AVATAR_STYLES UserAvatar
 
-  rewards.ts            REWARD_TIERS,              RewardsPanel, UserProfile,
-                        POINTS_CONFIG              InviteSystem
+footer.ts FOOTER_CONFIG AppFooter component
 
-  rateLimits.ts         RATE_LIMITS                API_REGISTRY,
-                                                   BaseApiHandler
+teamConfig.ts TEAM_MEMBERS About page, Admin team
+editor
 
-  validationRules.ts    VALIDATION_RULES           Zod schemas,
-                                                   ConfigDrivenForm rules
+mapIntegrations.ts MAP_INTEGRATION_REGISTRY RouteMap, ExploreMap,
+SuggestionEngine
 
-  cache.ts              CACHE_TTL, CACHE_KEYS      redis.ts, all repositories
+rewards.ts REWARD_TIERS, RewardsPanel, UserProfile,
+POINTS_CONFIG InviteSystem
 
-  apiRegistry.ts        API_REGISTRY               axios wrapper,
-                                                   auto-generated client
-  ----------------------------------------------------------------------------
+rateLimits.ts RATE_LIMITS API_REGISTRY,
+BaseApiHandler
+
+validationRules.ts VALIDATION_RULES Zod schemas,
+ConfigDrivenForm rules
+
+cache.ts CACHE_TTL, CACHE_KEYS redis.ts, all repositories
+
+apiRegistry.ts API_REGISTRY axios wrapper,
+auto-generated client
+
+---
 
 **1.3 Vehicle Registry --- Icon System (No Emojis)**
 
@@ -489,98 +497,106 @@ Runtime config without deploys. Admin UI at /admin/config allows
 updating live parameters. Redis caches with 60-min TTL; local TypeScript
 fallbacks guarantee zero-downtime.
 
-  ----------------------------------------------------------------------------------------------------------------------
-  **Config Key**                  **Type**                         **Default**     **Admin-Editable**   **Purpose**
-  ------------------------------- -------------------------------- --------------- -------------------- ----------------
-  feedAlgorithm.weights           {follow,tag,trending,location}   {70,20,10,15}   Yes                  Feed ranking
+---
 
-  validityEngine.thresholds       {low,medium,high,trusted}        {30,60,80,90}   Yes                  Trust badge
-                                                                                                        levels
+**Config Key** **Type** **Default** **Admin-Editable** **Purpose**
 
-  draftingCoach.checkpoints       QualityCheckpoint\[\]            See §2.3        Yes                  Coach guidance
+---
 
-  postLimits.maxRoutes            number                           20              Yes                  UX cap
+feedAlgorithm.weights {follow,tag,trending,location} {70,20,10,15} Yes Feed ranking
 
-  postLimits.maxImages            number                           10              Yes                  Storage budget
+validityEngine.thresholds {low,medium,high,trusted} {30,60,80,90} Yes Trust badge
+levels
 
-  rewards.pointsPerPost           number                           50              Yes                  Incentive
-                                                                                                        economy
+draftingCoach.checkpoints QualityCheckpoint\[\] See §2.3 Yes Coach guidance
 
-  rewards.pointsPerVerification   number                           25              Yes                  Incentive
-                                                                                                        economy
+postLimits.maxRoutes number 20 Yes UX cap
 
-  rateLimits.\*                   RateLimitConfig                  See             Yes                  Dynamic throttle
-                                                                   rateLimits.ts                        
+postLimits.maxImages number 10 Yes Storage budget
 
-  teamMembers                     TeamMember\[\]                   teamConfig.ts   Yes                  About page
+rewards.pointsPerPost number 50 Yes Incentive
+economy
 
-  featuredReviews                 Review\[\]                       Top-rated       Yes                  About page
-                                                                   reviews                              
-  ----------------------------------------------------------------------------------------------------------------------
+rewards.pointsPerVerification number 25 Yes Incentive
+economy
+
+rateLimits.\* RateLimitConfig See Yes Dynamic throttle
+rateLimits.ts
+
+teamMembers TeamMember\[\] teamConfig.ts Yes About page
+
+featuredReviews Review\[\] Top-rated Yes About page
+reviews
+
+---
 
 **1.8 Dependency Update Matrix**
 
 All packages pinned to latest stable. Peer dependency conflicts resolved
 as noted.
 
-  -----------------------------------------------------------------------------------------
-  **Package**               **Current**   **Target**   **Breaking    **Migration Note**
-                                                       Changes**     
-  ------------------------- ------------- ------------ ------------- ----------------------
-  next                      15.x          15.3.x       None          Verify turbopack
-                                          (latest)                   stability
+---
 
-  react / react-dom         19.x          19.1.x       None          None
+**Package** **Current** **Target** **Breaking **Migration Note**
+Changes**
 
-  typescript                5.x           5.7.x        None          Enable
-                                                                     isolatedDeclarations
+---
 
-  tailwindcss               3.x           4.1.x        \@apply       Migrate globals.css
-                                                       changes       
+next 15.x 15.3.x None Verify turbopack
+(latest) stability
 
-  \@ant-design/icons        5.x           5.6.x        None          None
+react / react-dom 19.x 19.1.x None None
 
-  antd                      5.x           5.23.x       None          None
+typescript 5.x 5.7.x None Enable
+isolatedDeclarations
 
-  prisma                    7.x           7.1.x        None          Run prisma generate
-                                          (latest)                   
+tailwindcss 3.x 4.1.x \@apply Migrate globals.css
+changes
 
-  zod                       4.x           4.x latest   None          None
+\@ant-design/icons 5.x 5.6.x None None
 
-  next-cloudinary           6.x           6.16.x       None          None
+antd 5.x 5.23.x None None
 
-  jest                      30.x          30.x latest  None          None
+prisma 7.x 7.1.x None Run prisma generate
+(latest)
 
-  \@testing-library/react   16.x          16.3.x       None          None
+zod 4.x 4.x latest None None
 
-  maplibre-gl               new           4.7.x        N/A           Replaces Leaflet for
-                                                                     MapLibre strategy
+next-cloudinary 6.x 6.16.x None None
 
-  react-map-gl              new           7.1.x        N/A           MapLibre React wrapper
+jest 30.x 30.x latest None None
 
-  \@dicebear/core           new           9.x          N/A           Avatar generation
+\@testing-library/react 16.x 16.3.x None None
 
-  lucide-react              new           0.469.x      N/A           Icon system (replaces
-                                                                     emojis)
+maplibre-gl new 4.7.x N/A Replaces Leaflet for
+MapLibre strategy
 
-  rxjs                      new           7.8.x        N/A           Reactive streams for
-                                                                     feed
+react-map-gl new 7.1.x N/A MapLibre React wrapper
 
-  \@upstash/qstash          new           2.7.x        N/A           Webhook job queue
+\@dicebear/core new 9.x N/A Avatar generation
 
-  workbox-webpack-plugin    7.x           7.3.x        None          PWA service worker
-  -----------------------------------------------------------------------------------------
+lucide-react new 0.469.x N/A Icon system (replaces
+emojis)
+
+rxjs new 7.8.x N/A Reactive streams for
+feed
+
+\@upstash/qstash new 2.7.x N/A Webhook job queue
+
+workbox-webpack-plugin 7.x 7.3.x None PWA service worker
+
+---
 
 **2. VALIDITY & TRUST SYSTEM**
 
 +-----------------------------------------------------------------------+
-| **PURPOSE**                                                           |
-|                                                                       |
+| **PURPOSE** |
+| |
 | The Validity Score (0--100) quantifies route post trustworthiness. It |
-| is computed server-side, cached per post, and surfaced through the    |
-| Trust Badge UI element and the Drafting Coach real-time feedback      |
-| system. This is Along\'s core quality moat --- it separates signal    |
-| from noise.                                                           |
+| is computed server-side, cached per post, and surfaced through the |
+| Trust Badge UI element and the Drafting Coach real-time feedback |
+| system. This is Along\'s core quality moat --- it separates signal |
+| from noise. |
 +-----------------------------------------------------------------------+
 
 **2.1 ValidityEngine --- Full Algorithm Spec**
@@ -590,43 +606,51 @@ as noted.
 total = (likeRatio × 0.35) + (detailScore × 0.35) + (similarityRatio ×
 0.20) + (recency × 0.10) × 100
 
-  -------------------------------------------------------------------------------------
-  **Dimension**     **Weight**   **Computation**                            **Range**
-  ----------------- ------------ ------------------------------------------ -----------
-  likeRatio         35%          likes / (likes + dislikes). Returns 0.5    0.0 -- 1.0
-                                 when no votes (neutral prior).             
+---
 
-  detailScore       35%          Composite: textLength (40%) + imageCount   0.0 -- 1.0
-                                 (20%) + linkCount (15%) + vehicleSelection 
-                                 (10%) + verifiedRoutes (15%). Each         
-                                 sub-score capped at 1.0.                   
+**Dimension** **Weight** **Computation** **Range**
 
-  similarityRatio   20%          Count of OTHER posts sharing ≥1 tag.       0.0 -- 1.0
-                                 min(corroborated / 5, 1.0). Community      
-                                 corroboration signal.                      
+---
 
-  recency           10%          Linear decay: 1.0 at 0 days → 0.0 at 90    0.0 -- 1.0
-                                 days. max(0, 1 - ageDays/90).              
-  -------------------------------------------------------------------------------------
+likeRatio 35% likes / (likes + dislikes). Returns 0.5 0.0 -- 1.0
+when no votes (neutral prior).
+
+detailScore 35% Composite: textLength (40%) + imageCount 0.0 -- 1.0
+(20%) + linkCount (15%) + vehicleSelection
+(10%) + verifiedRoutes (15%). Each  
+ sub-score capped at 1.0.
+
+similarityRatio 20% Count of OTHER posts sharing ≥1 tag. 0.0 -- 1.0
+min(corroborated / 5, 1.0). Community  
+ corroboration signal.
+
+recency 10% Linear decay: 1.0 at 0 days → 0.0 at 90 0.0 -- 1.0
+days. max(0, 1 - ageDays/90).
+
+---
 
 **Trust Levels**
 
-  ------------------------------------------------------------------------------
-  **Level**    **Score    **Badge    **Icon**        **Meaning**
-               Range**    Color**                    
-  ------------ ---------- ---------- --------------- ---------------------------
-  Low Trust    0 -- 29    Red        AlertTriangle   Insufficient data or
-                                                     community rejection
+---
 
-  Developing   30 -- 59   Orange     Clock           Route gaining traction, use
-                                                     with caution
+**Level** **Score **Badge **Icon** **Meaning**
+Range** Color**
 
-  Verified     60 -- 79   Green      CheckCircle     Community-approved,
-                                                     reliable
+---
 
-  Trusted      80 -- 100  Blue       Shield + Star   Exceptional quality, high
-                          (brand)                    corroboration
-  ------------------------------------------------------------------------------
+Low Trust 0 -- 29 Red AlertTriangle Insufficient data or
+community rejection
+
+Developing 30 -- 59 Orange Clock Route gaining traction, use
+with caution
+
+Verified 60 -- 79 Green CheckCircle Community-approved,
+reliable
+
+Trusted 80 -- 100 Blue Shield + Star Exceptional quality, high
+(brand) corroboration
+
+---
 
 **DetailScore Sub-Computation**
 
@@ -710,35 +734,39 @@ Embedded in ShareRouteModal. Re-evaluates on every keystroke / field
 change via debounced useMemo. Shows current projected score, next
 highest-impact improvement, and completed checkpoints.
 
-  ---------------------------------------------------------------------------
-  **Checkpoint    **Score   **Evaluate            **Nudge Copy**
-  ID**            Boost**   Condition**           
-  --------------- --------- --------------------- ---------------------------
-  has-title       +10       title.trim().length   Give your route a catchy
-                            \>= 5                 title!
+---
 
-  min-routes      +15       ≥2 non-empty route    Break into steps ---
-                            steps                 travelers love clear
-                                                  directions.
+**Checkpoint **Score **Evaluate **Nudge Copy**
+ID** Boost** Condition**
 
-  has-images      +20       images.length \>= 2   Photos boost trust by 20
-                                                  pts --- snap the route!
+---
 
-  has-vehicles    +10       every route has ≥1    Which vehicles do you use?
-                            vehicle               Helps people plan.
+has-title +10 title.trim().length Give your route a catchy
+\>= 5 title!
 
-  has-fares       +10       any route.fare \> 0   Add fares --- budget
-                                                  travelers will thank you!
+min-routes +15 ≥2 non-empty route Break into steps ---
+steps travelers love clear
+directions.
 
-  has-tags        +10       tags.length \>= 3     Tags help discovery --- add
-                                                  at least 3.
+has-images +20 images.length \>= 2 Photos boost trust by 20
+pts --- snap the route!
 
-  dense-text      +15       total route text ≥    More detail = more trust.
-                            300 chars             Aim for 300+ chars.
+has-vehicles +10 every route has ≥1 Which vehicles do you use?
+vehicle Helps people plan.
 
-  has-links       +10       ≥1 external link      Add a Maps link for extra
-                            across routes         credibility.
-  ---------------------------------------------------------------------------
+has-fares +10 any route.fare \> 0 Add fares --- budget
+travelers will thank you!
+
+has-tags +10 tags.length \>= 3 Tags help discovery --- add
+at least 3.
+
+dense-text +15 total route text ≥ More detail = more trust.
+300 chars Aim for 300+ chars.
+
+has-links +10 ≥1 external link Add a Maps link for extra
+across routes credibility.
+
+---
 
 All checkpoints are admin-configurable via SiteConfig DB --- scoreBoost
 values, nudge copy, and evaluate lambdas can be updated without a
@@ -749,46 +777,50 @@ deploy.
 **3.1 Map Stack Decision**
 
 +-----------------------------------------------------------------------+
-| **DECISION**                                                          |
-|                                                                       |
-| Primary: MapLibre GL JS (v4.7) + react-map-gl for open-source,        |
-| high-performance vector tile rendering --- no per-request API cost.   |
-| Supplementary: Google Maps Platform APIs consumed where premium data  |
-| is worth cost (Places Autocomplete, Traffic Layer, Directions for     |
-| transit). OpenRouteService for free-tier routing. Nominatim for       |
-| reverse geocoding.                                                    |
+| **DECISION** |
+| |
+| Primary: MapLibre GL JS (v4.7) + react-map-gl for open-source, |
+| high-performance vector tile rendering --- no per-request API cost. |
+| Supplementary: Google Maps Platform APIs consumed where premium data |
+| is worth cost (Places Autocomplete, Traffic Layer, Directions for |
+| transit). OpenRouteService for free-tier routing. Nominatim for |
+| reverse geocoding. |
 +-----------------------------------------------------------------------+
 
-  -----------------------------------------------------------------------------
-  **Service**        **Use Case**         **Cost**        **License**
-  ------------------ -------------------- --------------- ---------------------
-  MapLibre GL JS     Base map rendering,  Free            BSD-3
-                     polylines, markers,                  
-                     clustering                           
+---
 
-  OpenFreeMap /      Vector tile source   Free            ODbL
-  MapTiler Free Tier for MapLibre                         
+**Service** **Use Case** **Cost** **License**
 
-  OpenRouteService   Auto-route between   Free (2k        Apache 2.0
-  API                waypoints,           req/day)        
-                     isochrones                           
+---
 
-  Google Places      Location search with \$0.017/req     Commercial
-  Autocomplete       place intelligence   (cache          
-                                          aggressively)   
+MapLibre GL JS Base map rendering, Free BSD-3
+polylines, markers,  
+ clustering
 
-  Google Traffic     Real-time traffic    Tile overlay    Commercial
-  Layer              overlay on MapLibre  via JS API      
+OpenFreeMap / Vector tile source Free ODbL
+MapTiler Free Tier for MapLibre
 
-  Google Directions  Public transit       \$0.005/req     Commercial
-  (Transit)          routing (BRT, rail)                  
+OpenRouteService Auto-route between Free (2k Apache 2.0
+API waypoints, req/day)  
+ isochrones
 
-  Nominatim (OSM)    Reverse geocoding,   Free (self-host ODbL
-                     address lookup       or public)      
+Google Places Location search with \$0.017/req Commercial
+Autocomplete place intelligence (cache  
+ aggressively)
 
-  Open-Meteo         Weather data overlay Free            CC BY 4.0
-                     on route                             
-  -----------------------------------------------------------------------------
+Google Traffic Real-time traffic Tile overlay Commercial
+Layer overlay on MapLibre via JS API
+
+Google Directions Public transit \$0.005/req Commercial
+(Transit) routing (BRT, rail)
+
+Nominatim (OSM) Reverse geocoding, Free (self-host ODbL
+address lookup or public)
+
+Open-Meteo Weather data overlay Free CC BY 4.0
+on route
+
+---
 
 **3.2 Data Model Extension**
 
@@ -873,11 +905,11 @@ The complete flow from text input to rendered polyline:
     pins
 
 +-----------------------------------------------------------------------+
-| **OFFLINE TRACING**                                                   |
-|                                                                       |
-| When offline, the map renders last-fetched tiles from Cache API       |
+| **OFFLINE TRACING** |
+| |
+| When offline, the map renders last-fetched tiles from Cache API |
 | (service worker). Auto-trace is queued for when connectivity returns. |
-| Manual straight-line mode is always available offline.                |
+| Manual straight-line mode is always available offline. |
 +-----------------------------------------------------------------------+
 
 **3.4 Feed, Route & User Suggestion Algorithms**
@@ -888,45 +920,53 @@ Platform-generated route suggestions are created from aggregating and
 synthesizing existing user posts. They are clearly labeled \'Along
 Suggestion\' and are non-blocking (rendered after user posts).
 
-  ---------------------------------------------------------------------------------------
-  **Signal**       **Weight**   **Data Source**            **Notes**
-  ---------------- ------------ -------------------------- ------------------------------
-  User\'s tag      0.35         UserActivity table (last   Tags the user engages with
-  history                       100)                       most
+---
 
-  Geographic       0.30         Post.startCoords vs        Haversine distance \< 10km
-  proximity                     user.lastKnownLocation     preferred
+**Signal** **Weight** **Data Source** **Notes**
 
-  Validity score   0.20         ValidityEngine.compute()   Higher score = higher rank
+---
 
-  Social graph     0.10         Posts from 2nd-degree      Friends-of-friends boost
-  overlap                       follows                    
+User\'s tag 0.35 UserActivity table (last Tags the user engages with
+history 100) most
 
-  Recency boost    0.05         Post.createdAt             Posts \< 7 days old get +5%
+Geographic 0.30 Post.startCoords vs Haversine distance \< 10km
+proximity user.lastKnownLocation preferred
 
-  Fare             +bonus       Route.fare vs user\'s      Additive signal, not ranked
-  accessibility                 historical fare range      
+Validity score 0.20 ValidityEngine.compute() Higher score = higher rank
 
-  Vehicle          +bonus       User\'s liked posts\'      Additive signal
-  preference                    vehicle types              
-  ---------------------------------------------------------------------------------------
+Social graph 0.10 Posts from 2nd-degree Friends-of-friends boost
+overlap follows
+
+Recency boost 0.05 Post.createdAt Posts \< 7 days old get +5%
+
+Fare +bonus Route.fare vs user\'s Additive signal, not ranked
+accessibility historical fare range
+
+Vehicle +bonus User\'s liked posts\' Additive signal
+preference vehicle types
+
+---
 
 **User Suggestion Algorithm**
 
-  ----------------------------------------------------------------------------
-  **Signal**          **Weight**   **Logic**
-  ------------------- ------------ -------------------------------------------
-  Common tag          0.40         Overlap between user\'s top tags and
-  interests                        candidate\'s post tags
+---
 
-  Mutual follows      0.25         Count of shared follows / total follows
-                                   (Jaccard similarity)
+**Signal** **Weight** **Logic**
 
-  Geographic overlap  0.20         Posts in same region
+---
 
-  Validity score of   0.15         High-quality posters surfaced
-  posts                            preferentially
-  ----------------------------------------------------------------------------
+Common tag 0.40 Overlap between user\'s top tags and
+interests candidate\'s post tags
+
+Mutual follows 0.25 Count of shared follows / total follows
+(Jaccard similarity)
+
+Geographic overlap 0.20 Posts in same region
+
+Validity score of 0.15 High-quality posters surfaced
+posts preferentially
+
+---
 
 **Platform-Generated Route Suggestions**
 
@@ -1039,59 +1079,63 @@ All modals and toasts are triggered imperatively via a singleton service
 
 **4.2 Confirm Modal & Global Undo System**
 
-  ---------------------------------------------------------------------------------------
-  **Action Type**    **Confirm       **Undo         **Undo    **Rollback Mechanism**
-                     Modal?**        Available?**   TTL**     
-  ------------------ --------------- -------------- --------- ---------------------------
-  Delete Post        Yes             Yes            10        Optimistic delete; restore
-                     (destructive)                  seconds   from local state on undo
+---
 
-  Delete Comment     Yes             Yes            10        Optimistic delete; restore
-                     (destructive)                  seconds   
+**Action Type** **Confirm **Undo **Undo **Rollback Mechanism**
+Modal?** Available?** TTL**
 
-  Unfollow User      Yes (sensitive) Yes            5 seconds Optimistic unfollow;
-                                                              re-follow on undo
+---
 
-  Unlike/Undislike   No              Yes            5 seconds Rollback counter in
-                                                              useFeedInteractions
+Delete Post Yes Yes 10 Optimistic delete; restore
+(destructive) seconds from local state on undo
 
-  Remove Bookmark    No              Yes            5 seconds Restore bookmark in hook
+Delete Comment Yes Yes 10 Optimistic delete; restore
+(destructive) seconds
 
-  Edit Profile       No              No             N/A       Cancel button in modal
+Unfollow User Yes (sensitive) Yes 5 seconds Optimistic unfollow;
+re-follow on undo
 
-  Block User         Yes             No             N/A       Intentional --- no
-                     (destructive)                            accidental unblock
+Unlike/Undislike No Yes 5 seconds Rollback counter in
+useFeedInteractions
 
-  Report Content     No              No             N/A       Form submission
+Remove Bookmark No Yes 5 seconds Restore bookmark in hook
 
-  Upload Image       No              Yes (while     Until     Remove from draft state
-                                     draft)         submit    
+Edit Profile No No N/A Cancel button in modal
 
-  Admin: Ban User    Yes             No             N/A       Admin action log only
-                     (destructive)                            
-  ---------------------------------------------------------------------------------------
+Block User Yes No N/A Intentional --- no
+(destructive) accidental unblock
+
+Report Content No No N/A Form submission
+
+Upload Image No Yes (while Until Remove from draft state
+draft) submit
+
+Admin: Ban User Yes No N/A Admin action log only
+(destructive)
+
+---
 
 **4.3 Offline / PWA Architecture**
 
 Offline-first architecture using Workbox strategies. Key behaviors:
 
--   Service Worker registered via lib/utils/sw-register.ts ---
-    non-blocking, deferred after page load
+- Service Worker registered via lib/utils/sw-register.ts ---
+  non-blocking, deferred after page load
 
--   Network-first for API calls with offline fallback to cached
-    last-known data
+- Network-first for API calls with offline fallback to cached
+  last-known data
 
--   Cache-first for static assets, fonts, and map tiles
+- Cache-first for static assets, fonts, and map tiles
 
--   Background sync for network-dependent actions queued while offline
+- Background sync for network-dependent actions queued while offline
 
--   Offline indicator: non-blocking toast banner (OfflineIndicator
-    component)
+- Offline indicator: non-blocking toast banner (OfflineIndicator
+  component)
 
--   Online restoration: auto-flush queued actions with toast
-    confirmation
+- Online restoration: auto-flush queued actions with toast
+  confirmation
 
--   Critical pages pre-cached: /home, /explore, /profile, /notifications
+- Critical pages pre-cached: /home, /explore, /profile, /notifications
 
 > // Offline action queue in lib/services/offlineQueue.ts
 >
@@ -1115,22 +1159,26 @@ Offline-first architecture using Workbox strategies. Key behaviors:
 
 **4.4 Image Handling --- Cloudinary Organization**
 
-  ----------------------------------------------------------------------------------------------------
-  **Upload Type** **Cloudinary Folder**            **Transformations**                **Access**
-  --------------- -------------------------------- ---------------------------------- ----------------
-  Post images     along/posts/{userId}/{postId}/   w_800,q_auto,f_auto,c_limit        Public
+---
 
-  Profile images  along/profiles/{userId}/         w_200,h_200,c_fill,g_face,q_auto   Public
+**Upload Type** **Cloudinary Folder** **Transformations** **Access**
 
-  Team member     along/team/{memberId}/           w_400,h_400,c_fill,q_auto          Public
-  images                                                                              
+---
 
-  Bug report      along/reports/{reportId}/        w_1200,q_auto,f_auto               Private (admin
-  attachments                                                                         only)
+Post images along/posts/{userId}/{postId}/ w_800,q_auto,f_auto,c_limit Public
 
-  Admin uploads   along/admin/                     Passthrough                        Private (admin
-                                                                                      only)
-  ----------------------------------------------------------------------------------------------------
+Profile images along/profiles/{userId}/ w_200,h_200,c_fill,g_face,q_auto Public
+
+Team member along/team/{memberId}/ w_400,h_400,c_fill,q_auto Public
+images
+
+Bug report along/reports/{reportId}/ w_1200,q_auto,f_auto Private (admin
+attachments only)
+
+Admin uploads along/admin/ Passthrough Private (admin
+only)
+
+---
 
 All Cloudinary URLs stored in DB. Deletion hook: on post delete,
 Cloudinary API called to remove associated resources (webhook-queued for
@@ -1186,37 +1234,41 @@ All analytics are computed from UserActivity and PostEngagement tables.
 Both user-facing dashboards and platform-level admin views are
 supported.
 
-  -----------------------------------------------------------------------------
-  **Metric        **Tracked Events**    **Visualization**   **Scope**
-  Category**                                                
-  --------------- --------------------- ------------------- -------------------
-  Post Engagement Views, likes,         Time-series line    Per-post +
-                  dislikes, bookmarks,  chart               aggregate
-                  shares, comments                          
+---
 
-  User Growth     Registrations,        Bar chart + funnel  Platform-wide
-                  DAU/WAU/MAU, churn                        (admin)
+**Metric **Tracked Events\*\* **Visualization** **Scope**
+Category\*\*
 
-  Route Discovery Search queries,       Heatmap + top       Platform-wide
-                  explore clicks, map   queries             
-                  interactions                              
+---
 
-  Trust Scores    Average validity by   Distribution        Platform-wide
-                  tag/region/user       histogram           (admin)
+Post Engagement Views, likes, Time-series line Per-post +
+dislikes, bookmarks, chart aggregate
+shares, comments
 
-  Invite          Invites sent,         Leaderboard + tree  Per-user + platform
-  Performance     accepted,             view                
-                  invited-user activity                     
+User Growth Registrations, Bar chart + funnel Platform-wide
+DAU/WAU/MAU, churn (admin)
 
-  Marketplace     Listings viewed,      Revenue dashboard   Admin only
-                  purchases, revenue                        
-  -----------------------------------------------------------------------------
+Route Discovery Search queries, Heatmap + top Platform-wide
+explore clicks, map queries  
+ interactions
+
+Trust Scores Average validity by Distribution Platform-wide
+tag/region/user histogram (admin)
+
+Invite Invites sent, Leaderboard + tree Per-user + platform
+Performance accepted, view  
+ invited-user activity
+
+Marketplace Listings viewed, Revenue dashboard Admin only
+purchases, revenue
+
+---
 
 > // Invite system --- lib/config/inviteConfig.ts
 >
 > export const INVITE_CONFIG = {
 >
-> linkTemplate: \'https://along.app/join?ref={userId}\',
+> linkTemplate: \'https://alongng.com/join?ref={userId}\',
 >
 > pointsPerAcceptedInvite: 100,
 >
@@ -1231,11 +1283,11 @@ supported.
 **5. ACID-COMPLIANT DATABASE SCHEMA**
 
 +-----------------------------------------------------------------------+
-| **NOTE**                                                              |
-|                                                                       |
-| Full Prisma schema with all new models. Use prisma migrate dev        |
-| \--name \[migration-name\] for each phase. All multi-step mutations   |
-| use prisma.\$transaction(\[\]) to guarantee ACID atomicity.           |
+| **NOTE** |
+| |
+| Full Prisma schema with all new models. Use prisma migrate dev |
+| \--name \[migration-name\] for each phase. All multi-step mutations |
+| use prisma.\$transaction(\[\]) to guarantee ACID atomicity. |
 +-----------------------------------------------------------------------+
 
 **5.1 Extended Prisma Schema**
@@ -1507,51 +1559,55 @@ supported.
 
 **5.2 Index Strategy**
 
-  --------------------------------------------------------------------------
-  **Table**        **Index**              **Type**   **Trigger**
-  ---------------- ---------------------- ---------- -----------------------
-  User             userName, email,       BTree      All lookups
-                   createdAt, inviteCode             
+---
 
-  Post             userId, createdAt DESC BTree      Feed queries
+**Table** **Index** **Type** **Trigger**
 
-  Post             tags                   GIN        Tag-based filtering
+---
 
-  Post             startLat+startLng,     BTree      Geographic queries
-                   endLat+endLng                     
+User userName, email, BTree All lookups
+createdAt, inviteCode
 
-  Post             region, validityScore  BTree      Region + quality
-                   DESC                              queries
+Post userId, createdAt DESC BTree Feed queries
 
-  Follow           followerId,            BTree      Feed & social graph
-                   followingId                       
+Post tags GIN Tag-based filtering
 
-  UserActivity     userId+createdAt       BTree      Tag scoring
+Post startLat+startLng, BTree Geographic queries
+endLat+endLng
 
-  AnalyticsEvent   event+createdAt,       BTree      Analytics aggregation
-                   userId+createdAt                  
-  --------------------------------------------------------------------------
+Post region, validityScore BTree Region + quality
+DESC queries
+
+Follow followerId, BTree Feed & social graph
+followingId
+
+UserActivity userId+createdAt BTree Tag scoring
+
+AnalyticsEvent event+createdAt, BTree Analytics aggregation
+userId+createdAt
+
+---
 
 **5.3 Key ACID Transaction Patterns**
 
 All multi-step mutations are wrapped in prisma.\$transaction(\[\]) for
 atomicity. Critical patterns:
 
--   **Post Create:** Insert Post + UserActivity(SHARE) + invalidate
-    follower feed caches
+- **Post Create:** Insert Post + UserActivity(SHARE) + invalidate
+  follower feed caches
 
--   **Like Toggle:** Upsert PostLike + update Post.likes counter +
-    insert UserActivity(LIKE) + create Notification
+- **Like Toggle:** Upsert PostLike + update Post.likes counter +
+  insert UserActivity(LIKE) + create Notification
 
--   **Follow Toggle:** Insert Follow + create Notification + invalidate
-    both users\' suggestion caches
+- **Follow Toggle:** Insert Follow + create Notification + invalidate
+  both users\' suggestion caches
 
--   **Award Points:** Update User.rewardPoints + update
-    User.rewardTier + create Notification(REWARD)
+- **Award Points:** Update User.rewardPoints + update
+  User.rewardTier + create Notification(REWARD)
 
--   **Post Delete:** Cascade via Prisma onDelete:Cascade --- Comments,
-    Likes, Bookmarks, Notifications auto-deleted + Cloudinary cleanup
-    queued
+- **Post Delete:** Cascade via Prisma onDelete:Cascade --- Comments,
+  Likes, Bookmarks, Notifications auto-deleted + Cloudinary cleanup
+  queued
 
 **6. ECOSYSTEM API CONTRACTS**
 
@@ -1711,88 +1767,96 @@ atomicity. Critical patterns:
 **7. SUSTAINABLE REWARDS SYSTEM**
 
 +-----------------------------------------------------------------------+
-| **DESIGN PRINCIPLE**                                                  |
-|                                                                       |
-| Low-cost, purely digital incentive system. No real-money payouts in   |
-| Phase 1. Points are earned through quality contributions and social   |
-| actions. They unlock cosmetic perks, platform features, and           |
-| eventually Transact marketplace credits. The goal is to make          |
-| high-quality route sharing intrinsically rewarding.                   |
+| **DESIGN PRINCIPLE** |
+| |
+| Low-cost, purely digital incentive system. No real-money payouts in |
+| Phase 1. Points are earned through quality contributions and social |
+| actions. They unlock cosmetic perks, platform features, and |
+| eventually Transact marketplace credits. The goal is to make |
+| high-quality route sharing intrinsically rewarding. |
 +-----------------------------------------------------------------------+
 
 **7.1 Points Economy**
 
-  -------------------------------------------------------------------------
-  **Action**          **Points   **Conditions /   **Anti-Abuse**
-                      Earned**   Caps**           
-  ------------------- ---------- ---------------- -------------------------
-  Publish a route     +50        Max 5/day        Validity score must be ≥
-  post                                            20 after 24h
+---
 
-  Post reaches        +100       One-time per     Validity ≥ 80
-  Verified trust                 post             
-  level                                           
+**Action** **Points **Conditions / **Anti-Abuse**
+Earned** Caps**
 
-  Post reaches        +200       One-time per     Validity ≥ 90
-  Trusted trust level            post             
+---
 
-  Receive a like on a +2         Max 200 pts/post Distinct users only
-  post                           from likes       
+Publish a route +50 Max 5/day Validity score must be ≥
+post 20 after 24h
 
-  Receive a bookmark  +5         Max 100 pts/post Distinct users only
-                                 from bookmarks   
+Post reaches +100 One-time per Validity ≥ 80
+Verified trust post  
+ level
 
-  Comment that        +15        Max 3/day        Original comment only
-  receives 3+ likes                               
+Post reaches +200 One-time per Validity ≥ 90
+Trusted trust level post
 
-  Post receives       +50        One-time per     Auto-computed by
-  corroboration (5               post             ValidityEngine
-  similar)                                        
+Receive a like on a +2 Max 200 pts/post Distinct users only
+post from likes
 
-  Invite a new user   +100       No cap           Invited user must post
-  (accepted)                                      within 30 days
+Receive a bookmark +5 Max 100 pts/post Distinct users only
+from bookmarks
 
-  Invited user\'s     +10 per    Max 500          Invitee must have ≥ 1
-  post activity       post       pts/invitee      verified post
+Comment that +15 Max 3/day Original comment only
+receives 3+ likes
 
-  Daily login streak  +25        Once per streak  Must be active (action in
-  (7 days)                       milestone        session)
+Post receives +50 One-time per Auto-computed by
+corroboration (5 post ValidityEngine
+similar)
 
-  Complete profile    +50        One-time         All optional fields
-  (all fields)                                    filled
-  -------------------------------------------------------------------------
+Invite a new user +100 No cap Invited user must post
+(accepted) within 30 days
+
+Invited user\'s +10 per Max 500 Invitee must have ≥ 1
+post activity post pts/invitee verified post
+
+Daily login streak +25 Once per streak Must be active (action in
+(7 days) milestone session)
+
+Complete profile +50 One-time All optional fields
+(all fields) filled
+
+---
 
 **7.2 Reward Tiers**
 
-  -------------------------------------------------------------------------
-  **Tier**   **Points     **Perks**                       **Badge**
-             Required**                                   
-  ---------- ------------ ------------------------------- -----------------
-  Bronze     0            Standard access                 Bronze shield
-                                                          icon
+---
 
-  Silver     500          Priority in suggestion          Silver shield
-                          algorithm (+10% boost), custom  
-                          avatar frame                    
+**Tier** **Points **Perks\*\* **Badge**
+Required\*\*
 
-  Gold       2,000        Silver perks + early access to  Gold shield
-                          new features, Gold profile      
-                          badge                           
+---
 
-  Platinum   5,000        Gold perks + route moderation   Platinum shield
-                          voting rights, Platinum         
-                          verified checkmark              
+Bronze 0 Standard access Bronze shield
+icon
 
-  Explorer   10,000       All perks + Along Explorer      Explorer star
-                          badge, Transact seller fee      badge
-                          waiver (Phase 2)                
-  -------------------------------------------------------------------------
+Silver 500 Priority in suggestion Silver shield
+algorithm (+10% boost), custom  
+ avatar frame
+
+Gold 2,000 Silver perks + early access to Gold shield
+new features, Gold profile  
+ badge
+
+Platinum 5,000 Gold perks + route moderation Platinum shield
+voting rights, Platinum  
+ verified checkmark
+
+Explorer 10,000 All perks + Along Explorer Explorer star
+badge, Transact seller fee badge
+waiver (Phase 2)
+
+---
 
 **7.3 Invite System Implementation**
 
 > // Each user has a unique inviteCode = cuid() stored on User model
 >
-> // Invite link: https://along.app/join?ref={inviteCode}
+> // Invite link: https://alongng.com/join?ref={inviteCode}
 >
 > // On registration with ref param:
 >
@@ -1800,8 +1864,7 @@ atomicity. Critical patterns:
 >
 > // 2. Set invitedById on new User
 >
-> // 3. Award 100 points to inviter (transaction: User.rewardPoints +=
-> 100)
+> // 3. Award 100 points to inviter (transaction: User.rewardPoints += 100)
 >
 > // 4. Send notification to inviter: \'{name} accepted your invite!\'
 >
@@ -1818,249 +1881,273 @@ organically.
 **8. EXECUTION & PHASED ROADMAP**
 
 +-----------------------------------------------------------------------+
-| **APPROACH**                                                          |
-|                                                                       |
-| Config-First Refactoring: migrate hardcoded logic to config objects   |
-| first (fastest wins). Then layer new features on top of the clean     |
-| config-driven foundation. Each phase ends with a deployable           |
-| checkpoint.                                                           |
+| **APPROACH** |
+| |
+| Config-First Refactoring: migrate hardcoded logic to config objects |
+| first (fastest wins). Then layer new features on top of the clean |
+| config-driven foundation. Each phase ends with a deployable |
+| checkpoint. |
 +-----------------------------------------------------------------------+
 
 **8.1 Phase 0 --- Foundation (Weeks 1--2)**
 
 Priority: Config migration, dependency updates, global infrastructure.
 
-  ------------------------------------------------------------------------------------------
-  **Task**                        **Files Affected**             **Effort**   **Priority**
-  ------------------------------- ------------------------------ ------------ --------------
-  Create all config files         lib/config/\*.ts (all new)     M            P0
-  (vehicles, status, nav, forms,                                              
-  notifications, footer, avatar,                                              
-  rewards)                                                                    
+---
 
-  Replace emoji references with   PostCard, ShareRouteModal,     S            P0
-  Lucide icons throughout         TrustBadge, DraftingCoach                   
+**Task** **Files Affected** **Effort** **Priority**
 
-  Update all dependencies per     package.json, all imports      M            P0
-  §1.8 matrix                                                                 
+---
 
-  Implement GlobalModalProvider + providers/,                    M            P0
-  ModalService.confirm()          lib/services/modalService.ts                
+Create all config files lib/config/\*.ts (all new) M P0
+(vehicles, status, nav, forms,  
+ notifications, footer, avatar,  
+ rewards)
 
-  Implement GlobalToastProvider   providers/,                    S            P0
-                                  lib/services/toastService.ts                
+Replace emoji references with PostCard, ShareRouteModal, S P0
+Lucide icons throughout TrustBadge, DraftingCoach
 
-  Implement GlobalUndoSystem      lib/services/undoService.ts,   M            P0
-                                  useFeedInteractions.ts                      
+Update all dependencies per package.json, all imports M P0
+§1.8 matrix
 
-  Apply Prisma schema additions   prisma/schema.prisma +         M            P0
-  (SiteConfig, BugReport,         migration                                   
-  UserReview, AnalyticsEvent,                                                 
-  User role/invite fields)                                                    
+Implement GlobalModalProvider + providers/, M P0
+ModalService.confirm() lib/services/modalService.ts
 
-  Wire NAV_REGISTRY into          navigation/ components         S            P0
-  DashboardNavbar + DesktopTopBar                                             
+Implement GlobalToastProvider providers/, S P0
+lib/services/toastService.ts
 
-  Wire VEHICLE_REGISTRY (with     posts/ components              S            P0
-  icons) into PostCard +                                                      
-  ShareRouteModal                                                             
-  ------------------------------------------------------------------------------------------
+Implement GlobalUndoSystem lib/services/undoService.ts, M P0
+useFeedInteractions.ts
+
+Apply Prisma schema additions prisma/schema.prisma + M P0
+(SiteConfig, BugReport, migration  
+ UserReview, AnalyticsEvent,  
+ User role/invite fields)
+
+Wire NAV_REGISTRY into navigation/ components S P0
+DashboardNavbar + DesktopTopBar
+
+Wire VEHICLE_REGISTRY (with posts/ components S P0
+icons) into PostCard +  
+ ShareRouteModal
+
+---
 
 **8.2 Phase 1 --- Core Product (Weeks 3--6)**
 
 Priority: ValidityEngine, DraftingCoach, DiceBear avatars, Auth
 improvements, Bug reporting.
 
-  -----------------------------------------------------------------------------------------------------------
-  **Task**                        **Files Affected**                              **Effort**   **Priority**
-  ------------------------------- ----------------------------------------------- ------------ --------------
-  Ship ValidityEngine class +     lib/services/ValidityEngine.ts,                 M            P0
-  TrustBadge component            components/ui/TrustBadge.tsx                                 
+---
 
-  Integrate DraftingCoach into    components/features/posts/DraftingCoach.tsx     M            P0
-  ShareRouteModal                                                                              
+**Task** **Files Affected** **Effort** **Priority**
 
-  DiceBear AvatarEditor UI + save components/features/profile/AvatarEditor.tsx,   M            P0
-  to User.avatarConfig            /api/users/\[id\]/avatar                                     
+---
 
-  Admin-editable SiteConfig DB    lib/db/SiteConfigRepository.ts,                 M            P1
-  pattern + Redis caching         /api/admin/config                                            
+Ship ValidityEngine class + lib/services/ValidityEngine.ts, M P0
+TrustBadge component components/ui/TrustBadge.tsx
 
-  Bug report form + admin         app/(dashboard)/report-bug, app/(admin)/bugs    M            P1
-  dashboard                                                                                    
+Integrate DraftingCoach into components/features/posts/DraftingCoach.tsx M P0
+ShareRouteModal
 
-  Google OAuth integration        app/api/auth/google/, AntdProvider GoogleButton M            P1
+DiceBear AvatarEditor UI + save components/features/profile/AvatarEditor.tsx, M P0
+to User.avatarConfig /api/users/\[id\]/avatar
 
-  Admin pages: user management,   app/(admin)/\*                                  L            P1
-  post moderation, config editor                                                               
+Admin-editable SiteConfig DB lib/db/SiteConfigRepository.ts, M P1
+pattern + Redis caching /api/admin/config
 
-  Role-aware component rendering  All nav/component consumers of NAV_REGISTRY     S            P1
-  (Admin vs User)                                                                              
+Bug report form + admin app/(dashboard)/report-bug, app/(admin)/bugs M P1
+dashboard
 
-  Confirmations on all            ModalService usage in all hooks                 S            P1
-  destructive + sensitive actions                                                              
+Google OAuth integration app/api/auth/google/, AntdProvider GoogleButton M P1
 
-  PWA offline queue for           lib/services/offlineQueue.ts, service worker    M            P1
-  likes/follows/comments                                                                       
-  -----------------------------------------------------------------------------------------------------------
+Admin pages: user management, app/(admin)/\* L P1
+post moderation, config editor
+
+Role-aware component rendering All nav/component consumers of NAV_REGISTRY S P1
+(Admin vs User)
+
+Confirmations on all ModalService usage in all hooks S P1
+destructive + sensitive actions
+
+PWA offline queue for lib/services/offlineQueue.ts, service worker M P1
+likes/follows/comments
+
+---
 
 **8.3 Phase 2 --- Maps & Discovery (Weeks 7--10)**
 
-  ----------------------------------------------------------------------------------------------------------
-  **Task**                        **Files Affected**                             **Effort**   **Priority**
-  ------------------------------- ---------------------------------------------- ------------ --------------
-  MapLibre integration + replace  components/features/posts/RouteMap.tsx,        L            P0
-  Leaflet                         lib/config/mapIntegrations.ts                               
+---
 
-  Google Places Autocomplete in   components/features/posts/RouteStepInput.tsx   M            P0
-  route step inputs                                                                           
+**Task** **Files Affected** **Effort** **Priority**
 
-  OpenRouteService auto-trace +   lib/services/routeTracing.ts                   M            P0
-  polyline encode/decode                                                                      
+---
 
-  Route geographic data           API routes, Post model                         M            P0
-  (startCoords, endCoords,                                                                    
-  region) stored in Post                                                                      
+MapLibre integration + replace components/features/posts/RouteMap.tsx, L P0
+Leaflet lib/config/mapIntegrations.ts
 
-  Route + User suggestion         lib/services/suggestionsService.ts (refactor)  L            P1
-  algorithm implementation                                                                    
+Google Places Autocomplete in components/features/posts/RouteStepInput.tsx M P0
+route step inputs
 
-  Platform-generated route        lib/services/platformSuggestions.ts, Feed.tsx  L            P1
-  suggestions (Along Suggestions)                                                             
+OpenRouteService auto-trace + lib/services/routeTracing.ts M P0
+polyline encode/decode
 
-  Explore map view --- PostCard   app/(dashboard)/explore/page.tsx               M            P1
-  markers on MapLibre                                                                         
+Route geographic data API routes, Post model M P0
+(startCoords, endCoords,  
+ region) stored in Post
 
-  Transport integrations: Bolt    lib/config/mapIntegrations.ts, PostDetail      M            P2
-  deep-link, Airbnb widget, Tega                                                              
-  events                                                                                      
+Route + User suggestion lib/services/suggestionsService.ts (refactor) L P1
+algorithm implementation
 
-  Traffic and weather overlay     RouteMap enhancements                          M            P2
-  (Google Traffic + Open-Meteo)                                                               
-  ----------------------------------------------------------------------------------------------------------
+Platform-generated route lib/services/platformSuggestions.ts, Feed.tsx L P1
+suggestions (Along Suggestions)
+
+Explore map view --- PostCard app/(dashboard)/explore/page.tsx M P1
+markers on MapLibre
+
+Transport integrations: Bolt lib/config/mapIntegrations.ts, PostDetail M P2
+deep-link, Airbnb widget, Tega  
+ events
+
+Traffic and weather overlay RouteMap enhancements M P2
+(Google Traffic + Open-Meteo)
+
+---
 
 **8.4 Phase 3 --- Ecosystem & Rewards (Weeks 11--14)**
 
-  ----------------------------------------------------------------------------------------------------------
-  **Task**                        **Files Affected**                             **Effort**   **Priority**
-  ------------------------------- ---------------------------------------------- ------------ --------------
-  Rewards engine: points          lib/services/rewardsService.ts                 M            P0
-  calculation + tier upgrade                                                                  
-  triggers                                                                                    
+---
 
-  Rewards UI: user points         components/features/profile/RewardsPanel.tsx   M            P0
-  display, tier badge, history                                                                
+**Task** **Files Affected** **Effort** **Priority**
 
-  Invite system: inviteCode,      lib/services/inviteService.ts,                 M            P0
-  referral tracking, leaderboard  app/(dashboard)/invite                                      
+---
 
-  Transact marketplace            lib/integrations/transact.ts,                  L            P1
-  integration (PostCard CTA +     /api/webhooks/transact                                      
-  webhook)                                                                                    
+Rewards engine: points lib/services/rewardsService.ts M P0
+calculation + tier upgrade  
+ triggers
 
-  Tega events integration + feed  lib/integrations/tega.ts, /api/webhooks/tega   M            P1
-  widget                                                                                      
+Rewards UI: user points components/features/profile/RewardsPanel.tsx M P0
+display, tier badge, history
 
-  Analytics dashboard ---         app/(dashboard)/analytics/page.tsx             L            P1
-  user-facing                                                                                 
+Invite system: inviteCode, lib/services/inviteService.ts, M P0
+referral tracking, leaderboard app/(dashboard)/invite
 
-  Analytics dashboard ---         app/(admin)/analytics/page.tsx                 L            P1
-  admin/platform                                                                              
+Transact marketplace lib/integrations/transact.ts, L P1
+integration (PostCard CTA + /api/webhooks/transact  
+ webhook)
 
-  Contact page, About page with   app/(public)/about, contact, reviews           M            P2
-  team config, reviews section                                                                
+Tega events integration + feed lib/integrations/tega.ts, /api/webhooks/tega M P1
+widget
 
-  Featured reviews management     app/(admin)/reviews                            S            P2
-  (admin)                                                                                     
-  ----------------------------------------------------------------------------------------------------------
+Analytics dashboard --- app/(dashboard)/analytics/page.tsx L P1
+user-facing
+
+Analytics dashboard --- app/(admin)/analytics/page.tsx L P1
+admin/platform
+
+Contact page, About page with app/(public)/about, contact, reviews M P2
+team config, reviews section
+
+Featured reviews management app/(admin)/reviews S P2
+(admin)
+
+---
 
 **8.5 Phase 4 --- Scale & Polish (Weeks 15+)**
 
-  -----------------------------------------------------------------------
-  **Task**                        **Type**           **Effort**
-  ------------------------------- ------------------ --------------------
-  BullMQ / QStash background job  Infrastructure     L
-  workers for all webhook events                     
+---
 
-  N+1 elimination audit --- bulk  Performance        M
-  feed enrichment for all list                       
-  views                                              
+**Task** **Type** **Effort**
 
-  RxJS reactive feed stream +     Architecture       M
-  notification polling                               
+---
 
-  Comprehensive Jest test suite   Testing            L
-  (repositories, ValidityEngine,                     
-  suggestion algorithms)                             
+BullMQ / QStash background job Infrastructure L
+workers for all webhook events
 
-  E2E Playwright test suite (auth Testing            L
-  flow, post creation, map                           
-  interaction)                                       
+N+1 elimination audit --- bulk Performance M
+feed enrichment for all list  
+ views
 
-  Full PWA audit --- Lighthouse   Quality            M
-  score ≥ 90 across all                              
-  categories                                         
+RxJS reactive feed stream + Architecture M
+notification polling
 
-  Cloudinary webhook cleanup for  Infrastructure     S
-  deleted posts                                      
+Comprehensive Jest test suite Testing L
+(repositories, ValidityEngine,  
+ suggestion algorithms)
 
-  GDPR compliance: data export,   Compliance         M
-  account deletion, cookie                           
-  consent                                            
+E2E Playwright test suite (auth Testing L
+flow, post creation, map  
+ interaction)
 
-  Structured data (JSON-LD) for   SEO                S
-  public posts --- SEO                               
+Full PWA audit --- Lighthouse Quality M
+score ≥ 90 across all  
+ categories
 
-  i18n foundation (react-intl)    Localization       L
-  --- English + Pidgin English as                    
-  Day 1 locales                                      
-  -----------------------------------------------------------------------
+Cloudinary webhook cleanup for Infrastructure S
+deleted posts
+
+GDPR compliance: data export, Compliance M
+account deletion, cookie  
+ consent
+
+Structured data (JSON-LD) for SEO S
+public posts --- SEO
+
+i18n foundation (react-intl) Localization L
+--- English + Pidgin English as  
+ Day 1 locales
+
+---
 
 **APPENDIX A: ENVIRONMENT VARIABLES**
 
-  -------------------------------------------------------------------------------------
-  **Variable**                     **Required**   **Purpose**
-  -------------------------------- -------------- -------------------------------------
-  DATABASE_URL                     Yes (Prod)     PostgreSQL connection string
+---
 
-  UPSTASH_REDIS_REST_URL           Yes (Prod)     Redis URL (mock-redis in dev)
+**Variable** **Required** **Purpose**
 
-  UPSTASH_REDIS_REST_TOKEN         Yes (Prod)     Redis auth token
+---
 
-  JWT_SECRET                       Yes            Access token signing key
+DATABASE_URL Yes (Prod) PostgreSQL connection string
 
-  JWT_REFRESH_SECRET               Yes            Refresh token signing key
+UPSTASH_REDIS_REST_URL Yes (Prod) Redis URL (mock-redis in dev)
 
-  CLOUDINARY_CLOUD_NAME            Yes (Prod)     Cloudinary account
+UPSTASH_REDIS_REST_TOKEN Yes (Prod) Redis auth token
 
-  CLOUDINARY_API_KEY               Yes (Prod)     Cloudinary API key
+JWT_SECRET Yes Access token signing key
 
-  CLOUDINARY_API_SECRET            Yes (Prod)     Cloudinary API secret
+JWT_REFRESH_SECRET Yes Refresh token signing key
 
-  GOOGLE_CLIENT_ID                 OAuth          Google OAuth client ID
+CLOUDINARY_CLOUD_NAME Yes (Prod) Cloudinary account
 
-  GOOGLE_CLIENT_SECRET             OAuth          Google OAuth client secret
+CLOUDINARY_API_KEY Yes (Prod) Cloudinary API key
 
-  GOOGLE_MAPS_API_KEY              Maps           Google Places + Directions APIs
+CLOUDINARY_API_SECRET Yes (Prod) Cloudinary API secret
 
-  NEXTAUTH_URL                     OAuth          Base URL for OAuth callbacks
+GOOGLE_CLIENT_ID OAuth Google OAuth client ID
 
-  NEXT_PUBLIC_API_URL              Optional       Override for external API base
+GOOGLE_CLIENT_SECRET OAuth Google OAuth client secret
 
-  TRANSACT_API_KEY                 Ecosystem      Transact service-to-service key
+GOOGLE_MAPS_API_KEY Maps Google Places + Directions APIs
 
-  TRANSACT_WEBHOOK_SECRET          Ecosystem      Transact webhook HMAC secret
+NEXTAUTH_URL OAuth Base URL for OAuth callbacks
 
-  TEGA_API_KEY                     Ecosystem      Tega service-to-service key
+NEXT_PUBLIC_API_URL Optional Override for external API base
 
-  TEGA_WEBHOOK_SECRET              Ecosystem      Tega webhook HMAC secret
+TRANSACT_API_KEY Ecosystem Transact service-to-service key
 
-  QSTASH_TOKEN                     Workers        Upstash QStash token for job queue
+TRANSACT_WEBHOOK_SECRET Ecosystem Transact webhook HMAC secret
 
-  OPEN_ROUTE_SERVICE_KEY           Maps           OpenRouteService API key (free tier)
+TEGA_API_KEY Ecosystem Tega service-to-service key
 
-  NEXT_PUBLIC_MAPLIBRE_STYLE_URL   Maps           MapLibre/MapTiler style URL
-  -------------------------------------------------------------------------------------
+TEGA_WEBHOOK_SECRET Ecosystem Tega webhook HMAC secret
+
+QSTASH_TOKEN Workers Upstash QStash token for job queue
+
+OPEN_ROUTE_SERVICE_KEY Maps OpenRouteService API key (free tier)
+
+NEXT_PUBLIC_MAPLIBRE_STYLE_URL Maps MapLibre/MapTiler style URL
+
+---
 
 **APPENDIX B: ARCHITECTURAL DIAGRAMS (TEXT)**
 
@@ -2217,70 +2304,74 @@ improvements, Bug reporting.
 
 New and significantly modified files. All new files in bold.
 
-  ----------------------------------------------------------------------------------------------
-  **File Path**                                  **Status**   **Description**
-  ---------------------------------------------- ------------ ----------------------------------
-  lib/config/vehicles.ts                         MODIFY       Replace emoji with Lucide icons,
-                                                              add icon field
+---
 
-  lib/config/routeStatus.ts                      MODIFY       Icon system, add trustScore
+**File Path** **Status** **Description**
 
-  lib/config/navigation.ts                       MODIFY       Add requiredRole, group fields
+---
 
-  lib/config/avatar.ts                           NEW          DiceBear config, styles, URL
-                                                              builder
+lib/config/vehicles.ts MODIFY Replace emoji with Lucide icons,
+add icon field
 
-  lib/config/footer.ts                           NEW          Footer + devCredit config
+lib/config/routeStatus.ts MODIFY Icon system, add trustScore
 
-  lib/config/teamConfig.ts                       NEW          Team member array config
+lib/config/navigation.ts MODIFY Add requiredRole, group fields
 
-  lib/config/mapIntegrations.ts                  NEW          Transport integration registry
+lib/config/avatar.ts NEW DiceBear config, styles, URL
+builder
 
-  lib/config/rewards.ts                          NEW          Points economy + tier config
+lib/config/footer.ts NEW Footer + devCredit config
 
-  lib/config/inviteConfig.ts                     NEW          Invite system config
+lib/config/teamConfig.ts NEW Team member array config
 
-  lib/services/ValidityEngine.ts                 MODIFY       Full implementation per §2.1
+lib/config/mapIntegrations.ts NEW Transport integration registry
 
-  lib/services/DraftingCoachService.ts           NEW          Coach evaluation logic (class)
+lib/config/rewards.ts NEW Points economy + tier config
 
-  lib/services/rewardsService.ts                 NEW          Points + tier management
+lib/config/inviteConfig.ts NEW Invite system config
 
-  lib/services/routeTracingService.ts            NEW          ORS + MapLibre polyline
+lib/services/ValidityEngine.ts MODIFY Full implementation per §2.1
 
-  lib/services/platformSuggestions.ts            NEW          Along-generated suggestions
+lib/services/DraftingCoachService.ts NEW Coach evaluation logic (class)
 
-  lib/services/offlineQueue.ts                   NEW          PWA action queue
+lib/services/rewardsService.ts NEW Points + tier management
 
-  lib/services/modalService.ts                   NEW          Imperative modal system
+lib/services/routeTracingService.ts NEW ORS + MapLibre polyline
 
-  lib/services/toastService.ts                   NEW          Imperative toast system
+lib/services/platformSuggestions.ts NEW Along-generated suggestions
 
-  lib/services/undoService.ts                    NEW          Global undo with TTL
+lib/services/offlineQueue.ts NEW PWA action queue
 
-  lib/db/SiteConfigRepository.ts                 NEW          Admin-editable config CRUD
+lib/services/modalService.ts NEW Imperative modal system
 
-  components/ui/TrustBadge.tsx                   MODIFY       Icon-based, breakdown tooltip
+lib/services/toastService.ts NEW Imperative toast system
 
-  components/ui/ConfigDrivenForm.tsx             NEW          Generic form from FieldConfig\[\]
+lib/services/undoService.ts NEW Global undo with TTL
 
-  components/ui/ConfigDrivenList.tsx             NEW          Generic list from items\[\]
+lib/db/SiteConfigRepository.ts NEW Admin-editable config CRUD
 
-  components/ui/GlobalConfirmModal.tsx           NEW          Destructive action confirm
+components/ui/TrustBadge.tsx MODIFY Icon-based, breakdown tooltip
 
-  components/ui/GlobalUndoToast.tsx              NEW          Undo notification with timer
+components/ui/ConfigDrivenForm.tsx NEW Generic form from FieldConfig\[\]
 
-  components/features/profile/AvatarEditor.tsx   NEW          DiceBear avatar UI
+components/ui/ConfigDrivenList.tsx NEW Generic list from items\[\]
 
-  components/features/posts/DraftingCoach.tsx    MODIFY       Wire DraftingCoachService
+components/ui/GlobalConfirmModal.tsx NEW Destructive action confirm
 
-  components/features/posts/RouteMap.tsx         MODIFY       Migrate to MapLibre GL
+components/ui/GlobalUndoToast.tsx NEW Undo notification with timer
 
-  app/(admin)/                                   NEW          Admin pages group
+components/features/profile/AvatarEditor.tsx NEW DiceBear avatar UI
 
-  app/(public)/about, contact, report-bug        NEW          Public facing pages
+components/features/posts/DraftingCoach.tsx MODIFY Wire DraftingCoachService
 
-  app/(dashboard)/analytics, invite              NEW          User analytics + invite pages
+components/features/posts/RouteMap.tsx MODIFY Migrate to MapLibre GL
 
-  prisma/schema.prisma                           MODIFY       Add all new models per §5.1
-  ----------------------------------------------------------------------------------------------
+app/(admin)/ NEW Admin pages group
+
+app/(public)/about, contact, report-bug NEW Public facing pages
+
+app/(dashboard)/analytics, invite NEW User analytics + invite pages
+
+prisma/schema.prisma MODIFY Add all new models per §5.1
+
+---

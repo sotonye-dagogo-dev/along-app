@@ -5,7 +5,7 @@ import { prisma } from "@/app/lib/db/prisma";
 function ensureVapid() {
   const pub = process.env.VAPID_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
   const priv = process.env.VAPID_PRIVATE_KEY ?? "";
-  const mail = process.env.VAPID_MAILTO ?? "mailto:support@along.app";
+  const mail = process.env.VAPID_MAILTO ?? "mailto:support@alongng.com";
   if (!pub || !priv) return false;
   try {
     webpush.setVapidDetails(mail, pub, priv);

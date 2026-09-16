@@ -83,7 +83,7 @@ export async function sendEmail(options: {
   try {
     const config = await getEmailConfig();
     // Validate from address — Resend rejects unverified domains silently in dashboard
-    if (!config.fromEmail || !config.fromEmail.includes("@") || config.fromEmail === "mail@along.app") {
+    if (!config.fromEmail || !config.fromEmail.includes("@") || config.fromEmail === "mail@alongng.com") {
       console.warn(`[EMAIL WARN] fromEmail looks unverified/default: ${config.fromEmail}`);
     }
     const { data, error } = await withEmailTimeout(
