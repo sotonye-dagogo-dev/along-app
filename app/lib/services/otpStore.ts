@@ -10,9 +10,10 @@ type ResetEntry = { email: string; hash: string; expiry: number };
 const otpMemoryStore = new Map<string, OtpEntry>();
 const resetMemoryStore = new Map<string, ResetEntry>();
 
-const REDIS_OP_TIMEOUT_MS = 1500;
+const REDIS_OP_TIMEOUT_MS = 2500;
 
 let _redisClient: import("@upstash/redis").Redis | null | undefined = undefined;
+let _lastEnvKey: string | null = null;
 
 function resolveEnv(): { url: string; token: string } | null {
   const url = process.env.UPSTASH_REDIS_REST_URL || process.env.REDIS_URL || "";
@@ -24,8 +25,14 @@ function resolveEnv(): { url: string; token: string } | null {
 }
 
 async function getRedis(): Promise<import("@upstash/redis").Redis | null> {
-  if (_redisClient !== undefined) return _redisClient;
   const env = resolveEnv();
+  const envKey = env ? `${env.url}::${env.token.slice(0, 8)}` : "__none__";
+  // Invalidate cached client if env rotated (user rotated Upstash vars)
+  if (_redisClient !== undefined && _lastEnvKey !== null && _lastEnvKey !== envKey) {
+    _redisClient = undefined;
+  }
+  if (_redisClient !== undefined) return _redisClient;
+  _lastEnvKey = envKey;
   if (!env) {
     _redisClient = null;
     return null;
@@ -55,7 +62,12 @@ export async function setOtp(key: string, hash: string, ttlSeconds = 900): Promi
       await withTimeout(redis.set(key, hash, { ex: ttlSeconds }));
       return;
     } catch (e) {
-      console.warn("[otpStore] redis set failed, falling back to memory", (e as Error).message);
+      const msg = (e as Error).message;
+      console.warn("[otpStore] redis set failed, falling back to memory", msg);
+      // Memory fallback is per-instance only; warn in production so ops can fix Upstash config
+      if (msg.includes("timeout")) {
+        console.warn("[otpStore] Redis timeout suggests Upstash latency or misconfig — token stored in memory (non-durable across serverless instances)");
+      }
     }
   }
   otpMemoryStore.set(key, { hash, expiry: Date.now() + ttlSeconds * 1000 });
@@ -97,7 +109,11 @@ export async function setResetToken(key: string, hash: string, ttlSeconds = 3600
       await withTimeout(redis.set(key, hash, { ex: ttlSeconds }));
       return;
     } catch (e) {
-      console.warn("[otpStore] redis set reset failed, falling back to memory", (e as Error).message);
+      const msg = (e as Error).message;
+      console.warn("[otpStore] redis set reset failed, falling back to memory", msg);
+      if (msg.includes("timeout")) {
+        console.warn("[otpStore] Redis timeout on reset token — memory fallback is non-durable across serverless instances; verify UPSTASH_REDIS_REST_URL/TOKEN");
+      }
     }
   }
   // extract email from key for storage record
@@ -136,6 +152,7 @@ export async function delResetToken(key: string): Promise<void> {
 // For tests
 export function __resetOtpStoreForTests() {
   _redisClient = undefined;
+  _lastEnvKey = null;
   otpMemoryStore.clear();
   resetMemoryStore.clear();
 }

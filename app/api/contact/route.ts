@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { sendContactNotification } from "@/app/lib/services/emailService";
 
@@ -32,11 +33,22 @@ export async function POST(request: NextRequest) {
       data: { name, email, message },
     });
 
-    await sendContactNotification(name, email, message);
+    // Email notification is best-effort — DB write already succeeded; log failure but don't fail user request
+    try {
+      const emailResult = await sendContactNotification(name, email, message);
+      if (!emailResult.sent) {
+        console.warn(`[contact] notification failed: ${emailResult.reason}`);
+        Sentry.captureMessage(`Contact notification failed: ${emailResult.reason}`, "warning");
+      }
+    } catch (e) {
+      console.error("[contact] notification exception", e);
+      Sentry.captureException(e);
+    }
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
     console.error("Contact submission error:", error);
+    Sentry.captureException(error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
