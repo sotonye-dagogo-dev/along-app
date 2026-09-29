@@ -115,6 +115,11 @@ export type AnalyticsEvent = Prisma.AnalyticsEventModel
  */
 export type EmailLog = Prisma.EmailLogModel
 /**
+ * Model PasswordResetToken
+ * 
+ */
+export type PasswordResetToken = Prisma.PasswordResetTokenModel
+/**
  * Model PushSubscription
  * 
  */
