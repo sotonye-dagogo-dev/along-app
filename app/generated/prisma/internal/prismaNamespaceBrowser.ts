@@ -66,6 +66,7 @@ export const ModelName = {
   UserReview: 'UserReview',
   AnalyticsEvent: 'AnalyticsEvent',
   EmailLog: 'EmailLog',
+  PasswordResetToken: 'PasswordResetToken',
   PushSubscription: 'PushSubscription'
 } as const
 
@@ -306,6 +307,17 @@ export const EmailLogScalarFieldEnum = {
 } as const
 
 export type EmailLogScalarFieldEnum = (typeof EmailLogScalarFieldEnum)[keyof typeof EmailLogScalarFieldEnum]
+
+
+export const PasswordResetTokenScalarFieldEnum = {
+  id: 'id',
+  email: 'email',
+  tokenHash: 'tokenHash',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type PasswordResetTokenScalarFieldEnum = (typeof PasswordResetTokenScalarFieldEnum)[keyof typeof PasswordResetTokenScalarFieldEnum]
 
 
 export const PushSubscriptionScalarFieldEnum = {

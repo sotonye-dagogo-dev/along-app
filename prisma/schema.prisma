@@ -398,6 +398,21 @@ model EmailLog {
   @@index([createdAt(sort: Desc)])
 }
 
+// PasswordResetToken — durable DB store for forgot-password links.
+// Replaces Redis/memory-only storage which is non-durable across serverless
+// instances (token set on instance A invisible on instance B => immediate
+// "link expired or invalid"). Supports multiple concurrent tokens per email.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
 // PushSubscription — stores Web Push API subscriptions per user/device
 model PushSubscription {
   id        String   @id @default(cuid())
