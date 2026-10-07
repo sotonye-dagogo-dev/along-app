@@ -1,14 +1,27 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { Heart, MessageCircle, UserPlus, AtSign, Star, Award, CheckCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Heart, MessageCircle, UserPlus, AtSign, Star, Award, CheckCircle, Sparkles, ClipboardList, Reply, Bell } from "lucide-react"
 import { AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { useAuth } from "@/app/hooks/useAuth"
+import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 
 interface NotificationItem {
   id: string
-  type: "LIKE" | "COMMENT" | "FOLLOW" | "MENTION" | "REWARD" | "BADGE" | "VERIFIED"
+  type:
+    | "LIKE"
+    | "COMMENT"
+    | "FOLLOW"
+    | "MENTION"
+    | "REWARD"
+    | "BADGE"
+    | "VERIFIED"
+    | "WELCOME"
+    | "ROUTE_REQUEST"
+    | "ROUTE_RESPONSE"
   message: string
   createdAt: string
   actor: {
@@ -43,36 +56,33 @@ const TYPE_ICONS: Record<string, { icon: React.ElementType; color: string }> = {
   VERIFIED: { icon: CheckCircle, color: "#10B981" },
   REWARD: { icon: Star, color: "#F59E0B" },
   BADGE: { icon: Award, color: "#F59E0B" },
+  WELCOME: { icon: Sparkles, color: "#1677FF" },
+  ROUTE_REQUEST: { icon: ClipboardList, color: "#F97316" },
+  ROUTE_RESPONSE: { icon: Reply, color: "#10B981" },
+}
+
+interface NotificationsResponse {
+  notifications: NotificationItem[]
+  unreadCount: number
 }
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
   const [activeTab, setActiveTab] = useState<"all" | "unread" | "rewards">("all")
-  const [loading, setLoading] = useState(true)
+  const { user, isLoading: authLoading } = useAuth()
 
-  useEffect(() => {
-    const abort = new AbortController()
-    const load = async () => {
-      try {
-        const params = new URLSearchParams()
-        if (activeTab !== "all") params.set("filter", activeTab)
-        const res = await fetch(`/api/notifications?${params}`, { signal: abort.signal })
-        if (!res.ok) throw new Error("Failed to load notifications")
-        const data = await res.json()
-        if (abort.signal.aborted) return
-        setNotifications(data.notifications ?? [])
-        setUnreadCount(data.unreadCount ?? 0)
-      } catch (err: unknown) {
-        if (abort.signal.aborted) return
-        console.error("Failed to load notifications")
-      } finally {
-        if (!abort.signal.aborted) setLoading(false)
-      }
-    }
-    load()
-    return () => abort.abort()
-  }, [activeTab])
+  const params = new URLSearchParams()
+  if (activeTab !== "all") params.set("filter", activeTab)
+  const query = params.toString()
+
+  const { data, loading, mutate } = useCachedFetch<NotificationsResponse>(
+    authLoading ? null : `notifications:${user?.id ?? "guest"}:${activeTab}`,
+    `/api/notifications${query ? `?${query}` : ""}`,
+    { ttlSec: 30, enabled: !authLoading }
+  )
+
+  const notifications = data?.notifications ?? []
+  const unreadCount = data?.unreadCount ?? 0
+  const isLoading = authLoading || loading
 
   const markAllRead = async () => {
     try {
@@ -81,16 +91,33 @@ export default function NotificationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ markAll: true }),
       })
-      setNotifications((prev) =>
-        prev.map((n) => ({
+      mutate((prev) => ({
+        notifications: (prev?.notifications ?? []).map((n) => ({
           ...n,
           recipients: n.recipients.map((r) => ({ ...r, read: true })),
-        }))
-      )
-      setUnreadCount(0)
+        })),
+        unreadCount: 0,
+      }))
     } catch {
       console.error("Failed to mark all read")
     }
+  }
+
+  /** Called when a row marks itself read — keep state + cache in sync. */
+  const handleMarkedRead = (id: string) => {
+    mutate((prev) => {
+      if (!prev) return { notifications: [], unreadCount: 0 }
+      const target = prev.notifications.find((n) => n.id === id)
+      const wasUnread = target?.recipients.some((r) => !r.read) ?? false
+      return {
+        notifications: prev.notifications.map((n) =>
+          n.id === id
+            ? { ...n, recipients: n.recipients.map((r) => ({ ...r, read: true })) }
+            : n
+        ),
+        unreadCount: wasUnread ? Math.max(0, prev.unreadCount - 1) : prev.unreadCount,
+      }
+    })
   }
 
   const unreadNotifications = notifications.filter(
@@ -148,7 +175,7 @@ export default function NotificationsPage() {
         ))}
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex flex-col gap-2 py-8">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 p-4 animate-pulse">
@@ -182,7 +209,7 @@ export default function NotificationsPage() {
                 Recent
               </div>
               {recentNotifications.map((n) => (
-                <NotificationRow key={n.id} notification={n} />
+                <NotificationRow key={n.id} notification={n} onMarkedRead={handleMarkedRead} />
               ))}
             </>
           )}
@@ -192,7 +219,7 @@ export default function NotificationsPage() {
                 Earlier
               </div>
               {earlierNotifications.map((n) => (
-                <NotificationRow key={n.id} notification={n} />
+                <NotificationRow key={n.id} notification={n} onMarkedRead={handleMarkedRead} />
               ))}
             </>
           )}
@@ -202,14 +229,50 @@ export default function NotificationsPage() {
   )
 }
 
-function NotificationRow({ notification }: { notification: NotificationItem }) {
+function NotificationRow({
+  notification,
+  onMarkedRead,
+}: {
+  notification: NotificationItem
+  onMarkedRead: (id: string) => void
+}) {
+  const router = useRouter()
   const typeConfig = TYPE_ICONS[notification.type]
   const TypeIcon = typeConfig?.icon ?? Bell
   const isUnread = notification.recipients.some((r) => !r.read)
   const initials = `${notification.actor.firstName[0]}${notification.actor.lastName[0]}`.toUpperCase()
 
+  const handleOpen = () => {
+    if (isUnread) {
+      // Optimistic read — update state + cache before navigating away;
+      // a failed PATCH heals on the next TTL revalidation.
+      onMarkedRead(notification.id)
+      fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId: notification.id }),
+      }).catch(() => undefined)
+    }
+    if (notification.post?.id) {
+      router.push(`/posts/${notification.post.id}`)
+    } else {
+      router.push(`/profile/${notification.actor.userName}`)
+    }
+  }
+
   return (
-    <div className={`flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors duration-fast border-b border-border hover:bg-bg-elevated ${isUnread ? "bg-primary-muted hover:bg-[rgba(0,98,59,0.08)]" : ""}`}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          handleOpen()
+        }
+      }}
+      className={`flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors duration-fast border-b border-border hover:bg-bg-elevated ${isUnread ? "bg-primary-muted hover:bg-[rgba(0,98,59,0.08)]" : ""}`}
+    >
       <div className="relative w-10 h-10 shrink-0">
         <Link href={`/profile/${notification.actor.userName}`} onClick={(e) => e.stopPropagation()} className="w-10 h-10 rounded-circle flex items-center justify-center text-sm font-bold text-primary no-underline" style={{ background: notification.type === "MENTION" ? "#F3E8FF" : notification.type === "FOLLOW" ? "#D1FAE5" : notification.type === "COMMENT" ? "#DBEAFE" : notification.type === "LIKE" ? "#FEF3C7" : "#E6F4EE", color: notification.type === "MENTION" ? "#8B5CF6" : notification.type === "FOLLOW" ? "#065F46" : notification.type === "COMMENT" ? "#1E3A8A" : notification.type === "LIKE" ? "#92400E" : "#00623B" }}>
           {initials}
@@ -231,17 +294,13 @@ function NotificationRow({ notification }: { notification: NotificationItem }) {
           {notification.message.replace(`${notification.actor.firstName} ${notification.actor.lastName}`, "").trim()}
         </div>
         <div className="text-xs text-text-muted mt-0.5">{getTimeAgo(notification.createdAt)}</div>
+        {notification.post?.title && (
+          <div className="text-xs text-text-secondary mt-1 px-2 py-1 bg-bg-elevated radius-md border border-border break-words">
+            {notification.post.title}
+          </div>
+        )}
       </div>
       {isUnread && <div className="w-2 h-2 rounded-circle bg-primary shrink-0 mt-1.5" />}
     </div>
-  )
-}
-
-function Bell(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-    </svg>
   )
 }

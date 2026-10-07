@@ -63,7 +63,7 @@ export default function AdminPostsPage() {
         description="Delete this post? This action cannot be undone."
       />
 
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Posts</h1>
           <div className="text-sm text-text-secondary">Manage all posts</div>

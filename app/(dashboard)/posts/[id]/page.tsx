@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -12,6 +12,7 @@ import { NavigationGuide } from "@/app/components/features/posts"
 import { undoService } from "@/app/lib/services/undoService"
 import { toastService } from "@/app/lib/services/toastService"
 import { useAuth } from "@/app/hooks/useAuth"
+import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import type { VehicleType } from "@/app/lib/types"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
 
@@ -90,61 +91,50 @@ function formatCount(n: number): string {
 
 export default function PostDetailPage() {
   const params = useParams()
-  const { user: currentUser, requireAuth } = useAuth()
-  const [post, setPost] = useState<PostDetail | null>(null)
-  const [comments, setComments] = useState<Comment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [liked, setLiked] = useState(false)
-  const [likesCount, setLikesCount] = useState(0)
-  const [bookmarked, setBookmarked] = useState(false)
+  const { user: currentUser, requireAuth, isLoading: authLoading } = useAuth()
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [showNavigation, setShowNavigation] = useState(false)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number; heading: number | null } | null>(null)
 
   const postId = params.id as string
+  const ready = !authLoading && Boolean(postId)
+  const viewerId = currentUser?.id ?? "guest"
 
-  useEffect(() => {
-    if (!postId) return
-    const abort = new AbortController()
-    const load = async () => {
-      try {
-        const [postRes, commentRes] = await Promise.all([
-          fetch(`/api/posts/${postId}`, { signal: abort.signal }),
-          fetch(`/api/posts/${postId}/comments`, { signal: abort.signal }),
-        ])
-        if (!postRes.ok || !commentRes.ok) throw new Error("Failed to load post")
-        const postData = await postRes.json()
-        const commentData = await commentRes.json()
-        if (abort.signal.aborted) return
-        setPost(postData.post)
-        setComments(commentData.comments)
-        setLiked(postData.post._isLiked ?? false)
-        setLikesCount(postData.post.likes)
-        setBookmarked(postData.post._isBookmarked ?? false)
-      } catch (err: unknown) {
-        if (abort.signal.aborted) return
-        console.error("Failed to load post")
-      } finally {
-        if (!abort.signal.aborted) setLoading(false)
-      }
-    }
-    load()
-    return () => abort.abort()
-  }, [postId])
+  const { data: postData, loading: postLoading, mutate: mutatePost } = useCachedFetch<{ post: PostDetail }>(
+    ready ? `post:${viewerId}:${postId}` : null,
+    `/api/posts/${postId}`,
+    { ttlSec: 60, enabled: ready }
+  )
+  const { data: commentData, loading: commentsLoading, mutate: mutateComments } = useCachedFetch<{ comments: Comment[] }>(
+    ready ? `post-comments:${viewerId}:${postId}` : null,
+    `/api/posts/${postId}/comments`,
+    { ttlSec: 60, enabled: ready }
+  )
+
+  const post = postData?.post ?? null
+  const comments = commentData?.comments ?? []
+  const liked = post?._isLiked ?? false
+  const likesCount = post?.likes ?? 0
+  const bookmarked = post?._isBookmarked ?? false
+  const loading = authLoading || postLoading || commentsLoading
 
   const handleLike = async () => {
+    if (!post) return
     const newLiked = !liked
-    const prevLiked = liked
-    setLiked(newLiked)
-    setLikesCount((prev) => prev + (newLiked ? 1 : -1))
+    const prevLiked = post._isLiked ?? false
+    const prevLikes = post.likes
+    mutatePost({ post: { ...post, _isLiked: newLiked, likes: post.likes + (newLiked ? 1 : -1) } })
     const undoId = `like:${postId}`
     if (!newLiked) {
       undoService.register({
         id: undoId,
         label: "Undo unlike",
         onUndo: () => {
-          setLiked(true)
-          setLikesCount((p) => p + 1)
+          mutatePost((prev) =>
+            prev
+              ? { post: { ...prev.post, _isLiked: true, likes: prev.post.likes + 1 } }
+              : { post: { ...post, _isLiked: true, likes: post.likes + 1 } }
+          )
           fetch(`/api/posts/${postId}/like`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "LIKE" }) }).catch(() => {})
           toastService.success("Like restored!")
         },
@@ -160,22 +150,24 @@ export default function PostDetailPage() {
         body: JSON.stringify({ type: "LIKE" }),
       })
     } catch {
-      setLiked(prevLiked)
-      setLikesCount((prev) => prev + (prevLiked ? 1 : -1))
+      mutatePost({ post: { ...post, _isLiked: prevLiked, likes: prevLikes } })
     }
   }
 
   const handleBookmark = async () => {
+    if (!post) return
     const newBookmarked = !bookmarked
-    const prevBookmarked = bookmarked
-    setBookmarked(newBookmarked)
+    const prevBookmarked = post._isBookmarked ?? false
+    mutatePost({ post: { ...post, _isBookmarked: newBookmarked } })
     const undoId = `bookmark:${postId}`
     if (!newBookmarked) {
       undoService.register({
         id: undoId,
         label: "Undo bookmark removal",
         onUndo: () => {
-          setBookmarked(true)
+          mutatePost((prev) =>
+            prev ? { post: { ...prev.post, _isBookmarked: true } } : { post: { ...post, _isBookmarked: true } }
+          )
           fetch(`/api/posts/${postId}/bookmark`, { method: "POST", headers: { "Content-Type": "application/json" } }).catch(() => {})
           toastService.success("Bookmark restored!")
         },
@@ -190,7 +182,7 @@ export default function PostDetailPage() {
         headers: { "Content-Type": "application/json" },
       })
     } catch {
-      setBookmarked(prevBookmarked)
+      mutatePost({ post: { ...post, _isBookmarked: prevBookmarked } })
     }
   }
 
@@ -204,7 +196,7 @@ export default function PostDetailPage() {
       })
       if (res.ok) {
         const data = await res.json()
-        setComments((prev) => [data.comment, ...prev])
+        mutateComments((prev) => ({ comments: [data.comment, ...(prev?.comments ?? [])] }))
       }
     } catch {
       console.error("Failed to post comment")
@@ -214,7 +206,7 @@ export default function PostDetailPage() {
   const handleDeleteComment = async (commentId: string) => {
     try {
       await fetch(`/api/posts/${postId}/comments/${commentId}`, { method: "DELETE" })
-      setComments((prev) => prev.filter((c) => c.id !== commentId))
+      mutateComments((prev) => ({ comments: (prev?.comments ?? []).filter((c) => c.id !== commentId) }))
     } catch {
       console.error("Failed to delete comment")
     }
@@ -269,7 +261,7 @@ export default function PostDetailPage() {
     )
   }
 
-  if (!post) {
+  if (!post || !commentData) {
     return (
       <div className="max-w-[680px] mx-auto px-4 py-8">
         <AppEmptyState {...EMPTY_STATES.error} />

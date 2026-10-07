@@ -62,6 +62,9 @@ export type PostMinAggregateOutputType = {
   id: string | null
   userId: string | null
   title: string | null
+  description: string | null
+  type: $Enums.PostType | null
+  quotedPostId: string | null
   likes: number | null
   dislikes: number | null
   comments: number | null
@@ -86,6 +89,9 @@ export type PostMaxAggregateOutputType = {
   id: string | null
   userId: string | null
   title: string | null
+  description: string | null
+  type: $Enums.PostType | null
+  quotedPostId: string | null
   likes: number | null
   dislikes: number | null
   comments: number | null
@@ -110,6 +116,9 @@ export type PostCountAggregateOutputType = {
   id: number
   userId: number
   title: number
+  description: number
+  type: number
+  quotedPostId: number
   routes: number
   images: number
   tags: number
@@ -172,6 +181,9 @@ export type PostMinAggregateInputType = {
   id?: true
   userId?: true
   title?: true
+  description?: true
+  type?: true
+  quotedPostId?: true
   likes?: true
   dislikes?: true
   comments?: true
@@ -196,6 +208,9 @@ export type PostMaxAggregateInputType = {
   id?: true
   userId?: true
   title?: true
+  description?: true
+  type?: true
+  quotedPostId?: true
   likes?: true
   dislikes?: true
   comments?: true
@@ -220,6 +235,9 @@ export type PostCountAggregateInputType = {
   id?: true
   userId?: true
   title?: true
+  description?: true
+  type?: true
+  quotedPostId?: true
   routes?: true
   images?: true
   tags?: true
@@ -335,6 +353,9 @@ export type PostGroupByOutputType = {
   id: string
   userId: string
   title: string
+  description: string | null
+  type: $Enums.PostType
+  quotedPostId: string | null
   routes: runtime.JsonValue
   images: string[]
   tags: string[]
@@ -386,6 +407,9 @@ export type PostWhereInput = {
   id?: Prisma.StringFilter<"Post"> | string
   userId?: Prisma.StringFilter<"Post"> | string
   title?: Prisma.StringFilter<"Post"> | string
+  description?: Prisma.StringNullableFilter<"Post"> | string | null
+  type?: Prisma.EnumPostTypeFilter<"Post"> | $Enums.PostType
+  quotedPostId?: Prisma.StringNullableFilter<"Post"> | string | null
   routes?: Prisma.JsonFilter<"Post">
   images?: Prisma.StringNullableListFilter<"Post">
   tags?: Prisma.StringNullableListFilter<"Post">
@@ -409,6 +433,8 @@ export type PostWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  quotedPost?: Prisma.XOR<Prisma.PostNullableScalarRelationFilter, Prisma.PostWhereInput> | null
+  quotes?: Prisma.PostListRelationFilter
   postComments?: Prisma.CommentListRelationFilter
   postLikes?: Prisma.LikeListRelationFilter
   postBookmarks?: Prisma.BookmarkListRelationFilter
@@ -422,6 +448,9 @@ export type PostOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
+  type?: Prisma.SortOrder
+  quotedPostId?: Prisma.SortOrderInput | Prisma.SortOrder
   routes?: Prisma.SortOrder
   images?: Prisma.SortOrder
   tags?: Prisma.SortOrder
@@ -445,6 +474,8 @@ export type PostOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
+  quotedPost?: Prisma.PostOrderByWithRelationInput
+  quotes?: Prisma.PostOrderByRelationAggregateInput
   postComments?: Prisma.CommentOrderByRelationAggregateInput
   postLikes?: Prisma.LikeOrderByRelationAggregateInput
   postBookmarks?: Prisma.BookmarkOrderByRelationAggregateInput
@@ -461,6 +492,9 @@ export type PostWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.PostWhereInput | Prisma.PostWhereInput[]
   userId?: Prisma.StringFilter<"Post"> | string
   title?: Prisma.StringFilter<"Post"> | string
+  description?: Prisma.StringNullableFilter<"Post"> | string | null
+  type?: Prisma.EnumPostTypeFilter<"Post"> | $Enums.PostType
+  quotedPostId?: Prisma.StringNullableFilter<"Post"> | string | null
   routes?: Prisma.JsonFilter<"Post">
   images?: Prisma.StringNullableListFilter<"Post">
   tags?: Prisma.StringNullableListFilter<"Post">
@@ -484,6 +518,8 @@ export type PostWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
+  quotedPost?: Prisma.XOR<Prisma.PostNullableScalarRelationFilter, Prisma.PostWhereInput> | null
+  quotes?: Prisma.PostListRelationFilter
   postComments?: Prisma.CommentListRelationFilter
   postLikes?: Prisma.LikeListRelationFilter
   postBookmarks?: Prisma.BookmarkListRelationFilter
@@ -497,6 +533,9 @@ export type PostOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrderInput | Prisma.SortOrder
+  type?: Prisma.SortOrder
+  quotedPostId?: Prisma.SortOrderInput | Prisma.SortOrder
   routes?: Prisma.SortOrder
   images?: Prisma.SortOrder
   tags?: Prisma.SortOrder
@@ -533,6 +572,9 @@ export type PostScalarWhereWithAggregatesInput = {
   id?: Prisma.StringWithAggregatesFilter<"Post"> | string
   userId?: Prisma.StringWithAggregatesFilter<"Post"> | string
   title?: Prisma.StringWithAggregatesFilter<"Post"> | string
+  description?: Prisma.StringNullableWithAggregatesFilter<"Post"> | string | null
+  type?: Prisma.EnumPostTypeWithAggregatesFilter<"Post"> | $Enums.PostType
+  quotedPostId?: Prisma.StringNullableWithAggregatesFilter<"Post"> | string | null
   routes?: Prisma.JsonWithAggregatesFilter<"Post">
   images?: Prisma.StringNullableListFilter<"Post">
   tags?: Prisma.StringNullableListFilter<"Post">
@@ -560,6 +602,8 @@ export type PostScalarWhereWithAggregatesInput = {
 export type PostCreateInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -583,6 +627,8 @@ export type PostCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
@@ -596,6 +642,9 @@ export type PostUncheckedCreateInput = {
   id?: string
   userId: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -618,6 +667,7 @@ export type PostUncheckedCreateInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
@@ -630,6 +680,8 @@ export type PostUncheckedCreateInput = {
 export type PostUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -653,6 +705,8 @@ export type PostUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
@@ -666,6 +720,9 @@ export type PostUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -688,6 +745,7 @@ export type PostUncheckedUpdateInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
@@ -701,6 +759,9 @@ export type PostCreateManyInput = {
   id?: string
   userId: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -728,6 +789,8 @@ export type PostCreateManyInput = {
 export type PostUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -756,6 +819,9 @@ export type PostUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -798,10 +864,18 @@ export type StringNullableListFilter<$PrismaModel = never> = {
   isEmpty?: boolean
 }
 
+export type PostNullableScalarRelationFilter = {
+  is?: Prisma.PostWhereInput | null
+  isNot?: Prisma.PostWhereInput | null
+}
+
 export type PostCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrder
+  type?: Prisma.SortOrder
+  quotedPostId?: Prisma.SortOrder
   routes?: Prisma.SortOrder
   images?: Prisma.SortOrder
   tags?: Prisma.SortOrder
@@ -846,6 +920,9 @@ export type PostMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrder
+  type?: Prisma.SortOrder
+  quotedPostId?: Prisma.SortOrder
   likes?: Prisma.SortOrder
   dislikes?: Prisma.SortOrder
   comments?: Prisma.SortOrder
@@ -870,6 +947,9 @@ export type PostMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  description?: Prisma.SortOrder
+  type?: Prisma.SortOrder
+  quotedPostId?: Prisma.SortOrder
   likes?: Prisma.SortOrder
   dislikes?: Prisma.SortOrder
   comments?: Prisma.SortOrder
@@ -909,11 +989,6 @@ export type PostSumOrderByAggregateInput = {
 export type PostScalarRelationFilter = {
   is?: Prisma.PostWhereInput
   isNot?: Prisma.PostWhereInput
-}
-
-export type PostNullableScalarRelationFilter = {
-  is?: Prisma.PostWhereInput | null
-  isNot?: Prisma.PostWhereInput | null
 }
 
 export type PostCreateNestedManyWithoutUserInput = {
@@ -966,6 +1041,30 @@ export type PostCreatetagsInput = {
   set: string[]
 }
 
+export type PostCreateNestedOneWithoutQuotesInput = {
+  create?: Prisma.XOR<Prisma.PostCreateWithoutQuotesInput, Prisma.PostUncheckedCreateWithoutQuotesInput>
+  connectOrCreate?: Prisma.PostCreateOrConnectWithoutQuotesInput
+  connect?: Prisma.PostWhereUniqueInput
+}
+
+export type PostCreateNestedManyWithoutQuotedPostInput = {
+  create?: Prisma.XOR<Prisma.PostCreateWithoutQuotedPostInput, Prisma.PostUncheckedCreateWithoutQuotedPostInput> | Prisma.PostCreateWithoutQuotedPostInput[] | Prisma.PostUncheckedCreateWithoutQuotedPostInput[]
+  connectOrCreate?: Prisma.PostCreateOrConnectWithoutQuotedPostInput | Prisma.PostCreateOrConnectWithoutQuotedPostInput[]
+  createMany?: Prisma.PostCreateManyQuotedPostInputEnvelope
+  connect?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+}
+
+export type PostUncheckedCreateNestedManyWithoutQuotedPostInput = {
+  create?: Prisma.XOR<Prisma.PostCreateWithoutQuotedPostInput, Prisma.PostUncheckedCreateWithoutQuotedPostInput> | Prisma.PostCreateWithoutQuotedPostInput[] | Prisma.PostUncheckedCreateWithoutQuotedPostInput[]
+  connectOrCreate?: Prisma.PostCreateOrConnectWithoutQuotedPostInput | Prisma.PostCreateOrConnectWithoutQuotedPostInput[]
+  createMany?: Prisma.PostCreateManyQuotedPostInputEnvelope
+  connect?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+}
+
+export type EnumPostTypeFieldUpdateOperationsInput = {
+  set?: $Enums.PostType
+}
+
 export type PostUpdateimagesInput = {
   set?: string[]
   push?: string | string[]
@@ -982,6 +1081,44 @@ export type NullableIntFieldUpdateOperationsInput = {
   decrement?: number
   multiply?: number
   divide?: number
+}
+
+export type PostUpdateOneWithoutQuotesNestedInput = {
+  create?: Prisma.XOR<Prisma.PostCreateWithoutQuotesInput, Prisma.PostUncheckedCreateWithoutQuotesInput>
+  connectOrCreate?: Prisma.PostCreateOrConnectWithoutQuotesInput
+  upsert?: Prisma.PostUpsertWithoutQuotesInput
+  disconnect?: Prisma.PostWhereInput | boolean
+  delete?: Prisma.PostWhereInput | boolean
+  connect?: Prisma.PostWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.PostUpdateToOneWithWhereWithoutQuotesInput, Prisma.PostUpdateWithoutQuotesInput>, Prisma.PostUncheckedUpdateWithoutQuotesInput>
+}
+
+export type PostUpdateManyWithoutQuotedPostNestedInput = {
+  create?: Prisma.XOR<Prisma.PostCreateWithoutQuotedPostInput, Prisma.PostUncheckedCreateWithoutQuotedPostInput> | Prisma.PostCreateWithoutQuotedPostInput[] | Prisma.PostUncheckedCreateWithoutQuotedPostInput[]
+  connectOrCreate?: Prisma.PostCreateOrConnectWithoutQuotedPostInput | Prisma.PostCreateOrConnectWithoutQuotedPostInput[]
+  upsert?: Prisma.PostUpsertWithWhereUniqueWithoutQuotedPostInput | Prisma.PostUpsertWithWhereUniqueWithoutQuotedPostInput[]
+  createMany?: Prisma.PostCreateManyQuotedPostInputEnvelope
+  set?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+  disconnect?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+  delete?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+  connect?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+  update?: Prisma.PostUpdateWithWhereUniqueWithoutQuotedPostInput | Prisma.PostUpdateWithWhereUniqueWithoutQuotedPostInput[]
+  updateMany?: Prisma.PostUpdateManyWithWhereWithoutQuotedPostInput | Prisma.PostUpdateManyWithWhereWithoutQuotedPostInput[]
+  deleteMany?: Prisma.PostScalarWhereInput | Prisma.PostScalarWhereInput[]
+}
+
+export type PostUncheckedUpdateManyWithoutQuotedPostNestedInput = {
+  create?: Prisma.XOR<Prisma.PostCreateWithoutQuotedPostInput, Prisma.PostUncheckedCreateWithoutQuotedPostInput> | Prisma.PostCreateWithoutQuotedPostInput[] | Prisma.PostUncheckedCreateWithoutQuotedPostInput[]
+  connectOrCreate?: Prisma.PostCreateOrConnectWithoutQuotedPostInput | Prisma.PostCreateOrConnectWithoutQuotedPostInput[]
+  upsert?: Prisma.PostUpsertWithWhereUniqueWithoutQuotedPostInput | Prisma.PostUpsertWithWhereUniqueWithoutQuotedPostInput[]
+  createMany?: Prisma.PostCreateManyQuotedPostInputEnvelope
+  set?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+  disconnect?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+  delete?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+  connect?: Prisma.PostWhereUniqueInput | Prisma.PostWhereUniqueInput[]
+  update?: Prisma.PostUpdateWithWhereUniqueWithoutQuotedPostInput | Prisma.PostUpdateWithWhereUniqueWithoutQuotedPostInput[]
+  updateMany?: Prisma.PostUpdateManyWithWhereWithoutQuotedPostInput | Prisma.PostUpdateManyWithWhereWithoutQuotedPostInput[]
+  deleteMany?: Prisma.PostScalarWhereInput | Prisma.PostScalarWhereInput[]
 }
 
 export type PostCreateNestedOneWithoutPostCommentsInput = {
@@ -1093,6 +1230,8 @@ export type PostUpdateOneWithoutAnalyticsEventsNestedInput = {
 export type PostCreateWithoutUserInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1115,6 +1254,8 @@ export type PostCreateWithoutUserInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
@@ -1127,6 +1268,9 @@ export type PostCreateWithoutUserInput = {
 export type PostUncheckedCreateWithoutUserInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1149,6 +1293,7 @@ export type PostUncheckedCreateWithoutUserInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
@@ -1191,6 +1336,9 @@ export type PostScalarWhereInput = {
   id?: Prisma.StringFilter<"Post"> | string
   userId?: Prisma.StringFilter<"Post"> | string
   title?: Prisma.StringFilter<"Post"> | string
+  description?: Prisma.StringNullableFilter<"Post"> | string | null
+  type?: Prisma.EnumPostTypeFilter<"Post"> | $Enums.PostType
+  quotedPostId?: Prisma.StringNullableFilter<"Post"> | string | null
   routes?: Prisma.JsonFilter<"Post">
   images?: Prisma.StringNullableListFilter<"Post">
   tags?: Prisma.StringNullableListFilter<"Post">
@@ -1215,9 +1363,11 @@ export type PostScalarWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Post"> | Date | string
 }
 
-export type PostCreateWithoutPostCommentsInput = {
+export type PostCreateWithoutQuotesInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1241,6 +1391,8 @@ export type PostCreateWithoutPostCommentsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutPostInput
@@ -1249,10 +1401,13 @@ export type PostCreateWithoutPostCommentsInput = {
   bugReports?: Prisma.BugReportCreateNestedManyWithoutPostInput
 }
 
-export type PostUncheckedCreateWithoutPostCommentsInput = {
+export type PostUncheckedCreateWithoutQuotesInput = {
   id?: string
   userId: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1275,6 +1430,277 @@ export type PostUncheckedCreateWithoutPostCommentsInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
+  postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
+  postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutPostInput
+  userActivities?: Prisma.UserActivityUncheckedCreateNestedManyWithoutPostInput
+  analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutPostInput
+  bugReports?: Prisma.BugReportUncheckedCreateNestedManyWithoutPostInput
+}
+
+export type PostCreateOrConnectWithoutQuotesInput = {
+  where: Prisma.PostWhereUniqueInput
+  create: Prisma.XOR<Prisma.PostCreateWithoutQuotesInput, Prisma.PostUncheckedCreateWithoutQuotesInput>
+}
+
+export type PostCreateWithoutQuotedPostInput = {
+  id?: string
+  title: string
+  description?: string | null
+  type?: $Enums.PostType
+  routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostCreateimagesInput | string[]
+  tags?: Prisma.PostCreatetagsInput | string[]
+  likes?: number
+  dislikes?: number
+  comments?: number
+  bookmarks?: number
+  validityScore?: number
+  validityTier?: string | null
+  startLat?: number | null
+  startLng?: number | null
+  endLat?: number | null
+  endLng?: number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: string | null
+  totalDistanceKm?: number | null
+  estimatedMins?: number | null
+  isPlatformGen?: boolean
+  views?: number
+  shares?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
+  postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
+  postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
+  postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutPostInput
+  userActivities?: Prisma.UserActivityCreateNestedManyWithoutPostInput
+  analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutPostInput
+  bugReports?: Prisma.BugReportCreateNestedManyWithoutPostInput
+}
+
+export type PostUncheckedCreateWithoutQuotedPostInput = {
+  id?: string
+  userId: string
+  title: string
+  description?: string | null
+  type?: $Enums.PostType
+  routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostCreateimagesInput | string[]
+  tags?: Prisma.PostCreatetagsInput | string[]
+  likes?: number
+  dislikes?: number
+  comments?: number
+  bookmarks?: number
+  validityScore?: number
+  validityTier?: string | null
+  startLat?: number | null
+  startLng?: number | null
+  endLat?: number | null
+  endLng?: number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: string | null
+  totalDistanceKm?: number | null
+  estimatedMins?: number | null
+  isPlatformGen?: boolean
+  views?: number
+  shares?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
+  postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
+  postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
+  postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutPostInput
+  userActivities?: Prisma.UserActivityUncheckedCreateNestedManyWithoutPostInput
+  analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutPostInput
+  bugReports?: Prisma.BugReportUncheckedCreateNestedManyWithoutPostInput
+}
+
+export type PostCreateOrConnectWithoutQuotedPostInput = {
+  where: Prisma.PostWhereUniqueInput
+  create: Prisma.XOR<Prisma.PostCreateWithoutQuotedPostInput, Prisma.PostUncheckedCreateWithoutQuotedPostInput>
+}
+
+export type PostCreateManyQuotedPostInputEnvelope = {
+  data: Prisma.PostCreateManyQuotedPostInput | Prisma.PostCreateManyQuotedPostInput[]
+  skipDuplicates?: boolean
+}
+
+export type PostUpsertWithoutQuotesInput = {
+  update: Prisma.XOR<Prisma.PostUpdateWithoutQuotesInput, Prisma.PostUncheckedUpdateWithoutQuotesInput>
+  create: Prisma.XOR<Prisma.PostCreateWithoutQuotesInput, Prisma.PostUncheckedCreateWithoutQuotesInput>
+  where?: Prisma.PostWhereInput
+}
+
+export type PostUpdateToOneWithWhereWithoutQuotesInput = {
+  where?: Prisma.PostWhereInput
+  data: Prisma.XOR<Prisma.PostUpdateWithoutQuotesInput, Prisma.PostUncheckedUpdateWithoutQuotesInput>
+}
+
+export type PostUpdateWithoutQuotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostUpdateimagesInput | string[]
+  tags?: Prisma.PostUpdatetagsInput | string[]
+  likes?: Prisma.IntFieldUpdateOperationsInput | number
+  dislikes?: Prisma.IntFieldUpdateOperationsInput | number
+  comments?: Prisma.IntFieldUpdateOperationsInput | number
+  bookmarks?: Prisma.IntFieldUpdateOperationsInput | number
+  validityScore?: Prisma.IntFieldUpdateOperationsInput | number
+  validityTier?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  startLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  startLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  totalDistanceKm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  estimatedMins?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  views?: Prisma.IntFieldUpdateOperationsInput | number
+  shares?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
+  postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
+  postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutPostNestedInput
+  userActivities?: Prisma.UserActivityUpdateManyWithoutPostNestedInput
+  analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutPostNestedInput
+  bugReports?: Prisma.BugReportUpdateManyWithoutPostNestedInput
+}
+
+export type PostUncheckedUpdateWithoutQuotesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostUpdateimagesInput | string[]
+  tags?: Prisma.PostUpdatetagsInput | string[]
+  likes?: Prisma.IntFieldUpdateOperationsInput | number
+  dislikes?: Prisma.IntFieldUpdateOperationsInput | number
+  comments?: Prisma.IntFieldUpdateOperationsInput | number
+  bookmarks?: Prisma.IntFieldUpdateOperationsInput | number
+  validityScore?: Prisma.IntFieldUpdateOperationsInput | number
+  validityTier?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  startLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  startLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  totalDistanceKm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  estimatedMins?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  views?: Prisma.IntFieldUpdateOperationsInput | number
+  shares?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
+  postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
+  postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutPostNestedInput
+  userActivities?: Prisma.UserActivityUncheckedUpdateManyWithoutPostNestedInput
+  analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutPostNestedInput
+  bugReports?: Prisma.BugReportUncheckedUpdateManyWithoutPostNestedInput
+}
+
+export type PostUpsertWithWhereUniqueWithoutQuotedPostInput = {
+  where: Prisma.PostWhereUniqueInput
+  update: Prisma.XOR<Prisma.PostUpdateWithoutQuotedPostInput, Prisma.PostUncheckedUpdateWithoutQuotedPostInput>
+  create: Prisma.XOR<Prisma.PostCreateWithoutQuotedPostInput, Prisma.PostUncheckedCreateWithoutQuotedPostInput>
+}
+
+export type PostUpdateWithWhereUniqueWithoutQuotedPostInput = {
+  where: Prisma.PostWhereUniqueInput
+  data: Prisma.XOR<Prisma.PostUpdateWithoutQuotedPostInput, Prisma.PostUncheckedUpdateWithoutQuotedPostInput>
+}
+
+export type PostUpdateManyWithWhereWithoutQuotedPostInput = {
+  where: Prisma.PostScalarWhereInput
+  data: Prisma.XOR<Prisma.PostUpdateManyMutationInput, Prisma.PostUncheckedUpdateManyWithoutQuotedPostInput>
+}
+
+export type PostCreateWithoutPostCommentsInput = {
+  id?: string
+  title: string
+  description?: string | null
+  type?: $Enums.PostType
+  routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostCreateimagesInput | string[]
+  tags?: Prisma.PostCreatetagsInput | string[]
+  likes?: number
+  dislikes?: number
+  comments?: number
+  bookmarks?: number
+  validityScore?: number
+  validityTier?: string | null
+  startLat?: number | null
+  startLng?: number | null
+  endLat?: number | null
+  endLng?: number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: string | null
+  totalDistanceKm?: number | null
+  estimatedMins?: number | null
+  isPlatformGen?: boolean
+  views?: number
+  shares?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
+  postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
+  postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutPostInput
+  userActivities?: Prisma.UserActivityCreateNestedManyWithoutPostInput
+  analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutPostInput
+  bugReports?: Prisma.BugReportCreateNestedManyWithoutPostInput
+}
+
+export type PostUncheckedCreateWithoutPostCommentsInput = {
+  id?: string
+  userId: string
+  title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
+  routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostCreateimagesInput | string[]
+  tags?: Prisma.PostCreatetagsInput | string[]
+  likes?: number
+  dislikes?: number
+  comments?: number
+  bookmarks?: number
+  validityScore?: number
+  validityTier?: string | null
+  startLat?: number | null
+  startLng?: number | null
+  endLat?: number | null
+  endLng?: number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: string | null
+  totalDistanceKm?: number | null
+  estimatedMins?: number | null
+  isPlatformGen?: boolean
+  views?: number
+  shares?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
   postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutPostInput
@@ -1302,6 +1728,8 @@ export type PostUpdateToOneWithWhereWithoutPostCommentsInput = {
 export type PostUpdateWithoutPostCommentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1325,6 +1753,8 @@ export type PostUpdateWithoutPostCommentsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
   postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutPostNestedInput
@@ -1337,6 +1767,9 @@ export type PostUncheckedUpdateWithoutPostCommentsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1359,6 +1792,7 @@ export type PostUncheckedUpdateWithoutPostCommentsInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
   postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutPostNestedInput
@@ -1370,6 +1804,8 @@ export type PostUncheckedUpdateWithoutPostCommentsInput = {
 export type PostCreateWithoutPostLikesInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1393,6 +1829,8 @@ export type PostCreateWithoutPostLikesInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutPostInput
@@ -1405,6 +1843,9 @@ export type PostUncheckedCreateWithoutPostLikesInput = {
   id?: string
   userId: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1427,6 +1868,7 @@ export type PostUncheckedCreateWithoutPostLikesInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutPostInput
@@ -1454,6 +1896,8 @@ export type PostUpdateToOneWithWhereWithoutPostLikesInput = {
 export type PostUpdateWithoutPostLikesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1477,6 +1921,8 @@ export type PostUpdateWithoutPostLikesInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutPostNestedInput
@@ -1489,6 +1935,9 @@ export type PostUncheckedUpdateWithoutPostLikesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1511,6 +1960,7 @@ export type PostUncheckedUpdateWithoutPostLikesInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutPostNestedInput
@@ -1522,6 +1972,8 @@ export type PostUncheckedUpdateWithoutPostLikesInput = {
 export type PostCreateWithoutPostBookmarksInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1545,6 +1997,8 @@ export type PostCreateWithoutPostBookmarksInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
   notifications?: Prisma.NotificationCreateNestedManyWithoutPostInput
@@ -1557,6 +2011,9 @@ export type PostUncheckedCreateWithoutPostBookmarksInput = {
   id?: string
   userId: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1579,6 +2036,7 @@ export type PostUncheckedCreateWithoutPostBookmarksInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
   notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutPostInput
@@ -1606,6 +2064,8 @@ export type PostUpdateToOneWithWhereWithoutPostBookmarksInput = {
 export type PostUpdateWithoutPostBookmarksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1629,6 +2089,8 @@ export type PostUpdateWithoutPostBookmarksInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
   notifications?: Prisma.NotificationUpdateManyWithoutPostNestedInput
@@ -1641,6 +2103,9 @@ export type PostUncheckedUpdateWithoutPostBookmarksInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1663,6 +2128,7 @@ export type PostUncheckedUpdateWithoutPostBookmarksInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
   notifications?: Prisma.NotificationUncheckedUpdateManyWithoutPostNestedInput
@@ -1674,6 +2140,8 @@ export type PostUncheckedUpdateWithoutPostBookmarksInput = {
 export type PostCreateWithoutNotificationsInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1697,6 +2165,8 @@ export type PostCreateWithoutNotificationsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
@@ -1709,6 +2179,9 @@ export type PostUncheckedCreateWithoutNotificationsInput = {
   id?: string
   userId: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1731,6 +2204,7 @@ export type PostUncheckedCreateWithoutNotificationsInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
@@ -1758,6 +2232,8 @@ export type PostUpdateToOneWithWhereWithoutNotificationsInput = {
 export type PostUpdateWithoutNotificationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1781,6 +2257,8 @@ export type PostUpdateWithoutNotificationsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
@@ -1793,6 +2271,9 @@ export type PostUncheckedUpdateWithoutNotificationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1815,6 +2296,7 @@ export type PostUncheckedUpdateWithoutNotificationsInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
@@ -1826,6 +2308,8 @@ export type PostUncheckedUpdateWithoutNotificationsInput = {
 export type PostCreateWithoutUserActivitiesInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1849,6 +2333,8 @@ export type PostCreateWithoutUserActivitiesInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
@@ -1861,6 +2347,9 @@ export type PostUncheckedCreateWithoutUserActivitiesInput = {
   id?: string
   userId: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -1883,6 +2372,7 @@ export type PostUncheckedCreateWithoutUserActivitiesInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
@@ -1910,6 +2400,8 @@ export type PostUpdateToOneWithWhereWithoutUserActivitiesInput = {
 export type PostUpdateWithoutUserActivitiesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1933,6 +2425,8 @@ export type PostUpdateWithoutUserActivitiesInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
@@ -1945,6 +2439,9 @@ export type PostUncheckedUpdateWithoutUserActivitiesInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -1967,6 +2464,7 @@ export type PostUncheckedUpdateWithoutUserActivitiesInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
@@ -1978,6 +2476,8 @@ export type PostUncheckedUpdateWithoutUserActivitiesInput = {
 export type PostCreateWithoutBugReportsInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -2001,6 +2501,8 @@ export type PostCreateWithoutBugReportsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
@@ -2013,6 +2515,9 @@ export type PostUncheckedCreateWithoutBugReportsInput = {
   id?: string
   userId: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -2035,6 +2540,7 @@ export type PostUncheckedCreateWithoutBugReportsInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
@@ -2062,6 +2568,8 @@ export type PostUpdateToOneWithWhereWithoutBugReportsInput = {
 export type PostUpdateWithoutBugReportsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -2085,6 +2593,8 @@ export type PostUpdateWithoutBugReportsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
@@ -2097,6 +2607,9 @@ export type PostUncheckedUpdateWithoutBugReportsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -2119,6 +2632,7 @@ export type PostUncheckedUpdateWithoutBugReportsInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
@@ -2130,6 +2644,8 @@ export type PostUncheckedUpdateWithoutBugReportsInput = {
 export type PostCreateWithoutAnalyticsEventsInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -2153,6 +2669,8 @@ export type PostCreateWithoutAnalyticsEventsInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
+  quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
+  quotes?: Prisma.PostCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkCreateNestedManyWithoutPostInput
@@ -2165,6 +2683,9 @@ export type PostUncheckedCreateWithoutAnalyticsEventsInput = {
   id?: string
   userId: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -2187,6 +2708,7 @@ export type PostUncheckedCreateWithoutAnalyticsEventsInput = {
   shares?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
   postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
   postLikes?: Prisma.LikeUncheckedCreateNestedManyWithoutPostInput
   postBookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutPostInput
@@ -2214,6 +2736,8 @@ export type PostUpdateToOneWithWhereWithoutAnalyticsEventsInput = {
 export type PostUpdateWithoutAnalyticsEventsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -2237,6 +2761,8 @@ export type PostUpdateWithoutAnalyticsEventsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
@@ -2249,6 +2775,9 @@ export type PostUncheckedUpdateWithoutAnalyticsEventsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -2271,6 +2800,7 @@ export type PostUncheckedUpdateWithoutAnalyticsEventsInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
@@ -2282,6 +2812,9 @@ export type PostUncheckedUpdateWithoutAnalyticsEventsInput = {
 export type PostCreateManyUserInput = {
   id?: string
   title: string
+  description?: string | null
+  type?: $Enums.PostType
+  quotedPostId?: string | null
   routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostCreateimagesInput | string[]
   tags?: Prisma.PostCreatetagsInput | string[]
@@ -2309,6 +2842,8 @@ export type PostCreateManyUserInput = {
 export type PostUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -2331,6 +2866,8 @@ export type PostUpdateWithoutUserInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
@@ -2343,6 +2880,9 @@ export type PostUpdateWithoutUserInput = {
 export type PostUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -2365,6 +2905,7 @@ export type PostUncheckedUpdateWithoutUserInput = {
   shares?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
   postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
   postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
   postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
@@ -2377,6 +2918,145 @@ export type PostUncheckedUpdateWithoutUserInput = {
 export type PostUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  quotedPostId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostUpdateimagesInput | string[]
+  tags?: Prisma.PostUpdatetagsInput | string[]
+  likes?: Prisma.IntFieldUpdateOperationsInput | number
+  dislikes?: Prisma.IntFieldUpdateOperationsInput | number
+  comments?: Prisma.IntFieldUpdateOperationsInput | number
+  bookmarks?: Prisma.IntFieldUpdateOperationsInput | number
+  validityScore?: Prisma.IntFieldUpdateOperationsInput | number
+  validityTier?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  startLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  startLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  totalDistanceKm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  estimatedMins?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  views?: Prisma.IntFieldUpdateOperationsInput | number
+  shares?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type PostCreateManyQuotedPostInput = {
+  id?: string
+  userId: string
+  title: string
+  description?: string | null
+  type?: $Enums.PostType
+  routes: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostCreateimagesInput | string[]
+  tags?: Prisma.PostCreatetagsInput | string[]
+  likes?: number
+  dislikes?: number
+  comments?: number
+  bookmarks?: number
+  validityScore?: number
+  validityTier?: string | null
+  startLat?: number | null
+  startLng?: number | null
+  endLat?: number | null
+  endLng?: number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: string | null
+  totalDistanceKm?: number | null
+  estimatedMins?: number | null
+  isPlatformGen?: boolean
+  views?: number
+  shares?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type PostUpdateWithoutQuotedPostInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostUpdateimagesInput | string[]
+  tags?: Prisma.PostUpdatetagsInput | string[]
+  likes?: Prisma.IntFieldUpdateOperationsInput | number
+  dislikes?: Prisma.IntFieldUpdateOperationsInput | number
+  comments?: Prisma.IntFieldUpdateOperationsInput | number
+  bookmarks?: Prisma.IntFieldUpdateOperationsInput | number
+  validityScore?: Prisma.IntFieldUpdateOperationsInput | number
+  validityTier?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  startLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  startLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  totalDistanceKm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  estimatedMins?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  views?: Prisma.IntFieldUpdateOperationsInput | number
+  shares?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
+  quotes?: Prisma.PostUpdateManyWithoutQuotedPostNestedInput
+  postComments?: Prisma.CommentUpdateManyWithoutPostNestedInput
+  postLikes?: Prisma.LikeUpdateManyWithoutPostNestedInput
+  postBookmarks?: Prisma.BookmarkUpdateManyWithoutPostNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutPostNestedInput
+  userActivities?: Prisma.UserActivityUpdateManyWithoutPostNestedInput
+  analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutPostNestedInput
+  bugReports?: Prisma.BugReportUpdateManyWithoutPostNestedInput
+}
+
+export type PostUncheckedUpdateWithoutQuotedPostInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
+  routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  images?: Prisma.PostUpdateimagesInput | string[]
+  tags?: Prisma.PostUpdatetagsInput | string[]
+  likes?: Prisma.IntFieldUpdateOperationsInput | number
+  dislikes?: Prisma.IntFieldUpdateOperationsInput | number
+  comments?: Prisma.IntFieldUpdateOperationsInput | number
+  bookmarks?: Prisma.IntFieldUpdateOperationsInput | number
+  validityScore?: Prisma.IntFieldUpdateOperationsInput | number
+  validityTier?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  startLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  startLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  endLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  waypoints?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  totalDistanceKm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  estimatedMins?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  views?: Prisma.IntFieldUpdateOperationsInput | number
+  shares?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
+  postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
+  postLikes?: Prisma.LikeUncheckedUpdateManyWithoutPostNestedInput
+  postBookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutPostNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutPostNestedInput
+  userActivities?: Prisma.UserActivityUncheckedUpdateManyWithoutPostNestedInput
+  analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutPostNestedInput
+  bugReports?: Prisma.BugReportUncheckedUpdateManyWithoutPostNestedInput
+}
+
+export type PostUncheckedUpdateManyWithoutQuotedPostInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  type?: Prisma.EnumPostTypeFieldUpdateOperationsInput | $Enums.PostType
   routes?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   images?: Prisma.PostUpdateimagesInput | string[]
   tags?: Prisma.PostUpdatetagsInput | string[]
@@ -2407,6 +3087,7 @@ export type PostUncheckedUpdateManyWithoutUserInput = {
  */
 
 export type PostCountOutputType = {
+  quotes: number
   postComments: number
   postLikes: number
   postBookmarks: number
@@ -2417,6 +3098,7 @@ export type PostCountOutputType = {
 }
 
 export type PostCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  quotes?: boolean | PostCountOutputTypeCountQuotesArgs
   postComments?: boolean | PostCountOutputTypeCountPostCommentsArgs
   postLikes?: boolean | PostCountOutputTypeCountPostLikesArgs
   postBookmarks?: boolean | PostCountOutputTypeCountPostBookmarksArgs
@@ -2434,6 +3116,13 @@ export type PostCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensi
    * Select specific fields to fetch from the PostCountOutputType
    */
   select?: Prisma.PostCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * PostCountOutputType without action
+ */
+export type PostCountOutputTypeCountQuotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.PostWhereInput
 }
 
 /**
@@ -2490,6 +3179,9 @@ export type PostSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   id?: boolean
   userId?: boolean
   title?: boolean
+  description?: boolean
+  type?: boolean
+  quotedPostId?: boolean
   routes?: boolean
   images?: boolean
   tags?: boolean
@@ -2513,6 +3205,8 @@ export type PostSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  quotedPost?: boolean | Prisma.Post$quotedPostArgs<ExtArgs>
+  quotes?: boolean | Prisma.Post$quotesArgs<ExtArgs>
   postComments?: boolean | Prisma.Post$postCommentsArgs<ExtArgs>
   postLikes?: boolean | Prisma.Post$postLikesArgs<ExtArgs>
   postBookmarks?: boolean | Prisma.Post$postBookmarksArgs<ExtArgs>
@@ -2527,6 +3221,9 @@ export type PostSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   id?: boolean
   userId?: boolean
   title?: boolean
+  description?: boolean
+  type?: boolean
+  quotedPostId?: boolean
   routes?: boolean
   images?: boolean
   tags?: boolean
@@ -2550,12 +3247,16 @@ export type PostSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  quotedPost?: boolean | Prisma.Post$quotedPostArgs<ExtArgs>
 }, ExtArgs["result"]["post"]>
 
 export type PostSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   userId?: boolean
   title?: boolean
+  description?: boolean
+  type?: boolean
+  quotedPostId?: boolean
   routes?: boolean
   images?: boolean
   tags?: boolean
@@ -2579,12 +3280,16 @@ export type PostSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  quotedPost?: boolean | Prisma.Post$quotedPostArgs<ExtArgs>
 }, ExtArgs["result"]["post"]>
 
 export type PostSelectScalar = {
   id?: boolean
   userId?: boolean
   title?: boolean
+  description?: boolean
+  type?: boolean
+  quotedPostId?: boolean
   routes?: boolean
   images?: boolean
   tags?: boolean
@@ -2609,9 +3314,11 @@ export type PostSelectScalar = {
   updatedAt?: boolean
 }
 
-export type PostOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "title" | "routes" | "images" | "tags" | "likes" | "dislikes" | "comments" | "bookmarks" | "validityScore" | "validityTier" | "startLat" | "startLng" | "endLat" | "endLng" | "waypoints" | "region" | "totalDistanceKm" | "estimatedMins" | "isPlatformGen" | "views" | "shares" | "createdAt" | "updatedAt", ExtArgs["result"]["post"]>
+export type PostOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "title" | "description" | "type" | "quotedPostId" | "routes" | "images" | "tags" | "likes" | "dislikes" | "comments" | "bookmarks" | "validityScore" | "validityTier" | "startLat" | "startLng" | "endLat" | "endLng" | "waypoints" | "region" | "totalDistanceKm" | "estimatedMins" | "isPlatformGen" | "views" | "shares" | "createdAt" | "updatedAt", ExtArgs["result"]["post"]>
 export type PostInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  quotedPost?: boolean | Prisma.Post$quotedPostArgs<ExtArgs>
+  quotes?: boolean | Prisma.Post$quotesArgs<ExtArgs>
   postComments?: boolean | Prisma.Post$postCommentsArgs<ExtArgs>
   postLikes?: boolean | Prisma.Post$postLikesArgs<ExtArgs>
   postBookmarks?: boolean | Prisma.Post$postBookmarksArgs<ExtArgs>
@@ -2623,15 +3330,19 @@ export type PostInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
 }
 export type PostIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  quotedPost?: boolean | Prisma.Post$quotedPostArgs<ExtArgs>
 }
 export type PostIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
+  quotedPost?: boolean | Prisma.Post$quotedPostArgs<ExtArgs>
 }
 
 export type $PostPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Post"
   objects: {
     user: Prisma.$UserPayload<ExtArgs>
+    quotedPost: Prisma.$PostPayload<ExtArgs> | null
+    quotes: Prisma.$PostPayload<ExtArgs>[]
     postComments: Prisma.$CommentPayload<ExtArgs>[]
     postLikes: Prisma.$LikePayload<ExtArgs>[]
     postBookmarks: Prisma.$BookmarkPayload<ExtArgs>[]
@@ -2644,6 +3355,9 @@ export type $PostPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     id: string
     userId: string
     title: string
+    description: string | null
+    type: $Enums.PostType
+    quotedPostId: string | null
     routes: runtime.JsonValue
     images: string[]
     tags: string[]
@@ -3061,6 +3775,8 @@ readonly fields: PostFieldRefs;
 export interface Prisma__PostClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  quotedPost<T extends Prisma.Post$quotedPostArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Post$quotedPostArgs<ExtArgs>>): Prisma.Prisma__PostClient<runtime.Types.Result.GetResult<Prisma.$PostPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  quotes<T extends Prisma.Post$quotesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Post$quotesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PostPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   postComments<T extends Prisma.Post$postCommentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Post$postCommentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   postLikes<T extends Prisma.Post$postLikesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Post$postLikesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LikePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   postBookmarks<T extends Prisma.Post$postBookmarksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Post$postBookmarksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BookmarkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -3100,6 +3816,9 @@ export interface PostFieldRefs {
   readonly id: Prisma.FieldRef<"Post", 'String'>
   readonly userId: Prisma.FieldRef<"Post", 'String'>
   readonly title: Prisma.FieldRef<"Post", 'String'>
+  readonly description: Prisma.FieldRef<"Post", 'String'>
+  readonly type: Prisma.FieldRef<"Post", 'PostType'>
+  readonly quotedPostId: Prisma.FieldRef<"Post", 'String'>
   readonly routes: Prisma.FieldRef<"Post", 'Json'>
   readonly images: Prisma.FieldRef<"Post", 'String[]'>
   readonly tags: Prisma.FieldRef<"Post", 'String[]'>
@@ -3515,6 +4234,49 @@ export type PostDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Internal
    * Limit how many Posts to delete.
    */
   limit?: number
+}
+
+/**
+ * Post.quotedPost
+ */
+export type Post$quotedPostArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Post
+   */
+  select?: Prisma.PostSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Post
+   */
+  omit?: Prisma.PostOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PostInclude<ExtArgs> | null
+  where?: Prisma.PostWhereInput
+}
+
+/**
+ * Post.quotes
+ */
+export type Post$quotesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Post
+   */
+  select?: Prisma.PostSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Post
+   */
+  omit?: Prisma.PostOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.PostInclude<ExtArgs> | null
+  where?: Prisma.PostWhereInput
+  orderBy?: Prisma.PostOrderByWithRelationInput | Prisma.PostOrderByWithRelationInput[]
+  cursor?: Prisma.PostWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.PostScalarFieldEnum | Prisma.PostScalarFieldEnum[]
 }
 
 /**

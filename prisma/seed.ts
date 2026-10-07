@@ -2,10 +2,11 @@
  * Database Seeding Script
  * 
  * Seeds the database with realistic test data for development.
- * Can be run multiple times safely (uses upsert).
+ * Idempotent: safe to run multiple times — existing rows matched by their
+ * natural keys (email, author+title, unique constraints) are skipped.
  * 
- * Usage: npx prisma db seed
- * Or: npx tsx prisma/seed.ts
+ * Usage: npm run db:seed  (or: npx prisma db seed / npx tsx prisma/seed.ts)
+ * Clear seed data (backs up first): npm run db:clear-seed
  */
 
 import { prisma } from '../app/lib/db/prisma';
@@ -510,6 +511,15 @@ async function seedPosts(users: PrismaUser[]): Promise<any[]> {
 
     const createdPosts: any[] = [];
     for (const postData of posts) {
+        // Idempotent: skip posts that already exist (matched by author + title)
+        const existing = await prisma.post.findFirst({
+            where: { userId: postData.userId, title: postData.title },
+        });
+        if (existing) {
+            createdPosts.push(existing);
+            console.log(`Post already exists, skipping: ${existing.title}`);
+            continue;
+        }
         const post = await prisma.post.create({
             data: {
                 userId: postData.userId,
@@ -621,14 +631,23 @@ async function seedComments(users: PrismaUser[], posts: any[]): Promise<void> {
     ];
 
     for (const commentData of comments) {
-        const comment = await prisma.comment.create({
+        // Idempotent: skip identical comments already present
+        const existing = await prisma.comment.findFirst({
+            where: {
+                postId: commentData.postId,
+                userId: commentData.userId,
+                text: commentData.text,
+            },
+        });
+        if (existing) continue;
+        await prisma.comment.create({
             data: {
                 ...commentData,
                 likes: Math.floor(Math.random() * 10),
                 dislikes: Math.floor(Math.random() * 2),
             },
         });
-        console.log(`Created comment on post ${comment.postId}`);
+        console.log(`Created comment on post ${commentData.postId}`);
     }
 }
 
@@ -731,7 +750,7 @@ async function main() {
         console.log('   Comments:  15');
         console.log('   Likes:     24');
         console.log('   Bookmarks: 18');
-        console.log('   Follows:   22');
+        console.log('   Follows:   34');
         console.log('\nDefault password for all users: Password123!');
         console.log('\nTest Accounts:');
         console.log('   chidi@example.com    - Lagos expert');

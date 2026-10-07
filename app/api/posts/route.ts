@@ -30,12 +30,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, routes, images, tags, region, startLat, startLng, endLat, endLng, totalDistanceKm, estimatedMins } = parsed.data;
+    const { title, routes, images, tags, region, startLat, startLng, endLat, endLng, totalDistanceKm, estimatedMins, type, description, quotedPostId } = parsed.data;
+
+    // Validate quote target before creating (responses must quote an existing post)
+    let quotedAuthorId: string | null = null;
+    if (quotedPostId) {
+      const quoted = await prisma.post.findUnique({
+        where: { id: quotedPostId },
+        select: { userId: true },
+      });
+      if (!quoted) {
+        return NextResponse.json({ error: "The quoted post no longer exists." }, { status: 400 });
+      }
+      quotedAuthorId = quoted.userId;
+    }
 
     const post = await prisma.post.create({
       data: {
         userId: user.id as string,
         title,
+        type,
+        description: description ?? null,
+        quotedPostId: quotedPostId ?? null,
         routes: routes as never,
         images: images ?? [],
         tags: tags ?? [],
@@ -73,6 +89,30 @@ export async function POST(request: NextRequest) {
     qstashService.publishFeedInvalidation({ followersOfUserId: user.id as string, userIds: [user.id as string] });
     qstashService.publishValidityRecompute({ postId: post.id });
 
+    // Fan-out notifications for route requests/responses — non-blocking, never throws
+    try {
+      const { createNotification, getFollowerIds } = await import("@/app/lib/services/notificationService");
+      const actorName = `${(user as { firstName?: string }).firstName ?? ""} ${(user as { lastName?: string }).lastName ?? ""}`.trim() || "Someone";
+      if (type === "ROUTE_REQUEST") {
+        const followers = await getFollowerIds(user.id as string);
+        void createNotification({
+          type: "ROUTE_REQUEST",
+          actorId: user.id as string,
+          message: `${actorName} is looking for a route: "${title}"`,
+          postId: post.id,
+          recipientIds: followers,
+        });
+      } else if (type === "ROUTE_RESPONSE" && quotedAuthorId) {
+        void createNotification({
+          type: "ROUTE_RESPONSE",
+          actorId: user.id as string,
+          message: `${actorName} responded to your route request: "${title}"`,
+          postId: post.id,
+          recipientIds: [quotedAuthorId],
+        });
+      }
+    } catch { /* notifications are non-critical */ }
+
     // Optimistically clear Redis cache for author so immediate refresh sees the new post even before QStash worker runs — never blocks response
     try {
       const { redis } = await import("@/app/lib/db/redis");
@@ -100,8 +140,20 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor");
     const limit = Math.min(Number(searchParams.get("limit")) || 10, 50);
+    const userId = searchParams.get("userId");
+    const type = searchParams.get("type");
+    const likedBy = searchParams.get("likedBy");
+    const bookmarkedBy = searchParams.get("bookmarkedBy");
+
+    const validTypes = new Set(["ROUTE", "ROUTE_REQUEST", "ROUTE_RESPONSE"]);
+    const where: Record<string, unknown> = {};
+    if (userId) where.userId = userId;
+    if (type && validTypes.has(type)) where.type = type;
+    if (likedBy) where.postLikes = { some: { userId: likedBy, type: "LIKE" } };
+    if (bookmarkedBy) where.postBookmarks = { some: { userId: bookmarkedBy } };
 
     const fetchArgs = {
+      ...(Object.keys(where).length > 0 ? { where } : {}),
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       include: {

@@ -49,7 +49,7 @@ export default function AdminEmailPreviewPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Email Preview</h1>
           <div className="text-sm text-text-secondary">Preview and test email templates</div>

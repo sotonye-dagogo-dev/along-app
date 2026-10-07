@@ -107,7 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      <main className="flex-1 p-8 max-w-[calc(1280px-240px)] flex flex-col gap-6">
+      <main className="flex-1 p-4 sm:p-8 max-w-[calc(1280px-240px)] flex flex-col gap-6">
         {children}
       </main>
     </div>

@@ -1,4 +1,4 @@
-# Along - Social Route Sharing Platform
+﻿# Along - Social Route Sharing Platform
 
 <div align="center">
 
@@ -14,7 +14,7 @@
 
 </div>
 
-## 📖 Table of Contents
+## ðŸ“– Table of Contents
 
 - [About](#about)
 - [Features](#features)
@@ -25,48 +25,48 @@
 - [Contributing](#contributing)
 - [License](#license)
 
-## 🎯 About
+## ðŸŽ¯ About
 
 **Along** is a social platform where travelers can share multi-stop route posts, discover new destinations, and connect with fellow travelers. Whether you're planning a cross-country road trip or a daily commute, Along helps you share your journey and learn from others.
 
 ### Why Along?
 
-- 📍 **Multi-Stop Routes**: Share complete journeys with multiple destinations
-- 🚌 **Transportation Details**: Include vehicle types, fares, and tips
-- 🌐 **Community Driven**: Like, comment, bookmark, and share routes
-- 📱 **Progressive Web App**: Install on any device, works offline
-- 🌙 **Dark Mode**: Comfortable viewing in any lighting
-- 🔔 **Push Notifications**: Stay updated with new routes and interactions
+- ðŸ“ **Multi-Stop Routes**: Share complete journeys with multiple destinations
+- ðŸšŒ **Transportation Details**: Include vehicle types, fares, and tips
+- ðŸŒ **Community Driven**: Like, comment, bookmark, and share routes
+- ðŸ“± **Progressive Web App**: Install on any device, works offline
+- ðŸŒ™ **Dark Mode**: Comfortable viewing in any lighting
+- ðŸ”” **Push Notifications**: Stay updated with new routes and interactions
 
-## ✨ Features
+## âœ¨ Features
 
 ### Core Features
 
-- ✅ **Route Sharing**: Create posts with multiple connected stops
-- ✅ **Rich Content**: Text, images, links, and formatting
-- ✅ **Social Interaction**: Like, dislike, comment, and share
-- ✅ **Bookmarking**: Save favorite routes for later
-- ✅ **User Profiles**: View and edit profiles
-- ✅ **Search & Discovery**: Find routes by location, tags, or content
-- ✅ **Intelligent Suggestions**: Location and activity-based recommendations
-- ✅ **Notifications**: Real-time updates for interactions
+- âœ… **Route Sharing**: Create posts with multiple connected stops
+- âœ… **Rich Content**: Text, images, links, and formatting
+- âœ… **Social Interaction**: Like, dislike, comment, and share
+- âœ… **Bookmarking**: Save favorite routes for later
+- âœ… **User Profiles**: View and edit profiles
+- âœ… **Search & Discovery**: Find routes by location, tags, or content
+- âœ… **Intelligent Suggestions**: Location and activity-based recommendations
+- âœ… **Notifications**: Real-time updates for interactions
 
 ### PWA Features
 
-- ✅ **Offline Support**: Access content without internet
-- ✅ **Installable**: Add to home screen like a native app
-- ✅ **Push Notifications**: Get updates even when app is closed
-- ✅ **Fast Loading**: Optimized caching strategies
+- âœ… **Offline Support**: Access content without internet
+- âœ… **Installable**: Add to home screen like a native app
+- âœ… **Push Notifications**: Get updates even when app is closed
+- âœ… **Fast Loading**: Optimized caching strategies
 
 ### UX Features
 
-- ✅ **Dark Mode**: System-aware theme switching
-- ✅ **Responsive Design**: Mobile-first, works on all devices
-- ✅ **Loading States**: Skeletons and progress indicators
-- ✅ **Smooth Animations**: Polished user experience
-- ✅ **Accessibility**: WCAG 2.1 Level AA compliant
+- âœ… **Dark Mode**: System-aware theme switching
+- âœ… **Responsive Design**: Mobile-first, works on all devices
+- âœ… **Loading States**: Skeletons and progress indicators
+- âœ… **Smooth Animations**: Polished user experience
+- âœ… **Accessibility**: WCAG 2.1 Level AA compliant
 
-## 🛠 Tech Stack
+## ðŸ›  Tech Stack
 
 ### Frontend
 
@@ -91,7 +91,7 @@
 - **Package Manager**: npm
 - **Deployment**: Vercel (recommended)
 
-## 🚀 Getting Started
+## ðŸš€ Getting Started
 
 ### Prerequisites
 
@@ -157,10 +157,9 @@ npm start
 
 ```bash
 npm run lint         # Run ESLint
-npm run dev:all      # Run dev server with mock backend (if using json-server)
 ```
 
-## 📚 Documentation
+## ðŸ“š Documentation
 
 Comprehensive documentation is available:
 
@@ -175,30 +174,30 @@ Comprehensive documentation is available:
 - **[Repo Map](ai-system/index/repo-map.md)** - Codebase navigation map
 - **[PWA Features](app/components/features/pwa/README.md)** - Progressive Web App guide
 
-## 📁 Project Structure
+## ðŸ“ Project Structure
 
 ```
 along-app/
-├── app/                        # Next.js App Router
-│   ├── (auth)/                # Authentication routes
-│   ├── (dashboard)/           # Dashboard routes
-│   ├── (admin)/               # Admin routes
-│   ├── (public)/              # Public marketing/legal routes
-│   ├── api/                   # API routes
-│   ├── components/            # React components
-│   │   ├── features/          # Feature-specific components
-│   │   └── ui/                # Reusable UI components
-│   ├── providers/             # Context providers
-│   └── lib/                   # Utilities and types
-├── public/                     # Static assets
-│   ├── assets/                # Images and icons
-│   ├── manifest.json          # PWA manifest
-│   └── sw.js                  # Service worker
-├── .github/                   # GitHub configuration
-└── Configuration files
+â”œâ”€â”€ app/                        # Next.js App Router
+â”‚   â”œâ”€â”€ (auth)/                # Authentication routes
+â”‚   â”œâ”€â”€ (dashboard)/           # Dashboard routes
+â”‚   â”œâ”€â”€ (admin)/               # Admin routes
+â”‚   â”œâ”€â”€ (public)/              # Public marketing/legal routes
+â”‚   â”œâ”€â”€ api/                   # API routes
+â”‚   â”œâ”€â”€ components/            # React components
+â”‚   â”‚   â”œâ”€â”€ features/          # Feature-specific components
+â”‚   â”‚   â””â”€â”€ ui/                # Reusable UI components
+â”‚   â”œâ”€â”€ providers/             # Context providers
+â”‚   â””â”€â”€ lib/                   # Utilities and types
+â”œâ”€â”€ public/                     # Static assets
+â”‚   â”œâ”€â”€ assets/                # Images and icons
+â”‚   â”œâ”€â”€ manifest.json          # PWA manifest
+â”‚   â””â”€â”€ sw.js                  # Service worker
+â”œâ”€â”€ .github/                   # GitHub configuration
+â””â”€â”€ Configuration files
 ```
 
-## 🤝 Contributing
+## ðŸ¤ Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
@@ -217,13 +216,13 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - Update documentation as needed
 - Ensure all tests pass before submitting PR
 
-## 📊 Project Status
+## ðŸ“Š Project Status
 
 ### Current Phase
 
 - Compliance audit and remediation (design tokens, universal components, PWA prompt behavior)
 
-## 🔒 Security
+## ðŸ”’ Security
 
 - XSS protection
 - CSRF protection
@@ -231,7 +230,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - Input sanitization
 - JWT token management
 
-## 🌐 Browser Support
+## ðŸŒ Browser Support
 
 - Chrome (last 2 versions)
 - Firefox (last 2 versions)
@@ -239,44 +238,44 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - Edge (last 2 versions)
 - Mobile browsers (iOS Safari, Chrome Android)
 
-## 📱 PWA Support
+## ðŸ“± PWA Support
 
 Along is a Progressive Web App that can be installed on:
 
-- ✅ Android devices (Chrome, Edge)
-- ✅ iOS devices (Safari 16+)
-- ✅ Windows (Chrome, Edge)
-- ✅ macOS (Chrome, Safari, Edge)
-- ✅ Linux (Chrome, Firefox, Edge)
+- âœ… Android devices (Chrome, Edge)
+- âœ… iOS devices (Safari 16+)
+- âœ… Windows (Chrome, Edge)
+- âœ… macOS (Chrome, Safari, Edge)
+- âœ… Linux (Chrome, Firefox, Edge)
 
-## 🎨 Design System
+## ðŸŽ¨ Design System
 
 - **Primary Color**: var(--color-primary) (Along Green)
 - **Typography**: System font stack defined in globals.css
 - **Spacing**: 4px base unit (Tailwind defaults)
 - **Components**: App\* wrappers over Ant Design + Tailwind tokens
 
-## 📈 Performance
+## ðŸ“ˆ Performance
 
 - **Lighthouse Score**: 90+ across all metrics
 - **First Contentful Paint**: < 1.5s
 - **Time to Interactive**: < 3.5s
 - **Bundle Size**: < 200KB (initial load)
 
-## 🙏 Acknowledgments
+## ðŸ™ Acknowledgments
 
 - [Next.js](https://nextjs.org/) - The React Framework
 - [Ant Design](https://ant.design/) - UI Component Library
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS
 - [Vercel](https://vercel.com/) - Deployment Platform
 
-## 📧 Contact
+## ðŸ“§ Contact
 
 - **GitHub**: [@Sotonye0808](https://github.com/Sotonye0808)
 - **Project**: [Along App](https://github.com/Sotonye0808/along-app)
 - **Issues**: [Report a bug](https://github.com/Sotonye0808/along-app/issues)
 
-## 📄 License
+## ðŸ“„ License
 
 This project is proprietary and confidential.
 
@@ -284,8 +283,8 @@ This project is proprietary and confidential.
 
 <div align="center">
 
-**Made with ❤️ by the Along Team**
+**Made with â¤ï¸ by the Along Team**
 
-[Documentation](SETUP.md) • [API Reference](API.md) • [Contributing](CONTRIBUTING.md)
+[Documentation](SETUP.md) â€¢ [API Reference](API.md) â€¢ [Contributing](CONTRIBUTING.md)
 
 </div>

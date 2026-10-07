@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation"
 import type { MapRef } from "react-map-gl/maplibre"
 import { Search, LocateFixed, SlidersHorizontal, Link2, X, ChevronLeft } from "lucide-react"
 import { ExplorePinCard, FilterChipsBar } from "@/app/components/features/explore"
+import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 
 const MapView = dynamic(() => import("react-map-gl/maplibre"), { ssr: false })
 const Marker = dynamic(() => import("react-map-gl/maplibre").then((m) => ({ default: m.Marker })), { ssr: false })
@@ -39,9 +40,24 @@ function getTimeAgo(date: string): string {
   return new Date(date).toLocaleDateString()
 }
 
+interface ExploreApiPost {
+  id: string
+  title: string
+  startLat?: number | null
+  startLng?: number | null
+  likes: number
+  comments: number
+  tags: string[]
+  validityScore: number
+  validityTier: string | null
+  region: string | null
+  routes?: unknown
+  createdAt: string
+  user: { userName: string; firstName: string; lastName: string }
+}
+
 export default function ExplorePage() {
   const searchParams = useSearchParams()
-  const [pins, setPins] = useState<PostPin[]>([])
   const [selectedPin, setSelectedPin] = useState<PostPin | null>(null)
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "")
   const [panelCollapsed, setPanelCollapsed] = useState(false)
@@ -82,57 +98,38 @@ export default function ExplorePage() {
     return () => observer.disconnect()
   }, [])
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/api/posts?limit=100")
-        let data: { posts?: unknown[]; error?: string } = { posts: [] }
-        try {
-          const text = await res.text()
-          data = text ? JSON.parse(text) : { posts: [] }
-        } catch {
-          // Non-JSON response (e.g. 500 HTML) — treat as empty but log
-          console.error("Explore feed returned non-JSON")
-          data = { posts: [] }
+  // Public route list — shared cache across viewers, SWR so the map pins paint instantly
+  const { data: exploreData } = useCachedFetch<{ posts: ExploreApiPost[] }>(
+    "posts:explore",
+    "/api/posts?limit=100",
+    { ttlSec: 120 }
+  )
+
+  const pins = useMemo<PostPin[]>(() => {
+    const posts = exploreData?.posts ?? []
+    // Only pins with coordinates are map-placeable; keep all for list but filter for map
+    return posts
+      .filter((p) => p.startLat != null && p.startLng != null && Number.isFinite(p.startLat) && Number.isFinite(p.startLng))
+      .map((p) => {
+        const routes = Array.isArray(p.routes) ? (p.routes as { vehicle?: string }[]) : []
+        const vehicles = [...new Set(routes.map((r) => r.vehicle).filter(Boolean))] as string[]
+        return {
+          id: p.id,
+          title: p.title,
+          lat: p.startLat as number,
+          lng: p.startLng as number,
+          likes: p.likes,
+          comments: p.comments,
+          tags: p.tags,
+          vehicles,
+          validityScore: p.validityScore,
+          validityTier: p.validityTier,
+          region: p.region,
+          createdAt: p.createdAt,
+          user: p.user,
         }
-        if (!res.ok) {
-          console.error("Explore fetch failed:", (data as { error?: string }).error ?? res.status)
-          return
-        }
-        const posts = (data.posts ?? []) as Array<{
-          id: string; title: string; startLat?: number | null; startLng?: number | null;
-          likes: number; comments: number; tags: string[]; validityScore: number; validityTier: string | null;
-          region: string | null; routes?: unknown; createdAt: string; user: { userName: string; firstName: string; lastName: string }
-        }>
-        // Only pins with coordinates are map-placeable; keep all for list but filter for map
-        const mapped: PostPin[] = posts
-          .filter((p) => p.startLat != null && p.startLng != null && Number.isFinite(p.startLat) && Number.isFinite(p.startLng))
-          .map((p) => {
-            const routes = Array.isArray(p.routes) ? p.routes as { vehicle?: string }[] : []
-            const vehicles = [...new Set(routes.map((r) => r.vehicle).filter(Boolean))] as string[]
-            return {
-              id: p.id,
-              title: p.title,
-              lat: p.startLat as number,
-              lng: p.startLng as number,
-              likes: p.likes,
-              comments: p.comments,
-              tags: p.tags,
-              vehicles,
-              validityScore: p.validityScore,
-              validityTier: p.validityTier,
-              region: p.region,
-              createdAt: p.createdAt,
-              user: p.user,
-            }
-          })
-        setPins(mapped)
-      } catch (e) {
-        console.error("Explore load error:", e)
-      }
-    }
-    load()
-  }, [])
+      })
+  }, [exploreData])
 
   const updateUrl = useCallback(
     (lat: number, lng: number, zoom: number) => {

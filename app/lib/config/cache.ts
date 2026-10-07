@@ -20,6 +20,13 @@ export const CACHE_KEYS = {
   search: (query: string, type: string) => `search:${type}:${query.toLowerCase()}`,
   leaderboard: () => "leaderboard:invites",
   siteConfig: (key: string) => `siteConfig:${key}`,
-  notifications: (userId: string) => `notifications:${userId}:unread`,
+  /** Notification list cache is per filter variant — see NOTIFICATION_FILTERS. */
+  notifications: (userId: string, filter: string = "all") => `notifications:${userId}:${filter}`,
+  /** Every notifications cache key for a user (delete all on any write). */
+  notificationsAll: (userId: string) =>
+    ["all", "unread", "rewards"].map((f) => `notifications:${userId}:${f}`),
   analytics: (userId: string, period: string) => `analytics:${userId}:${period}`,
 } as const;
+
+/** Filter values the notifications endpoint accepts (must match notificationsAll). */
+export const NOTIFICATION_FILTERS = ["all", "unread", "rewards"] as const;

@@ -769,3 +769,34 @@ Live map tracking navigation, carto.com basemap API key wiring, auth provider li
 **Notes / Blockers:**
 - Vercel env var `UPSTASH_REDIS_REST_URL` currently points at `willing-gazelle-101748.upstash.io` which is ENOTFOUND â€” needs rotation to valid Upstash instance or removal to rely on in-memory fallback
 - Rate limiter remains in-memory (`app/lib/utils/rateLimit.ts`) â€” tracked as P1 to migrate to Upstash Redis with sliding window
+
+---
+
+## Session 2026-10-07 — Execute-Feature: Mock/Seed Cleanup, Route Requests E2E, Caching, Live Preview, Responsive (planning pass)
+
+**Completed:**
+- Step 1 planning pass per `commands/execute-feature.md`: read task-queue, system-architecture, design-system, repair-system, project-context, project-decisions; ran 5 parallel codebase research passes (seed/mock audit, route preview UI, caching/feed, notifications/follows, analytics/responsive)
+- Architecture impact identified ? `plan-feature.md` logic run: Prisma schema migration (Post.type/description/quotedPostId + NotificationType extension), new `/api/suggestions` route, new cache services, new UI components (EndlessCarousel, RequestRouteModal)
+- Wrote plan to `checkpoints/in-progress.md`; appended Sprint 7 task table to `planning/task-queue.md` (this entry is the required mutation trace)
+- Self-check vs project-context scope (in-scope: social route platform, notifications, offline/caching) and project-decisions (no conflicts) — passed
+
+**Tasks Added to task-queue.md:**
+- Sprint 7: Route Requests E2E, Live Preview, Caching & Data Hygiene (27 granular steps grouped in 7 workstreams A-G, see in-progress.md)
+
+**Assumptions Made:**
+- "Post modal" for respond CTA = ShareRouteModal in response mode with quoted request; carousel route items deep-link /posts/[id]
+- Seed clear is manual-only (package.json script), always backs up first, scoped to seed markers; SiteConfig seeded keys kept (live config)
+- New NotificationType enum values also fix the existing broken `?filter=rewards` query
+
+**Status:** Paused for explicit go/no-go before implementation (execute-feature contract).
+
+---
+
+## Session 2026-10-07 (resume) — resume-session + directive addendum
+
+**Completed:**
+- resume-session.md Step 1-2: read in-progress.md, session-log last entry, task-queue Sprint 7; ran sync-context focused drift check on checkpoint claims (scripts exist + db:* present; ShareRouteModal previewOpen/locateMe present; feedStream loadInitial(userId) + hidden-tab pause present; no foreign commits since 2026-09-29)
+- Drift classified MINOR: checkpoint status still said "Awaiting go/no-go" and all Sprint 7 rows unchecked despite A1/A2/B1/B2/C1/C2/D1 done — corrected in in-progress.md + task-queue.md in the same pass (checkpoint compliance)
+- Directive addendum logged as H1-H4 (posting E2E, profile tab filtering, redux-observables review, mutation tests + error-boundary hardening) — additive, does not invalidate Sprint plan
+
+**Status:** Resuming at Sprint E (route requests E2E).

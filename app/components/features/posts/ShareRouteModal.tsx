@@ -2,11 +2,13 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save } from "lucide-react"
+import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { draftingCoachService } from "@/app/lib/services/DraftingCoachService"
 import { toastService } from "@/app/lib/services/toastService"
+import { estimateRoute, traceSignature, getCurrentPosition, reverseGeocode } from "@/app/lib/utils/geo"
+import { memoryCache } from "@/app/lib/cache/memoryCache"
 import type { VehicleType } from "@/app/lib/types"
 import DraftingCoach from "./DraftingCoach"
 import type { RoutePin } from "./RouteMap"
@@ -31,12 +33,22 @@ interface GeoResult {
   lon: string
 }
 
+/** The route request being responded to — switches the modal into response mode. */
+export interface RespondToRequest {
+  id: string
+  title: string
+  user?: { userName: string; firstName: string; lastName: string }
+}
+
 interface ShareRouteModalProps {
   isOpen: boolean
   onClose: () => void
+  responseTo?: RespondToRequest | null
   onSubmit?: (data: {
     title: string
     description: string
+    type?: "ROUTE" | "ROUTE_RESPONSE"
+    quotedPostId?: string
     routes: RouteStep[]
     images: string[]
     tags: string[]
@@ -45,15 +57,21 @@ interface ShareRouteModalProps {
     endLat?: number
     endLng?: number
     waypoints?: { lat: number; lng: number }[]
-  }) => void
+    /** Return false to keep the modal open (e.g. submission failed). */
+  }) => boolean | void | Promise<boolean | void>
 }
 
 const VEHICLE_OPTIONS = Object.keys(VEHICLE_REGISTRY) as VehicleType[]
 
-export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRouteModalProps) {
+const TRACE_CACHE_TTL = 600 // 10 min — same route re-edits don't re-trace
+const TRACE_DEBOUNCE_MS = 1000
+
+export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit }: ShareRouteModalProps) {
+  const isResponse = Boolean(responseTo)
+  const draftKey = isResponse ? `${DRAFT_KEY}_resp` : DRAFT_KEY
   const [title, setTitle] = useState("")
   const [description] = useState("")
-  const [steps, setSteps] = useState<(RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean })[]>([
+  const [steps, setSteps] = useState<(RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean; _focused?: boolean; _locating?: boolean })[]>([
     { location: "", description: "", vehicle: "bus", fare: 0, _geoResults: [], _geoLoading: false },
     { location: "", description: "", vehicle: "", fare: 0, _geoResults: [], _geoLoading: false },
   ])
@@ -64,6 +82,11 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(true)
+  const [trace, setTrace] = useState<{ polyline: string; distance: number; duration: number; sig: string } | null>(null)
+  const [tracing, setTracing] = useState(false)
+  const traceDisabledRef = useRef(false)
+  const traceSeqRef = useRef(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -117,9 +140,47 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
         lng: parseFloat(result.lon),
         _geoResults: [],
         _geoLoading: false,
+        _focused: false,
       }
       return next
     })
+  }
+
+  const setStepExtra = (
+    index: number,
+    patch: Partial<{ _geoResults: GeoResult[]; _geoLoading: boolean; _focused: boolean; _locating: boolean }>
+  ) => {
+    setSteps((prev) => {
+      const next = [...prev]
+      next[index] = { ...next[index], ...patch }
+      return next
+    })
+  }
+
+  // Autofill: fill the focused location input with the user's current position
+  const locateMe = async (index: number) => {
+    setStepExtra(index, { _locating: true })
+    try {
+      const pos = await getCurrentPosition()
+      const label = (await reverseGeocode(pos.lat, pos.lng)) ?? `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`
+      setSteps((prev) => {
+        const next = [...prev]
+        next[index] = {
+          ...next[index],
+          location: label,
+          lat: pos.lat,
+          lng: pos.lng,
+          _locating: false,
+          _focused: false,
+          _geoResults: [],
+          _geoLoading: false,
+        }
+        return next
+      })
+    } catch (error) {
+      setStepExtra(index, { _locating: false })
+      toastService.error(error instanceof Error ? error.message : "Couldn't get your location")
+    }
   }
 
   const pins: RoutePin[] = useMemo(() => {
@@ -147,6 +208,66 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
     tags,
     description,
   }
+
+  // ---- Live preview: instant client estimate + debounced server trace ----
+  const realPins = useMemo(
+    () => steps.filter((s) => s.location && s.lat && s.lng).map((s) => ({ lat: s.lat!, lng: s.lng! })),
+    [steps]
+  )
+  const estimate = useMemo(() => estimateRoute(realPins.length >= 2 ? realPins : []), [realPins])
+  const traceSig = realPins.length >= 2 ? traceSignature(realPins) : ""
+  // Only trust a trace that matches the pins currently on screen
+  const liveTrace = trace && trace.sig === traceSig ? trace : null
+  const displayDistance = liveTrace ? liveTrace.distance : estimate.distanceKm
+  const displayDuration = liveTrace ? liveTrace.duration : estimate.durationMins
+  const totalFare = steps.reduce((sum, s) => sum + (s.fare || 0), 0)
+
+  useEffect(() => {
+    if (!isOpen || !traceSig) {
+      setTrace(null)
+      setTracing(false)
+      return
+    }
+    const cached = memoryCache.get<{ polyline: string; distance: number; duration: number }>(`route-trace:${traceSig}`)
+    if (cached) {
+      setTrace({ ...cached, sig: traceSig })
+      setTracing(false)
+      return
+    }
+    if (traceDisabledRef.current) return // rate-limited earlier — estimates only
+
+    const seq = ++traceSeqRef.current
+    setTracing(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/routes/trace", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pins: realPins }),
+        })
+        if (res.status === 429) {
+          traceDisabledRef.current = true // stop tracing for this session
+          return
+        }
+        if (!res.ok) throw new Error("trace failed")
+        const data = (await res.json()) as { polyline?: string; distance?: number; duration?: number }
+        if (seq !== traceSeqRef.current || !data.polyline) return
+        const entry = {
+          polyline: data.polyline,
+          distance: typeof data.distance === "number" ? data.distance : estimate.distanceKm,
+          duration: typeof data.duration === "number" ? data.duration : estimate.durationMins,
+        }
+        memoryCache.set(`route-trace:${traceSig}`, entry, TRACE_CACHE_TTL)
+        setTrace({ ...entry, sig: traceSig })
+      } catch {
+        // silent — straight-line estimate stays on screen
+      } finally {
+        if (seq === traceSeqRef.current) setTracing(false)
+      }
+    }, TRACE_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [traceSig, isOpen])
 
   const evaluation = draftingCoachService.evaluate(draftInput)
 
@@ -232,21 +353,26 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
   const saveDraft = useCallback(() => {
     const draft = { title, steps, tags, images }
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+      localStorage.setItem(draftKey, JSON.stringify(draft))
       toastService.success("Draft saved locally")
     } catch {
       toastService.error("Failed to save draft")
     }
-  }, [title, steps, tags, images])
+  }, [title, steps, tags, images, draftKey])
 
   const clearDraft = useCallback(() => {
-    try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
-  }, [])
+    try { localStorage.removeItem(draftKey) } catch { /* ignore */ }
+  }, [draftKey])
 
   useEffect(() => {
     if (!isOpen) return
+    // Response mode: prefill from the quoted request, never absorb a normal-route draft
+    if (responseTo) {
+      setTitle(`Re: ${responseTo.title}`.slice(0, 100))
+      return
+    }
     try {
-      const stored = localStorage.getItem(DRAFT_KEY)
+      const stored = localStorage.getItem(draftKey)
       if (!stored) return
       const draft = JSON.parse(stored) as { title?: string; steps?: (RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean })[]; tags?: string[]; images?: string[] }
       if (draft.title) setTitle(draft.title)
@@ -254,7 +380,7 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
       if (draft.tags) setTags(draft.tags)
       if (draft.images) setImages(draft.images)
     } catch { /* ignore */ }
-  }, [isOpen])
+  }, [isOpen, responseTo, draftKey])
 
   const updateStep = (index: number, field: keyof RouteStep, value: string | number) => {
     setSteps((prev) => {
@@ -321,9 +447,10 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
     const waypoints = stepsToSubmit
       .filter((s) => s.lat && s.lng && s !== first && s !== last)
       .map((s) => ({ lat: s.lat!, lng: s.lng! }))
-    onSubmit?.({
+    const result = await onSubmit?.({
       title: title.trim(),
       description,
+      ...(isResponse && responseTo ? { type: "ROUTE_RESPONSE" as const, quotedPostId: responseTo.id } : {}),
       routes: stepsToSubmit.map(({ _geoResults, _geoLoading, ...rest }) => rest),
       images,
       tags,
@@ -333,6 +460,7 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
       endLng: last?.lng && last !== first ? last.lng : undefined,
       waypoints: waypoints.length > 0 ? waypoints : undefined,
     })
+    if (result === false) return // failed — keep the modal open so input isn't lost
     clearDraft()
     onClose()
   }
@@ -342,10 +470,34 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
       <div className="flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between px-6 py-5 pb-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">Share a Route</h2>
-            <p className="text-sm text-text-secondary mt-0.5">Help the community with a new route</p>
+            <h2 className="text-lg font-semibold tracking-tight">
+              {isResponse ? "Respond to Route Request" : "Share a Route"}
+            </h2>
+            <p className="text-sm text-text-secondary mt-0.5">
+              {isResponse
+                ? "Post the route that answers this request"
+                : "Help the community with a new route"}
+            </p>
           </div>
         </div>
+
+        {isResponse && responseTo && (
+          <div className="mx-6 mt-4 flex items-start gap-3 px-4 py-3 bg-warning/10 border border-warning/30 radius-lg">
+            <span className="mt-0.5 text-warning shrink-0" aria-hidden>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 17H7A5 5 0 0 1 7 7h2" />
+                <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
+                <line x1="8" y1="12" x2="16" y2="12" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold tracking-wider uppercase text-text-muted">
+                Replying to{responseTo.user ? ` ${responseTo.user.firstName} ${responseTo.user.lastName}` : ""}&apos;s request
+              </div>
+              <div className="text-sm font-medium text-text-primary truncate">{responseTo.title}</div>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-col lg:flex-row overflow-y-auto flex-1">
           <div className="flex-1 p-4 sm:p-6 flex flex-col gap-5 overflow-y-auto">
@@ -406,17 +558,30 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
                           type="text"
                           value={step.location}
                           onChange={(e) => handleGeoInput(index, e.target.value)}
+                          onFocus={() => setStepExtra(index, { _focused: true })}
+                          onBlur={() => setTimeout(() => setStepExtra(index, { _focused: false }), 160)}
                           placeholder="Search location..."
+                          aria-label={index === 0 ? "Origin location" : index === steps.length - 1 ? "Destination location" : `Stop ${index} location`}
                           className="w-full h-10 pl-[34px] pr-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none transition-colors duration-fast bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
                         />
-                        {step._geoLoading && (
+                        {(step._geoLoading || step._locating) && (
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"><Navigation size={14} className="animate-spin" /></span>
                         )}
-                        {(step._geoResults ?? []).length > 0 && (
-                          <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-bg-card border border-border radius-md shadow-lg max-h-[200px] overflow-y-auto">
+                        {step._focused && (
+                          <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-bg-card border border-border radius-md shadow-lg max-h-[220px] overflow-y-auto">
+                            <button
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => locateMe(index)}
+                              disabled={step._locating}
+                              className="w-full text-left px-3 py-2 text-xs font-medium text-primary border-none bg-transparent cursor-pointer hover:bg-primary-muted font-sans inline-flex items-center gap-2"
+                            >
+                              <Crosshair size={12} className="shrink-0" />
+                              {step._locating ? "Getting your location..." : "Use my current location"}
+                            </button>
                             {(step._geoResults ?? []).map((r, ri) => (
                               <button
                                 key={ri}
+                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => selectGeoResult(index, r)}
                                 className="w-full text-left px-3 py-2 text-xs text-text-primary border-none bg-transparent cursor-pointer hover:bg-bg-elevated font-sans"
                               >
@@ -426,6 +591,11 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
                                 </span>
                               </button>
                             ))}
+                            {(step._geoResults ?? []).length === 0 && !step._geoLoading && !step._locating && (
+                              <div className="px-3 py-2 text-xs text-text-muted">
+                                Type to search places, or use your current location
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -549,7 +719,7 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
                   onClick={handleSubmit}
                   className="h-10 px-5 radius-md bg-primary text-text-inverse border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-all duration-fast"
                 >
-                  Share Route
+                  {isResponse ? "Post Response" : "Share Route"}
                 </button>
               </div>
             </div>
@@ -557,16 +727,47 @@ export default function ShareRouteModal({ isOpen, onClose, onSubmit }: ShareRout
 
           <div className="w-full lg:w-[280px] shrink-0 p-4 sm:py-5 sm:pr-6 sm:pl-0 flex flex-col gap-4 border-t lg:border-t-0 lg:border-l border-border">
             <div>
-              <label className="block text-sm font-medium mb-1.5 text-text-secondary">Route preview</label>
-              <RouteMap
-                pins={pins}
-                height={180}
-                editable={false}
-                showOverlay={true}
-                distance={pins.length >= 2 ? Math.round((pins.length - 1) * 3.2 * 10) / 10 : undefined}
-                duration={pins.length >= 2 ? (pins.length - 1) * 25 : undefined}
-                fare={`₦${steps.reduce((sum, s) => sum + (s.fare || 0), 0).toLocaleString()}`}
-              />
+              <button
+                type="button"
+                onClick={() => setPreviewOpen((open) => !open)}
+                aria-expanded={previewOpen}
+                aria-controls="route-preview-panel"
+                className="w-full flex items-center justify-between gap-2 px-0 py-1.5 border-none bg-transparent cursor-pointer font-sans text-left group"
+              >
+                <span className="flex items-center gap-1.5 text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
+                  <MapPin size={14} />
+                  Route preview
+                  {tracing && (
+                    <span className="text-[10px] font-normal text-text-muted animate-pulse">updating...</span>
+                  )}
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-text-muted">
+                  {displayDistance > 0 ? `${displayDistance} km` : ""}
+                  {displayDuration > 0 ? ` · ${displayDuration} min` : ""}
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-fast ${previewOpen ? "rotate-180" : ""}`}
+                  />
+                </span>
+              </button>
+              {previewOpen && (
+                <div id="route-preview-panel">
+                  <RouteMap
+                    pins={pins}
+                    encodedPolyline={liveTrace?.polyline}
+                    height={180}
+                    editable={false}
+                    showOverlay={true}
+                    distance={displayDistance > 0 ? displayDistance : undefined}
+                    duration={displayDuration > 0 ? displayDuration : undefined}
+                    fare={`₦${totalFare.toLocaleString()}`}
+                  />
+                  <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted">
+                    <span>{liveTrace ? "Live route" : "Estimated route — updates as you edit"}</span>
+                    <span>{steps.filter((s) => s.location).length} steps</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <DraftingCoach

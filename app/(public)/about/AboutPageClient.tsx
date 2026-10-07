@@ -2,37 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, ShieldCheck, Route, Activity, Star } from "lucide-react";
-import { TEAM_MEMBERS } from "@/app/lib/config";
-
-const REVIEWS = [
-  {
-    quote: "\"Along saved me 40 minutes on my daily commute to VI. The Keke + Bus route nobody knew about is now my go-to.\"",
-    initials: "FM",
-    name: "Fatima Mohammed",
-    handle: "@fatima_commutes",
-    bg: "bg-primary-muted",
-    color: "text-primary",
-    stars: 5,
-  },
-  {
-    quote: "\"The Trust system is a game-changer. I can see which routes are actually used every day vs. someone's one-time shortcut.\"",
-    initials: "EK",
-    name: "Emeka Kalu",
-    handle: "@emeka_routes",
-    bg: "bg-info",
-    color: "text-info-text",
-    stars: 5,
-  },
-  {
-    quote: "\"I discovered that taking a Keke from my street to the BRT stop saves \u20A6200 and 10 minutes. Along changed how I move.\"",
-    initials: "AJ",
-    name: "Aisha Jibril",
-    handle: "@aisha_travels",
-    bg: "bg-warning",
-    color: "text-warning-text",
-    stars: 5,
-  },
-];
+import { TEAM_MEMBERS, SITE_REVIEWS } from "@/app/lib/config";
 
 const FEATURES = [
   {
@@ -54,7 +24,7 @@ const FEATURES = [
 
 export default function AboutPageClient() {
   const [reviewIdx, setReviewIdx] = useState(0);
-  const reviewCount = REVIEWS.length;
+  const reviewCount = SITE_REVIEWS.length;
 
   const goReview = useCallback((idx: number) => {
     setReviewIdx(Math.max(0, Math.min(reviewCount - 1, idx)));
@@ -200,7 +170,7 @@ export default function AboutPageClient() {
                 className="flex gap-5 transition-transform duration-300 ease-out"
                 style={{ transform: `translateX(-${reviewIdx * (100 / reviewCount)}%)` }}
               >
-                {REVIEWS.map((r) => (
+                {SITE_REVIEWS.map((r) => (
                   <div
                     key={r.handle}
                     className="min-w-[calc((100%-40px)/3)] max-lg:min-w-[calc(100%-0px)] glass rounded-2xl p-7 shrink-0"
@@ -234,7 +204,7 @@ export default function AboutPageClient() {
               <ChevronRight size={18} />
             </button>
             <div className="flex justify-center gap-2 mt-5">
-              {REVIEWS.map((_, i) => (
+              {SITE_REVIEWS.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => goReview(i)}

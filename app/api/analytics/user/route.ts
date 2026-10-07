@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,6 +16,14 @@ export async function GET(request: NextRequest) {
     const since = new Date(Date.now() - daysAgo * 86400000);
 
     const userId = user.id as string;
+
+    // Aggregates are expensive — cache for 1h (TTL-only invalidation)
+    const cacheKey = CACHE_KEYS.analytics(userId, String(daysAgo));
+    try {
+      const { redis } = await import("@/app/lib/db/redis");
+      const cached = await redis.get<Record<string, unknown>>(cacheKey);
+      if (cached) return NextResponse.json(cached, { status: 200 });
+    } catch { /* fall through to DB */ }
 
     const [posts, likes, bookmarks, followers] = await Promise.all([
       prisma.post.findMany({
@@ -69,12 +78,19 @@ export async function GET(request: NextRequest) {
 
     const followerGrowth = days > 0 ? dailyAgg(followers, days) : [];
 
-    return NextResponse.json({
+    const payload = {
       kpi: { totalViews, totalLikes, totalBookmarks, avgValidity, totalPosts: posts.length },
       topPosts: topPosts.map(p => ({ id: p.id, title: p.title, validityScore: p.validityScore, likes: p.likes, views: p.views })),
       engagementData,
       followerGrowth,
-    }, { status: 200 });
+    };
+
+    try {
+      const { redis } = await import("@/app/lib/db/redis");
+      await redis.set(cacheKey, payload, { ex: CACHE_TTL.analytics });
+    } catch { /* non-critical */ }
+
+    return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     console.error("Analytics error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

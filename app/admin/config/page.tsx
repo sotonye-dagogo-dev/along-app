@@ -66,7 +66,7 @@ export default function AdminConfigPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Config</h1>
           <div className="text-sm text-text-secondary">Site configuration settings</div>
@@ -75,7 +75,7 @@ export default function AdminConfigPage() {
 
       <div className="bg-bg-card border border-border radius-lg p-5 shadow-xs mb-6">
         <h3 className="text-sm font-semibold mb-3">Add new config</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <div className="flex-1">
             <AppInput
               placeholder="Config key..."

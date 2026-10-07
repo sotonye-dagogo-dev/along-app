@@ -1,14 +1,17 @@
 "use client"
 
-import { Suspense, useState, useEffect, useRef } from "react"
-import { RefreshCw } from "lucide-react"
+import { Suspense, useState, useEffect, useRef, useCallback } from "react"
+import { RefreshCw, ClipboardList } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useSearchParams } from "next/navigation"
 import { PostCard } from "@/app/components/features/posts"
+import type { RespondToRequest, RouteRequestBody } from "@/app/components/features/posts"
 
 const ShareRouteModal = dynamic(() => import("@/app/components/features/posts/ShareRouteModal"), { ssr: false })
+const RequestRouteModal = dynamic(() => import("@/app/components/features/posts/RequestRouteModal"), { ssr: false })
 import { AppEmptyState, PostCardSkeleton } from "@/app/components/ui"
-import SuggestionsPanel from "@/app/components/ui/SuggestionsPanel"
+import { SuggestionsPanel } from "@/app/components/ui/SuggestionsPanel"
+import { SuggestionsRail } from "@/app/components/features/suggestions/SuggestionsRail"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useFeedInteractions } from "@/app/hooks/useFeedInteractions"
@@ -48,14 +51,32 @@ interface FeedPost {
   waypoints?: { lat: number; lng: number }[] | null
 }
 
+/** Payload accepted by POST /api/posts (share + request + response flows). */
+interface NewPostPayload {
+  title: string
+  description?: string
+  type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
+  quotedPostId?: string
+  routes: unknown[]
+  images?: string[]
+  tags?: string[]
+  startLat?: number
+  startLng?: number
+  endLat?: number
+  endLng?: number
+  waypoints?: { lat: number; lng: number }[]
+}
+
 function HomeContent() {
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
   const [newPostsCount, setNewPostsCount] = useState(0)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showRequestModal, setShowRequestModal] = useState(false)
+  const [respondTo, setRespondTo] = useState<RespondToRequest | null>(null)
   const loaderRef = useRef<HTMLDivElement>(null)
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -65,8 +86,12 @@ function HomeContent() {
   }, [searchParams])
 
   useEffect(() => {
+    if (authLoading) return // wait for auth so the feed cache key is user-scoped
+    let cancelled = false
+
     const init = async () => {
-      const state = await feedStream.loadInitial()
+      const state = await feedStream.loadInitial(user?.id)
+      if (cancelled) return
       setPosts(state.posts)
       setHasMore(state.hasMore)
       setLoading(false)
@@ -74,19 +99,21 @@ function HomeContent() {
     init()
 
     const sub = feedStream.feedState$.subscribe((state) => {
+      if (cancelled) return
       setPosts(state.posts)
       setHasMore(state.hasMore)
       setLoading(state.loading)
     })
 
     return () => {
+      cancelled = true
       sub.unsubscribe()
     }
-  }, [])
+  }, [authLoading, user?.id])
 
   useEffect(() => {
     const sub = feedStream.feedState$.subscribe((state) => {
-      if (state.posts.length > 0 && !state.loading) {
+      if (state.posts.length > 0 && posts.length > 0 && !state.loading) {
         const currentIds = new Set(posts.map((p) => p.id))
         const fresh = state.posts.filter((p) => !currentIds.has(p.id))
         if (fresh.length > 0) {
@@ -96,6 +123,57 @@ function HomeContent() {
     })
     return () => sub.unsubscribe()
   }, [posts])
+
+  // --- Scroll-aware "new posts" prompt (F1) ---
+  const [promptVisible, setPromptVisible] = useState(false)
+  const pendingCountRef = useRef(0)
+  const suppressUntilRef = useRef(0)
+
+  const evaluatePrompt = useCallback(() => {
+    const nearTop = window.scrollY < 80
+    const depth =
+      window.scrollY /
+      Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
+    const show =
+      pendingCountRef.current > 0 &&
+      (nearTop || depth >= 0.12) && // visible at top of feed, or once reading deep
+      Date.now() >= suppressUntilRef.current // time-throttled re-appearance
+    setPromptVisible((prev) => (prev === show ? prev : show))
+  }, [])
+
+  useEffect(() => {
+    pendingCountRef.current = newPostsCount
+    evaluatePrompt()
+  }, [newPostsCount, evaluatePrompt])
+
+  useEffect(() => {
+    let raf = 0
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        evaluatePrompt()
+      })
+    }
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [evaluatePrompt])
+
+  // Re-evaluate when the suppression window expires so a pending count resurfaces.
+  useEffect(() => {
+    if (pendingCountRef.current <= 0 || suppressUntilRef.current <= Date.now()) return
+    const timer = setTimeout(evaluatePrompt, suppressUntilRef.current - Date.now() + 100)
+    return () => clearTimeout(timer)
+  }, [newPostsCount, evaluatePrompt])
+
+  const handlePromptClick = () => {
+    suppressUntilRef.current = Date.now() + 45_000 // throttle re-prompts
+    setPromptVisible(false)
+    refreshFeed()
+  }
 
   useEffect(() => {
     const el = loaderRef.current
@@ -145,6 +223,43 @@ function HomeContent() {
     },
   })
 
+  /** Shared POST /api/posts handler — returns false on failure so modals stay open. */
+  const submitPost = async (data: NewPostPayload): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      let payload: { error?: string; post?: unknown } = {}
+      try {
+        const text = await res.text()
+        payload = text ? JSON.parse(text) : {}
+      } catch {
+        payload = { error: "Unexpected server response. Please try again." }
+      }
+      if (res.ok) {
+        // Force bust cache then reload
+        await refreshFeed()
+        // Also reload directly as backup in case feed cache still stale (cold-start)
+        setTimeout(() => { refreshFeed() }, 800)
+        return true
+      }
+      const { toastService } = await import("@/app/lib/services/toastService")
+      toastService.error(payload.error ?? "Failed to post. Please try again.")
+      return false
+    } catch {
+      const { toastService } = await import("@/app/lib/services/toastService")
+      toastService.error("Network error. Please check your connection and try again.")
+      return false
+    }
+  }
+
+  const handleRespond = (post: { id: string; title: string; user?: RespondToRequest["user"] }) => {
+    setRespondTo({ id: post.id, title: post.title, user: post.user ?? undefined })
+    setShowShareModal(true)
+  }
+
   const initials = user
     ? `${(user.firstName as string)?.[0] ?? ""}${(user.lastName as string)?.[0] ?? ""}`.toUpperCase()
     : "?"
@@ -153,10 +268,10 @@ function HomeContent() {
     <>
       <div className="flex justify-center">
         <div className="max-w-[640px] w-full px-4 py-4 flex flex-col gap-3">
-        {newPostsCount > 0 && (
+        {promptVisible && (
           <button
-            onClick={refreshFeed}
-            className="sticky top-0 z-10 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold cursor-pointer radius-lg shadow-md border-none mb-2 animate-[slideDown_300ms_ease-out]"
+            onClick={handlePromptClick}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-40 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold cursor-pointer radius-lg shadow-md border-none animate-[slideDown_300ms_ease-out]"
           >
             <RefreshCw size={16} />
             {newPostsCount} new {newPostsCount === 1 ? "post" : "posts"}
@@ -164,7 +279,10 @@ function HomeContent() {
         )}
 
         <div
-          onClick={() => setShowShareModal(true)}
+          onClick={() => {
+            setRespondTo(null)
+            setShowShareModal(true)
+          }}
           role="button"
           aria-label="Share a route"
           className="bg-bg-card border border-border radius-lg px-4 py-3 flex items-center gap-2.5 cursor-pointer transition-shadow duration-base shadow-sm hover:shadow-md"
@@ -175,6 +293,17 @@ function HomeContent() {
           <div className="flex-1 text-sm text-text-muted px-3 py-2 radius-md bg-bg-elevated">
             How far? Where we wan go?
           </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowRequestModal(true)
+            }}
+            className="inline-flex items-center gap-1.5 h-8 px-3 radius-md border border-border bg-bg-elevated text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:bg-primary-muted hover:text-primary hover:border-primary-muted transition-colors duration-fast shrink-0"
+            aria-label="Request a route"
+          >
+            <ClipboardList size={14} />
+            <span className="hidden sm:inline">Request</span>
+          </button>
         </div>
 
         {posts.length > 0 ? (
@@ -186,6 +315,7 @@ function HomeContent() {
               onDislike={handleDislike}
               onBookmark={handleBookmark}
               onComment={handleComment}
+              onRespond={handleRespond}
             />
           ))
         ) : loading ? (
@@ -203,40 +333,25 @@ function HomeContent() {
         )}
         </div>
 
+        <SuggestionsRail />
+
         <SuggestionsPanel />
       </div>
 
       <ShareRouteModal
         isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
-        onSubmit={async (data) => {
-          try {
-            const res = await fetch("/api/posts", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data),
-            })
-            let payload: { error?: string; post?: unknown } = {}
-            try {
-              const text = await res.text()
-              payload = text ? JSON.parse(text) : {}
-            } catch {
-              payload = { error: "Unexpected server response. Please try again." }
-            }
-            if (res.ok) {
-              // Force bust cache then reload
-              await refreshFeed()
-              // Also reload directly as backup in case feed cache still stale (cold-start)
-              setTimeout(() => { refreshFeed() }, 800)
-            } else {
-              const { toastService } = await import("@/app/lib/services/toastService")
-              toastService.error(payload.error ?? "Failed to share route. Please try again.")
-            }
-          } catch {
-            const { toastService } = await import("@/app/lib/services/toastService")
-            toastService.error("Network error. Please check your connection and try again.")
-          }
+        onClose={() => {
+          setShowShareModal(false)
+          setRespondTo(null)
         }}
+        responseTo={respondTo}
+        onSubmit={async (data) => submitPost(data)}
+      />
+
+      <RequestRouteModal
+        isOpen={showRequestModal}
+        onClose={() => setShowRequestModal(false)}
+        onSubmit={async (data: RouteRequestBody) => submitPost(data)}
       />
     </>
   )

@@ -166,6 +166,33 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 
 ---
 
+## Sprint 7 — Route Requests E2E, Live Preview, Caching & Data Hygiene
+
+> **Section summary:** execute-feature directive 2026-10-07. Architecture impact: Prisma migration (Post.type/description/quotedPostId, NotificationType extension), new /api/suggestions, new cache services, EndlessCarousel + RequestRouteModal. Plan detail in `checkpoints/in-progress.md`.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | A1. Seed backup + clear scripts (`scripts/backup-seed-data.ts`, `scripts/clear-seed-data.ts`), package.json `db:seed`/`db:backup`/`db:clear-seed` | [x] |
+| [S] | A2. Remove dead mock-api/dev:all scripts + json-server dep + README refs; make seed idempotent | [x] |
+| [M] | A3. Replace hardcoded mock data — SuggestionsPanel live, landing preview real posts, About reviews to config | [x] |
+| [S] | B1. Prisma migration — Post.type/description/quotedPostId + NotificationType(WELCOME/ROUTE_REQUEST/ROUTE_RESPONSE/REWARD/BADGE/VERIFIED) | [x] |
+| [S] | B2. Welcome notification on signup + notifications UI types/deep-links + rewards filter fix | [x] |
+| [M] | C1. Collapsible route preview panel (DraftingCoach pattern) + live debounced route trace (polyline/distance/duration) | [x] |
+| [S] | C2. Location autofill — "use my current location" geolocation + reverse geocode in location inputs | [x] |
+| [L] | D1. Client memoryCache + useCachedFetch; wire home/notifications/analytics/post/profile/explore; feedStream hydrate + hidden-tab pause; server CACHE_KEYS slots with invalidation | [x] |
+| [XL] | E1. Route requests E2E — schema+Zod, fan-out notifications, /api/suggestions, RequestRouteModal, PostCard Respond CTA + quote block, response-mode ShareRouteModal | [x] |
+| [M] | E2. EndlessCarousel (endless tape, smooth, interactive, reduced-motion) + mobile suggestions rail below feed (xl:hidden) + live desktop SuggestionsPanel | [x] |
+| [S] | F1. Scroll-aware floating "new posts" prompt with scroll-depth/time throttling | [x] |
+| [M] | G1. Analytics overview tiles responsive grid (2/3/4 cols) + text wrap; quick-stats + skeleton responsive | [x] |
+| [M] | G2. Project-wide responsive sweep — footer grid, register inputs, admin widths, header wrapping, truncate/fixed-width offenders | [x] |
+| [M] | H1. Posting E2E verification (create → feed display) | [ ] |
+| [L] | H2. Profile tab filtering — posts/liked/bookmarks/routes fetch filtered per tab (+ any missing endpoints) | [x] |
+| [M] | H3. State-strategy review: redux-observables/subscriptions vs memoryCache/useCachedFetch/feedStream; decision documented | [x] |
+| [L] | H4. Mutation E2E tests (post/like/comment/bookmark/follow) + error handling, undefined edge cases, error-boundary hardening | [ ] |
+| [L] | QA — tsc + lint + jest + build gate; docs close-out (session-log, dev-history, decisions, sync-context, update-ai-system) | [ ] |
+
+---
+
 ## Backlog
 
 > **Section summary:** Known work that needs to be done but hasn't been scheduled yet.

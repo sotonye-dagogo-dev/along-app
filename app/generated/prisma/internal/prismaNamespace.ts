@@ -1758,6 +1758,9 @@ export const PostScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   title: 'title',
+  description: 'description',
+  type: 'type',
+  quotedPostId: 'quotedPostId',
   routes: 'routes',
   images: 'images',
   tags: 'tags',
@@ -2119,6 +2122,20 @@ export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel
  * Reference to a field of type 'DateTime[]'
  */
 export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
+    
+
+
+/**
+ * Reference to a field of type 'PostType'
+ */
+export type EnumPostTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PostType'>
+    
+
+
+/**
+ * Reference to a field of type 'PostType[]'
+ */
+export type ListEnumPostTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PostType[]'>
     
 
 

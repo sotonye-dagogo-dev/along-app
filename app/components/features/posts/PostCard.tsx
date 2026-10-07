@@ -3,7 +3,7 @@
 import { useState, useReducer, useContext } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, MoreHorizontal, BadgeDollarSign } from "lucide-react"
+import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, MoreHorizontal, BadgeDollarSign, ClipboardList, Reply } from "lucide-react"
 import { AppCard, AppUserLabel, AppDropdown, TrustBadge, VehicleChip, ImageLightbox } from "@/app/components/ui"
 import { AuthContext } from "@/app/providers/AuthProvider"
 import type { VehicleType } from "@/app/lib/types"
@@ -29,6 +29,15 @@ interface PostCardUser {
 interface PostCardPost {
   id: string
   title: string
+  description?: string | null
+  type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
+  quotedPost?: {
+    id: string
+    title: string
+    type?: string
+    createdAt?: string | Date
+    user?: { id: string; userName: string; firstName: string; lastName: string; avatar?: string | null }
+  } | null
   routes: RouteStep[] | unknown
   images: string[]
   tags: string[]
@@ -60,6 +69,8 @@ interface PostCardProps {
   onBookmark?: (postId: string, bookmarked: boolean) => void
   onShare?: (postId: string) => void
   onComment?: (postId: string) => void
+  /** Called when the Respond CTA on a ROUTE_REQUEST card is clicked (auth-gated). */
+  onRespond?: (post: PostCardPost) => void
 }
 
 function getTimeAgo(date: string | Date): string {
@@ -143,7 +154,7 @@ function postCardReducer(state: PostCardState, action: PostCardAction): PostCard
   }
 }
 
-export default function PostCard({ post, onLike, onDislike, onBookmark, onShare, onComment }: PostCardProps) {
+export default function PostCard({ post, onLike, onDislike, onBookmark, onShare, onComment, onRespond }: PostCardProps) {
   const [state, dispatch] = useReducer(postCardReducer, {
     liked: post._isLiked ?? false,
     likesCount: post.likes,
@@ -189,6 +200,11 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
   const handleCommentClick = () => {
     if (!auth?.requireAuth("comment on routes")) return
     onComment?.(post.id)
+  }
+
+  const handleRespond = () => {
+    if (!auth?.requireAuth("respond to route requests")) return
+    onRespond?.(post)
   }
 
   const cardVariant = post.isPlatformGen ? "suggestion" : "default"
@@ -237,6 +253,36 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         />
       </div>
 
+      {post.type === "ROUTE_REQUEST" && (
+        <div className="px-4 pt-1">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[11px] font-semibold bg-warning/15 text-warning border border-warning/30">
+            <ClipboardList size={11} />
+            Route request
+          </span>
+        </div>
+      )}
+
+      {post.type === "ROUTE_RESPONSE" && post.quotedPost && (
+        <div className="px-4 pt-1">
+          <Link
+            href={`/posts/${post.quotedPost.id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-start gap-2 px-3 py-2 bg-bg-elevated border border-border radius-md no-underline hover:border-primary/40 transition-colors duration-fast"
+          >
+            <Reply size={13} className="text-primary mt-0.5 shrink-0" />
+            <span className="min-w-0">
+              <span className="block text-[11px] text-text-muted">
+                Responding to
+                {post.quotedPost.user
+                  ? ` ${post.quotedPost.user.firstName} ${post.quotedPost.user.lastName}`
+                  : ""}&apos;s request
+              </span>
+              <span className="block text-xs font-medium text-text-primary truncate">{post.quotedPost.title}</span>
+            </span>
+          </Link>
+        </div>
+      )}
+
       {vehicles.length > 0 && (
         <div className="flex gap-1 flex-wrap px-4 pb-2" style={{ paddingLeft: "66px" }}>
           {vehicles.map((v) => (
@@ -253,7 +299,25 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         >
           {post.title}
         </Link>
+        {post.description && (
+          <p className="text-sm text-text-secondary mt-1 line-clamp-3">{post.description}</p>
+        )}
       </div>
+
+      {post.type === "ROUTE_REQUEST" && (
+        <div className="px-4 pb-3">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handleRespond()
+            }}
+            className="w-full inline-flex items-center justify-center gap-1.5 h-9 px-4 radius-md bg-primary text-white border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-colors duration-fast"
+          >
+            <Reply size={14} />
+            Respond to this request
+          </button>
+        </div>
+      )}
 
       {routes.length > 0 && (
         <div className="flex flex-col gap-2 px-4 pb-3">
@@ -315,27 +379,24 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         </div>
       )}
 
-      {(post.startLat || routes.length >= 2) && (
+      {/* Only render the map when real coords exist — never plot 0,0 pins (ocean) */}
+      {post.startLat != null && post.startLng != null && (
         <div className="px-4 pb-2">
           <MiniRouteMap
             pins={(() => {
               const pins: { lat: number; lng: number; label: string; type: "origin" | "destination" | "waypoint" }[] = []
-              if (post.startLat) {
-                pins.push({ lat: post.startLat, lng: post.startLng ?? 0, label: routes[0]?.location ?? "Start", type: "origin" })
-                if (post.waypoints) {
-                  post.waypoints.forEach((wp, i) => {
+              pins.push({ lat: post.startLat!, lng: post.startLng!, label: routes[0]?.location ?? "Start", type: "origin" })
+              if (post.waypoints) {
+                post.waypoints.forEach((wp, i) => {
+                  if (Number.isFinite(wp.lat) && Number.isFinite(wp.lng)) {
                     pins.push({ lat: wp.lat, lng: wp.lng, label: routes[i + 1]?.location ?? "", type: "waypoint" })
-                  })
-                }
-                if (post.endLat) {
-                  pins.push({ lat: post.endLat, lng: post.endLng ?? 0, label: routes[routes.length - 1]?.location ?? "End", type: "destination" })
-                }
-              } else {
-                routes.forEach((r, i) => {
-                  pins.push({ lat: 0, lng: 0, label: r.location ?? "", type: i === 0 ? "origin" : i === routes.length - 1 ? "destination" : "waypoint" })
+                  }
                 })
               }
-              return pins
+              if (post.endLat != null && post.endLng != null) {
+                pins.push({ lat: post.endLat, lng: post.endLng, label: routes[routes.length - 1]?.location ?? "End", type: "destination" })
+              }
+              return pins.filter((p) => !(p.lat === 0 && p.lng === 0))
             })()}
             height={100}
             showOverlay={false}

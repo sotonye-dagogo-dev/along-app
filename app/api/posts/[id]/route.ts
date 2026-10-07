@@ -14,6 +14,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         user: {
           select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
         },
+        quotedPost: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            createdAt: true,
+            user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } },
+          },
+        },
       },
     });
 
