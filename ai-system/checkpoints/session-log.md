@@ -1322,3 +1322,13 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - Repair-system entry added (same duplicate-declaration pattern as `formatCount` 2026-07-15). Single-file fix → no repo-map/dependency-graph/architecture drift; sync-context lightweight check done inline.
 **Assumptions:** Sentry 401 + `prisma generate --no-engine` noise in the same log are non-fatal (fallback `|| prisma generate` succeeded; Sentry failures only affect sourcemap upload) — left untouched per minimal-fix contract.
 **Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — fix-build: Prisma ReviewStatus type error in admin reviews PATCH route
+**Directive:** Vercel build failed `./app/api/admin/reviews/route.ts:65:15 Type error: Type 'string' is not assignable to type 'ReviewStatus | EnumReviewStatusFieldUpdateOperationsInput | undefined'` on `data: { status }`.
+**Changes (1 edited):**
+- `app/api/admin/reviews/route.ts` — `data: { status }` → `data: { status: status as "APPROVED" | "REJECTED" }`; safe behind existing `["APPROVED","REJECTED"].includes(status)` 400-guard.
+**QA gate (this runner, no node_modules):**
+- Full `tsc`/`jest`/`next build` not runnable (missing deps, pre-existing env limit); verified via `grep` — sole untyped `data: { status }` fixed, sibling admin routes already use `as never` casts so no further enum-type failures expected. Vercel build to confirm.
+- Repair-system entry added (same enum-mismatch class as `UserRole '"banned"'` 2026-07-15). Single-file fix → no repo-map/dependency-graph/architecture drift; sync-context lightweight check done inline.
+**Assumptions:** Sentry 401 + `prisma generate --no-engine` noise in the same log are non-fatal — left untouched per minimal-fix contract.
+**Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.

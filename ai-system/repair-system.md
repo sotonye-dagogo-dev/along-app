@@ -519,6 +519,28 @@ When narrowing a destructured value to a single-target variable, always use a di
 
 ---
 
+### Build Failure — Prisma `ReviewStatus` Type Error in Admin Reviews PATCH Route
+
+**Symptom:**
+Vercel build failed at type-check: `./app/api/admin/reviews/route.ts:65:15 Type error: Type 'string' is not assignable to type 'ReviewStatus | EnumReviewStatusFieldUpdateOperationsInput | undefined'` on `data: { status }` in `prisma.userReview.updateMany`.
+
+**Root Cause:**
+`status` was destructured as `status?: string` from the request body. Runtime validation (`["APPROVED","REJECTED"].includes(status)`) narrows the value at runtime but not at the TypeScript level, so `status` stays `string` and is not assignable to the Prisma `ReviewStatus` enum. Same class of error as the earlier `UserRole '"banned"'` enum mismatch (2026-07-15).
+
+**Fix Applied:**
+Narrowed the type at the write site: `data: { status: status as "APPROVED" | "REJECTED" }` — safe because the `includes` guard above already rejects anything else with a 400.
+
+**Prevention:**
+When writing a Prisma enum field from a request-body string, always cast after an explicit allow-list guard (or type the destructured field as the enum union up front). Sibling admin routes (`bugs`, `posts`, `users`) already use `as never` casts for this — follow the same pattern.
+
+**Files Affected:**
+- `app/api/admin/reviews/route.ts`
+
+**Date:** 2026-10-08
+**Status:** Active
+
+---
+
 ## Resolved Errors Archive
 
 > **Section summary:** Errors that have been fully resolved and are unlikely to recur. Kept for reference.

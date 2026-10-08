@@ -1,6 +1,6 @@
 # In Progress
 
-**Session:** idle — fix-build 2026-10-08 closed: duplicate `bugId` in `app/api/admin/bugs/route.ts` renamed to `targetBugId` (repair-system + test-results + session-log updated; lightweight sync-context done inline, no drift)
+**Session:** idle — fix-build 2026-10-08 closed: Prisma `ReviewStatus` type error in `app/api/admin/reviews/route.ts:65` fixed via `status as "APPROVED" | "REJECTED"` cast (repair-system + session-log updated; single-file fix, lightweight sync-context done inline, no drift)
 **Status:** No active sprint. Next work: pick the next backlog item from `planning/task-queue.md` Backlog (live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration), then open a new sprint via `plan-feature.md` / `execute-feature.md`.
 
 ## Last completed work (archived summary)
