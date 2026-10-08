@@ -62,7 +62,7 @@ export async function PATCH(request: NextRequest) {
 
     await prisma.userReview.updateMany({
       where: { id: { in: targets } },
-      data: { status },
+      data: { status: status as "APPROVED" | "REJECTED" },
     });
 
     return NextResponse.json({ success: true, updated: targets.length }, { status: 200 });
