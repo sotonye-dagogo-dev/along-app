@@ -134,13 +134,33 @@ const nextConfig = {
 
 const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN;
 const sentryDsn = process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN;
+const sentryOrg = process.env.SENTRY_ORG;
+const sentryProject = process.env.SENTRY_PROJECT;
+// Fully configured only when the CLI has everything it needs (token + org +
+// project + DSN). A present-but-invalid token still attempts API calls, so
+// release/sourcemap work stays gated here and any residual failure is
+// swallowed by errorHandler below — Sentry must never fail the build.
+const sentryConfigured = Boolean(sentryAuthToken && sentryOrg && sentryProject && sentryDsn);
 
 export default withSentryConfig(nextConfig, {
-    org: process.env.SENTRY_ORG,
-    project: process.env.SENTRY_PROJECT,
+    org: sentryOrg,
+    project: sentryProject,
     authToken: sentryAuthToken,
-    dryRun: !sentryAuthToken || !sentryDsn, // Skip Sentry operations when unconfigured
-    silent: !process.env.CI && (!sentryAuthToken || !sentryDsn),
+    dryRun: !sentryConfigured, // Skip Sentry operations when unconfigured
+    silent: true, // Keep Vercel logs clean (CI sets CI=true, so conditional silence never applied there)
+    telemetry: false, // Opt out of Sentry plugin telemetry (removes per-runtime Info noise)
+    // Never fail the build on Sentry connectivity/auth issues (e.g. 401
+    // invalid token). Log once as a warning so the token can be rotated.
+    errorHandler: (err) => {
+        console.warn("[sentry] build-time operation skipped:", err?.message ?? err);
+    },
+    release: {
+        create: sentryConfigured,
+        finalize: sentryConfigured,
+    },
+    sourcemaps: {
+        disable: !sentryConfigured,
+    },
     widenClientFileUpload: true,
     hideSourceMaps: true,
     webpack: {
