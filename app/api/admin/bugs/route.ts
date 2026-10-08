@@ -92,10 +92,10 @@ export async function PATCH(request: NextRequest) {
 
     // Bulk moderation actions only support single-report flow (post linkage
     // differs per report); bulk callers loop single PATCH calls instead.
-    const bugId = targets[0];
+    const targetBugId = targets[0];
 
     const report = await prisma.bugReport.findUnique({
-      where: { id: bugId },
+      where: { id: targetBugId },
       select: { id: true, postId: true, reporterId: true },
     });
     if (!report) {
@@ -113,7 +113,7 @@ export async function PATCH(request: NextRequest) {
           await tx.post.delete({ where: { id: report.postId } });
         }
         await tx.bugReport.update({
-          where: { id: bugId },
+          where: { id: targetBugId },
           data: {
             status: status as never,
             reviewerId: (user.id as string) ?? undefined,

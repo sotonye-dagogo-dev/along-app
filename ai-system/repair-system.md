@@ -477,7 +477,6 @@ Security tokens must be durable, not cache-resident — see `memory/lessons-lear
 ---
 
 ### Build Failure — Removed TS Option `downlevelIteration` in tsconfig.json
-
 **Symptom:**
 `npx tsc --noEmit` fails with `TS5102: Option 'downlevelIteration' has been removed. Please remove it from your configuration.`
 
@@ -492,6 +491,28 @@ After TypeScript major upgrades, run `tsc --noEmit` immediately and remove delet
 
 **Files Affected:**
 - tsconfig.json
+
+**Date:** 2026-10-08
+**Status:** Active
+
+---
+
+### Build Failure — Duplicate Identifier `bugId` in Admin Bugs PATCH Route
+
+**Symptom:**
+Vercel build failed with `Module parse failed: Identifier 'bugId' has already been declared (140:14)` in `app/api/admin/bugs/route.ts`, surfaced via `@sentry/nextjs` wrappingLoader + next-flight-loader. `Build failed because of webpack errors`.
+
+**Root Cause:**
+`PATCH` destructured `bugId` from the request body (`const { bugId, bugIds, ... }`) and later redeclared `const bugId = targets[0]` in the same function scope for the single-report moderation flow. Same pattern as the earlier `formatCount` duplicate (2026-07-15).
+
+**Fix Applied:**
+Renamed the second declaration to `targetBugId` and updated its two uses (`findUnique where` + `$transaction bugReport.update where`).
+
+**Prevention:**
+When narrowing a destructured value to a single-target variable, always use a distinct name (`targetX` / `singleX`). Run `tsc --noEmit` after editing API routes — it catches redeclarations before Vercel does.
+
+**Files Affected:**
+- `app/api/admin/bugs/route.ts`
 
 **Date:** 2026-10-08
 **Status:** Active
