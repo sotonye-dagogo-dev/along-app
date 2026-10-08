@@ -3,11 +3,11 @@
 import { useState, useReducer, useContext, useCallback } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, MoreHorizontal, BadgeDollarSign, ClipboardList, Reply } from "lucide-react"
-import { AppCard, AppUserLabel, AppDropdown, AppModal, TrustBadge, VehicleChip, ImageLightbox } from "@/app/components/ui"
+import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, ClipboardList, Reply, Archive, MessagesSquare } from "lucide-react"
+import { AppCard, AppUserLabel, TrustBadge, VehicleChip, ImageLightbox } from "@/app/components/ui"
+import { PostMenu, type PostMenuPost } from "@/app/components/features/moderation"
 import { AuthContext } from "@/app/providers/AuthProvider"
-import { POST_ACTIONS_CONFIG } from "@/app/lib/config/postActions"
-import { toastService } from "@/app/lib/services/toastService"
+import { MODERATION_CONFIG } from "@/app/lib/config"
 import type { VehicleType } from "@/app/lib/types"
 
 const MiniRouteMap = dynamic(() => import("./RouteMap").then((m) => ({ default: m.RouteMap })), { ssr: false })
@@ -33,6 +33,7 @@ interface PostCardPost {
   title: string
   description?: string | null
   type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
+  quotedPostId?: string | null
   quotedPost?: {
     id: string
     title: string
@@ -50,6 +51,8 @@ interface PostCardPost {
   validityScore: number
   validityTier: string | null
   isPlatformGen?: boolean
+  isArchived?: boolean
+  responsesCount?: number
   createdAt: string | Date
   user: PostCardUser
   _isLiked?: boolean
@@ -73,6 +76,14 @@ interface PostCardProps {
   onComment?: (postId: string) => void
   /** Called when the Respond CTA on a ROUTE_REQUEST card is clicked (auth-gated). */
   onRespond?: (post: PostCardPost) => void
+  /** Called when the owner picks Edit (parent opens the composer in edit mode). */
+  onEdit?: (post: PostCardPost) => void
+  /** Called after a confirmed delete succeeds (parent removes the card). */
+  onDeleted?: (postId: string) => void
+  /** Called after an undo-restore recreates the post (parent refreshes). */
+  onRestored?: (oldId: string, newId: string) => void
+  /** Called after archive/unarchive succeeds (parent updates or removes). */
+  onArchivedChanged?: (postId: string, archived: boolean) => void
 }
 
 function getTimeAgo(date: string | Date): string {
@@ -156,7 +167,7 @@ function postCardReducer(state: PostCardState, action: PostCardAction): PostCard
   }
 }
 
-export default function PostCard({ post, onLike, onDislike, onBookmark, onShare, onComment, onRespond }: PostCardProps) {
+export default function PostCard({ post, onLike, onDislike, onBookmark, onShare, onComment, onRespond, onEdit, onDeleted, onRestored, onArchivedChanged }: PostCardProps) {
   const [state, dispatch] = useReducer(postCardReducer, {
     liked: post._isLiked ?? false,
     likesCount: post.likes,
@@ -165,10 +176,6 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
     bookmarked: post._isBookmarked ?? false,
   })
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
-  const [reportOpen, setReportOpen] = useState(false)
-  const [reportReason, setReportReason] = useState(POST_ACTIONS_CONFIG.reportReasons[0]?.value ?? "other")
-  const [reportDetails, setReportDetails] = useState("")
-  const [reporting, setReporting] = useState(false)
   const auth = useContext(AuthContext)
 
   const routes = Array.isArray(post.routes) ? (post.routes as RouteStep[]) : []
@@ -176,6 +183,13 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
   const tags = post.tags ?? []
   const images = post.images ?? []
   const user = post.user
+  // Route requests are not routes: no map, no navigation affordance, no trust
+  // score (metadata-driven via MODERATION_CONFIG.routeRequestHides).
+  const isRouteRequest = post.type === "ROUTE_REQUEST"
+  const showMap = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.map)
+  const showTrust = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.trustScore)
+  const viewerId = (auth?.user as { id?: string } | null)?.id ?? null
+  const viewerRole = (auth?.user as { role?: string } | null)?.role ?? null
 
   const handleLike = () => {
     if (!auth?.requireAuth("like routes")) return
@@ -213,67 +227,9 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
     onRespond?.(post)
   }
 
-  const postUrl = useCallback(() => {
-    if (typeof window === "undefined") return `/posts/${post.id}`
-    return `${window.location.origin}/posts/${post.id}`
-  }, [post.id])
-
-  const handleCopyLink = useCallback(async () => {
-    const url = postUrl()
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url)
-      } else {
-        const ta = document.createElement("textarea")
-        ta.value = url
-        ta.style.position = "fixed"
-        ta.style.opacity = "0"
-        document.body.appendChild(ta)
-        ta.select()
-        document.execCommand("copy")
-        document.body.removeChild(ta)
-      }
-      toastService.success(POST_ACTIONS_CONFIG.copySuccess)
-    } catch {
-      toastService.error(POST_ACTIONS_CONFIG.copyError)
-    }
-  }, [postUrl])
-
-  const openReport = useCallback(() => {
-    if (!auth?.requireAuth("report posts")) return
-    setReportReason(POST_ACTIONS_CONFIG.reportReasons[0]?.value ?? "other")
-    setReportDetails("")
-    setReportOpen(true)
-  }, [auth])
-
-  const submitReport = useCallback(async () => {
-    if (!reportReason) {
-      toastService.error(POST_ACTIONS_CONFIG.reportEmptyError)
-      return
-    }
-    setReporting(true)
-    try {
-      const reasonLabel = POST_ACTIONS_CONFIG.reportReasons.find((r) => r.value === reportReason)?.label ?? reportReason
-      const res = await fetch("/api/bug-reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: `Report post ${post.id}: ${reasonLabel}`,
-          category: POST_ACTIONS_CONFIG.reportCategory,
-          description: [`Post: ${postUrl()}`, `Reason: ${reasonLabel}`, reportDetails.trim() ? `Details: ${reportDetails.trim()}` : null].filter(Boolean).join("\n"),
-          postId: post.id,
-          metadata: { kind: "post-report", reason: reportReason },
-        }),
-      })
-      if (!res.ok) throw new Error("report failed")
-      setReportOpen(false)
-      toastService.success(POST_ACTIONS_CONFIG.reportSuccess)
-    } catch {
-      toastService.error(POST_ACTIONS_CONFIG.reportError)
-    } finally {
-      setReporting(false)
-    }
-  }, [reportReason, reportDetails, post.id, postUrl])
+  const handleEdit = useCallback(() => {
+    onEdit?.(post)
+  }, [onEdit, post])
 
   const cardVariant = post.isPlatformGen ? "suggestion" : "default"
   const trustLevel = (post.validityTier as "low" | "developing" | "verified" | "trusted") ?? "developing"
@@ -307,74 +263,27 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         <span className="text-xs text-text-muted ml-auto">
           {getTimeAgo(post.createdAt)}
         </span>
-        <AppDropdown
-          align="end"
-          trigger={
-            <button className="w-7 h-7 rounded-circle flex items-center justify-center text-text-muted hover:bg-bg-elevated transition-colors duration-fast" aria-label="More options">
-              <MoreHorizontal size={16} />
-            </button>
-          }
-          items={[
-            { label: POST_ACTIONS_CONFIG.copyLinkLabel, onClick: () => void handleCopyLink() },
-            { label: POST_ACTIONS_CONFIG.reportLabel, variant: "destructive", onClick: openReport },
-          ]}
+        <PostMenu
+          post={post as unknown as PostMenuPost}
+          title={post.title}
+          viewerId={viewerId}
+          viewerRole={viewerRole}
+          requireAuth={(action) => auth?.requireAuth(action) ?? false}
+          onEdit={onEdit ? handleEdit : undefined}
+          onDeleted={onDeleted}
+          onRestored={onRestored}
+          onArchivedChanged={onArchivedChanged}
         />
       </div>
 
-      <AppModal open={reportOpen} onClose={() => setReportOpen(false)} size="sm">
-        <div className="flex flex-col gap-4">
-          <div>
-            <h3 className="text-base font-semibold text-text-primary">{POST_ACTIONS_CONFIG.reportTitle}</h3>
-            <p className="text-xs text-text-secondary mt-1">{POST_ACTIONS_CONFIG.reportSubtitle(post.title)}</p>
-          </div>
-          <div>
-            <label htmlFor={`report-reason-${post.id}`} className="block text-sm font-medium mb-1 text-text-primary">
-              {POST_ACTIONS_CONFIG.reportReasonLabel}
-            </label>
-            <select
-              id={`report-reason-${post.id}`}
-              value={reportReason}
-              onChange={(e) => setReportReason(e.target.value)}
-              className="w-full h-10 px-3 border border-border radius-sm text-sm font-sans bg-bg-base text-text-primary outline-none focus:border-primary"
-            >
-              {POST_ACTIONS_CONFIG.reportReasons.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor={`report-details-${post.id}`} className="block text-sm font-medium mb-1 text-text-primary">
-              {POST_ACTIONS_CONFIG.reportDetailsLabel}
-            </label>
-            <textarea
-              id={`report-details-${post.id}`}
-              value={reportDetails}
-              onChange={(e) => setReportDetails(e.target.value)}
-              placeholder={POST_ACTIONS_CONFIG.reportDetailsPlaceholder}
-              rows={3}
-              maxLength={1000}
-              className="w-full min-h-[72px] px-3 py-2 border border-border radius-sm text-sm font-sans resize-y bg-bg-base text-text-primary outline-none focus:border-primary placeholder:text-text-muted"
-            />
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setReportOpen(false)}
-              className="h-9 px-4 radius-md border border-border bg-bg-card text-sm font-medium text-text-secondary cursor-pointer font-sans hover:bg-bg-elevated transition-colors duration-fast"
-            >
-              {POST_ACTIONS_CONFIG.reportCancelLabel}
-            </button>
-            <button
-              type="button"
-              onClick={() => void submitReport()}
-              disabled={reporting}
-              className="h-9 px-4 radius-md bg-error-text text-text-inverse border-none text-sm font-semibold cursor-pointer font-sans hover:opacity-90 transition-opacity duration-fast disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {reporting ? "Submitting…" : POST_ACTIONS_CONFIG.reportSubmitLabel}
-            </button>
-          </div>
+      {post.isArchived && (
+        <div className="px-4 pt-1">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[11px] font-semibold bg-bg-elevated text-text-secondary border border-border">
+            <Archive size={11} />
+            Archived — only you can see this
+          </span>
         </div>
-      </AppModal>
+      )}
 
       {post.type === "ROUTE_REQUEST" && (
         <div className="px-4 pt-1">
@@ -439,6 +348,16 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             <Reply size={14} />
             Respond to this request
           </button>
+          {(post.responsesCount ?? 0) > 0 && (
+            <Link
+              href={`/posts/${post.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-primary no-underline hover:underline"
+            >
+              <MessagesSquare size={13} />
+              View {post.responsesCount} {post.responsesCount === 1 ? "response" : "responses"}
+            </Link>
+          )}
         </div>
       )}
 
@@ -502,8 +421,9 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         </div>
       )}
 
-      {/* Only render the map when real coords exist — never plot 0,0 pins (ocean) */}
-      {post.startLat != null && post.startLng != null && (
+      {/* Only render the map when real coords exist — never plot 0,0 pins (ocean).
+          Route requests are not routes, so they never render a map. */}
+      {showMap && post.startLat != null && post.startLng != null && (
         <div className="px-4 pb-2">
           <MiniRouteMap
             pins={(() => {
@@ -608,7 +528,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             <Share2 size={16} />
           </button>
 
-          <TrustBadge level={trustLevel} score={post.validityScore} size="sm" />
+          {showTrust && <TrustBadge level={trustLevel} score={post.validityScore} size="sm" />}
         </div>
       </div>
     </AppCard>

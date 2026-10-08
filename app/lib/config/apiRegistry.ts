@@ -19,6 +19,8 @@ export const API_REGISTRY: Record<string, ApiEndpoint> = {
   postsLike: { path: "/api/posts/[id]/like", methods: ["POST"], auth: true, rateLimit: "likes" },
   postsBookmark: { path: "/api/posts/[id]/bookmark", methods: ["POST"], auth: true },
   postsComments: { path: "/api/posts/[id]/comments", methods: ["GET", "POST"], auth: false, rateLimit: "comments" },
+  postsCommentDetail: { path: "/api/posts/[id]/comments/[commentId]", methods: ["PATCH", "DELETE"], auth: true, rateLimit: "comments" },
+  reports: { path: "/api/reports", methods: ["POST"], auth: false, rateLimit: "posts" },
   routesTrace: { path: "/api/routes/trace", methods: ["POST"], auth: true, rateLimit: "trace" },
   usersDetail: { path: "/api/users/[id]", methods: ["GET", "PATCH"], auth: false },
   usersSearch: { path: "/api/users/search", methods: ["GET"], auth: false, rateLimit: "search" },

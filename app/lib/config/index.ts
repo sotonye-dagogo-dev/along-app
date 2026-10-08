@@ -12,6 +12,8 @@ export { TOAST_CONFIG } from "./toast";
 export type { ToastConfig } from "./toast";
 export { POST_ACTIONS_CONFIG } from "./postActions";
 export type { PostActionsConfig } from "./postActions";
+export { MODERATION_CONFIG } from "./moderation";
+export type { ModerationConfig, ModerationActionConfig } from "./moderation";
 export { ENDLESS_CAROUSEL_CONFIG } from "./carousel";
 export type { EndlessCarouselConfig } from "./carousel";
 export { SHARE_ROUTE_MODAL_CONFIG } from "./shareRoute";

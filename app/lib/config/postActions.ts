@@ -22,6 +22,40 @@ export interface PostActionsConfig {
   reportReasons: { value: string; label: string }[];
   /** Bug-report category used when filing a post report (must exist in the API allow-list). */
   reportCategory: string;
+  // --- Post/comment management (owner + admin), all destructive actions go
+  // through the global confirm modal + global undo toast (see
+  // postModerationService). Labels/copy live here so UI stays metadata-driven.
+  editLabel: string;
+  deleteLabel: string;
+  archiveLabel: string;
+  unarchiveLabel: string;
+  deleteTitle: string;
+  deleteDescription: string;
+  archiveTitle: string;
+  archiveDescription: string;
+  unarchiveTitle: string;
+  unarchiveDescription: string;
+  deleteSuccess: string;
+  deleteError: string;
+  deleteUndoLabel: string;
+  deleteUndoMessage: string;
+  restoreSuccess: string;
+  archiveSuccess: string;
+  archiveError: string;
+  archiveUndoMessage: string;
+  unarchiveSuccess: string;
+  unarchiveError: string;
+  editSuccess: string;
+  editError: string;
+  adminDeleteTitle: string;
+  adminDeleteDescription: string;
+  commentDeleteTitle: string;
+  commentDeleteDescription: string;
+  commentDeleteSuccess: string;
+  commentDeleteError: string;
+  commentEditLabel: string;
+  commentEditSuccess: string;
+  commentEditError: string;
 }
 
 export const POST_ACTIONS_CONFIG: PostActionsConfig = {
@@ -48,4 +82,35 @@ export const POST_ACTIONS_CONFIG: PostActionsConfig = {
     { value: "other", label: "Something else" },
   ],
   reportCategory: "OTHER",
+  editLabel: "Edit",
+  deleteLabel: "Delete",
+  archiveLabel: "Archive",
+  unarchiveLabel: "Unarchive",
+  deleteTitle: "Delete this post?",
+  deleteDescription: "This will remove the post from everyone's feed. You can undo this right after deleting.",
+  archiveTitle: "Archive this post?",
+  archiveDescription: "Archived posts are hidden from feeds, explore and search, but you can restore them any time.",
+  unarchiveTitle: "Restore this post?",
+  unarchiveDescription: "This will make the post visible in feeds, explore and search again.",
+  deleteSuccess: "Post deleted",
+  deleteError: "Couldn't delete the post. Please try again.",
+  deleteUndoLabel: "Undo",
+  deleteUndoMessage: "Post deleted",
+  restoreSuccess: "Post restored",
+  archiveSuccess: "Post archived",
+  archiveError: "Couldn't archive the post. Please try again.",
+  archiveUndoMessage: "Post archived",
+  unarchiveSuccess: "Post restored to feed",
+  unarchiveError: "Couldn't restore the post. Please try again.",
+  editSuccess: "Post updated",
+  editError: "Couldn't save your changes. Please try again.",
+  adminDeleteTitle: "Delete this post as admin?",
+  adminDeleteDescription: "The author and their followers will no longer see this post. The author is not notified of who removed it.",
+  commentDeleteTitle: "Delete this comment?",
+  commentDeleteDescription: "This will remove the comment for everyone. You can undo this right after deleting.",
+  commentDeleteSuccess: "Comment deleted",
+  commentDeleteError: "Couldn't delete the comment. Please try again.",
+  commentEditLabel: "Edit comment",
+  commentEditSuccess: "Comment updated",
+  commentEditError: "Couldn't save your comment. Please try again.",
 };

@@ -87,7 +87,9 @@ export const NotificationType = {
   ROUTE_RESPONSE: 'ROUTE_RESPONSE',
   REWARD: 'REWARD',
   BADGE: 'BADGE',
-  VERIFIED: 'VERIFIED'
+  VERIFIED: 'VERIFIED',
+  REPORT: 'REPORT',
+  MODERATION: 'MODERATION'
 } as const
 
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]

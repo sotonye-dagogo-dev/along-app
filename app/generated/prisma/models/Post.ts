@@ -81,6 +81,8 @@ export type PostMinAggregateOutputType = {
   isPlatformGen: boolean | null
   views: number | null
   shares: number | null
+  isArchived: boolean | null
+  archivedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -108,6 +110,8 @@ export type PostMaxAggregateOutputType = {
   isPlatformGen: boolean | null
   views: number | null
   shares: number | null
+  isArchived: boolean | null
+  archivedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -139,6 +143,8 @@ export type PostCountAggregateOutputType = {
   isPlatformGen: number
   views: number
   shares: number
+  isArchived: number
+  archivedAt: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -200,6 +206,8 @@ export type PostMinAggregateInputType = {
   isPlatformGen?: true
   views?: true
   shares?: true
+  isArchived?: true
+  archivedAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -227,6 +235,8 @@ export type PostMaxAggregateInputType = {
   isPlatformGen?: true
   views?: true
   shares?: true
+  isArchived?: true
+  archivedAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -258,6 +268,8 @@ export type PostCountAggregateInputType = {
   isPlatformGen?: true
   views?: true
   shares?: true
+  isArchived?: true
+  archivedAt?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -376,6 +388,8 @@ export type PostGroupByOutputType = {
   isPlatformGen: boolean
   views: number
   shares: number
+  isArchived: boolean
+  archivedAt: Date | null
   createdAt: Date
   updatedAt: Date
   _count: PostCountAggregateOutputType | null
@@ -430,6 +444,8 @@ export type PostWhereInput = {
   isPlatformGen?: Prisma.BoolFilter<"Post"> | boolean
   views?: Prisma.IntFilter<"Post"> | number
   shares?: Prisma.IntFilter<"Post"> | number
+  isArchived?: Prisma.BoolFilter<"Post"> | boolean
+  archivedAt?: Prisma.DateTimeNullableFilter<"Post"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -471,6 +487,8 @@ export type PostOrderByWithRelationInput = {
   isPlatformGen?: Prisma.SortOrder
   views?: Prisma.SortOrder
   shares?: Prisma.SortOrder
+  isArchived?: Prisma.SortOrder
+  archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -515,6 +533,8 @@ export type PostWhereUniqueInput = Prisma.AtLeast<{
   isPlatformGen?: Prisma.BoolFilter<"Post"> | boolean
   views?: Prisma.IntFilter<"Post"> | number
   shares?: Prisma.IntFilter<"Post"> | number
+  isArchived?: Prisma.BoolFilter<"Post"> | boolean
+  archivedAt?: Prisma.DateTimeNullableFilter<"Post"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -556,6 +576,8 @@ export type PostOrderByWithAggregationInput = {
   isPlatformGen?: Prisma.SortOrder
   views?: Prisma.SortOrder
   shares?: Prisma.SortOrder
+  isArchived?: Prisma.SortOrder
+  archivedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.PostCountOrderByAggregateInput
@@ -595,6 +617,8 @@ export type PostScalarWhereWithAggregatesInput = {
   isPlatformGen?: Prisma.BoolWithAggregatesFilter<"Post"> | boolean
   views?: Prisma.IntWithAggregatesFilter<"Post"> | number
   shares?: Prisma.IntWithAggregatesFilter<"Post"> | number
+  isArchived?: Prisma.BoolWithAggregatesFilter<"Post"> | boolean
+  archivedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Post"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Post"> | Date | string
 }
@@ -624,6 +648,8 @@ export type PostCreateInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -665,6 +691,8 @@ export type PostUncheckedCreateInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -702,6 +730,8 @@ export type PostUpdateInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -743,6 +773,8 @@ export type PostUncheckedUpdateInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -782,6 +814,8 @@ export type PostCreateManyInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -811,6 +845,8 @@ export type PostUpdateManyMutationInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -842,6 +878,8 @@ export type PostUncheckedUpdateManyInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -896,6 +934,8 @@ export type PostCountOrderByAggregateInput = {
   isPlatformGen?: Prisma.SortOrder
   views?: Prisma.SortOrder
   shares?: Prisma.SortOrder
+  isArchived?: Prisma.SortOrder
+  archivedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -939,6 +979,8 @@ export type PostMaxOrderByAggregateInput = {
   isPlatformGen?: Prisma.SortOrder
   views?: Prisma.SortOrder
   shares?: Prisma.SortOrder
+  isArchived?: Prisma.SortOrder
+  archivedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -966,6 +1008,8 @@ export type PostMinOrderByAggregateInput = {
   isPlatformGen?: Prisma.SortOrder
   views?: Prisma.SortOrder
   shares?: Prisma.SortOrder
+  isArchived?: Prisma.SortOrder
+  archivedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1081,6 +1125,10 @@ export type NullableIntFieldUpdateOperationsInput = {
   decrement?: number
   multiply?: number
   divide?: number
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
 }
 
 export type PostUpdateOneWithoutQuotesNestedInput = {
@@ -1252,6 +1300,8 @@ export type PostCreateWithoutUserInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotedPost?: Prisma.PostCreateNestedOneWithoutQuotesInput
@@ -1291,6 +1341,8 @@ export type PostUncheckedCreateWithoutUserInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -1359,6 +1411,8 @@ export type PostScalarWhereInput = {
   isPlatformGen?: Prisma.BoolFilter<"Post"> | boolean
   views?: Prisma.IntFilter<"Post"> | number
   shares?: Prisma.IntFilter<"Post"> | number
+  isArchived?: Prisma.BoolFilter<"Post"> | boolean
+  archivedAt?: Prisma.DateTimeNullableFilter<"Post"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Post"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Post"> | Date | string
 }
@@ -1388,6 +1442,8 @@ export type PostCreateWithoutQuotesInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -1428,6 +1484,8 @@ export type PostUncheckedCreateWithoutQuotesInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   postComments?: Prisma.CommentUncheckedCreateNestedManyWithoutPostInput
@@ -1469,6 +1527,8 @@ export type PostCreateWithoutQuotedPostInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -1508,6 +1568,8 @@ export type PostUncheckedCreateWithoutQuotedPostInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -1566,6 +1628,8 @@ export type PostUpdateWithoutQuotesInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -1606,6 +1670,8 @@ export type PostUncheckedUpdateWithoutQuotesInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   postComments?: Prisma.CommentUncheckedUpdateManyWithoutPostNestedInput
@@ -1658,6 +1724,8 @@ export type PostCreateWithoutPostCommentsInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -1698,6 +1766,8 @@ export type PostUncheckedCreateWithoutPostCommentsInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -1750,6 +1820,8 @@ export type PostUpdateWithoutPostCommentsInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -1790,6 +1862,8 @@ export type PostUncheckedUpdateWithoutPostCommentsInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -1826,6 +1900,8 @@ export type PostCreateWithoutPostLikesInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -1866,6 +1942,8 @@ export type PostUncheckedCreateWithoutPostLikesInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -1918,6 +1996,8 @@ export type PostUpdateWithoutPostLikesInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -1958,6 +2038,8 @@ export type PostUncheckedUpdateWithoutPostLikesInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -1994,6 +2076,8 @@ export type PostCreateWithoutPostBookmarksInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -2034,6 +2118,8 @@ export type PostUncheckedCreateWithoutPostBookmarksInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -2086,6 +2172,8 @@ export type PostUpdateWithoutPostBookmarksInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -2126,6 +2214,8 @@ export type PostUncheckedUpdateWithoutPostBookmarksInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -2162,6 +2252,8 @@ export type PostCreateWithoutNotificationsInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -2202,6 +2294,8 @@ export type PostUncheckedCreateWithoutNotificationsInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -2254,6 +2348,8 @@ export type PostUpdateWithoutNotificationsInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -2294,6 +2390,8 @@ export type PostUncheckedUpdateWithoutNotificationsInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -2330,6 +2428,8 @@ export type PostCreateWithoutUserActivitiesInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -2370,6 +2470,8 @@ export type PostUncheckedCreateWithoutUserActivitiesInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -2422,6 +2524,8 @@ export type PostUpdateWithoutUserActivitiesInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -2462,6 +2566,8 @@ export type PostUncheckedUpdateWithoutUserActivitiesInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -2498,6 +2604,8 @@ export type PostCreateWithoutBugReportsInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -2538,6 +2646,8 @@ export type PostUncheckedCreateWithoutBugReportsInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -2590,6 +2700,8 @@ export type PostUpdateWithoutBugReportsInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -2630,6 +2742,8 @@ export type PostUncheckedUpdateWithoutBugReportsInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -2666,6 +2780,8 @@ export type PostCreateWithoutAnalyticsEventsInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutPostsInput
@@ -2706,6 +2822,8 @@ export type PostUncheckedCreateWithoutAnalyticsEventsInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   quotes?: Prisma.PostUncheckedCreateNestedManyWithoutQuotedPostInput
@@ -2758,6 +2876,8 @@ export type PostUpdateWithoutAnalyticsEventsInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -2798,6 +2918,8 @@ export type PostUncheckedUpdateWithoutAnalyticsEventsInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -2835,6 +2957,8 @@ export type PostCreateManyUserInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -2864,6 +2988,8 @@ export type PostUpdateWithoutUserInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotedPost?: Prisma.PostUpdateOneWithoutQuotesNestedInput
@@ -2903,6 +3029,8 @@ export type PostUncheckedUpdateWithoutUserInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -2941,6 +3069,8 @@ export type PostUncheckedUpdateManyWithoutUserInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -2971,6 +3101,8 @@ export type PostCreateManyQuotedPostInput = {
   isPlatformGen?: boolean
   views?: number
   shares?: number
+  isArchived?: boolean
+  archivedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -3000,6 +3132,8 @@ export type PostUpdateWithoutQuotedPostInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutPostsNestedInput
@@ -3039,6 +3173,8 @@ export type PostUncheckedUpdateWithoutQuotedPostInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   quotes?: Prisma.PostUncheckedUpdateManyWithoutQuotedPostNestedInput
@@ -3077,6 +3213,8 @@ export type PostUncheckedUpdateManyWithoutQuotedPostInput = {
   isPlatformGen?: Prisma.BoolFieldUpdateOperationsInput | boolean
   views?: Prisma.IntFieldUpdateOperationsInput | number
   shares?: Prisma.IntFieldUpdateOperationsInput | number
+  isArchived?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  archivedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -3202,6 +3340,8 @@ export type PostSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   isPlatformGen?: boolean
   views?: boolean
   shares?: boolean
+  isArchived?: boolean
+  archivedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -3244,6 +3384,8 @@ export type PostSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   isPlatformGen?: boolean
   views?: boolean
   shares?: boolean
+  isArchived?: boolean
+  archivedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -3277,6 +3419,8 @@ export type PostSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   isPlatformGen?: boolean
   views?: boolean
   shares?: boolean
+  isArchived?: boolean
+  archivedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -3310,11 +3454,13 @@ export type PostSelectScalar = {
   isPlatformGen?: boolean
   views?: boolean
   shares?: boolean
+  isArchived?: boolean
+  archivedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type PostOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "title" | "description" | "type" | "quotedPostId" | "routes" | "images" | "tags" | "likes" | "dislikes" | "comments" | "bookmarks" | "validityScore" | "validityTier" | "startLat" | "startLng" | "endLat" | "endLng" | "waypoints" | "region" | "totalDistanceKm" | "estimatedMins" | "isPlatformGen" | "views" | "shares" | "createdAt" | "updatedAt", ExtArgs["result"]["post"]>
+export type PostOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "title" | "description" | "type" | "quotedPostId" | "routes" | "images" | "tags" | "likes" | "dislikes" | "comments" | "bookmarks" | "validityScore" | "validityTier" | "startLat" | "startLng" | "endLat" | "endLng" | "waypoints" | "region" | "totalDistanceKm" | "estimatedMins" | "isPlatformGen" | "views" | "shares" | "isArchived" | "archivedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["post"]>
 export type PostInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   quotedPost?: boolean | Prisma.Post$quotedPostArgs<ExtArgs>
@@ -3378,6 +3524,8 @@ export type $PostPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     isPlatformGen: boolean
     views: number
     shares: number
+    isArchived: boolean
+    archivedAt: Date | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["post"]>
@@ -3839,6 +3987,8 @@ export interface PostFieldRefs {
   readonly isPlatformGen: Prisma.FieldRef<"Post", 'Boolean'>
   readonly views: Prisma.FieldRef<"Post", 'Int'>
   readonly shares: Prisma.FieldRef<"Post", 'Int'>
+  readonly isArchived: Prisma.FieldRef<"Post", 'Boolean'>
+  readonly archivedAt: Prisma.FieldRef<"Post", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Post", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Post", 'DateTime'>
 }

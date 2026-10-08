@@ -196,11 +196,11 @@ describe("GET /api/posts", () => {
     )
   })
 
-  it("omits the where clause when no filters are given", async () => {
+  it("excludes archived posts from public listings (guest view)", async () => {
     mockPrisma.post.findMany.mockResolvedValue([])
     await GET(getReq("http://localhost/api/posts?limit=20"))
     const args = mockPrisma.post.findMany.mock.calls[0][0]
-    expect(args.where).toBeUndefined()
+    expect(args.where).toEqual({ isArchived: false })
   })
 
   it("returns 503 when the database is unavailable", async () => {

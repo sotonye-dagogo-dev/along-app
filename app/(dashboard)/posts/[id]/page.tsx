@@ -3,12 +3,14 @@
 import { useState, useMemo } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { useParams } from "next/navigation"
-import { ArrowLeft, Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, Maximize2, MapPin, Navigation } from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
+import { ArrowLeft, Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, Maximize2, MapPin, Navigation, ClipboardList, Reply, Archive } from "lucide-react"
 import { AppCard, TrustBadge, VehicleChip, AppEmptyState, ImageLightbox } from "@/app/components/ui"
-import { VEHICLE_REGISTRY, EMPTY_STATES } from "@/app/lib/config"
+import { VEHICLE_REGISTRY, EMPTY_STATES, MODERATION_CONFIG, POST_ACTIONS_CONFIG } from "@/app/lib/config"
 import { CommentInput, CommentList } from "@/app/components/features/comments"
 import { NavigationGuide } from "@/app/components/features/posts"
+import ShareRouteModal, { type EditPost } from "@/app/components/features/posts/ShareRouteModal"
+import { PostMenu, type PostMenuPost } from "@/app/components/features/moderation"
 import { undoService } from "@/app/lib/services/undoService"
 import { toastService } from "@/app/lib/services/toastService"
 import { useAuth } from "@/app/hooks/useAuth"
@@ -25,9 +27,37 @@ interface RouteStep {
   fare?: number
 }
 
+interface PostResponse {
+  id: string
+  title: string
+  type: string
+  createdAt: string
+  likes: number
+  comments: number
+  validityScore: number
+  validityTier: string | null
+  user: {
+    id: string
+    userName: string
+    firstName: string
+    lastName: string
+    avatar?: string | null
+  }
+}
+
 interface PostDetail {
   id: string
   title: string
+  description?: string | null
+  type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
+  quotedPostId?: string | null
+  quotedPost?: {
+    id: string
+    title: string
+    type?: string
+    createdAt?: string | Date
+    user?: { id: string; userName: string; firstName: string; lastName: string; avatar?: string | null }
+  } | null
   routes: unknown
   images: string[]
   tags: string[]
@@ -44,6 +74,10 @@ interface PostDetail {
   startLng?: number | null
   endLat?: number | null
   endLng?: number | null
+  waypoints?: { lat: number; lng: number }[] | null
+  isArchived?: boolean
+  responses?: PostResponse[]
+  responsesCount?: number
   createdAt: string
   user: {
     id: string
@@ -91,16 +125,18 @@ function formatCount(n: number): string {
 
 export default function PostDetailPage() {
   const params = useParams()
+  const router = useRouter()
   const { user: currentUser, requireAuth, isLoading: authLoading } = useAuth()
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [showNavigation, setShowNavigation] = useState(false)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number; heading: number | null } | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
 
   const postId = params.id as string
   const ready = !authLoading && Boolean(postId)
   const viewerId = currentUser?.id ?? "guest"
 
-  const { data: postData, loading: postLoading, mutate: mutatePost } = useCachedFetch<{ post: PostDetail }>(
+  const { data: postData, loading: postLoading, mutate: mutatePost } = useCachedFetch<{ post: PostDetail; archived?: boolean }>(
     ready ? `post:${viewerId}:${postId}` : null,
     `/api/posts/${postId}`,
     { ttlSec: 60, enabled: ready }
@@ -189,12 +225,53 @@ export default function PostDetailPage() {
     }
   }
 
-  const handleDeleteComment = async (commentId: string) => {
+  const handleDeleteComment = (commentId: string) => {
+    mutateComments((prev) => ({ comments: (prev?.comments ?? []).filter((c) => c.id !== commentId) }))
+    if (postData) {
+      mutatePost({ ...postData, post: { ...postData.post, comments: Math.max(0, postData.post.comments - 1) } })
+    }
+  }
+
+  const handleUpdateComment = (comment: { id: string; text: string }) => {
+    mutateComments((prev) => ({
+      comments: (prev?.comments ?? []).map((c) => (c.id === comment.id ? { ...c, text: comment.text } : c)),
+    }))
+  }
+
+  const refreshComments = async () => {
     try {
-      await fetch(`/api/posts/${postId}/comments/${commentId}`, { method: "DELETE" })
-      mutateComments((prev) => ({ comments: (prev?.comments ?? []).filter((c) => c.id !== commentId) }))
+      const res = await fetch(`/api/posts/${postId}/comments`)
+      if (res.ok) {
+        const data = await res.json()
+        mutateComments({ comments: data.comments ?? [] })
+      }
+    } catch { /* keep cached list */ }
+  }
+
+  const refreshPost = async () => {
+    try {
+      const res = await fetch(`/api/posts/${postId}`)
+      if (res.ok) {
+        const data = await res.json()
+        mutatePost(data)
+      }
+    } catch { /* keep cached post */ }
+  }
+
+  const handleEditSubmit = async (editId: string, data: Omit<EditPost, "id">): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/posts/${editId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) throw new Error("edit failed")
+      setEditOpen(false)
+      await refreshPost()
+      return true
     } catch {
-      console.error("Failed to delete comment")
+      toastService.error(POST_ACTIONS_CONFIG.editError)
+      return false
     }
   }
 
@@ -205,15 +282,19 @@ export default function PostDetailPage() {
   const trustLevel = (post?.validityTier as "low" | "developing" | "verified" | "trusted") ?? "developing"
   const initials = post ? `${post.user.firstName[0]}${post.user.lastName[0]}`.toUpperCase() : ""
 
+  const waypoints = useMemo(() => {
+    const wps = (post as unknown as { waypoints?: unknown } | null)?.waypoints
+    return Array.isArray(wps) ? (wps as { lat: number; lng: number }[]) : []
+  }, [post])
+
   const routePins: RoutePin[] = useMemo(() => {
     // Use actual waypoints if stored, otherwise fall back to start/end
-    if (post && Array.isArray((post as unknown as { waypoints?: unknown }).waypoints) && ((post as unknown as { waypoints: unknown[] }).waypoints.length > 0)) {
-      const wps = (post as unknown as { waypoints: { lat: number; lng: number }[] }).waypoints
-      return wps.map((w, i) => ({
+    if (waypoints.length > 0) {
+      return waypoints.map((w, i) => ({
         lat: w.lat,
         lng: w.lng,
         label: routes[i]?.location ?? `Stop ${i + 1}`,
-        type: i === 0 ? "origin" as const : i === wps.length - 1 ? "destination" as const : "waypoint" as const,
+        type: i === 0 ? "origin" as const : i === waypoints.length - 1 ? "destination" as const : "waypoint" as const,
       })).filter((p) => p.lat !== 0 || p.lng !== 0)
     }
     if (post?.startLat && post?.startLng) {
@@ -231,7 +312,7 @@ export default function PostDetailPage() {
     }
     // No coords: return empty to avoid 0,0 markers in ocean
     return []
-  }, [routes, post?.startLat, post?.startLng, post?.endLat, post?.endLng])
+  }, [routes, waypoints, post?.startLat, post?.startLng, post?.endLat, post?.endLng])
 
   if (loading) {
     return (
@@ -255,6 +336,45 @@ export default function PostDetailPage() {
     )
   }
 
+  // Archived posts: direct links don't 404 — other viewers get a tombstone.
+  if (postData?.archived) {
+    return (
+      <div className="max-w-[680px] mx-auto px-4 py-8 flex flex-col items-center gap-3 text-center">
+        <div className="w-12 h-12 rounded-circle bg-bg-elevated flex items-center justify-center text-text-muted">
+          <Archive size={22} />
+        </div>
+        <h1 className="text-xl font-bold text-text-primary">This post is archived</h1>
+        <p className="text-sm text-text-secondary">The author hid it from feeds. The link still works for them.</p>
+        <Link href="/home" className="text-sm font-semibold text-primary no-underline hover:underline">Back to home</Link>
+      </div>
+    )
+  }
+
+  // Route requests are not routes: no map, no navigation guide, no trust
+  // score (metadata-driven via MODERATION_CONFIG.routeRequestHides).
+  const isRouteRequest = post.type === "ROUTE_REQUEST"
+  const showMap = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.map) && routePins.length > 0
+  const showNav = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.navigationGuide)
+  const showTrust = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.trustScore)
+  const isArchived = post.isArchived ?? false
+  const responses = post.responses ?? []
+  const viewerRole = (currentUser as { role?: string } | null)?.role ?? null
+  const editPost: EditPost | null = editOpen
+    ? {
+        id: post.id,
+        title: post.title,
+        ...(post.description ? { description: post.description } : {}),
+        routes: routes.map((s) => ({
+          ...(s.location ? { location: s.location } : {}),
+          ...(s.description ? { description: s.description } : {}),
+          ...(s.vehicle ? { vehicle: s.vehicle } : {}),
+          ...(typeof s.fare === "number" ? { fare: s.fare } : {}),
+        })),
+        tags: post.tags,
+        images: post.images,
+      }
+    : null
+
   return (
     <div className="max-w-[680px] mx-auto px-4 py-4">
       <div className="flex items-center gap-2 pb-3 mb-4 border-b border-border">
@@ -273,10 +393,63 @@ export default function PostDetailPage() {
           <button onClick={handleBookmark} className={`w-9 h-9 rounded-circle flex items-center justify-center border-none bg-transparent cursor-pointer transition-colors duration-fast hover:bg-bg-elevated hover:text-primary ${bookmarked ? "text-primary" : "text-text-secondary"}`} aria-label="Bookmark">
             <Bookmark size={18} className={bookmarked ? "fill-primary stroke-primary" : ""} />
           </button>
+          <PostMenu
+            post={post as unknown as PostMenuPost}
+            title={post.title}
+            viewerId={currentUser?.id ?? null}
+            viewerRole={viewerRole}
+            requireAuth={(action) => requireAuth(action)}
+            onEdit={() => setEditOpen(true)}
+            onDeleted={() => router.push("/home")}
+            onRestored={() => void refreshPost()}
+            onArchivedChanged={() => void refreshPost()}
+          />
         </div>
       </div>
 
       <h1 className="text-[28px] font-bold tracking-tight leading-tight mb-3">{post.title}</h1>
+
+      {isArchived && (
+        <div className="mb-3">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[11px] font-semibold bg-bg-elevated text-text-secondary border border-border">
+            <Archive size={11} />
+            Archived — only you can see this
+          </span>
+        </div>
+      )}
+
+      {isRouteRequest && (
+        <div className="mb-3">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[11px] font-semibold bg-warning/15 text-warning border border-warning/30">
+            <ClipboardList size={11} />
+            Route request
+          </span>
+        </div>
+      )}
+
+      {post.type === "ROUTE_RESPONSE" && post.quotedPost && (
+        <div className="mb-3">
+          <Link
+            href={`/posts/${post.quotedPost.id}`}
+            className="flex items-start gap-2 px-3 py-2 bg-bg-elevated border border-border radius-md no-underline hover:border-primary/40 transition-colors duration-fast"
+          >
+            <Reply size={13} className="text-primary mt-0.5 shrink-0" />
+            <span className="min-w-0">
+              <span className="block text-[11px] text-text-muted">
+                Responding to
+                {post.quotedPost.user
+                  ? ` ${post.quotedPost.user.firstName} ${post.quotedPost.user.lastName}`
+                  : ""}&apos;s request
+              </span>
+              <span className="block text-xs font-medium text-text-primary truncate">{post.quotedPost.title}</span>
+            </span>
+          </Link>
+        </div>
+      )}
+
+      {post.description && (
+        <p className="text-[15px] text-text-primary leading-relaxed mb-3.5">{post.description}</p>
+      )}
 
       <div className="flex items-center gap-2.5 mb-3">
         <Link href={`/profile/${post.user.userName}`} onClick={(e) => e.stopPropagation()} className="w-10 h-10 rounded-circle bg-primary-muted flex items-center justify-center text-sm font-bold text-primary shrink-0 no-underline">
@@ -296,7 +469,7 @@ export default function PostDetailPage() {
       </div>
 
       <div className="mb-3.5">
-        <TrustBadge level={trustLevel} score={post.validityScore} />
+        {showTrust && <TrustBadge level={trustLevel} score={post.validityScore} />}
       </div>
 
       <div className="flex gap-1.5 flex-wrap mb-4">
@@ -313,6 +486,7 @@ export default function PostDetailPage() {
         )}
       </div>
 
+      {showMap && (
       <div className="w-full h-[280px] radius-md overflow-hidden mb-4">
         <RouteMap
           pins={routePins}
@@ -324,6 +498,7 @@ export default function PostDetailPage() {
           followUser={showNavigation && !!userLocation}
         />
       </div>
+      )}
 
       <div className="flex flex-col gap-3 mb-5">
         {routes.map((step, index) => (
@@ -404,7 +579,7 @@ export default function PostDetailPage() {
         </button>
       </div>
 
-      {showNavigation ? (
+      {showNav && (showNavigation ? (
         <div className="mb-5">
           <NavigationGuide
             steps={routes}
@@ -436,6 +611,47 @@ export default function PostDetailPage() {
             </button>
           </div>
         </AppCard>
+      ))}
+
+      {isRouteRequest && (
+        <div className="mb-6">
+          <h3 className="text-base font-semibold mb-3">
+            Responses <span className="font-normal text-sm text-text-muted">· {responses.length}</span>
+          </h3>
+          {responses.length === 0 ? (
+            <p className="text-sm text-text-secondary bg-bg-elevated border border-border radius-md px-4 py-3">
+              No responses yet — be the first to share this route.
+            </p>
+          ) : (
+            <div className="flex flex-col">
+              {responses.map((r) => (
+                <Link
+                  key={r.id}
+                  href={`/posts/${r.id}`}
+                  className="flex gap-2.5 py-3 border-b border-border last:border-b-0 no-underline"
+                >
+                  <span className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                    {(r.user.firstName[0] ?? "")}{(r.user.lastName[0] ?? "")}
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold text-text-primary">
+                      {r.user.firstName} {r.user.lastName}
+                      <span className="ml-1.5 font-normal text-xs text-text-muted">{getTimeAgo(r.createdAt)}</span>
+                    </span>
+                    <span className="mt-0.5 flex items-center gap-1.5 text-sm text-primary font-medium">
+                      <Reply size={13} className="shrink-0" />
+                      <span className="truncate">{r.title}</span>
+                    </span>
+                    <span className="mt-0.5 block text-xs text-text-muted">
+                      {r.likes > 0 && `${r.likes} like${r.likes === 1 ? "" : "s"} · `}
+                      {r.comments > 0 && `${r.comments} comment${r.comments === 1 ? "" : "s"}`}
+                    </span>
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="mb-6">
@@ -446,8 +662,23 @@ export default function PostDetailPage() {
           userName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "User"}
           onSubmit={handleComment}
         />
-        <CommentList comments={comments} onDelete={handleDeleteComment} />
+        <CommentList
+          comments={comments}
+          postId={postId}
+          onDeleted={handleDeleteComment}
+          onUpdated={handleUpdateComment}
+          onRestored={() => void refreshComments()}
+        />
       </div>
+
+      {editOpen && (
+        <ShareRouteModal
+          isOpen={editOpen}
+          onClose={() => setEditOpen(false)}
+          editPost={editPost}
+          onEditSubmit={handleEditSubmit}
+        />
+      )}
     </div>
   )
 }

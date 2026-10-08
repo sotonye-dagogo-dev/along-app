@@ -81,16 +81,23 @@ function isMissingColumnError(error: unknown): boolean {
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Prisma P2022 fallback casts (same pattern as feedService) */
 async function safePostFindMany(args: any): Promise<any[]> {
+  // Archived posts never surface in search (owner/admin can still open by link).
+  const filteredArgs =
+    args?.where && typeof args.where === "object" && !("isArchived" in args.where)
+      ? { ...args, where: { ...args.where, isArchived: false } }
+      : args;
   try {
-    return await (prisma.post.findMany as any)(args);
+    return await (prisma.post.findMany as any)(filteredArgs);
   } catch (error) {
-    if (isMissingColumnError(error) && args?.include?.user?.select?.avatarConfig) {
+    if (isMissingColumnError(error)) {
+      const { isArchived: _drop, ...restWhere } = filteredArgs?.where ?? {};
+      void _drop;
       const fallbackArgs = {
-        ...args,
-        include: {
-          ...args.include,
-          user: { select: { ...USER_SELECT_FALLBACK } },
-        },
+        ...filteredArgs,
+        ...(filteredArgs?.where ? { where: restWhere } : {}),
+        ...(filteredArgs?.include?.user?.select?.avatarConfig
+          ? { include: { ...filteredArgs.include, user: { select: { ...USER_SELECT_FALLBACK } } } }
+          : {}),
       };
       return await (prisma.post.findMany as any)(fallbackArgs);
     }

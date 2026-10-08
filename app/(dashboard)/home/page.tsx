@@ -84,6 +84,7 @@ function HomeContent() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [respondTo, setRespondTo] = useState<RespondToRequest | null>(null)
+  const [editPost, setEditPost] = useState<FeedPost | null>(null)
   const [draftsCount, setDraftsCount] = useState(0)
   const [openDraftsOnShare, setOpenDraftsOnShare] = useState(false)
   const loaderRef = useRef<HTMLDivElement>(null)
@@ -126,6 +127,7 @@ function HomeContent() {
   const closeShareModal = useCallback(() => {
     setShowShareModal(false)
     setRespondTo(null)
+    setEditPost(null)
     setOpenDraftsOnShare(false)
   }, [])
 
@@ -328,8 +330,42 @@ function HomeContent() {
 
   const handleRespond = (post: { id: string; title: string; tags?: string[]; user?: RespondToRequest["user"] }) => {
     setRespondTo({ id: post.id, title: post.title, tags: post.tags ?? [], user: post.user ?? undefined })
+    setEditPost(null)
     setShowShareModal(true)
   }
+
+  /** Owner picked Edit on a card — open the composer prefilled (PATCH on submit). */
+  const handleEditPost = useCallback((post: FeedPost) => {
+    setRespondTo(null)
+    setEditPost(post)
+    setShowShareModal(true)
+  }, [])
+
+  const handleEditSubmit = useCallback(async (postId: string, data: Record<string, unknown>): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) return false
+      const payload = await res.json().catch(() => null)
+      const updated = payload?.post
+      if (updated) {
+        feedStream.updatePost(postId, {
+          title: updated.title,
+          routes: updated.routes,
+          images: updated.images,
+          tags: updated.tags,
+        })
+      } else {
+        await refreshFeed()
+      }
+      return true
+    } catch {
+      return false
+    }
+  }, [])
 
   const initials = user
     ? `${(user.firstName as string)?.[0] ?? ""}${(user.lastName as string)?.[0] ?? ""}`.toUpperCase()
@@ -403,6 +439,13 @@ function HomeContent() {
               onBookmark={handleBookmark}
               onComment={handleComment}
               onRespond={handleRespond}
+              onEdit={handleEditPost as never}
+              onDeleted={(postId) => feedStream.removePost(postId)}
+              onRestored={() => void refreshFeed()}
+              onArchivedChanged={(postId, archived) => {
+                if (archived) feedStream.removePost(postId)
+                else void refreshFeed()
+              }}
             />
           ))
         ) : loading ? (
@@ -430,6 +473,8 @@ function HomeContent() {
         startWithDraftsOpen={openDraftsOnShare}
         onSubmit={async (data) => submitPost(data)}
         onRequestRoute={openRequestFromShare}
+        editPost={editPost as never}
+        onEditSubmit={handleEditSubmit}
       />
 
       <RequestRouteModal

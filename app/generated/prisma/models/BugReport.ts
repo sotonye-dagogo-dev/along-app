@@ -603,10 +603,6 @@ export type EnumBugStatusFieldUpdateOperationsInput = {
   set?: $Enums.BugStatus
 }
 
-export type NullableDateTimeFieldUpdateOperationsInput = {
-  set?: Date | string | null
-}
-
 export type BugReportCreateWithoutReporterInput = {
   id?: string
   title: string

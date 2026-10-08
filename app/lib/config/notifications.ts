@@ -11,7 +11,9 @@ type NotificationType =
   | "VERIFIED"
   | "WELCOME"
   | "ROUTE_REQUEST"
-  | "ROUTE_RESPONSE";
+  | "ROUTE_RESPONSE"
+  | "REPORT"
+  | "MODERATION";
 
 export const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationTypeConfig> = {
   LIKE: {
@@ -73,5 +75,17 @@ export const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationTypeCon
     icon: Reply,
     color: "#10B981",
     messageTemplate: "{actor} responded to your route request",
+  },
+  REPORT: {
+    label: "Report",
+    icon: ShieldCheck,
+    color: "#F59E0B",
+    messageTemplate: "{actor} reported a post for review",
+  },
+  MODERATION: {
+    label: "Moderation",
+    icon: ShieldCheck,
+    color: "#1677FF",
+    messageTemplate: "Update on a post you reported",
   },
 };

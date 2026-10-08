@@ -15,10 +15,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(result, { status: 200 });
     }
 
-    // Guest access: return public posts (most recent)
+    // Guest access: return public posts (most recent). Archived posts are excluded.
     let posts: any[];
     try {
       posts = await (prisma.post.findMany as any)({
+        where: { isArchived: false },
         take: limit + 1,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
         include: {

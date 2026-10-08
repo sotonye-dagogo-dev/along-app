@@ -194,6 +194,16 @@ export async function GET(request: NextRequest) {
     if (likedBy) where.postLikes = { some: { userId: likedBy, type: "LIKE" } };
     if (bookmarkedBy) where.postBookmarks = { some: { userId: bookmarkedBy } };
 
+    // Archived posts stay hidden from public listings. Exception: an owner
+    // browsing their own profile (?userId=self) still sees them for restore.
+    let viewerId: string | null = null;
+    try {
+      const viewer = await getUserFromRequest();
+      viewerId = (viewer?.id as string | undefined) ?? null;
+    } catch { viewerId = null; }
+    const ownerView = !!userId && !!viewerId && userId === viewerId;
+    if (!ownerView) where.isArchived = false;
+
     const fetchArgs = {
       ...(Object.keys(where).length > 0 ? { where } : {}),
       take: limit + 1,
@@ -212,8 +222,13 @@ export async function GET(request: NextRequest) {
     } catch (e) {
       const isP2022 = e instanceof Error && ((e as unknown as { code?: string }).code === "P2022" || e.name === "PrismaClientKnownRequestError");
       if (isP2022) {
+        // Strip additive columns (avatarConfig select, isArchived filter) so
+        // reads keep working if the moderation migration has not applied yet.
+        const { isArchived: _drop, ...restWhere } = (fetchArgs as { where?: Record<string, unknown> }).where ?? {};
+        void _drop;
         const fallbackArgs = {
           ...fetchArgs,
+          ...((fetchArgs as { where?: unknown }).where ? { where: restWhere } : {}),
           include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } } },
         };
         posts = await (prisma.post.findMany as unknown as (args: typeof fallbackArgs) => Promise<unknown[]>)(fallbackArgs);
