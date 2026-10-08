@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale
 
@@ -568,6 +568,51 @@ Five directive items, all non-breaking, config/metadata-driven. Root-caused the 
 - No schema/migration changes (BugReport.postId already existed); no new dependencies
 
 **QA gate (this runner, node_modules installed via `npm ci`): tsc 0 errors; jest 15 suites / 149 tests pass; next build clean; lint shows only pre-existing issues in untouched files (none in touched files).**
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+---
+
+## 2026-10-08 — Execute-Feature: Posting Hardening + Viewer/Carousel Fixes (Sprint 12)
+
+**Summary:**
+Five directive iron-out items, all non-breaking, config-driven, no new dependencies, no migration. Double-click route duplicates eliminated at three layers (disabled submit button with spinner, client in-flight dedup, server idempotency replay); like/dislike undo toasts removed; image viewer rewritten around a state-owned index; carousel autoplay restored for touch users and sparse feeds.
+
+**Completed:**
+- Submit guard: `ShareRouteModal` gained `isSubmitting` (Share/Save disabled, `Loader2` spinner, re-entry ignored; labels from `POST_SUBMIT_CONFIG`); `RequestRouteModal` submit button gained the same spinner (guard/disabled pre-existed)
+- Posting ACID: per-composer `clientMutationId` → `X-Idempotency-Key` header (stripped from JSON body) → server replay (`200 + deduplicated`) or concurrent-duplicate 409 via TTL `idempotencyService`; `POST /api/posts` now scores validity first and inserts in a single atomic `create`; key released on create/quote failure
+- Like/dislike: post-detail unlike no longer registers `undoService` or fires `toastService.undo` (success note on like only; bookmark undo kept)
+- ImageLightbox: `useState` index replaces `getElementById` src mutation — prev/next, ArrowLeft/Right, Escape, and the `n / total` counter all derive from one value; re-syncs when a different thumbnail opens the viewer
+- EndlessCarousel: hover-pause is mouse-only (touch taps no longer stall autoplay); item set repeats (cap `ENDLESS_CAROUSEL_CONFIG.maxRepeat`) until one half overflows the viewport so autoplay stays visible with 1–2 cards
+
+**Key Changes:**
+- New: `app/lib/config/postSubmit.ts`, `app/lib/services/idempotencyService.ts`, `app/__tests__/config/postSubmit.test.ts`
+- Edited: `ShareRouteModal.tsx`, `RequestRouteModal.tsx`, `home/page.tsx`, `api/posts/route.ts`, `posts/[id]/page.tsx`, `ImageLightbox.tsx`, `EndlessCarousel.tsx`, `carousel.ts`, `config/index.ts`
+- No schema/migration changes; no new dependencies
+
+**QA gate (this runner, node_modules installed via `npm ci`): tsc 0 errors; jest 16 suites / 154 tests pass; next build clean; lint clean for touched files (2 pre-existing warnings in untouched code paths).**
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — Execute-Feature: Post/Comment Moderation + Report Lifecycle (Sprint 13)
+
+**Summary:**
+Directive close-out: delete/edit/archive for posts, comments and route requests (owner + admin) with global confirm modal + global undo toast; end-to-end reporting with reporter receipt and admin triage actions (anonymity kept both ways); route requests hide map/navigation/trust with responses shown comment-style on expanded views; trust tooltip clamped to viewport. All non-breaking (additive migration `20261008000000_post_moderation`, P2022-tolerant reads), config/metadata-driven (`postActions.ts` extensions, new `moderation.ts`), ACID via single transactions.
+
+**Completed:**
+- Schema: `Post.isArchived`/`archivedAt` (+ index), `NotificationType` += REPORT/MODERATION; idempotent migration SQL
+- Config: management labels/confirm/undo copy in `POST_ACTIONS_CONFIG`; `MODERATION_CONFIG` (dedup window, outcome copy, admin actions, route-request hide rules); REPORT/MODERATION in `NOTIFICATION_REGISTRY`; `/api/reports` + comment-detail in `API_REGISTRY`
+- Services: `postModerationService.ts` (confirm → fetch → undo with snapshot-restore replay, `isAdminRole`); `feedStream.removePost/updatePost`; archive injection + P2022 strip-retry in `feedService`/`searchService`
+- APIs: post detail PATCH (archive + admin edit) / DELETE (admin), GET returns `responses`/`responsesCount` + archived tombstone for non-owners; comment PATCH (edit) + admin delete; `POST /api/reports` (transactional dedup, admin + reporter notifications, email); admin bugs PATCH `action` (DISMISS/ARCHIVE_POST/REMOVE_POST in one transaction + MODERATION outcome); admin posts PATCH/DELETE-with-snapshot; archive exclusion in list/feed/suggestions/sitemap
+- UI: `moderation/ReportDialog` + `PostMenu` shared by PostCard and detail views; PostCard request rules + archived badge + responses link; CommentList inline edit + confirm/undo delete + report flag; detail page menu/edit-modal/responses section/request rules/tombstone; ShareRouteModal edit mode (`editPost`/`onEditSubmit`, drafts hidden); TrustBadge fixed-position clamped/flipping tooltip; admin posts hide/restore + undo, admin bugs Reports filter + triage buttons; home + search wiring
+
+**Key Changes:**
+- New: `prisma/migrations/20261008000000_post_moderation/`, `app/lib/config/moderation.ts`, `app/lib/services/postModerationService.ts`, `app/api/reports/route.ts`, `app/components/features/moderation/{ReportDialog,PostMenu,index}.tsx`, `app/__tests__/post-moderation.test.ts`
+- Edited: `schema.prisma`, `postActions.ts`, `notifications.ts` (+service type), `apiRegistry.ts`, `config/index.ts`, `feedService.ts`, `searchService.ts`, post/comment/admin APIs, `PostCard.tsx`, `CommentList.tsx`, `posts/[id]/page.tsx`, `ShareRouteModal.tsx`, `TrustBadge.tsx`, `home/page.tsx`, `SearchPage.tsx`, admin posts/bugs pages, `sitemap.ts`, `feedStream.ts`, `posts.test.ts`
+
+**QA gate (this runner, node_modules via `npm ci`): tsc 0 errors; jest 17 suites / 160 tests pass; next build clean; lint clean for touched files (fixed 1 unused var + 1 exhaustive-deps during the gate).**
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.

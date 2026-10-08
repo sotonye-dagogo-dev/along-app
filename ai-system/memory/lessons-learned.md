@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -376,6 +376,36 @@ Sprint 11 (2026-10-08) — every route share failed with "Validation failed" and
 
 **Apply When:**
 Any optional free-text field validated with `.min(n).optional()` — search for the pattern `z.string().min(` + `.optional()` and check what the client sends for untouched inputs.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Additive Schema Changes Need P2022-Tolerant Reads Until the Migration Lands
+
+**Context:**
+Sprint 13 (2026-10-08) — added `Post.isArchived/archivedAt` + two `NotificationType` values. Production previously 500'd with P2022 "column does not exist" when code referenced columns the deployed DB lacked (see issue history: feed + google-callback outages). `vercel-build` runs `prisma migrate deploy || true`, but there is still a window (and local/CI DBs) where the column is absent.
+
+**What We Learned:**
+Every query touching a new column must degrade: inject the filter/select, catch P2022/P2010, strip the additive piece, and retry once. Centralize in the safe-wrapper (`safeFindManyPosts`, `safePostFindMany`) rather than at each call site. Also: after editing a Prisma enum, regenerate the client (`prisma generate`) or `tsc` fails on the new values even though the schema is correct — the generated `enums.ts` is the type source, not the schema file. Write the migration idempotently (`IF NOT EXISTS` / `DO ... EXCEPTION WHEN duplicate_object`) following the `20260912000000_fix_missing_columns` precedent.
+
+**Apply When:**
+Any migration adding columns, indexes, or enum values — search for all `findMany`/`findUnique`/`update` touching the model and route them through (or add) a P2022-tolerant wrapper.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Destructive Actions Share One Confirm + Undo Path — Never Inline Modals
+
+**Context:**
+Sprint 13 (2026-10-08) — `modalService.confirm` existed with zero call sites while the admin posts page carried its own local confirm modal and comment deletes had no confirm at all. Three different delete UXs for the same logical action.
+
+**What We Learned:**
+Put the whole destructive flow (confirm copy from config → API call → undo registration with snapshot replay → parent cache update) in one service (`postModerationService`) plus one shared menu component (`PostMenu`), and call it from every surface (feed card, detail view, admin table). Local one-off modals drift; the shared path keeps variant/copy/undo-duration consistent and makes the next destructive action a three-line call.
+
+**Apply When:**
+Any user- or admin-initiated delete/archive/remove/hide — no new `useState` confirm booleans, no direct `fetch(DELETE)` in components.
 
 **Supersedes:** None
 **Superseded by:** None

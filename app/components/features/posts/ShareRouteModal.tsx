@@ -2,10 +2,11 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair, History } from "lucide-react"
+import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair, History, Loader2 } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { SHARE_ROUTE_MODAL_CONFIG } from "@/app/lib/config"
+import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit"
 import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
 import { draftingCoachService } from "@/app/lib/services/DraftingCoachService"
 import { routeDraftsService, type RouteDraft } from "@/app/lib/services/routeDraftsService"
@@ -45,6 +46,16 @@ export interface RespondToRequest {
   tags?: string[]
 }
 
+/** An existing post opened for editing — the modal prefills and PATCHes it. */
+export interface EditPost {
+  id: string
+  title: string
+  description?: string | null
+  routes: { location?: string; description?: string; vehicle?: string; fare?: number }[]
+  tags?: string[]
+  images?: string[]
+}
+
 interface ShareRouteModalProps {
   isOpen: boolean
   onClose: () => void
@@ -53,6 +64,21 @@ interface ShareRouteModalProps {
   onRequestRoute?: () => void
   /** Open with the saved-drafts panel expanded (used by the home drafts resume chip). */
   startWithDraftsOpen?: boolean
+  /** Edit mode: prefill from this post and PATCH on submit (drafts/response UI hidden). */
+  editPost?: EditPost | null
+  /** Handles the edit submit; return false to keep the modal open. */
+  onEditSubmit?: (postId: string, data: {
+    title: string
+    description?: string
+    routes: RouteStep[]
+    images: string[]
+    tags: string[]
+    startLat?: number
+    startLng?: number
+    endLat?: number
+    endLng?: number
+    waypoints?: { lat: number; lng: number }[]
+  }) => boolean | void | Promise<boolean | void>
   onSubmit?: (data: {
     title: string
     description?: string
@@ -66,20 +92,33 @@ interface ShareRouteModalProps {
     endLat?: number
     endLng?: number
     waypoints?: { lat: number; lng: number }[]
+    /** Idempotency key for this composer session — dedups double-clicks/retries server-side. */
+    clientMutationId?: string
     /** Return false to keep the modal open (e.g. submission failed). */
   }) => boolean | void | Promise<boolean | void>
 }
 
 const VEHICLE_OPTIONS = Object.keys(VEHICLE_REGISTRY) as VehicleType[]
 
+function newMutationKey(): string {
+  try {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID()
+  } catch {
+    /* fall through to Math.random fallback */
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 const TRACE_CACHE_TTL = 600 // 10 min — same route re-edits don't re-trace
 const TRACE_DEBOUNCE_MS = 1000
 
-export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, startWithDraftsOpen, onSubmit }: ShareRouteModalProps) {
+export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, startWithDraftsOpen, onSubmit, editPost, onEditSubmit }: ShareRouteModalProps) {
   const [restoredResponseTo, setRestoredResponseTo] = useState<RespondToRequest | null>(null)
   /** Prop wins; a restored draft keeps its response linkage when opened without one. */
   const effectiveResponseTo = responseTo ?? restoredResponseTo
   const isResponse = Boolean(effectiveResponseTo)
+  /** Edit mode: owner correcting their own post (or admin) — no drafts, no response UI. */
+  const isEditing = Boolean(editPost)
   const [drafts, setDrafts] = useState<RouteDraft[]>([])
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
   const [showDrafts, setShowDrafts] = useState(false)
@@ -98,6 +137,11 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.previewDefaultOpen)
   const [formOpen, setFormOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.formDefaultOpen)
+  // Double-submit guard: while a post is in flight the Share/Save buttons are
+  // disabled with spinner feedback, and re-entry is ignored. `mutationKey`
+  // identifies this composer session for server-side idempotency replay.
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [mutationKey, setMutationKey] = useState(() => newMutationKey())
   const [trace, setTrace] = useState<{ polyline: string; distance: number; duration: number; sig: string } | null>(null)
   const [tracing, setTracing] = useState(false)
   const traceDisabledRef = useRef(false)
@@ -429,6 +473,29 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
 
   useEffect(() => {
     if (!isOpen) return
+    // Edit mode: prefill from the post, never absorb drafts or response state.
+    if (editPost) {
+      setTitle(editPost.title ?? "")
+      setDescription(editPost.description ?? "")
+      const prefill = (editPost.routes ?? []).map((s) => ({
+        location: s.location ?? "",
+        description: s.description ?? "",
+        vehicle: s.vehicle ?? "",
+        fare: typeof s.fare === "number" ? s.fare : 0,
+        _geoResults: [] as GeoResult[],
+        _geoLoading: false,
+      }))
+      setSteps(prefill.length >= 2 ? prefill : [
+        { location: "", description: "", vehicle: "bus", fare: 0, _geoResults: [], _geoLoading: false },
+        { location: "", description: "", vehicle: "", fare: 0, _geoResults: [], _geoLoading: false },
+      ])
+      setTags(editPost.tags ?? [])
+      setImages(editPost.images ?? [])
+      setActiveDraftId(null)
+      setShowDrafts(false)
+      setRestoredResponseTo(null)
+      return
+    }
     // Response mode: prefill from the quoted request, never absorb a normal-route draft.
     // Tags are inherited from the request when the composer has none yet.
     if (effectiveResponseTo) {
@@ -457,7 +524,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       if (composerEmpty) applyDraft(stored[0])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, effectiveResponseTo, startWithDraftsOpen])
+  }, [isOpen, effectiveResponseTo, startWithDraftsOpen, editPost])
 
   const updateStep = (index: number, field: keyof RouteStep, value: string | number) => {
     setSteps((prev) => {
@@ -489,6 +556,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   }
 
   const handleSubmit = async () => {
+    // Ignore re-entry while a submission is in flight (double-click guard).
+    if (isSubmitting) return
     if (!title.trim() || title.trim().length < 5) {
       toastService.error("Title must be at least 5 characters")
       return
@@ -502,6 +571,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       toastService.error("Please wait for images to finish uploading")
       return
     }
+    setIsSubmitting(true)
     // Fallback: geocode any step that has location string but no lat/lng
     const stepsToSubmit = [...validSteps]
     const missingGeo = stepsToSubmit.filter((s) => !s.lat || !s.lng)
@@ -524,22 +594,63 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     const waypoints = stepsToSubmit
       .filter((s) => s.lat && s.lng && s !== first && s !== last)
       .map((s) => ({ lat: s.lat!, lng: s.lng! }))
-    const result = await onSubmit?.({
-      title: title.trim(),
-      // Omit empty descriptions: the API treats "" as a min-length failure,
-      // and the quality-score checkpoint needs >=10 chars to pass.
-      ...(description.trim() ? { description: description.trim() } : {}),
-      ...(isResponse && effectiveResponseTo ? { type: "ROUTE_RESPONSE" as const, quotedPostId: effectiveResponseTo.id } : {}),
-      routes: stepsToSubmit.map(({ _geoResults, _geoLoading, _focused, _locating, ...rest }) => rest),
-      images,
-      tags: tags.slice(0, 10),
-      startLat: first?.lat,
-      startLng: first?.lng,
-      endLat: last?.lat && last !== first ? last.lat : undefined,
-      endLng: last?.lng && last !== first ? last.lng : undefined,
-      waypoints: waypoints.length > 0 ? waypoints : undefined,
-    })
-    if (result === false) return // failed — keep the modal open so input isn't lost
+    // Edit mode: PATCH the existing post (single atomic update server-side).
+    if (isEditing && editPost) {
+      try {
+        const { POST_ACTIONS_CONFIG } = await import("@/app/lib/config/postActions")
+        const ok = await onEditSubmit?.(editPost.id, {
+          title: title.trim(),
+          ...(description.trim() ? { description: description.trim() } : {}),
+          routes: stepsToSubmit.map(({ _geoResults, _geoLoading, _focused, _locating, ...rest }) => rest),
+          images,
+          tags: tags.slice(0, 10),
+          startLat: first?.lat,
+          startLng: first?.lng,
+          endLat: last?.lat && last !== first ? last.lat : undefined,
+          endLng: last?.lng && last !== first ? last.lng : undefined,
+          waypoints: waypoints.length > 0 ? waypoints : undefined,
+        })
+        if (ok === false) {
+          setIsSubmitting(false)
+          return
+        }
+        toastService.success(POST_ACTIONS_CONFIG.editSuccess)
+      } catch {
+        const { POST_ACTIONS_CONFIG } = await import("@/app/lib/config/postActions")
+        toastService.error(POST_ACTIONS_CONFIG.editError)
+        setIsSubmitting(false)
+        return
+      }
+      setIsSubmitting(false)
+      onClose()
+      return
+    }
+    let result: boolean | void
+    try {
+      result = await onSubmit?.({
+        title: title.trim(),
+        // Omit empty descriptions: the API treats "" as a min-length failure,
+        // and the quality-score checkpoint needs >=10 chars to pass.
+        ...(description.trim() ? { description: description.trim() } : {}),
+        ...(isResponse && effectiveResponseTo ? { type: "ROUTE_RESPONSE" as const, quotedPostId: effectiveResponseTo.id } : {}),
+        routes: stepsToSubmit.map(({ _geoResults, _geoLoading, _focused, _locating, ...rest }) => rest),
+        images,
+        tags: tags.slice(0, 10),
+        startLat: first?.lat,
+        startLng: first?.lng,
+        endLat: last?.lat && last !== first ? last.lat : undefined,
+        endLng: last?.lng && last !== first ? last.lng : undefined,
+        waypoints: waypoints.length > 0 ? waypoints : undefined,
+        clientMutationId: mutationKey,
+      })
+    } catch {
+      setIsSubmitting(false)
+      return // parent threw — keep input, allow retry
+    }
+    if (result === false) {
+      setIsSubmitting(false)
+      return // failed — keep the modal open so input isn't lost
+    }
     // Upload complete: drop the restored draft (or legacy keys when none was active)
     if (activeDraftId) {
       setDrafts(routeDraftsService.deleteDraft(activeDraftId))
@@ -548,6 +659,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       routeDraftsService.clearLegacyKeys()
     }
     setRestoredResponseTo(null)
+    // Fresh idempotency key for the next composer session.
+    setMutationKey(newMutationKey())
+    setIsSubmitting(false)
     onClose()
   }
 
@@ -557,22 +671,24 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
         <div className="flex items-center justify-between gap-3 px-6 py-5 pb-4 border-b border-border">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">
-              {isResponse ? "Respond to Route Request" : "Share a Route"}
+              {isEditing ? "Edit Route" : isResponse ? "Respond to Route Request" : "Share a Route"}
             </h2>
             <p className="text-sm text-text-secondary mt-0.5">
-              {isResponse
-                ? "Post the route that answers this request"
-                : "Help the community with a new route"}
+              {isEditing
+                ? "Update your route details"
+                : isResponse
+                  ? "Post the route that answers this request"
+                  : "Help the community with a new route"}
             </p>
           </div>
-          {onRequestRoute && SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger && !isResponse && (
+          {onRequestRoute && SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger && !isResponse && !isEditing && (
             <div className="pr-8 shrink-0">
               <RequestRouteTrigger onClick={onRequestRoute} />
             </div>
           )}
         </div>
 
-        {isResponse && effectiveResponseTo && (
+        {isResponse && effectiveResponseTo && !isEditing && (
           <div className="mx-6 mt-4 flex items-start gap-3 px-4 py-3 bg-warning/10 border border-warning/30 radius-lg">
             <span className="mt-0.5 text-warning shrink-0" aria-hidden>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -590,6 +706,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
           </div>
         )}
 
+        {!isEditing && (
         <div className="mx-6 mt-4 border border-border radius-lg bg-bg-elevated">
           <button
             type="button"
@@ -616,6 +733,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
             </div>
           )}
         </div>
+        )}
 
         <div className="flex flex-col lg:flex-row overflow-y-auto flex-1">
           <div className="flex-1 p-4 sm:p-6 flex flex-col gap-5 overflow-y-auto">
@@ -921,6 +1039,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
 
         <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
           <div className="flex items-center gap-2 min-w-0">
+            {!isEditing && (
             <button
               type="button"
               onClick={() => setShowDrafts((open) => !open)}
@@ -931,18 +1050,30 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
               <History size={14} />
               {ROUTE_DRAFTS_CONFIG.panelToggleLabel} ({drafts.length})
             </button>
+            )}
             <span className="text-xs text-text-muted hidden md:inline truncate">{SHARE_ROUTE_MODAL_CONFIG.actionsNote}</span>
           </div>
           <div className="flex gap-2 ml-auto shrink-0">
-            <button onClick={saveDraft} className="inline-flex items-center gap-1.5 h-10 px-4 radius-md bg-transparent text-text-secondary border-none text-sm font-semibold cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast">
+            {!isEditing && (
+            <button
+              onClick={saveDraft}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-1.5 h-10 px-4 radius-md bg-transparent text-text-secondary border-none text-sm font-semibold cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast disabled:opacity-60 disabled:cursor-not-allowed"
+            >
               <Save size={14} />
               {ROUTE_DRAFTS_CONFIG.saveLabel}
             </button>
+            )}
             <button
               onClick={handleSubmit}
-              className="h-10 px-5 radius-md bg-primary text-text-inverse border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-all duration-fast"
+              disabled={isSubmitting || uploading}
+              aria-busy={isSubmitting}
+              className="inline-flex items-center justify-center gap-2 h-10 px-5 radius-md bg-primary text-text-inverse border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-all duration-fast disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isResponse ? "Post Response" : "Share Route"}
+              {isSubmitting && <Loader2 size={15} className="animate-spin" aria-hidden />}
+              {isSubmitting
+                ? (isEditing ? "Saving…" : isResponse ? POST_SUBMIT_CONFIG.responseSharingLabel : POST_SUBMIT_CONFIG.sharingLabel)
+                : (isEditing ? "Save changes" : isResponse ? POST_SUBMIT_CONFIG.responseShareLabel : POST_SUBMIT_CONFIG.shareLabel)}
             </button>
           </div>
         </div>

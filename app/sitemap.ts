@@ -19,12 +19,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const dynamicPages: MetadataRoute.Sitemap = [];
 
   try {
-    const posts = await prisma.post.findMany({
-      where: {},
-      select: { id: true, updatedAt: true },
-      orderBy: { updatedAt: "desc" },
-      take: 1000,
-    });
+    let posts: { id: string; updatedAt: Date }[];
+    try {
+      posts = await prisma.post.findMany({
+        where: { isArchived: false },
+        select: { id: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" },
+        take: 1000,
+      });
+    } catch {
+      // Moderation migration not applied yet — fall back to unfiltered list
+      posts = await prisma.post.findMany({
+        where: {},
+        select: { id: true, updatedAt: true },
+        orderBy: { updatedAt: "desc" },
+        take: 1000,
+      });
+    }
 
     for (const post of posts) {
       dynamicPages.push({

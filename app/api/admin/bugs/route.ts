@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       include: {
         reporter: { select: { id: true, firstName: true, lastName: true, userName: true, avatar: true } },
         reviewer: { select: { id: true, firstName: true, lastName: true, userName: true } },
+        post: { select: { id: true, title: true, userId: true } },
       },
       orderBy: { createdAt: "desc" },
       take: limit + 1,
@@ -39,6 +40,18 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- P2022-tolerant casts for the additive archive columns */
+function isMissingColumnError(error: unknown): boolean {
+  return error instanceof Error && ((error as any).code === "P2022" || (error as any).code === "P2010");
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+const OUTCOME_COPY: Record<string, string> = {
+  DISMISS: "Thanks for reporting — our team reviewed it and found no violation.",
+  ARCHIVE_POST: "Thanks for reporting — the post was hidden from feeds while under review.",
+  REMOVE_POST: "Thanks for reporting — the post was removed for violating community standards.",
+};
+
 export async function PATCH(request: NextRequest) {
   try {
     const user = await getUserFromRequest();
@@ -47,22 +60,88 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { bugId, status, reviewerId } = body;
+    const { bugId, status, reviewerId, action } = body;
 
     if (!bugId || !status) {
       return NextResponse.json({ error: "bugId and status required" }, { status: 400 });
     }
 
-    const data: Record<string, unknown> = { status };
-    if (reviewerId) data.reviewerId = reviewerId;
-    if (status === "RESOLVED" || status === "CLOSED") data.resolvedAt = new Date();
+    // Moderation action on the linked post (ACID: bug status + post change in
+    // one transaction). Reporter gets an outcome notification (MODERATION);
+    // neither the author nor the reporter ever learns the other's identity,
+    // and the acting admin's identity is never exposed to either party.
+    const validActions = ["DISMISS", "ARCHIVE_POST", "REMOVE_POST"] as const;
+    const moderating =
+      typeof action === "string" && (validActions as readonly string[]).includes(action);
 
-    await prisma.bugReport.update({
+    if (!moderating) {
+      const data: Record<string, unknown> = { status };
+      if (reviewerId) data.reviewerId = reviewerId;
+      if (status === "RESOLVED" || status === "CLOSED") data.resolvedAt = new Date();
+
+      await prisma.bugReport.update({
+        where: { id: bugId },
+        data: data as never,
+      });
+
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
+    const report = await prisma.bugReport.findUnique({
       where: { id: bugId },
-      data: data as never,
+      select: { id: true, postId: true, reporterId: true },
     });
+    if (!report) {
+      return NextResponse.json({ error: "Report not found" }, { status: 404 });
+    }
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    try {
+      await prisma.$transaction(async (tx) => {
+        if (action === "ARCHIVE_POST" && report.postId) {
+          await (tx.post.update as (...a: never[]) => Promise<unknown>)({
+            where: { id: report.postId },
+            data: { isArchived: true, archivedAt: new Date() },
+          } as never);
+        } else if (action === "REMOVE_POST" && report.postId) {
+          await tx.post.delete({ where: { id: report.postId } });
+        }
+        await tx.bugReport.update({
+          where: { id: bugId },
+          data: {
+            status: status as never,
+            reviewerId: (user.id as string) ?? undefined,
+            resolvedAt: new Date(),
+          },
+        });
+      });
+    } catch (e) {
+      if (isMissingColumnError(e) && action === "ARCHIVE_POST") {
+        return NextResponse.json(
+          { error: "Hiding posts is not available yet. Please try again shortly." },
+          { status: 503 }
+        );
+      }
+      throw e;
+    }
+
+    // Outcome notification to the reporter (non-critical; anonymity kept —
+    // message carries no admin or author identity).
+    try {
+      if (report.reporterId) {
+        const { createNotification } = await import("@/app/lib/services/notificationService");
+        await createNotification({
+          type: "MODERATION",
+          actorId: user.id as string,
+          postId: report.postId ?? undefined,
+          message: OUTCOME_COPY[action as string] ?? OUTCOME_COPY.DISMISS,
+          recipientIds: [report.reporterId],
+        });
+      }
+    } catch (e) {
+      console.error("[admin/bugs] outcome notification failed (non-critical):", e);
+    }
+
+    return NextResponse.json({ success: true, action }, { status: 200 });
   } catch (error) {
     console.error("Admin bug update error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

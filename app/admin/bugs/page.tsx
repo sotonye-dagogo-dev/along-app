@@ -1,8 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import React, { useState, useEffect } from "react"
-import { Bug } from "lucide-react"
+import React, { useState, useEffect, useMemo } from "react"
+import { Bug, Flag, ExternalLink } from "lucide-react"
+import { modalService } from "@/app/lib/services/modalService"
+import { toastService } from "@/app/lib/services/toastService"
+import { MODERATION_CONFIG } from "@/app/lib/config"
 
 interface AdminBug {
   id: string
@@ -11,6 +14,8 @@ interface AdminBug {
   category: string
   status: string
   createdAt: string
+  metadata?: { kind?: string; reason?: string; commentId?: string } | null
+  post?: { id: string; title: string; userId: string } | null
   reporter: { id: string; firstName: string; lastName: string; userName: string } | null
   reviewer: { id: string; firstName: string; lastName: string; userName: string } | null
 }
@@ -25,10 +30,17 @@ const statusColors: Record<string, string> = {
   CLOSED: "bg-bg-elevated text-text-muted",
 }
 
+const ACTION_CONFIRM: Record<string, { title: string; description: string }> = {
+  DISMISS: { title: "Dismiss this report?", description: "The report will be closed and the reporter notified of the outcome." },
+  ARCHIVE_POST: { title: MODERATION_CONFIG.adminConfirmArchiveTitle, description: MODERATION_CONFIG.adminConfirmArchiveDescription },
+  REMOVE_POST: { title: MODERATION_CONFIG.adminConfirmRemoveTitle, description: MODERATION_CONFIG.adminConfirmRemoveDescription },
+}
+
 export default function AdminBugsPage() {
   const [bugs, setBugs] = useState<AdminBug[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState("")
+  const [kindFilter, setKindFilter] = useState<"all" | "reports" | "bugs">("all")
 
   const load = async (status?: string) => {
     setLoading(true)
@@ -43,6 +55,13 @@ export default function AdminBugsPage() {
 
   useEffect(() => { load() }, [])
 
+  const visible = useMemo(() => {
+    if (kindFilter === "all") return bugs
+    return bugs.filter((b) =>
+      kindFilter === "reports" ? b.metadata?.kind === "post-report" : b.metadata?.kind !== "post-report"
+    )
+  }, [bugs, kindFilter])
+
   const handleStatusChange = async (bugId: string, status: string) => {
     try {
       const res = await fetch("/api/admin/bugs", {
@@ -55,6 +74,39 @@ export default function AdminBugsPage() {
     } catch (err) { console.error("[AdminError]", err) }
   }
 
+  /** End-to-end moderation: bug status + post action in one ACID transaction,
+   *  reporter notified of the outcome (anonymity kept both ways). */
+  const handleModeration = (bug: AdminBug, action: "DISMISS" | "ARCHIVE_POST" | "REMOVE_POST") => {
+    const confirm = ACTION_CONFIRM[action]
+    modalService.confirm({
+      title: confirm.title,
+      description: confirm.description,
+      variant: action === "DISMISS" ? "sensitive" : "destructive",
+      onConfirm: () => {
+        modalService.close()
+        void (async () => {
+          try {
+            const res = await fetch("/api/admin/bugs", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                bugId: bug.id,
+                status: action === "DISMISS" ? "CLOSED" : "RESOLVED",
+                action,
+              }),
+            })
+            if (!res.ok) throw new Error("Request failed")
+            toastService.success(MODERATION_CONFIG.adminActionSuccess)
+            load(statusFilter || undefined)
+          } catch (err) {
+            console.error("[AdminError]", err)
+            toastService.error(MODERATION_CONFIG.adminActionError)
+          }
+        })()
+      },
+    })
+  }
+
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
@@ -63,6 +115,16 @@ export default function AdminBugsPage() {
           <div className="text-sm text-text-secondary">Bug reports from users</div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <select
+            value={kindFilter}
+            onChange={(e) => setKindFilter(e.target.value as "all" | "reports" | "bugs")}
+            className="px-3 py-1.5 radius-md border border-border text-xs font-medium font-sans bg-bg-card text-text-primary cursor-pointer"
+            aria-label="Filter by kind"
+          >
+            <option value="all">Bugs + Reports</option>
+            <option value="reports">Post reports</option>
+            <option value="bugs">Bugs only</option>
+          </select>
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); load(e.target.value || undefined) }}
@@ -77,13 +139,15 @@ export default function AdminBugsPage() {
       <div className="flex flex-col gap-3">
         {loading ? (
           <div className="text-center py-8 text-text-muted">Loading...</div>
-        ) : bugs.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="text-center py-8 text-text-muted">No bugs found</div>
-        ) : bugs.map((bug) => (
+        ) : visible.map((bug) => {
+          const isReport = bug.metadata?.kind === "post-report"
+          return (
           <div key={bug.id} className="bg-bg-card border border-border radius-lg p-4 shadow-xs">
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Bug size={14} className="text-text-muted shrink-0" />
+                {isReport ? <Flag size={14} className="text-warning shrink-0" /> : <Bug size={14} className="text-text-muted shrink-0" />}
                 <h3 className="text-sm font-semibold">{bug.title}</h3>
               </div>
               <span className={`inline-flex px-2 py-0.5 radius-pill text-[10px] font-semibold ${statusColors[bug.status] ?? "bg-bg-elevated text-text-secondary"}`}>
@@ -91,26 +155,53 @@ export default function AdminBugsPage() {
               </span>
             </div>
             <p className="text-xs text-text-secondary mb-3 line-clamp-2">{bug.description}</p>
-            <div className="flex items-center justify-between">
+            {isReport && bug.post && (
+              <Link
+                href={`/posts/${bug.post.id}`}
+                className="mb-3 inline-flex items-center gap-1.5 text-xs font-medium text-primary no-underline hover:underline"
+              >
+                <ExternalLink size={12} />
+                View reported post: {bug.post.title.slice(0, 60)}
+              </Link>
+            )}
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="text-[10px] text-text-muted">
                 Reported by {bug.reporter ? <Link href={`/profile/${bug.reporter.userName}`} className="no-underline hover:underline text-text-secondary">{bug.reporter.firstName} {bug.reporter.lastName}</Link> : "Anonymous"} &middot; {new Date(bug.createdAt).toLocaleDateString()}
               </div>
-              <div className="flex gap-1">
-                {STATUS_OPTIONS.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => handleStatusChange(bug.id, s)}
-                    className={`px-2 py-0.5 radius-sm text-[10px] font-semibold border-none cursor-pointer transition-all duration-fast ${
-                      bug.status === s ? "bg-primary text-text-inverse" : "bg-bg-elevated text-text-secondary hover:bg-bg-elevated"
-                    }`}
-                  >
-                    {s.replace("_", " ")}
-                  </button>
-                ))}
+              <div className="flex gap-1 flex-wrap">
+                {isReport && bug.post && bug.status !== "RESOLVED" && bug.status !== "CLOSED" ? (
+                  MODERATION_CONFIG.adminActions.map((a) => (
+                    <button
+                      key={a.value}
+                      title={a.description}
+                      onClick={() => handleModeration(bug, a.value)}
+                      className={`px-2 py-0.5 radius-sm text-[10px] font-semibold border-none cursor-pointer transition-all duration-fast ${
+                        a.value === "REMOVE_POST"
+                          ? "bg-error text-error-text hover:bg-error-text hover:text-text-inverse"
+                          : "bg-bg-elevated text-text-secondary hover:bg-primary-muted hover:text-primary"
+                      }`}
+                    >
+                      {a.label}
+                    </button>
+                  ))
+                ) : (
+                  STATUS_OPTIONS.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => handleStatusChange(bug.id, s)}
+                      className={`px-2 py-0.5 radius-sm text-[10px] font-semibold border-none cursor-pointer transition-all duration-fast ${
+                        bug.status === s ? "bg-primary text-text-inverse" : "bg-bg-elevated text-text-secondary hover:bg-bg-elevated"
+                      }`}
+                    >
+                      {s.replace("_", " ")}
+                    </button>
+                  ))
+                )}
               </div>
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </>
   )

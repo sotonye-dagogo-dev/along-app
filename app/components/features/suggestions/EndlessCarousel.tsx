@@ -23,9 +23,11 @@ const CARD_GAP_CLASS = "mr-3"
  * duplicated `w-max` track. Autoplay advances `viewport.scrollLeft` via
  * rAF and wraps by half the track width, so a user can freely scroll or
  * drag to any point forward/backward and the animation simply continues
- * from the landed position instead of snapping back. Pauses on
- * hover/focus/drag/hidden-tab and honours prefers-reduced-motion with a
- * plain horizontal scroller.
+ * from the landed position instead of snapping back. The item set repeats
+ * (`repeat`, capped by config) until one half overflows the viewport, so the
+ * tape keeps moving even with very few cards. Hover-pause is mouse-only
+ * (touch taps must not stall autoplay). Pauses on focus/drag/hidden-tab
+ * and honours prefers-reduced-motion with a plain horizontal scroller.
  */
 export function EndlessCarousel({
   items,
@@ -43,6 +45,9 @@ export function EndlessCarousel({
   })
   const [reducedMotion, setReducedMotion] = useState(false)
   const [dragging, setDragging] = useState(false)
+  // Repeat count inside each track half: guarantees the tape overflows the
+  // viewport (so scrollLeft autoplay is visible) even with very few cards.
+  const [repeat, setRepeat] = useState(1)
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -51,6 +56,23 @@ export function EndlessCarousel({
     mq.addEventListener("change", update)
     return () => mq.removeEventListener("change", update)
   }, [])
+
+  // Fresh item set → start from a single copy, then grow below if needed.
+  useEffect(() => {
+    setRepeat(1)
+  }, [items.length])
+
+  // Grow the tape until one half exceeds the viewport width (or the cap).
+  // Without this, 1–2 cards render narrower than the viewport, scrollLeft
+  // maxes out at 0, and autoplay appears "stuck" — the reported regression.
+  useEffect(() => {
+    if (reducedMotion) return
+    const viewport = viewportRef.current
+    if (!viewport || viewport.clientWidth === 0) return
+    if (viewport.scrollWidth / 2 <= viewport.clientWidth && repeat < ENDLESS_CAROUSEL_CONFIG.maxRepeat) {
+      setRepeat((r) => r + 1)
+    }
+  }, [reducedMotion, repeat, items.length])
 
   useEffect(() => {
     if (reducedMotion || items.length === 0) return
@@ -68,7 +90,10 @@ export function EndlessCarousel({
     }
     const resumeSoon = () => pause(ENDLESS_CAROUSEL_CONFIG.resumeDelayMs)
 
-    const onPointerEnter = () => {
+    const onPointerEnter = (e: PointerEvent) => {
+      // Touch taps fire pointerenter without a matching pointerleave — pausing
+      // on them stalled autoplay until the next scroll. Hover-pause is mouse-only.
+      if (e.pointerType !== "mouse") return
       if (ENDLESS_CAROUSEL_CONFIG.pauseOnHover && !dragState.current.active) pause()
     }
     const onPointerLeave = () => {
@@ -189,16 +214,20 @@ export function EndlessCarousel({
         tabIndex={0}
       >
         <div className={ENDLESS_CAROUSEL_CONFIG.trackClass}>
-          {items.map((item, i) => (
-            <div key={`a-${i}`} className={`shrink-0 ${CARD_GAP_CLASS}`}>
-              {item}
-            </div>
-          ))}
-          {items.map((item, i) => (
-            <div key={`b-${i}`} className={`shrink-0 ${CARD_GAP_CLASS}`} aria-hidden="true">
-              {item}
-            </div>
-          ))}
+          {Array.from({ length: repeat }).flatMap((_, r) =>
+            items.map((item, i) => (
+              <div key={`a-${r}-${i}`} className={`shrink-0 ${CARD_GAP_CLASS}`}>
+                {item}
+              </div>
+            ))
+          )}
+          {Array.from({ length: repeat }).flatMap((_, r) =>
+            items.map((item, i) => (
+              <div key={`b-${r}-${i}`} className={`shrink-0 ${CARD_GAP_CLASS}`} aria-hidden="true">
+                {item}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

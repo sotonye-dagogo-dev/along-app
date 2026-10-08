@@ -220,7 +220,15 @@ function SearchContent() {
           <section aria-label="Routes" className="flex flex-col gap-3">
             {tab === "all" && <h2 className="text-sm font-semibold text-text-secondary">Routes</h2>}
             {data.posts.map((post) => (
-              <PostCard key={post.id} post={post as never} />
+              <PostCard
+                key={post.id}
+                post={post as never}
+                onDeleted={(postId) => setData((prev) => (prev ? { ...prev, posts: prev.posts.filter((p) => p.id !== postId) } : prev))}
+                onRestored={() => {}}
+                onArchivedChanged={(postId, archived) => {
+                  if (archived) setData((prev) => (prev ? { ...prev, posts: prev.posts.filter((p) => p.id !== postId) } : prev))
+                }}
+              />
             ))}
           </section>
         )}

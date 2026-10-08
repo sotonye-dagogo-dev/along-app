@@ -67,7 +67,14 @@ interface NewPostPayload {
   endLat?: number
   endLng?: number
   waypoints?: { lat: number; lng: number }[]
+  /** Idempotency key for this composer session — dedups double-clicks/retries. */
+  clientMutationId?: string
 }
+
+// In-flight POST /api/posts dedup: a second submit carrying the same
+// clientMutationId while the first is unresolved is ignored (the modal's
+// disabled button is the first layer; this is the second).
+const inflightPostKeys = new Set<string>()
 
 function HomeContent() {
   const [posts, setPosts] = useState<FeedPost[]>([])
@@ -77,6 +84,7 @@ function HomeContent() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [respondTo, setRespondTo] = useState<RespondToRequest | null>(null)
+  const [editPost, setEditPost] = useState<FeedPost | null>(null)
   const [draftsCount, setDraftsCount] = useState(0)
   const [openDraftsOnShare, setOpenDraftsOnShare] = useState(false)
   const loaderRef = useRef<HTMLDivElement>(null)
@@ -119,6 +127,7 @@ function HomeContent() {
   const closeShareModal = useCallback(() => {
     setShowShareModal(false)
     setRespondTo(null)
+    setEditPost(null)
     setOpenDraftsOnShare(false)
   }, [])
 
@@ -272,11 +281,20 @@ function HomeContent() {
 
   /** Shared POST /api/posts handler — returns false on failure so modals stay open. */
   const submitPost = async (data: NewPostPayload): Promise<boolean> => {
+    const { clientMutationId, ...body } = data
+    // Second layer of double-submit protection (first layer: disabled button
+    // + guard in the modal). Same key in flight → ignore the duplicate.
+    if (clientMutationId && inflightPostKeys.has(clientMutationId)) return false
+    if (clientMutationId) inflightPostKeys.add(clientMutationId)
     try {
+      const { POST_SUBMIT_CONFIG } = await import("@/app/lib/config/postSubmit")
       const res = await fetch("/api/posts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        headers: {
+          "Content-Type": "application/json",
+          ...(clientMutationId ? { [POST_SUBMIT_CONFIG.idempotencyHeader]: clientMutationId } : {}),
+        },
+        body: JSON.stringify(body),
       })
       let payload: { error?: string; message?: string; details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] }; post?: unknown } = {}
       try {
@@ -305,13 +323,49 @@ function HomeContent() {
       const { toastService } = await import("@/app/lib/services/toastService")
       toastService.error("Network error. Please check your connection and try again.")
       return false
+    } finally {
+      if (clientMutationId) inflightPostKeys.delete(clientMutationId)
     }
   }
 
   const handleRespond = (post: { id: string; title: string; tags?: string[]; user?: RespondToRequest["user"] }) => {
     setRespondTo({ id: post.id, title: post.title, tags: post.tags ?? [], user: post.user ?? undefined })
+    setEditPost(null)
     setShowShareModal(true)
   }
+
+  /** Owner picked Edit on a card — open the composer prefilled (PATCH on submit). */
+  const handleEditPost = useCallback((post: FeedPost) => {
+    setRespondTo(null)
+    setEditPost(post)
+    setShowShareModal(true)
+  }, [])
+
+  const handleEditSubmit = useCallback(async (postId: string, data: Record<string, unknown>): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/posts/${postId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) return false
+      const payload = await res.json().catch(() => null)
+      const updated = payload?.post
+      if (updated) {
+        feedStream.updatePost(postId, {
+          title: updated.title,
+          routes: updated.routes,
+          images: updated.images,
+          tags: updated.tags,
+        })
+      } else {
+        await refreshFeed()
+      }
+      return true
+    } catch {
+      return false
+    }
+  }, [])
 
   const initials = user
     ? `${(user.firstName as string)?.[0] ?? ""}${(user.lastName as string)?.[0] ?? ""}`.toUpperCase()
@@ -385,6 +439,13 @@ function HomeContent() {
               onBookmark={handleBookmark}
               onComment={handleComment}
               onRespond={handleRespond}
+              onEdit={handleEditPost as never}
+              onDeleted={(postId) => feedStream.removePost(postId)}
+              onRestored={() => void refreshFeed()}
+              onArchivedChanged={(postId, archived) => {
+                if (archived) feedStream.removePost(postId)
+                else void refreshFeed()
+              }}
             />
           ))
         ) : loading ? (
@@ -412,6 +473,8 @@ function HomeContent() {
         startWithDraftsOpen={openDraftsOnShare}
         onSubmit={async (data) => submitPost(data)}
         onRequestRoute={openRequestFromShare}
+        editPost={editPost as never}
+        onEditSubmit={handleEditSubmit}
       />
 
       <RequestRouteModal

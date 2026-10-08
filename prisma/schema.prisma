@@ -144,6 +144,11 @@ model Post {
   isPlatformGen   Boolean  @default(false)
   views           Int      @default(0)
   shares          Int      @default(0)
+  // Soft-archive (non-breaking additive): archived posts are hidden from
+  // feeds/explore/search but remain viewable by owner/admin and restorable.
+  // Comments are not archivable (they are not standalone posts).
+  isArchived      Boolean  @default(false)
+  archivedAt      DateTime?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -170,6 +175,7 @@ model Post {
   @@index([endLat, endLng])
   @@index([createdAt(sort: Desc)])
   @@index([tags])
+  @@index([isArchived])
 }
 
 // Post type discriminator: ROUTE = normal shared route, ROUTE_REQUEST = a user
@@ -272,6 +278,12 @@ enum NotificationType {
   REWARD
   BADGE
   VERIFIED
+  // Moderation/report lifecycle (non-breaking additive enum values).
+  // REPORT notifies admins (and confirms receipt to the reporter);
+  // MODERATION notifies the reporter of the outcome. Reporter identity is
+  // never exposed to the reported author (anonymity maintained server-side).
+  REPORT
+  MODERATION
 }
 
 // NotificationRecipient Model (Many-to-many between Notification and User)

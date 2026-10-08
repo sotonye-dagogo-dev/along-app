@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 posting/UX tightening close-out)
-> - last-verified-against-code: 2026-10-08 (33 configs, 15 test suites / 149 tests, Sprint 11: share-description fix, toast single-timer, post report/copy-link, reviews on EndlessCarousel)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 moderation close-out)
+> - last-verified-against-code: 2026-10-08 (35 config files incl. moderation.ts, 8 migrations incl. 20261008000000_post_moderation, 17 test suites / 160 tests, new moderation/ components + /api/reports)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -36,7 +36,7 @@ along-app/
 │
 ├── prisma/                  → Database layer
 │   ├── schema.prisma        → 17 models, 9 enums, indexes
-│   ├── migrations/          → 7 applied migrations
+│   ├── migrations/          → 8 migrations (incl. 20261008000000_post_moderation: Post.isArchived/archivedAt + NotificationType REPORT/MODERATION)
 │   └── seed.ts              → Development seed data (idempotent, upsert by title)
 │
 ├── public/                  → Static assets
@@ -86,12 +86,12 @@ along-app/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
 │   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
-│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel, profile, explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
+│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel/ShareRouteModal edit mode, moderation [PostMenu, ReportDialog], profile, explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
-│   │   ├── services/        → 17 OOP services (feed, search, routeDrafts, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
+│   │   ├── services/        → 18 OOP services (feed, search, routeDrafts, postModeration, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
 │   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth
-│   │   ├── config/          → 33 config registry files (incl. reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, footer layout)
+│   │   ├── config/          → 34 config registries + index.ts (incl. reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation, footer layout)
 │   │   ├── db/              → Database layer (prisma.ts, redis.ts)
 │   │   ├── hooks/           → Server-compatible custom React hooks
 │   │   ├── schemas/         → Zod validation schemas
@@ -130,7 +130,7 @@ along-app/
 | --------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | `ai-system/`    | AI development orchestration — agent instructions, plans, protocols, designs   | `protocols/entry-protocol.md`, `planning/task-queue.md`, `designs/*.html`          |
 | `.github/`      | GitHub CI and project documentation                                            | `workflows/ci.yml`, `plan.md`, `project-context.md`                                |
-| `prisma/`       | Database schema, migrations, and seed data                                     | `schema.prisma` (17 models, 9 enums incl. PostType + extended NotificationType), `seed.ts` (idempotent), `migrations/` (7) |
+| `prisma/`       | Database schema, migrations, and seed data                                     | `schema.prisma` (17 models, 9 enums incl. PostType + extended NotificationType), `seed.ts` (idempotent), `migrations/` (8) |
 | `scripts/`      | Seed backup/clear/restore tooling (manual-only, seed-markers only)             | `backup-seed-data.ts`, `clear-seed-data.ts`, `restore-seed-backup.ts`          |
 | `public/`       | Static assets served at root path                                              | `sw.js` (service worker), `manifest.json`, `offline.html`                          |
 | `app/`          | Next.js App Router pages, API routes, components, providers, config registries | `layout.tsx`, `globals.css`, `providers/`, `api/`, `components/ui/`, `lib/config/` |

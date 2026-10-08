@@ -150,6 +150,8 @@ export const PostScalarFieldEnum = {
   isPlatformGen: 'isPlatformGen',
   views: 'views',
   shares: 'shares',
+  isArchived: 'isArchived',
+  archivedAt: 'archivedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

@@ -37,25 +37,40 @@ interface FeedOptions {
   limit?: number;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any -- Prisma client cast workarounds: optional columns (avatarConfig) may be absent on older generated clients; casts keep the P2022 fallback path compiling */
+/* eslint-disable @typescript-eslint/no-explicit-any -- Prisma client cast workarounds: optional columns (avatarConfig, isArchived) may be absent on older generated clients; casts keep the P2022 fallback path compiling */
 function isMissingColumnError(error: unknown): boolean {
   return error instanceof Error && ((error as any).code === "P2022" || error.name === "PrismaClientKnownRequestError" && (error as any).code === "P2022");
 }
 
+/** Archived posts never surface in feeds (owner/admin can still open them by link). */
+function withVisibleFilter(where: any): any {
+  if (!where || typeof where !== "object" || "isArchived" in where) return where;
+  return { ...where, isArchived: false };
+}
+
 async function safeFindManyPosts(args: Parameters<typeof prisma.post.findMany>[0]): Promise<any[]> {
+  const filteredArgs = { ...(args as any), where: withVisibleFilter((args as any)?.where) };
   try {
-    return await (prisma.post.findMany as any)(args);
+    return await (prisma.post.findMany as any)(filteredArgs);
   } catch (error) {
-    if (isMissingColumnError(error) && (args as any)?.include?.user?.select?.avatarConfig) {
-      // Retry without avatarConfig — production DB may not yet have this column if migration not applied
+    if (isMissingColumnError(error)) {
+      // Retry without the additive columns — production DB may not yet have
+      // them if the moderation migration has not applied.
+      const { isArchived: _drop, ...restWhere } = (filteredArgs as any)?.where ?? {};
+      void _drop;
       const fallbackArgs = {
-        ...args,
-        include: {
-          ...(args as any).include,
-          user: {
-            select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
-          },
-        },
+        ...filteredArgs,
+        ...(Object.keys(restWhere).length > 0 || (args as any)?.where ? { where: restWhere } : {}),
+        ...((filteredArgs as any)?.include?.user?.select?.avatarConfig
+          ? {
+              include: {
+                ...(filteredArgs as any).include,
+                user: {
+                  select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
+                },
+              },
+            }
+          : {}),
       };
       return await (prisma.post.findMany as any)(fallbackArgs);
     }

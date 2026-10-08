@@ -4,6 +4,14 @@ import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { CREATE_POST_SCHEMA } from "@/app/lib/schemas/post";
 import { validityEngine } from "@/app/lib/services/ValidityEngine";
 import { qstashService } from "@/app/lib/services/qstashService";
+import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit";
+import { idempotencyService } from "@/app/lib/services/idempotencyService";
+
+const POST_AUTHOR_INCLUDE = {
+  user: {
+    select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
+  },
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,7 +46,32 @@ export async function POST(request: NextRequest) {
 
     const { title, routes, images, tags, region, startLat, startLng, endLat, endLng, totalDistanceKm, estimatedMins, type, description, quotedPostId } = parsed.data;
 
-    // Validate quote target before creating (responses must quote an existing post)
+    // Idempotency (ACID double-submit protection): the composer sends one
+    // `clientMutationId` per editing session. A replayed key returns the
+    // original post instead of inserting a second row. The header read is
+    // defensive so non-standard request shapes never break posting.
+    const idempotencyKey =
+      typeof request.headers?.get === "function"
+        ? (request.headers.get(POST_SUBMIT_CONFIG.idempotencyHeader) ?? "")
+        : "";
+    let claimedKey = false;
+    if (idempotencyKey.trim()) {
+      const replayId = idempotencyService.replayOf(idempotencyKey);
+      if (replayId) {
+        const existing = await prisma.post.findUnique({ where: { id: replayId }, include: POST_AUTHOR_INCLUDE });
+        if (existing) {
+          return NextResponse.json({ post: existing, deduplicated: true }, { status: 200 });
+        }
+      }
+      if (!idempotencyService.claim(idempotencyKey)) {
+        return NextResponse.json(
+          { error: "This post is already being published. Please wait a moment." },
+          { status: 409 }
+        );
+      }
+      claimedKey = true;
+    }
+
     let quotedAuthorId: string | null = null;
     if (quotedPostId) {
       const quoted = await prisma.post.findUnique({
@@ -46,37 +79,14 @@ export async function POST(request: NextRequest) {
         select: { userId: true },
       });
       if (!quoted) {
+        if (claimedKey) idempotencyService.release(idempotencyKey);
         return NextResponse.json({ error: "The quoted post no longer exists." }, { status: 400 });
       }
       quotedAuthorId = quoted.userId;
     }
 
-    const post = await prisma.post.create({
-      data: {
-        userId: user.id as string,
-        title,
-        type,
-        description: description ?? null,
-        quotedPostId: quotedPostId ?? null,
-        routes: routes as never,
-        images: images ?? [],
-        tags: tags ?? [],
-        region: region ?? null,
-        startLat: startLat ?? null,
-        startLng: startLng ?? null,
-        endLat: endLat ?? null,
-        endLng: endLng ?? null,
-        totalDistanceKm: totalDistanceKm ?? null,
-        estimatedMins: estimatedMins ?? null,
-      },
-      include: {
-        user: {
-          select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
-        },
-      },
-    });
-
-    // Calculate initial validity score
+    // Score first so the insert below is a single atomic write (no
+    // create-then-update window where a retry could double-insert).
     const validityResult = await validityEngine.evaluate({
       likes: 0,
       dislikes: 0,
@@ -85,10 +95,36 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
     });
 
-    await prisma.post.update({
-      where: { id: post.id },
-      data: { validityScore: validityResult.score, validityTier: validityResult.tier },
-    });
+    let post;
+    try {
+      post = await prisma.post.create({
+        data: {
+          userId: user.id as string,
+          title,
+          type,
+          description: description ?? null,
+          quotedPostId: quotedPostId ?? null,
+          routes: routes as never,
+          images: images ?? [],
+          tags: tags ?? [],
+          region: region ?? null,
+          startLat: startLat ?? null,
+          startLng: startLng ?? null,
+          endLat: endLat ?? null,
+          endLng: endLng ?? null,
+          totalDistanceKm: totalDistanceKm ?? null,
+          estimatedMins: estimatedMins ?? null,
+          validityScore: validityResult.score,
+          validityTier: validityResult.tier,
+        },
+        include: POST_AUTHOR_INCLUDE,
+      });
+    } catch (e) {
+      // Creation failed — release the key so a user retry can go through.
+      if (claimedKey) idempotencyService.release(idempotencyKey);
+      throw e;
+    }
+    if (claimedKey) idempotencyService.complete(idempotencyKey, post.id);
 
     // Invalidate author's own feed cache immediately as well as followers (fire-and-forget with error swallow inside service)
     qstashService.publishRewardsAward({ userId: user.id as string, actionKey: "CREATE_POST" });
@@ -126,7 +162,7 @@ export async function POST(request: NextRequest) {
       await redis.del(CACHE_KEYS.feed(user.id as string));
     } catch { /* non-critical */ }
 
-    return NextResponse.json({ post: { ...post, validityScore: validityResult.score, validityTier: validityResult.tier } }, { status: 201 });
+    return NextResponse.json({ post }, { status: 201 });
   } catch (error) {
     console.error("Create post error:", error);
     if (error instanceof SyntaxError) {
@@ -158,6 +194,16 @@ export async function GET(request: NextRequest) {
     if (likedBy) where.postLikes = { some: { userId: likedBy, type: "LIKE" } };
     if (bookmarkedBy) where.postBookmarks = { some: { userId: bookmarkedBy } };
 
+    // Archived posts stay hidden from public listings. Exception: an owner
+    // browsing their own profile (?userId=self) still sees them for restore.
+    let viewerId: string | null = null;
+    try {
+      const viewer = await getUserFromRequest();
+      viewerId = (viewer?.id as string | undefined) ?? null;
+    } catch { viewerId = null; }
+    const ownerView = !!userId && !!viewerId && userId === viewerId;
+    if (!ownerView) where.isArchived = false;
+
     const fetchArgs = {
       ...(Object.keys(where).length > 0 ? { where } : {}),
       take: limit + 1,
@@ -176,8 +222,13 @@ export async function GET(request: NextRequest) {
     } catch (e) {
       const isP2022 = e instanceof Error && ((e as unknown as { code?: string }).code === "P2022" || e.name === "PrismaClientKnownRequestError");
       if (isP2022) {
+        // Strip additive columns (avatarConfig select, isArchived filter) so
+        // reads keep working if the moderation migration has not applied yet.
+        const { isArchived: _drop, ...restWhere } = (fetchArgs as { where?: Record<string, unknown> }).where ?? {};
+        void _drop;
         const fallbackArgs = {
           ...fetchArgs,
+          ...((fetchArgs as { where?: unknown }).where ? { where: restWhere } : {}),
           include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } } },
         };
         posts = await (prisma.post.findMany as unknown as (args: typeof fallbackArgs) => Promise<unknown[]>)(fallbackArgs);

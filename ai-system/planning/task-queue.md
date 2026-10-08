@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
-> - last-verified-against-code: 2026-10-08 (Sprint 11 rows verified present in code + full QA gate green in-runner: tsc 0, jest 149/149, build clean)
-> - last-synced: 2026-10-08 (Sprint 11 posting fix + response/draft linkage + toast/report/carousel — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
+> - last-verified-against-code: 2026-10-08 (Sprint 13 rows verified present in code + full QA gate green in-runner: tsc 0, jest 160/160, build clean)
+> - last-synced: 2026-10-08 (Sprint 13 post/comment moderation + report lifecycle + request display rules + trust tooltip — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -244,6 +244,37 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Undo-toast single timer (`TOAST_CONFIG`, duration pass-through, per-toast remount) | [x] |
 | [S] | Post actions — working Copy link + Report dialog (`POST_ACTIONS_CONFIG`, linked bug-reports) | [x] |
 | [S] | About reviews on shared `EndlessCarousel` (same wrapper/animation as home) | [x] |
+
+---
+
+## Sprint 12 — Posting Hardening + Viewer/Carousel Fixes (2026-10-08, execute-feature)
+
+> **Section summary:** Directive iron-out items, non-breaking (no migration, no new deps). QA full in-runner: tsc 0 errors, jest 16 suites / 154 tests pass, next build clean, lint clean for touched files (2 pre-existing warnings in untouched code paths).
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Share-route submit guard — `isSubmitting` state, disabled Share/Save buttons, spinner feedback, re-entry guard (config labels in `POST_SUBMIT_CONFIG`); RequestRouteModal spinner icon | [x] |
+| [M] | Posting ACID/idempotency E2E — per-session `clientMutationId`, in-flight dedup in `submitPost`, `X-Idempotency-Key` header, atomic single-statement create (validity precomputed), server replay-or-409 via TTL `idempotencyService` | [x] |
+| [S] | Like/dislike undo-toast removal — post detail `handleLike` no longer registers undo (bookmark undo kept) | [x] |
+| [S] | ImageLightbox rewrite — state-owned index (no DOM src mutation), ArrowLeft/Right keys, accurate `n / total` counter, re-sync on thumbnail change | [x] |
+| [S] | EndlessCarousel autoplay fix — mouse-only hover pause (touch taps no longer stall), item-set `repeat` (cap `maxRepeat`) so the tape overflows with few cards | [x] |
+| [S] | Tests — `__tests__/config/postSubmit.test.ts` (5 suites: config, claim/replay, release, blank keys, carousel repeat) | [x] |
+
+---
+
+## Sprint 13 — Post/Comment Moderation + Report Lifecycle + Request Display Rules (2026-10-08, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive migration with P2022-tolerant reads, no removed APIs). QA full in-runner: tsc 0 errors, jest 17 suites / 160 tests pass, next build clean, lint clean for touched files.
+
+| Size | Task | Status |
+|------|------|--------|
+| [L] | Post/comment management — owner edit (ShareRouteModal edit mode → PATCH), delete + archive/unarchive via global confirm modal + global undo toast (`postModerationService`, snapshot-restore replay); admin delete/archive on any post or comment (identity never revealed) | [x] |
+| [L] | Report E2E — dedicated `POST /api/reports` (ACID dedup transaction, 409 on duplicate), receipt notification to reporter + triage notification to admins (REPORT), admin Dismiss/Hide/Remove actions in one transaction with outcome notification (MODERATION); anonymity kept both ways; Bugs/Reports filter tab in admin | [x] |
+| [M] | Shared `PostMenu` + `ReportDialog` (moderation/) on feed cards AND individual post views (copy link, report, edit, archive, delete) | [x] |
+| [M] | Route-request display rules — no map, no navigation guide, no trust score (`MODERATION_CONFIG.routeRequestHides`); responses listed comment-style with links on expanded request view; API returns `responses`/`responsesCount` | [x] |
+| [S] | TrustBadge viewport fix — fixed-position tooltip, clamped horizontally, flips below when no room above, click toggle + Escape | [x] |
+| [S] | Archive filtering — `isArchived` excluded from feed/guest/search/suggestions/sitemap (P2022-tolerant fallbacks); owner-profile self view + direct link (owner/admin) still resolve | [x] |
+| [S] | Tests — `__tests__/post-moderation.test.ts` (config registry, admin roles, hide rules, notification types); `posts.test.ts` guest expectation updated to archived-exclusion | [x] |
 
 ---
 
