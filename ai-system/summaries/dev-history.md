@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: fix-build 2026-09-15
-> - last-verified-against-code: 2026-09-15
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -401,3 +401,59 @@ Fixed 504 `FUNCTION_INVOCATION_TIMEOUT` on `POST /api/auth/forgot-password` caus
 
 **Next Sprint Focus:**
 Same as above plus rotation of `UPSTASH_REDIS_REST_URL` env var in Vercel from `willing-gazelle-101748.upstash.io` (ENOTFOUND) to valid instance.
+
+---
+
+## 2026-09-16 — Fix-Build: False-Positive Reset Email (no Resend delivery)
+
+**Summary:**
+Forgot-password returned success while Resend never sent anything — no mail, no failure, no Vercel error, only an OTP-store Redis-timeout warning. Root cause was fire-and-forget email with no send-result verification. Fixed by checking the Resend send result and surfacing failure honestly instead of a false success toast.
+
+**Completed:**
+- `app/lib/services/emailService.ts` — verify Resend send result before reporting success
+- Forgot-password flow no longer claims "mail sent" when delivery failed
+
+**Key Changes:**
+- Background email must verify provider result — a false success is worse than an error because the user waits for mail that never arrives
+
+**Next Sprint Focus:**
+Reset-link "expired/invalid" reports; live map tracking; carto basemap key; auth provider linking.
+
+---
+
+## 2026-09-29 — Fix-Build: Durable DB Reset Tokens ("link expired" false negatives)
+
+**Summary:**
+Reset links reported "expired or invalid" within seconds of delivery. Root cause: tokens lived in the Redis/in-memory OTP store subject to timeout fallback and multi-instance loss. Fixed with a durable `PasswordResetToken` Prisma model — reset tokens now persist in Postgres with expiry, independent of cache state. Also shipped alongng.com domain reference updates.
+
+**Completed:**
+- `PasswordResetToken` model + migration — durable reset tokens with expiry
+- Forgot/reset-password routes read tokens from DB instead of volatile OTP store
+- Domain references updated from along.app to alongng.com
+
+**Key Changes:**
+- Security tokens must be durable, not cache-resident — cache is best-effort by policy (timeout + memory fallback)
+
+**Next Sprint Focus:**
+Sprint 7 execute-feature (route requests E2E, caching, seed hygiene).
+
+---
+
+## 2026-10-07/08 — Sprint 7: Route Requests E2E, Caching, Seed Hygiene, Responsive (execute-feature + resume-session QA)
+
+**Summary:**
+Full Sprint 7 workstream A–H delivered: seed backup/clear/restore scripts + `db:*` package scripts with dead mock-api removal and idempotent seed; welcome notification on signup + notification type registry; collapsible live route preview with debounced trace + location autofill; client `memoryCache` + `useCachedFetch` wired across home/notifications/analytics/post/profile/explore with feedStream hydration + hidden-tab pause and server CACHE_KEYS slots with write invalidation; route requests E2E (PostType enum, quotedPost self-relation, fan-out, /api/suggestions, RequestRouteModal, Respond CTA + quote block, response-mode ShareRouteModal); EndlessCarousel + mobile SuggestionsRail + live SuggestionsPanel with mock EVENTS removed; landing preview = latest real posts, About reviews → SITE_REVIEWS config; scroll-aware new-posts prompt; analytics + project-wide responsive sweep; posting E2E verification; per-tab profile filtering + /api/bookmarks; state-strategy decision (no redux); mutation E2E tests + error hardening. QA gate green: tsc 0 errors (removed deleted `downlevelIteration` tsconfig option), lint warnings-only, jest 122/122 across 11 suites, next build clean.
+
+**Completed:**
+- Sprints A–D (seed hygiene, welcome notification, live preview + autofill, client/server caching)
+- Sprint E1 (route requests E2E) + E2 (carousel, rails, live suggestions, mock cleanup)
+- Sprint F (scroll-aware prompt), G (analytics/responsive), H1–H4 (posting E2E, profile tabs, state review, mutation tests)
+- QA gate + task-queue/in-progress reconciliation (drift was MINOR — code already contained the work; pointers were stale)
+
+**Key Changes:**
+- Prisma: `Post.type`/`description`/`quotedPostId` + extended `NotificationType`; migration `20261007114036_route_requests_and_welcome_notifications`
+- New: `GET /api/suggestions`, `GET /api/bookmarks`, `RequestRouteModal`, `EndlessCarousel`/`SuggestionsRail`/`FollowButton`, `memoryCache`/`useCachedFetch`, `scripts/` tooling
+- State strategy formally decided: keep memoryCache/useCachedFetch/feedStream, no redux (see project-decisions.md)
+
+**Next Sprint Focus:**
+Live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration — per backlog.

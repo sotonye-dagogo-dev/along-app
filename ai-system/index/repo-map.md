@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: fix-build 2026-09-15
-> - last-verified-against-code: 2026-09-15
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -35,9 +35,9 @@ along-app/
 │   └── summaries/           → Previous development phase summaries
 │
 ├── prisma/                  → Database layer
-│   ├── schema.prisma        → 14 models, 8 enums, indexes
-│   ├── migrations/          → 3 applied migrations
-│   └── seed.ts              → Development seed data
+│   ├── schema.prisma        → 17 models, 9 enums, indexes
+│   ├── migrations/          → 7 applied migrations
+│   └── seed.ts              → Development seed data (idempotent, upsert by title)
 │
 ├── public/                  → Static assets
 │   ├── sw.js                → Custom service worker (PWA)
@@ -63,6 +63,8 @@ along-app/
 │   │   │   └── [slug]/      → Blog post detail page
 │   ├── api/                 → REST API routes
 │   │   ├── upload/          → Image upload (Cloudinary multipart)
+│   │   ├── suggestions/     → GET ordered suggestions (route requests → routes → accounts, 1800s cache)
+│   │   ├── bookmarks/       → GET/POST bookmark list + toggle (per-tab profile filtering)
 │   │   ├── push/            → Push notification API
    │   │   │   ├── subscribe/   → POST: subscribe to push
    │   │   │   ├── unsubscribe/ → POST: unsubscribe from push
@@ -82,11 +84,13 @@ along-app/
 │   │   │   ├── rewards/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
-│   │   ├── ui/              → 34 App* universal component wrappers
-   │   │   └── features/        → Domain-specific components (comments, posts, profile, explore, events [frozen])
+│   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
+│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal, profile, explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
-│   │   ├── services/        → 11 OOP services (feed, push sub, QStash, rewards, etc.)
-│   │   ├── config/          → 25 config registry files
+│   │   ├── services/        → 15 OOP services (feed, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
+│   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
+│   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth
+│   │   ├── config/          → 27 config registry files (incl. reviews/SITE_REVIEWS)
 │   │   ├── db/              → Database layer (prisma.ts, redis.ts)
 │   │   ├── hooks/           → Server-compatible custom React hooks
 │   │   ├── schemas/         → Zod validation schemas
@@ -97,6 +101,11 @@ along-app/
 │   └── providers/           → 6 context providers (Auth, OnlineStatus, Push, GlobalModal, GlobalToast, CookieConsent)
 │
 ├── node_modules/            → Installed dependencies
+│
+├── scripts/                 → DB maintenance scripts
+│   ├── backup-seed-data.ts  → Dumps seed-marked rows to backups/seed-backup-<ts>.json
+│   ├── clear-seed-data.ts   → Deletes seed markers only (manual, backup-first)
+│   └── restore-seed-backup.ts → Restores a seed backup
 │
 ├── instrumentation.ts       → Sentry runtime hooks
 ├── next.config.mjs          → Next.js config (Sentry, PWA headers, images)
@@ -120,7 +129,8 @@ along-app/
 | --------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | `ai-system/`    | AI development orchestration — agent instructions, plans, protocols, designs   | `protocols/entry-protocol.md`, `planning/task-queue.md`, `designs/*.html`          |
 | `.github/`      | GitHub CI and project documentation                                            | `workflows/ci.yml`, `plan.md`, `project-context.md`                                |
-| `prisma/`       | Database schema, migrations, and seed data                                     | `schema.prisma` (14 models), `seed.ts`, `migrations/`                              |
+| `prisma/`       | Database schema, migrations, and seed data                                     | `schema.prisma` (17 models, 9 enums incl. PostType + extended NotificationType), `seed.ts` (idempotent), `migrations/` (7) |
+| `scripts/`      | Seed backup/clear/restore tooling (manual-only, seed-markers only)             | `backup-seed-data.ts`, `clear-seed-data.ts`, `restore-seed-backup.ts`          |
 | `public/`       | Static assets served at root path                                              | `sw.js` (service worker), `manifest.json`, `offline.html`                          |
 | `app/`          | Next.js App Router pages, API routes, components, providers, config registries | `layout.tsx`, `globals.css`, `providers/`, `api/`, `components/ui/`, `lib/config/` |
 | `node_modules/` | NPM dependencies                                                               | —                                                                                  |

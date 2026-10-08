@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -826,3 +826,40 @@ Live map tracking navigation, carto.com basemap API key wiring, auth provider li
 
 **Notes / Blockers:**
 - None — QA gate fully green
+
+---
+
+## Session 2026-10-08 — update-ai-system deep sync (Sprint 7 close-out)
+
+**Completed:**
+- Read all `ai-system/` files and compared against repo state (git HEAD 98cf69c, PR #42 merged). Fixed accumulated drift:
+  - `index/repo-map.md` — 14→17 models, 8→9 enums, 3→7 migrations, 34→42 UI files, 11→15 services, 25→27 configs; added scripts/, app/lib/cache, app/lib/hooks, suggestions features, /api/suggestions + /api/bookmarks
+  - `index/dependency-graph.md` — added memoryCache/useCachedFetch, suggestions + bookmarks routes, EmailService, OtpStore/ResetTokenStore (durable DB tokens), welcome + fan-out flows
+  - `system-architecture.md` — added Route Requests / Suggestions / Client Cache / Seed Tooling modules, CARTO + MapTiler/Mapbox env keys, refreshed Known Constraints (122 tests, durable reset tokens, verified-email fix, downlevelIteration removal)
+  - `memory/architecture-history.md` — added Sept 16 (false-positive mail), Sept 29 (durable DB tokens), Oct 7/8 (Sprint 7) entries
+  - `planning/project-plan.md` — marked analytics content + mutation tests done, added Sprint 7 + auth-hardening to Completed; corrected: full-text search still NOT implemented (no /api/search or SearchService in code)
+  - `summaries/dev-history.md` — added Sept 16, Sept 29, Oct 7/8 sprint entries
+  - `memory/lessons-learned.md` — added 4 lessons (durable tokens, verify email result, seed tooling, self-relation quoting)
+  - `repair-system.md` — added 3 entries (false-positive mail, volatile token store, downlevelIteration)
+  - `testing/test-results.md` — rolled to 122/122 across 11 suites per 2026-10-08 QA gate (11 test files verified present; `npm test` not re-runnable here — no node_modules in runner)
+  - `project-context.md` — refreshed Current Project Phase paragraph + backlog
+  - Freshness metadata → 2026-10-08 on all compared files; `checkpoints/in-progress.md` reset to idle (Sprint 7 archived to dev-history per close-out step 27)
+- Left untouched (flagged still-stale): `design-system.md` (2026-07-08), `testing/test-plan.md` (2026-07-01) — not compared this run; template scaffolding with `(set on first run)` markers (agents/, protocols/, tools/) intentionally unchanged
+
+**Files Modified:**
+- ai-system/index/repo-map.md, index/dependency-graph.md, system-architecture.md
+- ai-system/memory/architecture-history.md, memory/lessons-learned.md, memory/project-decisions.md (header)
+- ai-system/planning/project-plan.md, planning/task-queue.md (header)
+- ai-system/summaries/dev-history.md, repair-system.md, testing/test-results.md
+- ai-system/project-context.md, checkpoints/in-progress.md, checkpoints/session-log.md (this entry)
+
+**Next Task:**
+Next human decision — backlog candidates: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md.
+
+**Assumptions Made:**
+- Session-log QA figures (122/122, 11 suites) trusted as record; verified only to file-presence level here (runner lacks node_modules)
+- `20250929000000_add_password_reset_token` migration name taken from directory listing; not opened for content verification
+- Minor version drift in package.json (^ranges) not audited line-by-line — Tech Stack table versions left as-is
+
+**Notes / Blockers:**
+- `update-ai-system.md` is terminal per its contract — no chained commands. Findings above feed the next human decision.

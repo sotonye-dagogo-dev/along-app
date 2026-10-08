@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 5)
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -79,8 +79,9 @@
 - [x] ValidityEngine for route verification scoring (`app/lib/services/ValidityEngine.ts`)
 - [x] DraftingCoach for post quality guidance (`app/lib/services/DraftingCoachService.ts`)
 - [x] TrustBadge component for verified reporters (`app/components/ui/TrustBadge.tsx`)
-- [ ] Search with full-text Postgres indexes
+- [ ] Search with full-text Postgres indexes (no /api/search route or SearchService in code as of 2026-10-08)
 - [x] Map integration with route polyline rendering (`app/components/features/posts/RouteMap.tsx`, `app/lib/services/routeTracingService.ts`, `app/api/routes/trace/`)
+- [x] Route requests E2E — PostType enum, quotedPost self-relation, RequestRouteModal, Respond CTA + quote block, /api/suggestions (Sprint 7, 2026-10-07/08)
 - [ ] Clustering for dense map markers (supercluster dependency listed but not wired)
 
 ---
@@ -107,7 +108,8 @@
 - [x] User review management (`app/admin/reviews/`)
 - [x] Site configuration editor (`app/admin/config/`)
 - [x] GlobalConfirmModal wired into admin pages (replaces `confirm()` dialogs)
-- [ ] Analytics (route activity, user growth, engagement) — dashboard `/analytics` exists but needs content
+- [x] Analytics content — user analytics page with KPI tiles, engagement charts, quick stats (`app/(dashboard)/analytics/`, `app/api/analytics/user/`, responsive sweep Sprint 7)
+- [ ] Accessibility audit (WCAG AA)
 
 ---
 
@@ -126,7 +128,8 @@
 
 > **Section summary:** Reliability, performance, and production readiness.
 
-- [x] Unit tests for services and utilities (91 tests across 9 suites)
+- [x] Unit tests for services and utilities (122 tests across 11 suites incl. mutation E2E + posts API, per 2026-10-08 QA gate)
+- [x] Mutation E2E tests (post/like/comment/bookmark/follow) + error handling and undefined edge cases (`app/__tests__/api/mutations.test.ts`, `posts.test.ts`)
 - [ ] Component tests for App* components
 - [ ] Integration tests for API routes
 - [ ] Performance audit (Lighthouse, bundle analysis)
@@ -147,3 +150,5 @@
 - [x] Config registry & universal components (Phase 1 — Foundation Layer)
 - [x] Transact Marketplace integration — proxy API, webhook, /marketplace page
 - [x] Tega Events integration — proxy API, webhook, EventsWidget in feed sidebar
+- [x] Sprint 7 (2026-10-07/08) — seed/mock hygiene, welcome notification, live route preview + autofill, client caching, route requests E2E, suggestions rail/carousel, scroll-aware prompt, analytics/responsive sweep, profile tab filtering, state-strategy decision, QA gate green
+- [x] Auth hardening — Redis timeout fallback, non-blocking reset mail, durable DB reset tokens (Sept 15/16/29)

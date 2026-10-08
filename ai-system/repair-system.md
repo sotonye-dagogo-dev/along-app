@@ -1,8 +1,8 @@
 # Repair System — Error Knowledge Base
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-09-15
-> - last-verified-against-code: 2026-09-15
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
 > **Overview:** A living knowledge base of errors encountered during development, their root causes, and how they were fixed. Agents should consult this before diagnosing new errors. Every fixed bug should be logged here to prevent recurrence. This file is pre-populated with known error patterns for the Along tech stack (Next.js 15 + React 19 + Ant Design 5 + Tailwind 4).
@@ -424,6 +424,76 @@ Three interlocking issues:
 - vercel.json
 
 **Date:** 2026-09-15
+**Status:** Active
+
+---
+
+### False-Positive Reset Email — Success Returned With No Resend Delivery
+
+**Symptom:**
+User completes forgot-password flow and sees success, but no mail ever arrives. Resend dashboard shows no send, no failure; Vercel logs show no error — only `[otpStore] redis set reset failed, falling back to memory / Redis timeout after 1500ms` warnings.
+
+**Root Cause:**
+Email send was fire-and-forget with no provider-result verification: the route returned success after queueing the send without checking whether Resend accepted it, so a silent send failure read as success.
+
+**Fix Applied:**
+Check the Resend send result and surface failure honestly instead of a false success (commit `a347a9c` "Fixed false-positive reset email").
+
+**Prevention:**
+Every background email must verify the provider result. A false success is worse than an error — see `memory/lessons-learned.md` "Background Email Must Verify the Provider Result".
+
+**Files Affected:**
+- app/lib/services/emailService.ts
+- app/api/auth/forgot-password/route.ts
+
+**Date:** 2026-09-16
+**Status:** Active
+
+---
+
+### Reset Link "Expired or Invalid" Within Seconds — Volatile Token Store
+
+**Symptom:**
+User receives the reset mail, clicks the link promptly, but the reset page reports the link expired or invalid.
+
+**Root Cause:**
+Reset tokens lived in the Redis/in-memory OTP store, which by policy degrades to per-instance memory on timeout and loses data across restarts/instances — so a valid token could vanish before use.
+
+**Fix Applied:**
+Durable `PasswordResetToken` Prisma model — reset tokens persist in Postgres with explicit expiry, independent of cache state; routes validate against the DB (commit `d589183` "Fixed reset links via durable DB tokens"). Migration: `20250929000000_add_password_reset_token` (verify name against `prisma/migrations/` — recorded from directory listing 2026-10-08).
+
+**Prevention:**
+Security tokens must be durable, not cache-resident — see `memory/lessons-learned.md` "Security Tokens Must Be Durable, Not Cache-Resident".
+
+**Files Affected:**
+- prisma/schema.prisma (`PasswordResetToken` model)
+- prisma/migrations/20250929000000_add_password_reset_token/
+- app/lib/services/resetTokenStore.ts
+- app/api/auth/forgot-password/route.ts, app/api/auth/reset-password/route.ts
+
+**Date:** 2026-09-29
+**Status:** Active
+
+---
+
+### Build Failure — Removed TS Option `downlevelIteration` in tsconfig.json
+
+**Symptom:**
+`npx tsc --noEmit` fails with `TS5102: Option 'downlevelIteration' has been removed. Please remove it from your configuration.`
+
+**Root Cause:**
+`tsconfig.json` still set `downlevelIteration: true`, an option deleted in current TypeScript (ES2015+ targets handle iteration natively).
+
+**Fix Applied:**
+Removed the `downlevelIteration` line from `tsconfig.json` (2026-10-08 QA gate, PR #42).
+
+**Prevention:**
+After TypeScript major upgrades, run `tsc --noEmit` immediately and remove deleted options instead of working around them.
+
+**Files Affected:**
+- tsconfig.json
+
+**Date:** 2026-10-08
 **Status:** Active
 
 ---
