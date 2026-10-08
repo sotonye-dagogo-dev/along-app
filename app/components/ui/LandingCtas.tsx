@@ -71,3 +71,26 @@ export function BottomCta() {
     </Link>
   )
 }
+
+/**
+ * "Continue as guest" hero link. Mirrors the HeroCtas/BottomCta auth gate:
+ * authenticated users already get "View Feed", so the guest link hides for
+ * them (same `isAuthenticated` source of truth, no divergent logic).
+ * Renders nothing while auth resolves to avoid a flash of the wrong state.
+ */
+export function GuestContinueLink() {
+  const auth = useContext(AuthContext)
+  const isAuth = auth?.isAuthenticated ?? false
+  const isLoading = auth?.isLoading ?? true
+
+  if (isLoading || isAuth) return null
+
+  return (
+    <Link
+      href="/home"
+      className="mt-5 inline-block text-sm text-white/70 hover:text-white transition-colors underline underline-offset-2"
+    >
+      Continue as guest
+    </Link>
+  )
+}

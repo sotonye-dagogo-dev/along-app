@@ -92,3 +92,68 @@ export async function getFollowerIds(userId: string): Promise<string[]> {
     return [];
   }
 }
+
+/**
+ * Notifies the inviter that someone converted on their invite code.
+ * Fire-and-forget (void at call sites) — never throws, so signup can never
+ * fail because of a notification write.
+ */
+export async function notifyReferralConversion(
+  inviterId: string,
+  newUserId: string,
+  newUserName: string
+): Promise<string | null> {
+  if (!inviterId || inviterId === newUserId) return null;
+  try {
+    const { NOTIFICATION_MESSAGES } = await import("@/app/lib/config");
+    return await createNotification({
+      type: "REWARD",
+      actorId: newUserId,
+      message: NOTIFICATION_MESSAGES.referralConversion(newUserName),
+      recipientIds: [inviterId],
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Notifies the earner after points land (and on tier promotion).
+ * Called by the rewards worker with the awardPoints result — void, never throws.
+ */
+export async function notifyPointsAwarded(input: {
+  userId: string;
+  pointsAwarded: number;
+  actionLabel: string;
+  oldTier?: string;
+  newTier?: string;
+  tierChanged?: boolean;
+}): Promise<void> {
+  if (input.pointsAwarded <= 0 && !input.tierChanged) return;
+  try {
+    const { NOTIFICATION_MESSAGES } = await import("@/app/lib/config");
+    if (input.pointsAwarded > 0) {
+      await createNotification({
+        type: "REWARD",
+        actorId: input.userId,
+        message: NOTIFICATION_MESSAGES.pointsEarned(input.pointsAwarded, input.actionLabel),
+        recipientIds: [input.userId],
+        allowSelf: true,
+      });
+    }
+    if (input.tierChanged && input.oldTier && input.newTier) {
+      await createNotification({
+        type: "BADGE",
+        actorId: input.userId,
+        message: NOTIFICATION_MESSAGES.tierUp(
+          input.oldTier.charAt(0) + input.oldTier.slice(1).toLowerCase(),
+          input.newTier.charAt(0) + input.newTier.slice(1).toLowerCase()
+        ),
+        recipientIds: [input.userId],
+        allowSelf: true,
+      });
+    }
+  } catch {
+    /* notifications are non-critical */
+  }
+}

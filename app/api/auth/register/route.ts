@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     // Welcome notification for the new signup (non-blocking, never fails the request).
     // allowSelf: a welcome is addressed to the new user themselves.
-    const { createNotification } = await import("@/app/lib/services/notificationService");
+    const { createNotification, notifyReferralConversion } = await import("@/app/lib/services/notificationService");
     void createNotification({
       type: "WELCOME",
       actorId: createdUser.id,
@@ -76,6 +76,8 @@ export async function POST(request: NextRequest) {
     if (invitedById) {
       // Conversion always pays INVITE_ACCEPTED; send credit only inside cap.
       linkReferralRewards(invitedById, createdUser.id, referral.inviterInviteeCount ?? 0);
+      // Tell the inviter who converted (non-blocking, never fails signup).
+      void notifyReferralConversion(invitedById, createdUser.id, userName);
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();

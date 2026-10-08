@@ -103,3 +103,19 @@ export const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationTypeCon
     messageTemplate: "Update on a post you reported",
   },
 };
+
+/**
+ * Copy templates for system-generated engagement notifications.
+ * Kept in config (not in services) so copy changes never touch logic.
+ */
+export const NOTIFICATION_MESSAGES = {
+  /** To the inviter when someone signs up with their code. */
+  referralConversion: (newUserName: string) =>
+    `@${newUserName} signed up through your referral! Bonus points are on the way — keep inviting.`,
+  /** To the earner whenever points land. */
+  pointsEarned: (points: number, actionLabel: string) =>
+    `You've earned ${points} points for ${actionLabel}!`,
+  /** To the earner on tier promotion. */
+  tierUp: (oldTier: string, newTier: string) =>
+    `You've just moved up from ${oldTier} to ${newTier} — good job, keep earning!`,
+} as const;

@@ -638,3 +638,25 @@ Directive close-out: post nature (ROUTE / ROUTE_REQUEST / ROUTE_RESPONSE) preser
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — Execute-Feature: Notification Nav/Badges, Referral+Points Coverage, Username Edit, Landing Guest-Link, One-Time Prod Reset (Sprint 15)
+
+**Summary:**
+Directive close-out: notifications replaced bookmarks on the mobile bottom bar with live unread badges on both desktop sidebar and mobile tab; notification service now covers referral conversions (inviter told who signed up) plus points and tier-up wins via the rewards worker; username is editable with global uniqueness preserved; landing "Continue as guest" hides under the exact auth gate that shows "View Feed"; one-time full prod DB reset scripted into `vercel-build` for removal after the clean build. All non-breaking (no migration, no removed APIs, additive config + never-throw service calls), config/metadata-driven.
+
+**Completed:**
+- Nav: MOBILE_TABS Notifications swap; `NOTIFICATION_BADGE_CONFIG` + `BADGED_NAV_HREFS`; `useUnreadNotifications` + `formatBadgeCount`; badge UI both surfaces (99+ cap, screen-reader labels)
+- Services: `NOTIFICATION_MESSAGES`; `notifyReferralConversion`; `notifyPointsAwarded`; wiring in register, Google callback (×2 paths), rewards worker
+- Profile: EDIT_PROFILE_FIELDS userName + USERNAME_RULE; PATCH 400/409 + P2002 guard; profile page error-aware save + userName initial value
+- Landing: `GuestContinueLink` + page.tsx swap
+- Ops: `scripts/reset-prod-db.ts` + `db:reset-prod` + `vercel-build` hook (one-time)
+- Tests: `__tests__/sprint15/tightening.test.ts` (10 tests)
+
+**Key Changes:**
+- New: `app/lib/hooks/useUnreadNotifications.ts`, `scripts/reset-prod-db.ts`, `app/__tests__/sprint15/tightening.test.ts`
+- Edited: `app/lib/config/navigation.ts`, `notifications.ts`, `forms.ts`, `index.ts` (barrel), `DashboardNav.tsx`, `notificationService.ts`, `referral` call sites (register, google callback), `app/api/workers/rewards/route.ts`, `app/api/users/[id]/route.ts`, `app/(dashboard)/profile/page.tsx`, `LandingCtas.tsx`, `app/(public)/page.tsx`, `package.json`, `task-queue.md`, `session-log.md`
+
+**QA gate (this runner, node_modules via `npm ci`): tsc 0 errors; jest 22 suites / 198 tests pass; next build clean; next lint 1 pre-existing warning / 0 new.**
+
+**Next Sprint Focus:**
+⚠️ Remove the one-time reset (script + package.json entries) once prod DB is confirmed clean. Then backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.

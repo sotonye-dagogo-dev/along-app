@@ -22,6 +22,23 @@ export async function POST(request: NextRequest) {
 
     const result = await rewardsService.awardPoints(userId, actionKey, postAuthorId);
 
+    // Surface the win in-app: points notice + tier-up notice (both never-throw).
+    if (result.pointsAwarded > 0 || result.tierChanged) {
+      try {
+        const { POINTS_CONFIG } = await import("@/app/lib/config");
+        const { notifyPointsAwarded } = await import("@/app/lib/services/notificationService");
+        const targetUserId = postAuthorId ?? userId;
+        await notifyPointsAwarded({
+          userId: targetUserId,
+          pointsAwarded: result.pointsAwarded,
+          actionLabel: POINTS_CONFIG[actionKey]?.action ?? actionKey,
+          oldTier: result.oldTier,
+          newTier: result.newTier,
+          tierChanged: result.tierChanged,
+        });
+      } catch { /* notifications are non-critical */ }
+    }
+
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.error("Rewards worker error:", error);
