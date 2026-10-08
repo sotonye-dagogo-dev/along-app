@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08 (Sprint 9 deep sync)
-> - last-verified-against-code: 2026-10-08 (Sprint 9 rows verified present: carousel/shareRoute/routeRequest configs, RequestRouteTrigger, footer layout)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 10 close-out)
+> - last-verified-against-code: 2026-10-08 (Sprint 10 rows verified present: routeDrafts config/service/panel, carousel reorder + drafts chip, ShareRouteModal drafts integration, routeDrafts test)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -128,7 +128,7 @@
 
 > **Section summary:** Reliability, performance, and production readiness.
 
-- [x] Unit tests for services and utilities (143 tests across 14 suites incl. mutation E2E + posts API + search API/service + uxTightening config, per 2026-10-08 Sprint 9; newest 4 config tests not yet executed — runner has no node_modules)
+- [x] Unit tests for services and utilities (147 tests across 15 suites incl. mutation E2E + posts API + search API/service + uxTightening config + routeDrafts config/service, per 2026-10-08 Sprint 10; newest 8 tests not yet executed — runner has no node_modules)
 - [x] Mutation E2E tests (post/like/comment/bookmark/follow) + error handling and undefined edge cases (`app/__tests__/api/mutations.test.ts`, `posts.test.ts`)
 - [ ] Component tests for App* components
 - [ ] Integration tests for API routes
@@ -151,4 +151,5 @@
 - [x] Tega Events integration — proxy API, webhook, EventsWidget in feed sidebar
 - [x] Sprint 7 (2026-10-07/08) — seed/mock hygiene, welcome notification, live route preview + autofill, client caching, route requests E2E, suggestions rail/carousel, scroll-aware prompt, analytics/responsive sweep, profile tab filtering, state-strategy decision, QA gate green
 - [x] Sprint 9 (2026-10-08) — scroll-based suggestions carousel with own overflow container, share-modal collapsed preview/score + footer actions, RequestRouteTrigger ("Request?") icon, 3-col footer grid, config tests (143 tests / 14 suites; newest 4 not yet executed — no node_modules in runner)
+- [x] Sprint 10 (2026-10-08) — carousel reordered above feed below share/request triggers, route-drafts library (config + service + panel + modal integration + home resume chip), config/service tests (147 tests / 15 suites; newest 8 not yet executed — no node_modules in runner)
 - [x] Auth hardening — Redis timeout fallback, non-blocking reset mail, durable DB reset tokens (Sept 15/16/29)

@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08 (Sprint 9 deep sync)
-> - last-verified-against-code: 2026-10-08 (Sprint 9 rows verified present in code: carousel/shareRoute/routeRequest configs, RequestRouteTrigger, footer layout, uxTightening test)
-> - last-synced: 2026-10-08 (Sprint 9 UX tightening — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 10 close-out)
+> - last-verified-against-code: 2026-10-08 (Sprint 10 rows verified present in code: routeDrafts config/service/panel, carousel reorder + drafts chip in home/page, ShareRouteModal drafts integration, routeDrafts test)
+> - last-synced: 2026-10-08 (Sprint 10 carousel ordering + drafts library — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -218,6 +218,18 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Request trigger — query-style icon with "Request?" tooltip/tagline (`REQUEST_ROUTE_TRIGGER_CONFIG`, `RequestRouteTrigger`, home composer wiring) | [x] |
 | [S] | Footer — 3-col link grid on mobile and up (`FOOTER_CONFIG.layout`, AppFooter consumes config) | [x] |
 | [S] | Tests — `__tests__/config/uxTightening.test.ts` (4 config suites) | [x] |
+
+---
+
+## Sprint 10 — Carousel Ordering + Route-Drafts Library (2026-10-08, execute-feature)
+
+> **Section summary:** Directive items, non-breaking (no migration, no new deps). QA partial: runner has no node_modules — tsc shows only the missing-deps cascade (zero errors attributable to touched files); jest/lint/build deferred to CI.
+
+| Size | Task | Status |
+|------|------|--------|
+| [S] | Carousel ordering — SuggestionsRail above feed, below share/request trigger div (own overflow container unchanged) | [x] |
+| [M] | Route-drafts library — ROUTE_DRAFTS_CONFIG + routeDraftsService (multi-draft, legacy migration, never-throw) + RouteDraftsPanel + ShareRouteModal integration + home resume chip | [x] |
+| [S] | Tests — `__tests__/config/routeDrafts.test.ts` (4 suites: config, save/restore/delete, corrupt-safety, legacy migration) | [x] |
 
 ---
 

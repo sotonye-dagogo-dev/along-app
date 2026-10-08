@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: update-ai-system 2026-10-08 (Sprint 9 deep sync)
-> - last-verified-against-code: 2026-10-08 (30 configs, 14 test files, carousel/share/footer/request-trigger edits)
+> - last-verified-against-code: 2026-10-08 (31 configs, 15 test files, Sprint 10 carousel ordering + drafts library)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
@@ -45,7 +45,7 @@ Client (Browser / PWA)
                ↓
     ┌──────────────────────────────┐
     │   Service Layer              │
-    │  16 services including:        │
+    │  17 services including:        │
     │  pushSubscriptionService     │
     │  qstashService               │
     │  offlineQueue (client-side)  │
@@ -87,9 +87,9 @@ Client (Browser / PWA)
 | Transact | [FROZEN] External marketplace integration — code preserved, nav removed | `app/lib/integrations/transact.ts`, `app/api/integrations/transact/`, `app/api/webhooks/transact/`, `app/(dashboard)/marketplace/` | Prisma, QStash (webhook) |
 | Tega | [FROZEN] External events integration — code preserved, removed from sidebar | `app/lib/integrations/tega.ts`, `app/api/integrations/tega/`, `app/api/webhooks/tega/`, `app/components/features/events/` | Prisma, QStash (webhook) |
 | FAQ | Public FAQ page with categorized searchable Q&A | `app/(public)/faq/*`, `app/lib/config/faq.ts` | None (config-driven) |
-| Config | Centralized config registries for all domains (30 files, incl. reviews/SITE_REVIEWS, carousel, shareRoute, routeRequest, footer layout) | `app/lib/config/*` | None |
-| Route Requests | Request/response post lifecycle: PostType enum (ROUTE/ROUTE_REQUEST/ROUTE_RESPONSE), quotedPost self-relation, fan-out notifications, Respond CTA; ShareRouteModal starts with preview + quality score collapsed and actions in a footer below them (`SHARE_ROUTE_MODAL_CONFIG`); query-style RequestRouteTrigger icon ("Request?" tooltip) opens the request flow | `app/components/features/posts/RequestRouteModal.tsx`, `RequestRouteTrigger.tsx`, `ShareRouteModal.tsx` (response mode), `PostCard.tsx` (badge/quote block), `app/api/suggestions/`, `app/api/posts/` | Prisma, Redis (suggestions 1800s), QStash |
-| Suggestions | Ordered discovery: route requests → routes → accounts; live desktop panel + mobile rail + endless carousel (scroll-based rAF `scrollLeft` autoplay in its own overflow-hidden wrapper — free scrub both directions, resumes from landed position; `ENDLESS_CAROUSEL_CONFIG`) | `app/components/ui/SuggestionsPanel.tsx`, `app/components/features/suggestions/{EndlessCarousel,SuggestionsRail,FollowButton}.tsx`, `app/api/suggestions/` | Prisma, Redis |
+| Config | Centralized config registries for all domains (31 files, incl. reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, footer layout) | `app/lib/config/*` | None |
+| Route Requests | Request/response post lifecycle: PostType enum (ROUTE/ROUTE_REQUEST/ROUTE_RESPONSE), quotedPost self-relation, fan-out notifications, Respond CTA; ShareRouteModal starts with preview + quality score collapsed and actions in a footer below them (`SHARE_ROUTE_MODAL_CONFIG`); query-style RequestRouteTrigger icon ("Request?" tooltip) opens the request flow; savable multi-draft library (`ROUTE_DRAFTS_CONFIG`, `routeDraftsService` with legacy migration, `RouteDraftsPanel` restore/continue/delete, home resume chip) | `app/components/features/posts/RequestRouteModal.tsx`, `RequestRouteTrigger.tsx`, `RouteDraftsPanel.tsx`, `ShareRouteModal.tsx` (response mode), `PostCard.tsx` (badge/quote block), `app/api/suggestions/`, `app/api/posts/` | Prisma, Redis (suggestions 1800s), QStash |
+| Suggestions | Ordered discovery: route requests → routes → accounts; live desktop panel + mobile rail (above the home feed, below the share/request trigger div) + endless carousel (scroll-based rAF `scrollLeft` autoplay in its own overflow-hidden wrapper — free scrub both directions, resumes from landed position; `ENDLESS_CAROUSEL_CONFIG`) | `app/components/ui/SuggestionsPanel.tsx`, `app/components/features/suggestions/{EndlessCarousel,SuggestionsRail,FollowButton}.tsx`, `app/api/suggestions/` | Prisma, Redis |
 | Client Cache | In-app read-through cache + SWR + in-flight dedup; hydrates feedStream without skeleton flash | `app/lib/cache/memoryCache.ts`, `app/lib/hooks/useCachedFetch.ts`, `app/lib/streams/feedStream.ts` | None (in-memory; mirrors redis.ts never-throw semantics) |
 | Seed Tooling | Manual-only seed backup/clear/restore scoped to seed markers | `scripts/{backup-seed-data,clear-seed-data,restore-seed-backup}.ts`, `db:seed`/`db:backup`/`db:clear-seed`/`db:restore-seed` | Prisma, tsx |
 
@@ -218,7 +218,7 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - Tailwind CSS v4 uses the new `@tailwindcss/postcss` plugin — v3-style `@tailwind` directives will not work
 - Dual PostCSS config files exist (`postcss.config.js` CJS + `postcss.config.mjs` ESM) — may cause confusion
 - Sentry DSN and all secrets are populated in `.env` — must not commit or expose
-- 143 Jest tests across 14 suites incl. mutation E2E + posts API + search API/service + uxTightening config (per 2026-10-08 Sprint 9; +4 config tests not yet executed in this runner — no node_modules, CI is the real gate)
+- 147 Jest tests across 15 suites incl. mutation E2E + posts API + search API/service + uxTightening config + routeDrafts config/service (per 2026-10-08 Sprint 10; +8 newest tests not yet executed in this runner — no node_modules, CI is the real gate)
 - `tsconfig.json` no longer sets `downlevelIteration` (removed 2026-10-08: option deleted in current TS; ES2015 target handles iteration natively)
 - Password reset uses durable `PasswordResetToken` DB rows (not Redis OTP) — survives cache loss; fixed Sept 29 "link expired/invalid" false negatives
 - Forgot-password email is double-guarded: non-blocking `waitUntil` + Resend send-result check (fixed Sept 16 false-positive "mail sent" with no delivery)
