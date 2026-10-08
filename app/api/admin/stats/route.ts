@@ -12,7 +12,7 @@ export async function GET() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [totalUsers, postsToday, openBugs, avgValidity, signups7d, topPosts] = await Promise.all([
+    const [totalUsers, postsToday, openBugs, avgValidity, signups7d, topPosts, recentUsers] = await Promise.all([
       prisma.user.count(),
       prisma.post.count({ where: { createdAt: { gte: today } } }),
       prisma.bugReport.count({ where: { status: { notIn: ["RESOLVED", "CLOSED"] } } }),
@@ -39,6 +39,23 @@ export async function GET() {
         orderBy: { validityScore: "desc" },
         take: 5,
       }),
+      // The dashboard renders a recent-users preview table — keep it in the
+      // same batched read so the page never crashes on a missing field.
+      prisma.user.findMany({
+        select: {
+          id: true,
+          userName: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+          rewardTier: true,
+          createdAt: true,
+          _count: { select: { posts: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 8,
+      }),
     ]);
 
     return NextResponse.json({
@@ -48,6 +65,7 @@ export async function GET() {
       openBugs,
       signups7d,
       topPosts: topPosts.map(p => ({ id: p.id, title: p.title, validityScore: p.validityScore })),
+      recentUsers,
     }, { status: 200 });
   } catch (error) {
     console.error("Admin stats error:", error);

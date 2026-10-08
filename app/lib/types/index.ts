@@ -23,7 +23,7 @@ export interface NavItem {
   href: string;
   icon: LucideIcon;
   activeIcon?: LucideIcon;
-  roles?: ("user" | "admin")[];
+  roles?: ("user" | "admin" | "USER" | "ADMIN")[];
   section?: "main" | "admin";
 }
 

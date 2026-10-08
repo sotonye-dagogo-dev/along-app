@@ -485,3 +485,33 @@ Any one-time migration/reset/backfill hooked into build/CI — treat "confirmed 
 
 **Supersedes:** None
 **Superseded by:** None
+
+---
+
+## API/Page Contract Drift Crashes Pages, Not Just Types
+
+**Context:**
+Sprint 17: `GET /api/admin/stats` returned 6 fields while `app/admin/page.tsx` consumed 7 (`recentUsers`) — TypeScript couldn't catch it (both sides typed locally, no shared contract), so the dashboard crashed at runtime on every visit.
+
+**What We Learned:**
+When an API and its page are typed independently, adding a consumer field without updating the producer compiles clean and explodes in prod. The cheap guards are: (1) return the full shape the page needs in one batched read, (2) default missing collections to `[]` at the consumption site so older/cached payloads degrade to empty states instead of TypeErrors, (3) treat "page expects X, API returns Y" as a first-check item in any "page crashes" report.
+
+**Apply When:**
+Any "page errors on load" investigation — diff the page's data accesses against the API's actual JSON before looking anywhere else.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Enum-Literal Case Drift Silently Disables Features
+
+**Context:**
+Sprint 17: Prisma `UserRole` is `USER | ADMIN`, but client code compared `role === "admin"` and registered nav roles as `["admin"]` — every admin entry point was dead code for real admins, with zero errors or warnings.
+
+**What We Learned:**
+String-literal role checks drift in case across layers (DB enum vs UI strings) and fail closed-silently. A single canonical predicate (`isAdminRole()`, case-insensitive) plus case-insensitive registry matching eliminates the class; widen the shared type so the compiler accepts the canonical literals.
+
+**Apply When:**
+Any role/permission/enum-string comparison — centralise in config, compare case-insensitively, and cover both cases in tests.
+
+**Supersedes:** None
+**Superseded by:** None

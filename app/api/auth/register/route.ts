@@ -43,24 +43,64 @@ export async function POST(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     // Referral linking is unlimited on every auth method — resolveReferral
     // only validates the code; the cap applies to send-credit points, never
-    // to the ability to invite (see INVITE_CONFIG).
+    // to the ability to invite (see INVITE_CONFIG). Resolution is isolated
+    // so a bad/expired ?ref= value can never fail account creation.
     const { resolveReferral, linkReferralRewards } = await import(
       "@/app/lib/services/referralService"
     );
-    const referral = await resolveReferral(searchParams.get("ref"));
-    const invitedById = referral.invitedById;
+    let invitedById: string | undefined;
+    let inviterInviteeCount = 0;
+    try {
+      const referral = await resolveReferral(searchParams.get("ref"));
+      invitedById = referral.invitedById;
+      inviterInviteeCount = referral.inviterInviteeCount ?? 0;
+    } catch {
+      invitedById = undefined;
+    }
 
-    const createdUser = await prisma.user.create({
-      data: {
-        userName,
-        firstName,
-        lastName,
-        email,
-        password: hashedPassword,
-        inviteCode: crypto.randomUUID(),
-        invitedById,
-      },
-    });
+    const newInviteCode =
+      typeof crypto?.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+
+    let createdUser;
+    try {
+      createdUser = await prisma.user.create({
+        data: {
+          userName,
+          firstName,
+          lastName,
+          email,
+          password: hashedPassword,
+          inviteCode: newInviteCode,
+          invitedById,
+        },
+      });
+    } catch (createError) {
+      // Retry once without the referral link — a stale/just-deleted inviter
+      // row (FK race) must not block signup. Unique collisions on email /
+      // userName are already handled above, so only the referral edge is
+      // retried here.
+      if (
+        invitedById &&
+        createError instanceof Error &&
+        (createError as Error & { code?: string }).code === "P2003"
+      ) {
+        invitedById = undefined;
+        createdUser = await prisma.user.create({
+          data: {
+            userName,
+            firstName,
+            lastName,
+            email,
+            password: hashedPassword,
+            inviteCode: newInviteCode,
+          },
+        });
+      } else {
+        throw createError;
+      }
+    }
 
     // Welcome notification for the new signup (non-blocking, never fails the request).
     // allowSelf: a welcome is addressed to the new user themselves.
@@ -75,9 +115,18 @@ export async function POST(request: NextRequest) {
 
     if (invitedById) {
       // Conversion always pays INVITE_ACCEPTED; send credit only inside cap.
-      linkReferralRewards(invitedById, createdUser.id, referral.inviterInviteeCount ?? 0);
+      // Isolated so reward fan-out can never fail signup.
+      try {
+        linkReferralRewards(invitedById, createdUser.id, inviterInviteeCount);
+      } catch {
+        // non-critical — account already created
+      }
       // Tell the inviter who converted (non-blocking, never fails signup).
-      void notifyReferralConversion(invitedById, createdUser.id, userName);
+      try {
+        void notifyReferralConversion(invitedById, createdUser.id, userName);
+      } catch {
+        // non-critical
+      }
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();

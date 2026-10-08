@@ -431,3 +431,26 @@ The prod DB had just been cleaned and any schema change reintroduces P2022-windo
 **Implications:**
 - Rank is read-time computed (per-user COUNT, Redis-cached 600s); list views use ordered takes. If user volume ever makes the COUNT hot, add a dedicated cache key or materialized rank — reference this decision.
 - `db:reset-prod` script retained manual-only (unhooked from `vercel-build` 2026-10-08); never re-hook a destructive step into a build command.
+
+---
+
+## Sprint 17: Canonical isAdminRole() + Error Boundaries Must Prove Notification
+
+**Decision:** All admin gating goes through `isAdminRole()` (case-insensitive, canonical `ADMIN` per the Prisma enum); error boundaries may only claim "team notified" after `errorReportService` gets a 2xx persist of a sanitized `BugReport`, otherwise they render the unreported fallback copy.
+**Date:** 2026-10-08
+**Made by:** AI agent (opencode) — execute-feature Sprint 17
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Two silent-failure classes shared one shape: code that *looked* correct but never fired — lowercase `"admin"` comparisons against an uppercase enum hid every admin entry point, and a Sentry-only `global-error` claimed notification in environments where no DSN delivers. Centralising the role rule in config and tying boundary copy to the actual POST result makes both claims verifiable.
+
+**Alternatives Considered:**
+- **Adding a MODERATOR enum value**: Rejected — no such role exists in data or product; server guards already tolerate the string for forward-compat, which is enough.
+- **Removing the "notified" line entirely**: Rejected — the directive allowed actualisation, and real BugReport rows give the team triageable context (sanitized stack + route + digest) that Sentry alone wasn't providing here.
+- **Auto-report with full console capture**: Rejected — unbounded console capture risks PII/secret exfiltration and payload rejection; fixed-field sanitized capture stays within API validation and privacy bounds.
+
+**Implications:**
+- Any new admin entry point must use `isAdminRole()` — never a raw string comparison (see lessons-learned "Enum-Literal Case Drift").
+- Any new error surface must use `ERROR_REPORTING_CONFIG.copy` states — never a static "notified" string.
+- Auto-filed reports carry `metadata.source: "error-boundary"`; admin bugs triage can filter on it.
