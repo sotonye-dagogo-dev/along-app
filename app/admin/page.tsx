@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
-import { RefreshCw, Users, FileText, Shield, Bug, ChevronUp, ChevronDown, Eye } from "lucide-react"
+import { RefreshCw, Users, FileText, Shield, Bug, ChevronUp, ChevronDown, Minus, Eye } from "lucide-react"
+import { formatDelta } from "@/app/lib/config/admin"
 
 interface AdminStats {
   totalUsers: number
@@ -12,6 +13,7 @@ interface AdminStats {
   signups7d: { date: string; count: number }[]
   topPosts: { id: string; title: string; validityScore: number }[]
   recentUsers?: { id: string; userName: string; firstName: string; lastName: string; email: string; role: string; rewardTier: string; _count: { posts: number }; createdAt: string }[]
+  deltas?: { totalUsers: number | null; postsToday: number | null; postsWeek: number | null; avgValidity: number | null; openBugs: number | null }
 }
 
 export default function AdminDashboard() {
@@ -36,13 +38,13 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 min-w-0">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-bg-elevated radius-md w-1/4" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
             {[1,2,3,4].map(i => <div key={i} className="h-28 bg-bg-elevated radius-lg" />)}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             {[1,2].map(i => <div key={i} className="h-64 bg-bg-elevated radius-lg" />)}
           </div>
         </div>
@@ -63,7 +65,6 @@ export default function AdminDashboard() {
 
   if (!stats) return null
 
-  // Defensive defaults — older cached payloads may omit recentUsers/topPosts.
   const recentUsers = stats.recentUsers ?? []
   const topPosts = stats.topPosts ?? []
   const signups7d = stats.signups7d ?? []
@@ -88,14 +89,21 @@ export default function AdminDashboard() {
 
   const barColors = ["var(--color-primary)", "var(--color-warning-border)", "var(--color-primary)", "var(--color-info-text)", "var(--color-warning-border)"]
 
+  const cards = [
+    { label: "Total Users", value: stats.totalUsers, display: stats.totalUsers.toLocaleString(), delta: stats.deltas?.totalUsers ?? null, icon: <Users size={18} />, bg: "var(--color-primary-muted)", color: "var(--color-primary)" },
+    { label: "Posts Today", value: stats.postsToday, display: stats.postsToday.toLocaleString(), delta: stats.deltas?.postsToday ?? null, icon: <FileText size={18} />, bg: "var(--color-info)", color: "var(--color-info-text)" },
+    { label: "Avg Validity Score", value: stats.avgValidity, display: stats.avgValidity.toString(), delta: stats.deltas?.avgValidity ?? null, icon: <Shield size={18} />, bg: "var(--color-success)", color: "var(--color-success-text)" },
+    { label: "Open Bug Reports", value: stats.openBugs, display: stats.openBugs.toString(), delta: stats.deltas?.openBugs ?? null, icon: <Bug size={18} />, bg: "var(--color-error)", color: "var(--color-error-text)" },
+  ]
+
   return (
-    <>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight">Dashboard</h1>
-          <div className="text-sm text-text-secondary">Admin overview &middot; Last 7 days</div>
+    <div className="min-w-0 flex flex-col gap-4 sm:gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-[24px] sm:text-[28px] font-bold tracking-tight truncate">Dashboard</h1>
+          <div className="text-sm text-text-secondary truncate">Admin overview &middot; Last 7 days</div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={load}
             className="inline-flex items-center gap-1.5 px-3 py-2 radius-md border border-border bg-bg-card text-xs font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors duration-fast cursor-pointer"
@@ -106,118 +114,92 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {[
-          {
-            label: "Total Users",
-            value: stats.totalUsers.toLocaleString(),
-            delta: "+8.2%",
-            up: true,
-            icon: <Users size={18} />,
-            bg: "var(--color-primary-muted)",
-            color: "var(--color-primary)",
-          },
-          {
-            label: "Posts Today",
-            value: stats.postsToday.toLocaleString(),
-            delta: "+12.1%",
-            up: true,
-            icon: <FileText size={18} />,
-            bg: "var(--color-info)",
-            color: "var(--color-info-text)",
-          },
-          {
-            label: "Avg Validity Score",
-            value: stats.avgValidity.toString(),
-            delta: "+3.7%",
-            up: true,
-            icon: <Shield size={18} />,
-            bg: "var(--color-success)",
-            color: "var(--color-success-text)",
-          },
-          {
-            label: "Open Bug Reports",
-            value: stats.openBugs.toString(),
-            delta: `${stats.openBugs} open`,
-            up: false,
-            icon: <Bug size={18} />,
-            bg: "var(--color-error)",
-            color: "var(--color-error-text)",
-          },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-bg-card border border-border radius-lg p-5 shadow-xs flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-text-secondary">{stat.label}</span>
-              <span className="w-9 h-9 radius-md flex items-center justify-center shrink-0" style={{ background: stat.bg, color: stat.color }}>
-                {stat.icon}
-              </span>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 min-w-0">
+        {cards.map((stat) => {
+          const trend = formatDelta(stat.delta, stat.value)
+          return (
+            <div key={stat.label} className="bg-bg-card border border-border radius-lg p-4 sm:p-5 shadow-xs flex flex-col gap-1.5 min-w-0 overflow-hidden">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <span className="text-xs font-medium text-text-secondary truncate">{stat.label}</span>
+                <span className="w-9 h-9 radius-md flex items-center justify-center shrink-0" style={{ background: stat.bg, color: stat.color }}>
+                  {stat.icon}
+                </span>
+              </div>
+              <div className="text-[24px] sm:text-[28px] font-bold leading-tight truncate">{stat.display}</div>
+              <div
+                title={trend.direction === "flat" ? "No meaningful change in this period" : `Trend: ${trend.label} vs previous period`}
+                className={`text-xs font-semibold inline-flex items-center gap-1 truncate ${
+                  trend.direction === "up" ? "text-success-text" : trend.direction === "down" ? "text-error-text" : "text-text-muted"
+                }`}
+              >
+                {trend.direction === "up" ? <ChevronUp size={14} className="shrink-0" /> : trend.direction === "down" ? <ChevronDown size={14} className="shrink-0" /> : <Minus size={14} className="shrink-0" />}
+                <span className="truncate">{trend.label}</span>
+                <span className="font-normal text-text-muted truncate">vs prev</span>
+              </div>
             </div>
-            <div className="text-[28px] font-bold leading-tight">{stat.value}</div>
-            <div className={`text-xs font-semibold inline-flex items-center gap-1 ${stat.up ? "text-success-text" : "text-error-text"}`}>
-              {stat.up ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {stat.delta}
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      <div className="grid grid-cols-2 max-lg:grid-cols-1 gap-4">
-        <div className="bg-bg-card border border-border radius-lg p-5 shadow-md">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold">Signups (7 days)</h3>
-            <span className="text-xs text-primary font-medium cursor-pointer flex items-center gap-1">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 min-w-0">
+        <div className="bg-bg-card border border-border radius-lg p-4 sm:p-5 shadow-md min-w-0 overflow-hidden">
+          <div className="flex items-center justify-between mb-4 gap-2 min-w-0">
+            <h3 className="text-base font-semibold truncate">Signups (7 days)</h3>
+            <Link href="/admin/users" className="text-xs text-primary font-medium cursor-pointer flex items-center gap-1 no-underline shrink-0">
               View all <span>&rarr;</span>
-            </span>
+            </Link>
           </div>
-          <div style={{ position: "relative" }}>
-            <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: "100%", height: "160px", overflow: "visible" }}>
-              <line x1={padL} y1={svgH - padB} x2={svgW - padR} y2={svgH - padB} stroke="var(--color-border)" strokeWidth="1" />
-              {[0.25, 0.5, 0.75].map(ratio => {
-                const y = padT + plotH - ratio * plotH
-                return (
-                  <line key={ratio} x1={padL} y1={Math.round(y)} x2={svgW - padR} y2={Math.round(y)} stroke="var(--color-border)" strokeWidth="1" strokeDasharray="4" />
-                )
-              })}
-              {chartPoints.length > 1 && (
-                <polyline points={chartPoints.join(" ")} fill="none" stroke="var(--color-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              )}
-              {signups7d.map((d, i) => {
-                const x = padL + i * stepX
-                const y = padT + plotH - (d.count / maxSignup) * (plotH - 20) - 10
-                const isLast = i === signups7d.length - 1
-                return (
-                  <circle key={d.date} cx={Math.round(x)} cy={Math.round(y)} r={isLast ? 4 : 3.5} fill={isLast ? "var(--color-primary)" : "#fff"} stroke="var(--color-primary)" strokeWidth="2.5" />
-                )
-              })}
-              {signups7d.map((d, i) => {
-                const x = padL + i * stepX
-                const label = new Date(d.date).toLocaleDateString("en-US", { weekday: "short" })
-                return (
-                  <text key={d.date} x={Math.round(x)} y={svgH - 6} textAnchor="middle" fontSize="10" fill="var(--color-text-muted)">{label}</text>
-                )
-              })}
-              {[Math.round(maxSignup * 0.25), Math.round(maxSignup * 0.5), Math.round(maxSignup * 0.75)].map((val, i) => {
-                const y = padT + plotH - (i + 1) * 0.25 * plotH
-                return (
-                  <text key={val} x={padL - 5} y={Math.round(y) + 3} textAnchor="end" fontSize="10" fill="var(--color-text-muted)">{val}</text>
-                )
-              })}
-            </svg>
+          <div className="overflow-x-auto">
+            <div className="min-w-[320px]" style={{ position: "relative" }}>
+              <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: "100%", height: "160px", overflow: "visible" }} role="img" aria-label="Signups over the last 7 days">
+                <line x1={padL} y1={svgH - padB} x2={svgW - padR} y2={svgH - padB} stroke="var(--color-border)" strokeWidth="1" />
+                {[0.25, 0.5, 0.75].map(ratio => {
+                  const y = padT + plotH - ratio * plotH
+                  return (
+                    <line key={ratio} x1={padL} y1={Math.round(y)} x2={svgW - padR} y2={Math.round(y)} stroke="var(--color-border)" strokeWidth="1" strokeDasharray="4" />
+                  )
+                })}
+                {chartPoints.length > 1 && (
+                  <polyline points={chartPoints.join(" ")} fill="none" stroke="var(--color-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                )}
+                {signups7d.map((d, i) => {
+                  const x = padL + i * stepX
+                  const y = padT + plotH - (d.count / maxSignup) * (plotH - 20) - 10
+                  const isLast = i === signups7d.length - 1
+                  return (
+                    <circle key={d.date} cx={Math.round(x)} cy={Math.round(y)} r={isLast ? 4 : 3.5} fill={isLast ? "var(--color-primary)" : "#fff"} stroke="var(--color-primary)" strokeWidth="2.5" />
+                  )
+                })}
+                {signups7d.map((d, i) => {
+                  const x = padL + i * stepX
+                  const label = new Date(d.date).toLocaleDateString("en-US", { weekday: "short" })
+                  return (
+                    <text key={d.date} x={Math.round(x)} y={svgH - 6} textAnchor="middle" fontSize="10" fill="var(--color-text-muted)">{label}</text>
+                  )
+                })}
+                {[Math.round(maxSignup * 0.25), Math.round(maxSignup * 0.5), Math.round(maxSignup * 0.75)].map((val, i) => {
+                  const y = padT + plotH - (i + 1) * 0.25 * plotH
+                  return (
+                    <text key={val} x={padL - 5} y={Math.round(y) + 3} textAnchor="end" fontSize="10" fill="var(--color-text-muted)">{val}</text>
+                  )
+                })}
+              </svg>
+            </div>
           </div>
         </div>
 
-        <div className="bg-bg-card border border-border radius-lg p-5 shadow-md">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-base font-semibold">Top Routes by Validity</h3>
-            <span className="text-xs text-primary font-medium cursor-pointer flex items-center gap-1">
+        <div className="bg-bg-card border border-border radius-lg p-4 sm:p-5 shadow-md min-w-0 overflow-hidden">
+          <div className="flex items-center justify-between mb-4 gap-2 min-w-0">
+            <h3 className="text-base font-semibold truncate">Top Routes by Validity</h3>
+            <Link href="/admin/posts" className="text-xs text-primary font-medium cursor-pointer flex items-center gap-1 no-underline shrink-0">
               View all <span>&rarr;</span>
-            </span>
+            </Link>
           </div>
           <div className="flex flex-col gap-2.5">
             {topPosts.map((post, i) => (
-              <div key={post.id} className="flex items-center gap-2.5">
-                <Link href={`/posts/${post.id}`} className="text-xs font-medium flex-1 min-w-0 truncate no-underline hover:underline text-text-primary">{post.title}</Link>
-                <div className="flex-1 h-5 bg-bg-elevated radius-pill overflow-hidden">
+              <div key={post.id} className="flex items-center gap-2.5 min-w-0">
+                <Link href={`/posts/${post.id}`} className="text-xs font-medium flex-1 min-w-0 truncate no-underline hover:underline text-text-primary" title={post.title}>{post.title}</Link>
+                <div className="flex-1 min-w-[60px] h-5 bg-bg-elevated radius-pill overflow-hidden">
                   <div
                     className="h-full radius-pill"
                     style={{ width: `${post.validityScore}%`, background: barColors[i % barColors.length], transition: "width 200ms" }}
@@ -233,13 +215,13 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div>
+      <div className="min-w-0">
         <h3 className="text-base font-semibold flex items-center gap-2 mb-3">
-          <Users size={18} className="text-text-secondary" />
-          Users
+          <Users size={18} className="text-text-secondary shrink-0" />
+          <span className="truncate">Users</span>
         </h3>
-        <div className="overflow-x-auto radius-lg border border-border bg-bg-card shadow-xs">
-          <table className="w-full border-collapse text-xs">
+        <div className="overflow-x-auto radius-lg border border-border bg-bg-card shadow-xs max-w-full">
+          <table className="w-full border-collapse text-xs min-w-[720px]">
             <thead>
               <tr className="bg-bg-elevated">
                 <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-text-secondary text-left whitespace-nowrap border-b border-border-strong">
@@ -258,28 +240,28 @@ export default function AdminDashboard() {
                 <tr><td colSpan={7} className="text-center py-8 text-text-muted text-sm">No recent users</td></tr>
               ) : recentUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-bg-elevated transition-colors duration-fast cursor-pointer">
-                  <td className="px-4 py-3 border-b border-border">
-                    <div className="flex items-center gap-2.5">
-                      <Link href={`/profile/${u.userName}`} className="no-underline">
+                  <td className="px-4 py-3 border-b border-border max-w-[220px]">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Link href={`/profile/${u.userName}`} className="no-underline shrink-0">
                         <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-sm font-bold shrink-0 text-primary">
                           {(u.firstName?.[0] ?? "?")}{(u.lastName?.[0] ?? "")}
                         </div>
                       </Link>
-                      <div>
-                        <Link href={`/profile/${u.userName}`} className="text-xs font-semibold no-underline hover:underline text-text-primary">{u.firstName} {u.lastName}</Link>
-                        <div className="text-[10px] text-text-muted">{u.email}</div>
+                      <div className="min-w-0">
+                        <Link href={`/profile/${u.userName}`} className="text-xs font-semibold no-underline hover:underline text-text-primary block truncate">{u.firstName} {u.lastName}</Link>
+                        <div className="text-[10px] text-text-muted truncate max-w-[150px]">{u.email}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 border-b border-border text-text-primary">{u.email}</td>
-                  <td className="px-4 py-3 border-b border-border">
+                  <td className="px-4 py-3 border-b border-border text-text-primary max-w-[200px] truncate">{u.email}</td>
+                  <td className="px-4 py-3 border-b border-border whitespace-nowrap">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[10px] font-semibold ${
                       u.role === "ADMIN" ? "bg-error text-error-text" : u.role === "MOD" ? "bg-info text-info-text" : "bg-bg-elevated text-text-secondary"
                     }`}>
                       {u.role}
                     </span>
                   </td>
-                  <td className="px-4 py-3 border-b border-border">
+                  <td className="px-4 py-3 border-b border-border whitespace-nowrap">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[10px] font-semibold ${
                       u.rewardTier === "GOLD" ? "bg-warning text-warning-text" : "bg-bg-elevated text-text-secondary"
                     }`}>
@@ -287,12 +269,12 @@ export default function AdminDashboard() {
                     </span>
                   </td>
                   <td className="px-4 py-3 border-b border-border">{u._count.posts}</td>
-                  <td className="px-4 py-3 border-b border-border text-text-muted">
+                  <td className="px-4 py-3 border-b border-border text-text-muted whitespace-nowrap">
                     {new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                   </td>
                   <td className="px-4 py-3 border-b border-border">
                     <div className="relative inline-block">
-                      <Link href="/admin/users" className="w-8 h-8 radius-md border-none bg-transparent text-text-muted hover:bg-bg-elevated hover:text-text-primary cursor-pointer grid place-items-center transition-colors duration-fast no-underline">
+                      <Link href="/admin/users" className="w-8 h-8 radius-md border-none bg-transparent text-text-muted hover:bg-bg-elevated hover:text-text-primary cursor-pointer grid place-items-center transition-colors duration-fast no-underline" aria-label="Manage in Users table">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none" />
                           <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
@@ -307,6 +289,6 @@ export default function AdminDashboard() {
           </table>
         </div>
       </div>
-    </>
+    </div>
   )
 }
