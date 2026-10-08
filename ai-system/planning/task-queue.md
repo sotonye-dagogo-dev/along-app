@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
-> - last-verified-against-code: 2026-10-08 (Sprint 14 rows verified present in code + full QA gate green in-runner: tsc 0, jest 188/188, build clean)
-> - last-synced: 2026-10-08 (Sprint 14 notification/referral/profile tightening — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 15 close-out)
+> - last-verified-against-code: 2026-10-08 (Sprint 15 rows verified present in code + full QA gate green in-runner: tsc 0, jest 198/198, build clean)
+> - last-synced: 2026-10-08 (Sprint 15 notification nav/badges, referral+points coverage, username edit, landing guest-link, one-time prod reset — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -292,6 +292,21 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Invite policy — maxInvites caps send-credit points only (config docs + server cap + invite page "Bonus Invites Left" copy); leaderboard verified zero-point-inclusive | [x] |
 | [S] | Route-request flag contrast — `bg-warning text-warning-text border-warning-border` pairing on PostCard, detail view, RequestRouteModal, drafts panel, ShareRouteModal banner, admin pills, invite ranks | [x] |
 | [M] | Tests — `post-nature.test.ts` (4), `mentionService.test.ts` (8), `referralService.test.ts` (6), `leaderboard.test.ts` (2), posts/mutations extensions (like/dislike/mention/multi-type/archived) | [x] |
+
+---
+
+## Sprint 15 — Notification Nav/Badges, Referral+Points Coverage, Username Edit, Landing Guest-Link, One-Time Prod Reset (2026-10-08, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no removed APIs; all notification writes never-throw/void). QA full in-runner: tsc 0 errors, jest 22 suites / 198 tests pass, next build clean, lint 1 pre-existing warning / 0 new.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Nav badges — MOBILE_TABS Bookmarks→Notifications; `NOTIFICATION_BADGE_CONFIG` + `BADGED_NAV_HREFS`; `useUnreadNotifications` (60s poll of cached endpoint, guest-safe, AbortController); badge on desktop sidebar + mobile tab (99+ cap, `role=status`) | [x] |
+| [M] | Referral+points notification coverage — `NOTIFICATION_MESSAGES` templates; `notifyReferralConversion` (inviter: `@user signed up through your referral…`) wired in register + Google callback (new + first-time-OAuth); `notifyPointsAwarded` (REWARD points + BADGE tier-up `moved from X to Y…`) in rewards worker | [x] |
+| [M] | Username edit — `userName` first in EDIT_PROFILE_FIELDS + `USERNAME_RULE`; PATCH allowlist + shape validation + uniqueness check (409, P2002 race guard, self-keep allowed); profile page initialValues + server-error toast (no false success on 409) | [x] |
+| [S] | Landing guest-link — `GuestContinueLink` (same `isAuthenticated` gate as HeroCtas/BottomCta, null while loading/authed); replaces static always-on link in `page.tsx` | [x] |
+| [S] | One-time prod reset — `scripts/reset-prod-db.ts` (TRUNCATE CASCADE all app tables, SiteConfig preserved, never fails build) + `db:reset-prod` + prepended to `vercel-build` — ⚠️ REMOVE after the clean build or every deploy wipes the DB | [x] |
+| [S] | Tests — `__tests__/sprint15/tightening.test.ts` (10: badge config/cap/format, message copy, username field+rule) | [x] |
 
 ---
 

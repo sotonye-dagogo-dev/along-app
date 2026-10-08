@@ -4,7 +4,7 @@ import { buildMetadata } from "@/app/lib/utils/metadata";
 import { websiteSchema } from "@/app/lib/utils/structuredData";
 import { StructuredData } from "@/app/components/ui/StructuredData";
 import AppLogo from "../components/ui/AppLogo";
-import { HeroCtas, BottomCta } from "@/app/components/ui/LandingCtas";
+import { HeroCtas, BottomCta, GuestContinueLink } from "@/app/components/ui/LandingCtas";
 import { prisma } from "@/app/lib/db/prisma";
 
 export const metadata = buildMetadata({
@@ -183,9 +183,7 @@ export default async function LandingPage() {
         <div className="flex gap-3 flex-wrap justify-center">
           <HeroCtas />
         </div>
-        <Link href="/home" className="mt-5 inline-block text-sm text-white/70 hover:text-white transition-colors underline underline-offset-2">
-          Continue as guest
-        </Link>
+        <GuestContinueLink />
       </section>
 
       {/* Features */}

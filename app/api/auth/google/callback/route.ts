@@ -131,6 +131,8 @@ export async function GET(request: NextRequest) {
       if (referralUpdate.invitedById) {
         const { linkReferralRewards } = await import("@/app/lib/services/referralService");
         linkReferralRewards(referralUpdate.invitedById, user.id, referralInviteeCount);
+        const { notifyReferralConversion } = await import("@/app/lib/services/notificationService");
+        void notifyReferralConversion(referralUpdate.invitedById, user.id, user.userName);
       }
 
       const accessToken = signAccessToken({ userId: user.id, role: user.role });
@@ -189,6 +191,8 @@ export async function GET(request: NextRequest) {
     if (invitedById) {
       const { linkReferralRewards } = await import("@/app/lib/services/referralService");
       linkReferralRewards(invitedById, user.id, inviterInviteeCount);
+      const { notifyReferralConversion } = await import("@/app/lib/services/notificationService");
+      void notifyReferralConversion(invitedById, user.id, userName);
     }
 
     const accessToken = signAccessToken({ userId: user.id, role: user.role });

@@ -74,7 +74,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const allowedFields = ["firstName", "lastName", "bio", "avatar"];
+    const allowedFields = ["userName", "firstName", "lastName", "bio", "avatar"];
 
     const updateData: Record<string, unknown> = {};
     for (const field of allowedFields) {
@@ -87,22 +87,54 @@ export async function PATCH(
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
     }
 
-    const user = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        userName: true,
-        firstName: true,
-        lastName: true,
-        avatar: true,
-        avatarConfig: true,
-        bio: true,
-        verified: true,
-        rewardPoints: true,
-        rewardTier: true,
-      },
-    });
+    // Username stays globally unique: validate shape, then confirm no OTHER
+    // user holds it (self-keeping the same name is always allowed).
+    if (typeof updateData.userName === "string") {
+      const { USERNAME_RULE } = await import("@/app/lib/config/forms");
+      const candidate = updateData.userName.trim();
+      if (
+        candidate.length < USERNAME_RULE.minLength ||
+        candidate.length > USERNAME_RULE.maxLength ||
+        !USERNAME_RULE.pattern.test(candidate)
+      ) {
+        return NextResponse.json(
+          { error: "Username must be 3-30 characters and contain only letters, numbers, and underscores" },
+          { status: 400 }
+        );
+      }
+      const taken = await prisma.user.findUnique({ where: { userName: candidate } });
+      if (taken && taken.id !== id) {
+        return NextResponse.json({ error: "Username already exists" }, { status: 409 });
+      }
+      updateData.userName = candidate;
+    }
+
+    let user;
+    try {
+      user = await prisma.user.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true,
+          userName: true,
+          firstName: true,
+          lastName: true,
+          avatar: true,
+          avatarConfig: true,
+          bio: true,
+          verified: true,
+          rewardPoints: true,
+          rewardTier: true,
+        },
+      });
+    } catch (error) {
+      // Race guard: the unique index is the final arbiter (two users claiming
+      // the same name at once) — translate it to the same 409.
+      if ((error as { code?: string })?.code === "P2002") {
+        return NextResponse.json({ error: "Username already exists" }, { status: 409 });
+      }
+      throw error;
+    }
 
     return NextResponse.json({ user }, { status: 200 });
   } catch (error) {

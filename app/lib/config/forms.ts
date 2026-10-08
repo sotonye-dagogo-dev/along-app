@@ -15,11 +15,20 @@ export const LOGIN_FIELDS: FieldConfig[] = [
 ];
 
 export const EDIT_PROFILE_FIELDS: FieldConfig[] = [
+  { name: "userName", label: "Username", type: "text", placeholder: "Choose a unique username", required: true, icon: User },
   { name: "firstName", label: "First Name", type: "text", required: true, icon: User },
   { name: "lastName", label: "Last Name", type: "text", required: true, icon: User },
   { name: "bio", label: "Bio", type: "textarea", placeholder: "Tell us about yourself", icon: MessageSquare },
   { name: "phone", label: "Phone", type: "tel", placeholder: "+234...", icon: Phone },
 ];
+
+/** Shared username rules (mirrors REGISTER_SCHEMA so edit + signup agree). */
+export const USERNAME_RULE = {
+  minLength: 3,
+  maxLength: 30,
+  pattern: /^[a-zA-Z0-9_]+$/,
+  hint: "Username can only contain letters, numbers, and underscores",
+} as const;
 
 export const POST_CREATE_FIELDS: FieldConfig[] = [
   { name: "title", label: "Route Title", type: "text", placeholder: "E.g., Yaba to Ikeja via Oshodi", required: true },
