@@ -13,12 +13,20 @@ describe("execute-feature: carousel/share-modal/request-trigger/footer configs",
     expect(ENDLESS_CAROUSEL_CONFIG.resumeDelayMs).toBeGreaterThan(0);
   });
 
+  it("carousel never uses mock fallback in production", () => {
+    expect(ENDLESS_CAROUSEL_CONFIG.allowMockFallback).toBe(false);
+  });
+
   it("share modal collapses preview + score by default and keeps form open", () => {
     expect(SHARE_ROUTE_MODAL_CONFIG.previewDefaultOpen).toBe(false);
     expect(SHARE_ROUTE_MODAL_CONFIG.scoreDefaultOpen).toBe(false);
     expect(SHARE_ROUTE_MODAL_CONFIG.formDefaultOpen).toBe(true);
     expect(SHARE_ROUTE_MODAL_CONFIG.previewTitle.length).toBeGreaterThan(0);
     expect(SHARE_ROUTE_MODAL_CONFIG.formTitle.length).toBeGreaterThan(0);
+  });
+
+  it("share modal exposes the Request? trigger (config-driven)", () => {
+    expect(SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger).toBe(true);
   });
 
   it("request trigger carries the Request? tagline for tooltip + a11y", () => {
