@@ -6,7 +6,7 @@ import { Camera, Bell, BarChart3, UserPlus } from "lucide-react"
 import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import dynamic from "next/dynamic"
-import { RewardsPanel, EditProfileModal } from "@/app/components/features/profile"
+import { RewardsPanel, EditProfileModal, EarlyAdopterBadgeFromStatus } from "@/app/components/features/profile"
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 import { AuthLinkPanel } from "@/app/components/features/profile/AuthLinkPanel"
 import { toastService } from "@/app/lib/services/toastService"
@@ -37,6 +37,13 @@ interface ProfileData {
   followerCount: number
   followingCount: number
   avgValidityScore: number
+  earlyAdopter?: {
+    enabled: boolean
+    limit: number
+    rank: number | null
+    isEarlyAdopter: boolean
+    label: string | null
+  } | null
 }
 
 interface PostItem {
@@ -196,13 +203,14 @@ export default function OwnProfilePage() {
         </div>
 
         <div className="mb-1">
-          <h1 className="text-[22px] font-semibold tracking-tight flex items-center gap-1.5">
+          <h1 className="text-[22px] font-semibold tracking-tight flex items-center gap-1.5 flex-wrap">
             {profile.firstName} {profile.lastName}
             {profile.verified && (
               <svg viewBox="0 0 24 24" className="w-[18px] h-[18px] fill-primary stroke-primary stroke-[1.5]">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             )}
+            <EarlyAdopterBadgeFromStatus earlyAdopter={profile.earlyAdopter} />
           </h1>
           <p className="text-sm text-text-secondary mb-1.5">@{profile.userName}</p>
         </div>

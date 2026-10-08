@@ -15,6 +15,7 @@ import type { User as PrismaUser } from '../app/generated/prisma/client';
 import { DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TEMPLATES } from '../app/lib/config/email';
 import { DEFAULT_VALIDITY_CONFIG } from '../app/lib/config/validityConfig';
 import { DEFAULT_FEED_CONFIG } from '../app/lib/config/feedAlgorithm';
+import { DEFAULT_EARLY_ADOPTER_CONFIG, EARLY_ADOPTER_CONFIG_KEY } from '../app/lib/config/earlyAdopter';
 import type { VehicleType } from '../app/lib/types';
 
 // Type definitions for seed data
@@ -86,6 +87,7 @@ async function seedSiteConfig(): Promise<void> {
         { key: 'feedAlgorithm', value: DEFAULT_FEED_CONFIG },
         { key: 'email', value: DEFAULT_EMAIL_CONFIG },
         { key: 'emailTemplates', value: DEFAULT_EMAIL_TEMPLATES },
+        { key: EARLY_ADOPTER_CONFIG_KEY, value: DEFAULT_EARLY_ADOPTER_CONFIG },
     ];
 
     for (const entry of entries) {

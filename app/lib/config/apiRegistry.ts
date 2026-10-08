@@ -23,6 +23,8 @@ export const API_REGISTRY: Record<string, ApiEndpoint> = {
   reports: { path: "/api/reports", methods: ["POST"], auth: false, rateLimit: "posts" },
   routesTrace: { path: "/api/routes/trace", methods: ["POST"], auth: true, rateLimit: "trace" },
   usersDetail: { path: "/api/users/[id]", methods: ["GET", "PATCH"], auth: false },
+  usersEarlyAdopter: { path: "/api/users/[id]/early-adopter", methods: ["GET"], auth: false },
+  usersEarlyAdopters: { path: "/api/users/early-adopters", methods: ["GET"], auth: false },
   usersSearch: { path: "/api/users/search", methods: ["GET"], auth: false, rateLimit: "search" },
   search: { path: "/api/search", methods: ["GET"], auth: false, rateLimit: "search" },
   usersFollow: { path: "/api/users/[id]/follow", methods: ["POST", "DELETE"], auth: true },

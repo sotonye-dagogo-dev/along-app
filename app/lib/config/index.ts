@@ -30,6 +30,18 @@ export type { SiteReview } from "./reviews";
 export { TRANSPORT_INTEGRATION_REGISTRY } from "./mapIntegrations";
 export { REWARD_TIERS, POINTS_CONFIG } from "./rewards";
 export { INVITE_CONFIG } from "./inviteConfig";
+export {
+  EARLY_ADOPTER_CONFIG_KEY,
+  DEFAULT_EARLY_ADOPTER_CONFIG,
+  EARLY_ADOPTER_LIMITS,
+  EARLY_ADOPTER_CONFIG_META,
+  EARLY_ADOPTER_BADGE_DISPLAY,
+  normalizeEarlyAdopterConfig,
+  validateEarlyAdopterConfigValue,
+  buildEarlyAdopterLabel,
+  buildEarlyAdopterTooltip,
+} from "./earlyAdopter";
+export type { EarlyAdopterConfig } from "./earlyAdopter";
 export { RATE_LIMITS } from "./rateLimits";
 export { VALIDATION_RULES } from "./validationRules";
 export { CACHE_TTL, CACHE_KEYS, NOTIFICATION_FILTERS } from "./cache";

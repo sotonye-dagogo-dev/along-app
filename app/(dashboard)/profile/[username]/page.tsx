@@ -9,6 +9,15 @@ import { EMPTY_STATES } from "@/app/lib/config"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
+import { EarlyAdopterBadgeFromStatus } from "@/app/components/features/profile"
+
+interface EarlyAdopterPayload {
+  enabled: boolean
+  limit: number
+  rank: number | null
+  isEarlyAdopter: boolean
+  label: string | null
+}
 
 interface ProfileData {
   id: string
@@ -25,6 +34,7 @@ interface ProfileData {
   followerCount: number
   followingCount: number
   avgValidityScore: number
+  earlyAdopter?: EarlyAdopterPayload | null
 }
 
 interface PostItem {
@@ -60,6 +70,7 @@ interface ProfileApiResponse {
     _count: { posts: number; followers: number; following: number }
   }
   isFollowing?: boolean
+  earlyAdopter?: EarlyAdopterPayload | null
 }
 
 export default function OtherProfilePage() {
@@ -115,6 +126,7 @@ export default function OtherProfilePage() {
       followerCount: u._count.followers,
       followingCount: u._count.following,
       avgValidityScore: u._count.posts > 0 ? Math.round(u.rewardPoints / u._count.posts) : 0,
+      earlyAdopter: profileRes?.earlyAdopter ?? null,
     }
   }, [profileRes])
 
@@ -188,13 +200,14 @@ export default function OtherProfilePage() {
         </div>
 
         <div className="mb-1">
-          <h1 className="text-[22px] font-semibold tracking-tight flex items-center gap-1.5">
+          <h1 className="text-[22px] font-semibold tracking-tight flex items-center gap-1.5 flex-wrap">
             {profile.firstName} {profile.lastName}
             {profile.verified && (
               <svg viewBox="0 0 24 24" className="w-[18px] h-[18px] fill-primary stroke-primary stroke-[1.5]">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
               </svg>
             )}
+            <EarlyAdopterBadgeFromStatus earlyAdopter={profile.earlyAdopter} />
           </h1>
           <p className="text-sm text-text-secondary mb-1.5">@{profile.userName}</p>
         </div>

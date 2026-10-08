@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 16 early-adopter badge + reset unhook)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale
 
@@ -660,3 +660,29 @@ Directive close-out: notifications replaced bookmarks on the mobile bottom bar w
 
 **Next Sprint Focus:**
 ⚠️ Remove the one-time reset (script + package.json entries) once prod DB is confirmed clean. Then backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — Execute-Feature: Vercel-Build Reset Removal + Early-Adopter "First N Users" Badge (Sprint 16)
+
+**Summary:**
+Directive close-out in two parts: (1) the one-time prod DB reset was confirmed successful, so its `vercel-build` invocation was removed — builds no longer wipe the DB (script + `db:reset-prod` retained manual-only); (2) a dynamic, admin-manageable early-adopter badge ("First 100 Users #42" style) now marks the N earliest-joined users on profiles, with rank derived from the already-recorded `User.createdAt` (no migration) and list/filter endpoints ready for future rewards and audience tooling. All non-breaking (additive files + additive response fields, best-effort badge reads that never fail their host request), config/metadata-driven.
+
+**Completed:**
+- Ops: `vercel-build` no longer runs `db:reset-prod` (package.json one-line removal; script + `scripts/reset-prod-db.ts` kept for manual use)
+- Config: `app/lib/config/earlyAdopter.ts` (key, defaults enabled/limit 100/`First {N} Users #{rank}`, limits, normalize, 400-validation, label/tooltip builders, admin-card meta, badge display meta) + barrel export + seed row
+- Service: `app/lib/services/earlyAdopterService.ts` (config via `getSiteConfig`, deterministic rank by `createdAt` asc + id tie-break, Redis-cached 600s, status + list helpers)
+- APIs: `GET /api/users/early-adopters` (config + earliest users), `GET /api/users/[id]/early-adopter` (per-user, 404 unknown), `earlyAdopter` embedded in `/api/users/[id]` + `/by-username/[username]`, `API_REGISTRY` entries
+- Admin: `/api/admin/config` validates `earlyAdopterConfig` + invalidates `siteConfig` Redis on PUT/DELETE; Config page badge card (toggle + N + template, dirty-gated save); `/api/admin/users?earlyAdopter=true` earliest-first filter with rank + label
+- UI: `EarlyAdopterBadge` + `EarlyAdopterBadgeFromStatus` on own + other profile headers (wrap-safe, tooltip, null-safe)
+- Tests: `earlyAdopter.test.ts` (5) + `EarlyAdopterBadge.test.tsx` (6)
+
+**Key Changes:**
+- New: `app/lib/config/earlyAdopter.ts`, `app/lib/services/earlyAdopterService.ts`, `app/api/users/early-adopters/route.ts`, `app/api/users/[id]/early-adopter/route.ts`, `app/components/features/profile/EarlyAdopterBadge.tsx`, `app/__tests__/config/earlyAdopter.test.ts`, `app/__tests__/components/EarlyAdopterBadge.test.tsx`
+- Edited: `package.json` (vercel-build), `prisma/seed.ts` (badge seed row), `app/lib/config/{index,apiRegistry}.ts`, `app/api/admin/{config,users}/route.ts`, `app/api/users/{[id],by-username/[username]}/route.ts`, `app/(dashboard)/profile/{page,[username]/page}.tsx`, `app/admin/config/page.tsx`, `app/components/features/profile/index.ts`
+
+**QA gate (this runner — no node_modules, deps not installable here):**
+- `npx tsc --noEmit` — new/edited files produce zero non-environment diagnostics (only missing-module/missing-type errors shared by ALL files incl. untouched ones); no syntax errors
+- `npm test` — not runnable here; new suites follow the existing jest patterns (pure-config assertions + RTL component assertions); full gate (tsc + lint + tests + build) to run where deps exist
+- `package.json` validated as JSON; `git diff --stat` reviewed (12 edited + 7 new)
+
+**Next Sprint Focus:**
+Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
