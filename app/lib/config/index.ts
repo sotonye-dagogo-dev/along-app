@@ -44,6 +44,8 @@ export {
 } from "./earlyAdopter";
 export type { EarlyAdopterConfig } from "./earlyAdopter";
 export { RATE_LIMITS } from "./rateLimits";
+export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, SITE_CONFIG_EDITORS, inferConfigKind, formatDelta } from "./admin";
+export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId } from "./admin";
 export { VALIDATION_RULES } from "./validationRules";
 export { CACHE_TTL, CACHE_KEYS, NOTIFICATION_FILTERS } from "./cache";
 export { API_REGISTRY } from "./apiRegistry";

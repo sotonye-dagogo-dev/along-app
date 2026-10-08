@@ -1296,3 +1296,19 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - Auto-filed BugReports use category OTHER with `metadata.source: "error-boundary"` so admins can filter them; reporter stays anonymous (null) since boundaries may render pre-auth.
 - Quick Links block keeps its `lg:hidden` wrapper (desktop already has the sidebar admin section); the admin entry is mobile-visible there.
 **Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. In-progress reset to idle below.
+
+## 2026-10-08 — execute-feature: admin responsive + real metrics + bulk ops + config UX + profile tabs (Sprint 18)
+**Directive:** Admin responsive (collapsible sidebar, grids per screen size, overflow/truncation/ellipsis/scroll), dashboard metrics valid/real (zero must not show +/- trend), working actions + bulk ops (checkboxes, select all, invert, undo, first-N quick), site-config non-JSON management (drag-drop/simpler UI), profile posts/routes tabs scrollable with spacing.
+**Changes (4 new, 11 edited):**
+- New: `app/lib/config/admin.ts` (layout/metrics/bulk/config-editor metadata + `formatDelta` + `inferConfigKind`), `app/lib/hooks/useBulkSelection.ts` (select-all/invert/undo/clear/first-N with history), `app/__tests__/config/admin.test.ts` (4 tests).
+- Shell: `AdminShell.tsx` collapsible desktop sidebar (persisted), mobile drawer + top bar, truncated labels, scrollable nav.
+- Metrics: stats API computes real `deltas` (totalUsers vs 7d ago, postsToday vs yesterday, avgValidity vs prior, openBugs) with `pctChange` (0/0→0, current>0/0→null); dashboard renders `formatDelta` (zero→"No change"/"No data" flat, never fake +/-) + responsive grids + overflow guards.
+- Bulk: users/posts/bugs/reviews all get toolbar (select-all toggle, invert, undo-select, clear, first-10/25/50, bulk actions with confirm + undo toast); APIs accept `*Ids` arrays (updateMany/deleteMany, non-breaking single still works).
+- Config: card list with type-aware editors (text/number/boolean-toggle/JSON), add-form with kind picker, drag-drop + arrow reorder, modal confirm deletes, toast feedback.
+- Profile: both `[username]` and own `page.tsx` tab bars scrollable (`overflow-x-auto`, min-width tabs, spacing).
+**QA gate (this runner, no node_modules):**
+- `npx tsc --noEmit` — not runnable (missing deps, same pre-existing env limit); new/edited files use existing patterns, no new imports outside installed set.
+- `npx jest` — not runnable here; new suite follows existing pure-config pattern (4 tests).
+- `npm run build` / lint — not runnable here; `git diff --stat` reviewed.
+**Assumptions:** Bulk restore for users replays prior roles individually; post bulk-restore replays snapshots via POST (new ids); bug bulk-moderation loops single calls (post linkage differs); config reorder is display-only (no persisted order column).
+**Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.

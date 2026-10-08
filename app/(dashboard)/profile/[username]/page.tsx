@@ -270,12 +270,18 @@ export default function OtherProfilePage() {
           <p className="text-xs text-text-muted mb-3.5">{mutualCount} mutual follows</p>
         )}
 
-        <div className="flex border-b border-border mb-4">
+        <div
+          role="tablist"
+          aria-label="Profile content"
+          className="flex gap-1 sm:gap-2 border-b border-border mb-4 overflow-x-auto overscroll-x-contain pb-px -mx-1 px-1 scrollbar-thin"
+        >
           {["posts", "routes", "requests", "liked"].map((tab) => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 text-center border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast relative ${
+              className={`flex-1 min-w-[96px] sm:min-w-[120px] shrink-0 px-3 sm:px-4 py-3 text-center border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast relative whitespace-nowrap overflow-hidden text-ellipsis ${
                 activeTab === tab ? "text-primary" : "text-text-secondary hover:text-text-primary"
               }`}
             >
@@ -287,7 +293,7 @@ export default function OtherProfilePage() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 pb-8">
+        <div className="flex flex-col gap-3 sm:gap-4 pb-8 min-w-0">
           {posts.length === 0 && !postsLoading && (
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}

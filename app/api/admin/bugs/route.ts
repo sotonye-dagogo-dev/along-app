@@ -60,10 +60,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { bugId, status, reviewerId, action } = body;
+    const { bugId, bugIds, status, reviewerId, action } = body as {
+      bugId?: string; bugIds?: string[]; status?: string; reviewerId?: string; action?: string;
+    };
+    const targets: string[] = bugIds?.length ? bugIds : bugId ? [bugId] : [];
 
-    if (!bugId || !status) {
-      return NextResponse.json({ error: "bugId and status required" }, { status: 400 });
+    if (targets.length === 0 || !status) {
+      return NextResponse.json({ error: "bugId(s) and status required" }, { status: 400 });
     }
 
     // Moderation action on the linked post (ACID: bug status + post change in
@@ -79,13 +82,17 @@ export async function PATCH(request: NextRequest) {
       if (reviewerId) data.reviewerId = reviewerId;
       if (status === "RESOLVED" || status === "CLOSED") data.resolvedAt = new Date();
 
-      await prisma.bugReport.update({
-        where: { id: bugId },
+      await prisma.bugReport.updateMany({
+        where: { id: { in: targets } },
         data: data as never,
       });
 
-      return NextResponse.json({ success: true }, { status: 200 });
+      return NextResponse.json({ success: true, updated: targets.length }, { status: 200 });
     }
+
+    // Bulk moderation actions only support single-report flow (post linkage
+    // differs per report); bulk callers loop single PATCH calls instead.
+    const bugId = targets[0];
 
     const report = await prisma.bugReport.findUnique({
       where: { id: bugId },

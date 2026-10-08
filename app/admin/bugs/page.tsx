@@ -6,6 +6,8 @@ import { Bug, Flag, ExternalLink } from "lucide-react"
 import { modalService } from "@/app/lib/services/modalService"
 import { toastService } from "@/app/lib/services/toastService"
 import { MODERATION_CONFIG } from "@/app/lib/config"
+import { ADMIN_BULK_SELECT_META } from "@/app/lib/config/admin"
+import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 
 interface AdminBug {
   id: string
@@ -41,6 +43,7 @@ export default function AdminBugsPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState("")
   const [kindFilter, setKindFilter] = useState<"all" | "reports" | "bugs">("all")
+  const [bulkBusy, setBulkBusy] = useState(false)
 
   const load = async (status?: string) => {
     setLoading(true)
@@ -61,6 +64,29 @@ export default function AdminBugsPage() {
       kindFilter === "reports" ? b.metadata?.kind === "post-report" : b.metadata?.kind !== "post-report"
     )
   }, [bugs, kindFilter])
+  const bulk = useBulkSelection(visible, (b) => b.id)
+
+  const handleBulkStatus = async (status: string) => {
+    const ids = [...bulk.selected]
+    if (ids.length === 0) return
+    setBulkBusy(true)
+    try {
+      const res = await fetch("/api/admin/bugs", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bugIds: ids, status }),
+      })
+      if (!res.ok) throw new Error("Request failed")
+      bulk.clear()
+      toastService.success(`${ids.length} report(s) → ${status}`)
+      load(statusFilter || undefined)
+    } catch (err) {
+      console.error("[AdminError]", err)
+      toastService.error("Bulk update failed")
+    } finally {
+      setBulkBusy(false)
+    }
+  }
 
   const handleStatusChange = async (bugId: string, status: string) => {
     try {
@@ -108,11 +134,11 @@ export default function AdminBugsPage() {
   }
 
   return (
-    <>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight">Bugs</h1>
-          <div className="text-sm text-text-secondary">Bug reports from users</div>
+    <div className="min-w-0 flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-[24px] sm:text-[28px] font-bold tracking-tight truncate">Bugs</h1>
+          <div className="text-sm text-text-secondary truncate">Bug reports from users</div>
         </div>
         <div className="flex flex-wrap gap-2">
           <select
@@ -136,7 +162,31 @@ export default function AdminBugsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2 bg-bg-card border border-border radius-lg px-3 py-2 text-xs min-w-0">
+        <label className="inline-flex items-center gap-1.5 font-medium cursor-pointer shrink-0">
+          <input type="checkbox" checked={visible.length > 0 && visible.every((b) => bulk.selected.has(b.id))} onChange={() => (bulk.count === visible.length && visible.length > 0 ? bulk.clear() : bulk.selectAll())} className="w-4 h-4 accent-primary cursor-pointer" aria-label="Select all reports" />
+          Select all
+        </label>
+        <button onClick={bulk.invert} className="px-2 py-1 radius-sm border border-border bg-bg-base text-text-secondary hover:text-text-primary cursor-pointer">Invert</button>
+        <button onClick={bulk.undo} disabled={!bulk.canUndo} className="px-2 py-1 radius-sm border border-border bg-bg-base text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-50">Undo select</button>
+        <button onClick={bulk.clear} className="px-2 py-1 radius-sm border border-border bg-bg-base text-text-secondary hover:text-text-primary cursor-pointer">Clear</button>
+        <span className="text-text-muted shrink-0" aria-live="polite">{bulk.count} selected</span>
+        <span className="hidden sm:inline text-text-muted">|</span>
+        <span className="inline-flex items-center gap-1 flex-wrap">
+          <span className="text-text-muted">Quick:</span>
+          {ADMIN_BULK_SELECT_META.quickPresets.map((p) => (
+            <button key={p.id} onClick={() => bulk.selectFirstN(p.count)} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary hover:text-primary cursor-pointer border-none">{p.label}</button>
+          ))}
+        </span>
+        <span className="flex-1" />
+        <span className="inline-flex items-center gap-1.5 flex-wrap">
+          <button onClick={() => handleBulkStatus("TRIAGED")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary border border-border cursor-pointer disabled:opacity-50">Triage</button>
+          <button onClick={() => handleBulkStatus("RESOLVED")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-success text-success-text border-none cursor-pointer disabled:opacity-50">Resolve</button>
+          <button onClick={() => handleBulkStatus("CLOSED")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary border border-border cursor-pointer disabled:opacity-50">Close</button>
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 min-w-0">
         {loading ? (
           <div className="text-center py-8 text-text-muted">Loading...</div>
         ) : visible.length === 0 ? (
@@ -144,17 +194,18 @@ export default function AdminBugsPage() {
         ) : visible.map((bug) => {
           const isReport = bug.metadata?.kind === "post-report"
           return (
-          <div key={bug.id} className="bg-bg-card border border-border radius-lg p-4 shadow-xs">
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center gap-2">
+          <div key={bug.id} className={`bg-bg-card border border-border radius-lg p-4 shadow-xs min-w-0 overflow-hidden ${bulk.selected.has(bug.id) ? "ring-1 ring-primary" : ""}`}>
+            <div className="flex items-start justify-between mb-2 gap-2 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <input type="checkbox" checked={bulk.selected.has(bug.id)} onChange={() => bulk.toggle(bug.id)} aria-label={`Select ${bug.title}`} className="w-4 h-4 accent-primary cursor-pointer shrink-0" />
                 {isReport ? <Flag size={14} className="text-warning-text shrink-0" /> : <Bug size={14} className="text-text-muted shrink-0" />}
-                <h3 className="text-sm font-semibold">{bug.title}</h3>
+                <h3 className="text-sm font-semibold truncate" title={bug.title}>{bug.title}</h3>
               </div>
               <span className={`inline-flex px-2 py-0.5 radius-pill text-[10px] font-semibold ${statusColors[bug.status] ?? "bg-bg-elevated text-text-secondary"}`}>
                 {bug.status.replace("_", " ")}
               </span>
             </div>
-            <p className="text-xs text-text-secondary mb-3 line-clamp-2">{bug.description}</p>
+            <p className="text-xs text-text-secondary mb-3 line-clamp-2 overflow-hidden text-ellipsis">{bug.description}</p>
             {isReport && bug.post && (
               <Link
                 href={`/posts/${bug.post.id}`}
@@ -203,6 +254,6 @@ export default function AdminBugsPage() {
           )
         })}
       </div>
-    </>
+    </div>
   )
 }

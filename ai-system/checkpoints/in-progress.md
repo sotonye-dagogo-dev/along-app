@@ -1,6 +1,6 @@
 # In Progress
 
-**Session:** idle — Sprint 17 admin dashboard fix + referral hardening + error-report actualisation closed out by `execute-feature.md` on 2026-10-08 (with chained `update-ai-system.md` deep sync)
+**Session:** idle — Sprint 18 admin responsive + real metrics + bulk ops + config UX closed out by `execute-feature.md` on 2026-10-08 (with chained `update-ai-system.md` deep sync: session-log + dev-history appended; full QA gate not runnable here — no node_modules, pre-existing env limit; new `admin.test.ts` follows existing patterns)
 **Status:** No active sprint. Next work: pick the next backlog item from `planning/task-queue.md` Backlog (live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration), then open a new sprint via `plan-feature.md` / `execute-feature.md`. Note: QA gate ran fully in this runner (node_modules via `npm install`): tsc 0 errors, jest 25 suites / 220 tests pass, next build clean, lint 0 issues in touched files. No schema migration was introduced (all changes additive/defensive; `db:reset-prod` untouched, still manual-only).
 
 ## Last completed work (archived summary)
