@@ -3,21 +3,23 @@ import { FOOTER_CONFIG } from "@/app/lib/config";
 import LocaleSwitcher from "./LocaleSwitcher";
 
 export function AppFooter() {
+  const gridClass = FOOTER_CONFIG.layout?.gridClass ?? "grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-8"
+  const linkListClass = FOOTER_CONFIG.layout?.linkListClass ?? "flex flex-col gap-2"
   return (
     <footer className="border-t border-border bg-bg-card">
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
+        <div className={gridClass}>
           {FOOTER_CONFIG.columns.map((column) => (
-            <div key={column.title}>
-              <h3 className="font-semibold text-sm mb-3 text-text-primary">
+            <div key={column.title} className="min-w-0">
+              <h3 className="font-semibold text-xs sm:text-sm mb-3 text-text-primary truncate">
                 {column.title}
               </h3>
-              <ul className="flex flex-col gap-2">
+              <ul className={linkListClass}>
                 {column.links.map((link) => (
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-text-secondary hover:text-text-primary transition-colors duration-base"
+                      className="text-xs sm:text-sm text-text-secondary hover:text-text-primary transition-colors duration-base break-words"
                     >
                       {link.label}
                     </Link>

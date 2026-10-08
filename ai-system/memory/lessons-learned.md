@@ -347,3 +347,19 @@ Any feature where the indexed/optimized path needs a migration — ship the zero
 
 **Supersedes:** None
 **Superseded by:** None
+
+---
+
+## Scrub-able Tapes Need Scroll Position, Not CSS Animations
+
+**Context:**
+Sprint 9 (2026-10-08) — the suggestions carousel used a CSS `translateX(0 → -50%)` loop with a drag layer that reset its offset on release: users could pause it but never truly scrub forward/backward and resume. Rewriting autoplay as `requestAnimationFrame` increments of the viewport's native `scrollLeft` (modulo half the duplicated track) made user scroll/drag and autoplay share one position value — interaction just moves the same number the animation continues from.
+
+**What We Learned:**
+If the requirement includes "scroll to any point and continue from there", the scroll offset must be the animation state — CSS keyframe progress is opaque to pointer input and always fights it. Native `overflow-x-auto` + rAF gives free scrubbing, touch support, and keyboard scroll for free; pause-on-hover/focus/hidden-tab plus a resume delay preserves the ambient-tape feel.
+
+**Apply When:**
+Any auto-advancing rail/tape where users may grab, wheel, or keyboard-scroll — start with scrollLeft-driven motion, not keyframes.
+
+**Supersedes:** None
+**Superseded by:** None

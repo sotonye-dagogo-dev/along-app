@@ -6,6 +6,7 @@ import dynamic from "next/dynamic"
 import { useSearchParams } from "next/navigation"
 import { PostCard } from "@/app/components/features/posts"
 import type { RespondToRequest, RouteRequestBody } from "@/app/components/features/posts"
+import { RequestRouteTrigger } from "@/app/components/features/posts/RequestRouteTrigger"
 
 const ShareRouteModal = dynamic(() => import("@/app/components/features/posts/ShareRouteModal"), { ssr: false })
 const RequestRouteModal = dynamic(() => import("@/app/components/features/posts/RequestRouteModal"), { ssr: false })
@@ -266,8 +267,8 @@ function HomeContent() {
 
   return (
     <>
-      <div className="flex justify-center">
-        <div className="max-w-[640px] w-full px-4 py-4 flex flex-col gap-3">
+      <div className="flex justify-center gap-6 min-w-0">
+        <div className="w-full min-w-0 max-w-[640px] px-4 py-4 flex flex-col gap-3">
         {promptVisible && (
           <button
             onClick={handlePromptClick}
@@ -293,6 +294,7 @@ function HomeContent() {
           <div className="flex-1 text-sm text-text-muted px-3 py-2 radius-md bg-bg-elevated">
             How far? Where we wan go?
           </div>
+          <RequestRouteTrigger onClick={() => setShowRequestModal(true)} />
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -331,9 +333,10 @@ function HomeContent() {
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-circle animate-spin" />
           </div>
         )}
-        </div>
 
-        <SuggestionsRail />
+          {/* Mobile suggestions tape owns its own overflow container — never the feed. */}
+          <SuggestionsRail />
+        </div>
 
         <SuggestionsPanel />
       </div>
