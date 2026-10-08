@@ -45,7 +45,7 @@ Client (Browser / PWA)
                ↓
     ┌──────────────────────────────┐
     │   Service Layer              │
-    │  15 services including:        │
+    │  16 services including:        │
     │  pushSubscriptionService     │
     │  qstashService               │
     │  offlineQueue (client-side)  │
@@ -74,7 +74,7 @@ Client (Browser / PWA)
 | Maps | Route visualization with MapLibre GL, clustering | `app/components/features/map*` | MapLibre GL, supercluster, polyline |
 | Notifications | Real-time + push notifications via Web Push API | `app/lib/services/notification*` | Prisma, web-push, QStash |
 | Admin | Dashboard, user management, site config, bug reports | `app/(admin)/` | Prisma, Sentry |
-| Search | NOT IMPLEMENTED — no `/api/search` route or SearchService in code (verified 2026-10-08); explore/suggestions use filtered post queries instead | (none yet) | — |
+| Search | Unified posts + users + tags search: `GET /api/search` (q/type/region/postType/cursor), `searchService.ts`, guest-accessible `/search` page (fixes SuggestionsPanel dead links) | `app/api/search/`, `app/lib/services/searchService.ts`, `app/(dashboard)/search/` | Prisma (contains/insensitive, P2022 fallback), Redis (unified cache 120s), rate-limit `search` bucket |
 | Profile | User profiles, follower/following system, per-tab filtering (posts/liked/bookmarks/routes), rewards | `app/(dashboard)/profile/*`, `app/api/users/[id]/follow*`, `app/api/users/[id]/followers`, `app/api/users/[id]/following`, `app/api/bookmarks/`, `app/components/features/profile/UserList.tsx` | Prisma (Follow, Bookmark models), Cloudinary |
 | Rewards | Gamification: tiers, badges, points | `app/lib/services/rewards*` | Prisma |
 | ValidityEngine | Route verification and trust scoring | `app/lib/services/validity*` | Prisma, Redis |
@@ -218,7 +218,7 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - Tailwind CSS v4 uses the new `@tailwindcss/postcss` plugin — v3-style `@tailwind` directives will not work
 - Dual PostCSS config files exist (`postcss.config.js` CJS + `postcss.config.mjs` ESM) — may cause confusion
 - Sentry DSN and all secrets are populated in `.env` — must not commit or expose
-- 122 Jest tests across 11 suites incl. mutation E2E + posts API (per 2026-10-08 QA gate; runner without node_modules cannot re-verify — see session-log)
+- 139 Jest tests across 13 suites incl. mutation E2E + posts API + search API/service (per 2026-10-08 search-session QA gate; real `npx jest` run after `npm install`)
 - `tsconfig.json` no longer sets `downlevelIteration` (removed 2026-10-08: option deleted in current TS; ES2015 target handles iteration natively)
 - Password reset uses durable `PasswordResetToken` DB rows (not Redis OTP) — survives cache loss; fixed Sept 29 "link expired/invalid" false negatives
 - Forgot-password email is double-guarded: non-blocking `waitUntil` + Resend send-result check (fixed Sept 16 false-positive "mail sent" with no delivery)

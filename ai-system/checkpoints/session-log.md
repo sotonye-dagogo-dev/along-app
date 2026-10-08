@@ -927,3 +927,72 @@ Next human decision — backlog candidates: live map tracking navigation, carto 
 
 **Notes / Blockers:**
 - None — all three items from the originating stale report are now addressed; QA gate green with real runs
+
+---
+
+## Session 2026-10-08 — execute-feature: Search E2E (+ sync-context checkpoints)
+
+**Completed:**
+- Step 1 planning pass: read task-queue, project-plan (Phase 4 search unchecked), system-architecture (Search NOT IMPLEMENTED), project-context, design-system, repair-system, project-decisions; no architecture impact (no schema/migration/deps) so no plan-feature.md; wrote checkpoints/in-progress.md plan
+- Step 2 self-check vs project-context scope + project-decisions: PASS (search = Daily Commuter key interaction; complies with state-strategy/config-driven/zero-emoji decisions)
+- Step 3 implementation:
+  - `app/lib/services/searchService.ts` [NEW] — unified posts+users+tags; contains/insensitive (no migration); Redis read-through via existing CACHE_KEYS.search/CACHE_TTL.searchResults (never-throw); P2022 avatarConfig fallback per repair-system pattern
+  - `app/api/search/route.ts` [NEW] — GET q/type/region/postType/limit/cursor; checkRateLimit(search); guest-accessible; sanitized errors; 503 on Prisma-known errors
+  - `app/(dashboard)/search/page.tsx` + `SearchPage.tsx` [NEW] — fixes dead /search?q= links from SuggestionsPanel; Suspense + useSearchParams; 300ms debounce + AbortController; All/Routes/People tabs; PostCard/FollowButton reuse; EMPTY_STATES.search
+  - `app/lib/config/apiRegistry.ts` [EDIT] — search entry; `middleware.ts` [EDIT] — /search guest route (non-breaking, /explore precedent)
+- Step 3b tests: `app/__tests__/api/search.test.ts` (9: validation, type filters, region/postType, 503, 429) + `app/__tests__/services/searchService.test.ts` (8: normalization, short-query guard, cache, tags, cursor, P2022)
+- Step 4 QA gate (real runs after `npm install` — runner had no node_modules): `npx tsc --noEmit` 0 errors; `npx jest` 13 suites / 139 tests pass; `npx next lint` — 2 new no-require-imports in search test FIXED (require → typed imports), remaining 7 verified pre-existing via `git stash` baseline; `npm run build` clean with /search route
+- Step 5 close-out: project-plan checkbox; task-queue Sprint 8 + last-synced 2026-10-08; system-architecture Search row live; test-plan/test-results 122/11 → 139/13; repo-map + dependency-graph freshness; dev-history entry; this entry
+
+**Files Modified:**
+- app/lib/services/searchService.ts (new)
+- app/api/search/route.ts (new)
+- app/(dashboard)/search/page.tsx + SearchPage.tsx (new)
+- app/__tests__/api/search.test.ts + app/__tests__/services/searchService.test.ts (new)
+- app/lib/config/apiRegistry.ts, middleware.ts (wiring)
+- ai-system/planning/project-plan.md, planning/task-queue.md, system-architecture.md, testing/test-plan.md, testing/test-results.md, index/repo-map.md, index/dependency-graph.md, summaries/dev-history.md, checkpoints/in-progress.md, checkpoints/session-log.md
+
+**Next Task:**
+- update-ai-system.md deep sync (mandated: originating directive says run update-ai-system when done; Sprint 8 is [M]-only but directive chain applies) — run now; then next human decision on remaining backlog
+
+**Assumptions Made:**
+- `contains`/`mode: insensitive` queries chosen over Postgres full-text/GIN indexes deliberately: zero-migration, non-breaking, sufficient for current scale; GIN/trigram upgrade is a future optimization, not this session
+- Cursor pagination is post-id based (user hits are top-N per query, not paginated) — documented in service; matches "routes drive the feed" product shape
+- Lint baseline: 7 `no-explicit-any` errors in leaderboard/posts/feed/google-callback exist on HEAD (proven via stash) — left untouched per non-breaking constraint
+
+**Notes / Blockers:**
+- Sync-context (mid-work after implementation + final at close): drift re-checked — no drift beyond what this session updated; repo-map/dependency-graph now reflect search module; no new drift introduced
+- All tests passing per directive (139/139); non-breaking fixes applied (lint require-imports in new test only)
+
+---
+
+## Session 2026-10-08 — update-ai-system deep sync (execute-feature chain: search E2E)
+
+**Completed:**
+- Read all `ai-system/` files and compared against repo state (HEAD + Sprint 8 search edits; verified: 17 models / 9 enums / 7 migrations / 27 configs / 16 services (15 + searchService) / 13 test files match claims after fixes below; 139 tests by real jest run)
+- Fixed drift found in this pass:
+  - `system-architecture.md` — diagram 15 → 16 services; Known Constraints 122/11 + no-node_modules caveat → 139/13 with real-run note
+  - `project-context.md` — Phase line + counts → Sprint 8 search, 16 services, /api/search, /search page, 139/13, latest QA gate (updater → execute-feature search E2E)
+  - `planning/project-plan.md` — Phase 8 unit-test line 122/11 → 139/13
+  - `memory/architecture-history.md` — appended Sprint 8 entry (zero-migration rationale, slot reuse, repair-system patterns)
+  - `memory/lessons-learned.md` — added "Prefer Zero-Migration Search First; Prove Lint Baselines With Stash" lesson
+- Left untouched (verified, no drift): repair-system, design-system, protocols, agents, skills, tools/registry, designs, operations, FAQ/blog configs; session-log/dev-history history rows (append-only past record); `checkpoints/in-progress.md` cleared to idle per close-out
+
+**Files Modified:**
+- ai-system/system-architecture.md (service count, test-constraint line)
+- ai-system/project-context.md (phase/counts/gate line + updater)
+- ai-system/planning/project-plan.md (test count line)
+- ai-system/memory/architecture-history.md (Sprint 8 entry)
+- ai-system/memory/lessons-learned.md (new lesson)
+- ai-system/checkpoints/session-log.md (this entry)
+- ai-system/checkpoints/in-progress.md (reset to idle)
+
+**Next Task:**
+Next human decision — remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md. Search live-DB integration test still open.
+
+**Assumptions Made:**
+- Historical session-log/dev-history/test-results-history rows describing past 122/11 states are intentionally left as-is (append-only record, not drift)
+- `update-ai-system.md` is terminal per its contract — no chained commands
+
+**Notes / Blockers:**
+- Discrepancy report: no unresolved inconsistencies — every `NOT IMPLEMENTED` / `no /api/search` / `122/11` / `15 services` claim in current-state docs now matches code; the originating stale report (design-system, test-plan, search claim) is fully closed by implementation rather than documentation

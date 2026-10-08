@@ -87,4 +87,18 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 
 ---
 
+### 2026-10-08 — Sprint 8: Search E2E (no migration, no new deps)
+
+**State:**
+`searchService.ts` (unified posts + users + related-tags; Prisma `contains`/`insensitive`, P2022 avatarConfig fallback, Redis read-through 120s); `GET /api/search` (`q`/`type`/`region`/`postType`/`cursor`, search-bucket rate limit, guest-accessible, sanitized errors); guest-accessible `/search` page (debounced, All/Routes/People tabs, PostCard/FollowButton reuse) fixing dead SuggestionsPanel `/search?q=` links; `apiRegistry` search entry + `/search` middleware guest route. No schema change, no migration, no new dependencies. QA gate green: tsc 0, 139/139 jest (13 suites), lint zero-new-errors, build clean.
+
+**Rationale:**
+`contains`/`insensitive` chosen over Postgres full-text/GIN indexes deliberately — zero-migration and non-breaking for current scale; GIN/trigram is a future optimization. Cursor pagination is post-id based (user hits top-N per query), matching the routes-drive-discovery product shape.
+
+**Key Architectural Decisions:**
+- Reuse existing `CACHE_KEYS.search` / `CACHE_TTL.searchResults` / `RATE_LIMITS.search` slots instead of new config surface
+- Repair-system patterns honored verbatim (P2022 fallback, never-throw Redis, sanitized errors, `data.field ?? []` guards)
+
+---
+
 [New entries added here as architecture evolves]

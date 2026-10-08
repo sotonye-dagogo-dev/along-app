@@ -2,10 +2,10 @@
 
 > **Metadata**
 > - last-updated-by: execute-feature 2026-10-08
-> - last-verified-against-code: 2026-10-08 (11 test files under app/__tests__/, 122 it/test cases by grep count; jest.config.js thresholds branches 70 / functions 70 / lines 80 / statements 80)
+> - last-verified-against-code: 2026-10-08 (13 test files under app/__tests__/, 139 tests by real jest run incl. search API + searchService suites; jest.config.js thresholds branches 70 / functions 70 / lines 80 / statements 80)
 > - staleness-policy: re-verify if new features are added
 
-> **Overview:** Defines what needs to be tested in Along and at what level. Agents reference this when writing tests or running the verify-work quality gate. Jest + React Testing Library are configured with coverage thresholds (branches 70%, functions 70%, lines 80%, statements 80%). 122 tests currently exist across 11 suites (verified by file listing + it/test grep 2026-10-08; full `npm test` re-run is the QA gate in this same session).
+> **Overview:** Defines what needs to be tested in Along and at what level. Agents reference this when writing tests or running the verify-work quality gate. Jest + React Testing Library are configured with coverage thresholds (branches 70%, functions 70%, lines 80%, statements 80%). 139 tests currently exist across 13 suites (verified by real `npx jest` run 2026-10-08, search feature session).
 
 ---
 
@@ -34,7 +34,7 @@
 - [x] Follow/unfollow user flow via API boundary (`mutations.test.ts` — follow section, Prisma mocked)
 - [ ] Auth API routes against live DB (register -> login -> refresh -> logout flow)
 - [ ] Post CRUD against live DB (create, read, update, delete via API)
-- [ ] Search endpoint with filters and pagination — NOT IMPLEMENTED (no `/api/search` route or SearchService in code as of 2026-10-08; do not mark done until the endpoint exists)
+- [x] Search endpoint with filters and pagination at API boundary (`app/__tests__/api/search.test.ts`, 9 tests: validation, type filters, region/postType, 503, 429; Prisma mocked) + service unit tests (`app/__tests__/services/searchService.test.ts`, 8 tests; implemented 2026-10-08 — live-DB run still open)
 - [ ] Feed route with cursor-based pagination against live DB
 - [ ] Notification creation and delivery end-to-end (fan-out covered at API boundary in posts.test.ts only)
 - [ ] Rate limiter integration

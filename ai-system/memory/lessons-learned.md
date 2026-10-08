@@ -331,3 +331,19 @@ Any sprint-end sync where a file can't be compared — flag it stale honestly; s
 
 **Supersedes:** None
 **Superseded by:** None
+
+---
+
+## Prefer Zero-Migration Search First; Prove Lint Baselines With Stash
+
+**Context:**
+Sprint 8 (2026-10-08) implemented unified search with Prisma `contains`/`mode: insensitive` instead of Postgres full-text/GIN indexes — no migration, no new deps, non-breaking. The same session's lint run showed 7 errors; `git stash -u` + re-lint proved all 7 pre-exist on HEAD, so only the 2 new `no-require-imports` in the new test file were fixed.
+
+**What We Learned:**
+Full-text indexes are an optimization, not a prerequisite — `contains`/`insensitive` plus the existing Redis search-cache slot ships discovery now and leaves GIN/trigram as a measured follow-up. For lint, never assume pre-existing dirt: a stash-baseline check distinguishes "already broken" (leave per non-breaking rule) from "introduced here" (must fix) in one cheap step.
+
+**Apply When:**
+Any feature where the indexed/optimized path needs a migration — ship the zero-migration query first behind the existing cache/rate-limit slots. Any QA gate with lint errors — run the stash baseline before touching anything.
+
+**Supersedes:** None
+**Superseded by:** None

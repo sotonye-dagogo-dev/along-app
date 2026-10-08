@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08 (search E2E)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -124,10 +124,10 @@ FeedService
     → Redis (feed caching)
     → Config: feedAlgorithm, cache
 
-SearchService
-    → PostModel, UserModel (Prisma full-text search)
-    → Redis (search cache)
-    → Config: cache
+SearchService (`app/lib/services/searchService.ts`, live 2026-10-08 — powers `GET /api/search`)
+    → PostModel, UserModel (Prisma `contains`/`insensitive`, no migration; P2022 avatarConfig fallback)
+    → Redis (unified search cache, 120s TTL, never-throw)
+    → Config: cache (CACHE_KEYS.search, CACHE_TTL.searchResults), rateLimits (search bucket)
 
 SuggestionsService
     → UserModel, FollowModel (Prisma)

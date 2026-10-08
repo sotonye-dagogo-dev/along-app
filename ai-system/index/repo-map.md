@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08 (search E2E)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
@@ -54,7 +54,7 @@ along-app/
 │   ├── hooks/               → App-level custom hooks (useAuth, useFeedInteractions, useRequireAuth)
 │   ├── generated/           → Code-generated files
 │   ├── (auth)/              → Auth pages (login, register, OTP)
-│   ├── (dashboard)/         → Main app (feed, explore, profile, leaderboard, marketplace, etc.)
+│   ├── (dashboard)/         → Main app (feed, explore, search, profile, leaderboard, marketplace, etc.)
 │   ├── (admin)/             → Admin dashboard
 │   ├── (public)/            → Landing, about, contact, legal, faq, blog
 │   │   ├── faq/             → FAQ page with categorized Q&A
@@ -63,6 +63,7 @@ along-app/
 │   │   │   └── [slug]/      → Blog post detail page
 │   ├── api/                 → REST API routes
 │   │   ├── upload/          → Image upload (Cloudinary multipart)
+│   │   ├── search/          → GET unified search (posts + users + tags; q/type/region/postType/cursor, search-bucket rate limit, Redis cache)
 │   │   ├── suggestions/     → GET ordered suggestions (route requests → routes → accounts, 1800s cache)
 │   │   ├── bookmarks/       → GET/POST bookmark list + toggle (per-tab profile filtering)
 │   │   ├── push/            → Push notification API
@@ -87,7 +88,7 @@ along-app/
 │   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
 │   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal, profile, explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
-│   │   ├── services/        → 15 OOP services (feed, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
+│   │   ├── services/        → 16 OOP services (feed, search, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
 │   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth
 │   │   ├── config/          → 27 config registry files (incl. reviews/SITE_REVIEWS)

@@ -54,7 +54,7 @@ export async function middleware(request: NextRequest) {
   // Guest-accessible: public pages + feed, explore, profiles, posts, faq, blog
   const guestRoutes = [
     "/", "/about", "/contact", "/privacy", "/terms", "/report-bug",
-    "/faq", "/blog", "/home", "/explore", "/forgot-password",
+    "/faq", "/blog", "/home", "/explore", "/search", "/forgot-password",
   ];
   if (guestRoutes.some((r) => isExactPath(pathname, r))) {
     return response;
