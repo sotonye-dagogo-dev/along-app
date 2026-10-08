@@ -1,4 +1,4 @@
-import { filterNavItems, NAV_REGISTRY } from "@/app/lib/config/navigation";
+import { filterNavItems, NAV_REGISTRY, isAdminRole } from "@/app/lib/config/navigation";
 
 describe("filterNavItems", () => {
   it("returns all non-admin items for user role", () => {
@@ -39,5 +39,28 @@ describe("filterNavItems", () => {
 
     const adminItems = filterNavItems("admin");
     expect(adminItems.length).toBe(NAV_REGISTRY.length);
+  });
+
+  it("grants admin items for the canonical uppercase DB role", () => {
+    // Prisma UserRole is USER | ADMIN — the sidebar must recognise it.
+    const items = filterNavItems("ADMIN");
+    expect(items.some((item) => item.section === "admin")).toBe(true);
+    expect(items.length).toBe(NAV_REGISTRY.length);
+  });
+});
+
+describe("isAdminRole", () => {
+  it("accepts ADMIN in any case", () => {
+    expect(isAdminRole("ADMIN")).toBe(true);
+    expect(isAdminRole("admin")).toBe(true);
+    expect(isAdminRole("Admin")).toBe(true);
+  });
+
+  it("rejects non-admin roles and non-strings", () => {
+    expect(isAdminRole("USER")).toBe(false);
+    expect(isAdminRole("user")).toBe(false);
+    expect(isAdminRole("MODERATOR")).toBe(false);
+    expect(isAdminRole(null)).toBe(false);
+    expect(isAdminRole(undefined)).toBe(false);
   });
 });

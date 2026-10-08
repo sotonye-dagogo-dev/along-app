@@ -44,8 +44,26 @@ export async function GET(request: NextRequest) {
     const inviteCount = await prisma.user.count({ where: { invitedById: user.id as string } });
     const maxInvites = INVITE_CONFIG.maxInvitesPerUser;
 
+    // Legacy rows may predate invite codes — backfill one so the invite link
+    // never renders as `?ref=null` (a dead referral link for the invitee).
+    let inviteCode = user.inviteCode as string | null;
+    if (!inviteCode) {
+      inviteCode =
+        typeof crypto?.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      try {
+        await prisma.user.update({
+          where: { id: user.id as string },
+          data: { inviteCode },
+        });
+      } catch {
+        // Non-critical — fall through with the generated code for display.
+      }
+    }
+
     return NextResponse.json({
-      inviteCode: user.inviteCode as string,
+      inviteCode,
       inviteCount,
       maxInvites,
       pointsPerInvite: INVITE_CONFIG.pointsForInviteSent,

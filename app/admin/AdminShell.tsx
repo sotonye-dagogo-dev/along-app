@@ -4,6 +4,7 @@ import React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/app/hooks/useAuth"
+import { isAdminRole } from "@/app/lib/config/navigation"
 import { AppPageLoader } from "@/app/components/ui"
 import { useEffect } from "react"
 import AppLogo from "@/app/components/ui/AppLogo"
@@ -38,7 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/login")
-    } else if (!isLoading && user && user.role !== "ADMIN" && user.role !== "MODERATOR") {
+    } else if (!isLoading && user && !isAdminRole(user.role)) {
       router.push("/home")
     }
   }, [user, isLoading, router])
@@ -47,7 +48,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <AppPageLoader />
   }
 
-  if (!user || (user.role !== "ADMIN" && user.role !== "MODERATOR")) {
+  if (!user || !isAdminRole(user.role)) {
     return null
   }
 

@@ -11,7 +11,7 @@ interface AdminStats {
   openBugs: number
   signups7d: { date: string; count: number }[]
   topPosts: { id: string; title: string; validityScore: number }[]
-  recentUsers: { id: string; userName: string; firstName: string; lastName: string; email: string; role: string; rewardTier: string; _count: { posts: number }; createdAt: string }[]
+  recentUsers?: { id: string; userName: string; firstName: string; lastName: string; email: string; role: string; rewardTier: string; _count: { posts: number }; createdAt: string }[]
 }
 
 export default function AdminDashboard() {
@@ -63,6 +63,11 @@ export default function AdminDashboard() {
 
   if (!stats) return null
 
+  // Defensive defaults — older cached payloads may omit recentUsers/topPosts.
+  const recentUsers = stats.recentUsers ?? []
+  const topPosts = stats.topPosts ?? []
+  const signups7d = stats.signups7d ?? []
+
   const svgW = 500
   const svgH = 160
   const padL = 40
@@ -72,10 +77,10 @@ export default function AdminDashboard() {
   const plotW = svgW - padL - padR
   const plotH = svgH - padT - padB
 
-  const maxSignup = Math.max(...stats.signups7d.map(d => d.count), 1)
-  const stepX = plotW / Math.max(stats.signups7d.length - 1, 1)
+  const maxSignup = Math.max(...signups7d.map(d => d.count), 1)
+  const stepX = plotW / Math.max(signups7d.length - 1, 1)
 
-  const chartPoints = stats.signups7d.map((d, i) => {
+  const chartPoints = signups7d.map((d, i) => {
     const x = padL + i * stepX
     const y = padT + plotH - (d.count / maxSignup) * (plotH - 20) - 10
     return `${Math.round(x)},${Math.round(y)}`
@@ -176,15 +181,15 @@ export default function AdminDashboard() {
               {chartPoints.length > 1 && (
                 <polyline points={chartPoints.join(" ")} fill="none" stroke="var(--color-primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               )}
-              {stats.signups7d.map((d, i) => {
+              {signups7d.map((d, i) => {
                 const x = padL + i * stepX
                 const y = padT + plotH - (d.count / maxSignup) * (plotH - 20) - 10
-                const isLast = i === stats.signups7d.length - 1
+                const isLast = i === signups7d.length - 1
                 return (
                   <circle key={d.date} cx={Math.round(x)} cy={Math.round(y)} r={isLast ? 4 : 3.5} fill={isLast ? "var(--color-primary)" : "#fff"} stroke="var(--color-primary)" strokeWidth="2.5" />
                 )
               })}
-              {stats.signups7d.map((d, i) => {
+              {signups7d.map((d, i) => {
                 const x = padL + i * stepX
                 const label = new Date(d.date).toLocaleDateString("en-US", { weekday: "short" })
                 return (
@@ -209,7 +214,7 @@ export default function AdminDashboard() {
             </span>
           </div>
           <div className="flex flex-col gap-2.5">
-            {stats.topPosts.map((post, i) => (
+            {topPosts.map((post, i) => (
               <div key={post.id} className="flex items-center gap-2.5">
                 <Link href={`/posts/${post.id}`} className="text-xs font-medium flex-1 min-w-0 truncate no-underline hover:underline text-text-primary">{post.title}</Link>
                 <div className="flex-1 h-5 bg-bg-elevated radius-pill overflow-hidden">
@@ -221,7 +226,7 @@ export default function AdminDashboard() {
                 <span className="text-xs font-semibold text-text-secondary w-10 text-right shrink-0">{post.validityScore}</span>
               </div>
             ))}
-            {stats.topPosts.length === 0 && (
+            {topPosts.length === 0 && (
               <div className="text-sm text-text-muted text-center py-4">No posts yet</div>
             )}
           </div>
@@ -249,15 +254,15 @@ export default function AdminDashboard() {
               </tr>
             </thead>
             <tbody>
-              {stats.recentUsers.length === 0 ? (
+              {recentUsers.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-8 text-text-muted text-sm">No recent users</td></tr>
-              ) : stats.recentUsers.map((u) => (
+              ) : recentUsers.map((u) => (
                 <tr key={u.id} className="hover:bg-bg-elevated transition-colors duration-fast cursor-pointer">
                   <td className="px-4 py-3 border-b border-border">
                     <div className="flex items-center gap-2.5">
                       <Link href={`/profile/${u.userName}`} className="no-underline">
                         <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-sm font-bold shrink-0 text-primary">
-                          {u.firstName[0]}{u.lastName[0]}
+                          {(u.firstName?.[0] ?? "?")}{(u.lastName?.[0] ?? "")}
                         </div>
                       </Link>
                       <div>

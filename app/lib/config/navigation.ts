@@ -13,13 +13,23 @@ export const NAV_REGISTRY: NavItem[] = [
   { label: "Analytics", href: "/analytics", icon: BarChart3, section: "main" },
   { label: "Leaderboard", href: "/leaderboard", icon: Trophy, section: "main" },
   { label: "Invite", href: "/invite", icon: UserPlus, section: "main" },
-  { label: "Admin", href: "/admin", icon: Shield, section: "admin", roles: ["admin"] },
-  { label: "Moderation", href: "/admin/posts", icon: ShieldCheck, section: "admin", roles: ["admin"] },
+  { label: "Admin", href: "/admin", icon: Shield, section: "admin", roles: ["ADMIN"] },
+  { label: "Moderation", href: "/admin/posts", icon: ShieldCheck, section: "admin", roles: ["ADMIN"] },
 ];
+
+/**
+ * Canonical admin check. The DB enum is uppercase (`USER` | `ADMIN`), but
+ * older client code compared against lowercase `"admin"` — which silently
+ * hid every admin entry point. Compare case-insensitively so one helper
+ * owns the rule everywhere (sidebar, profile quick links, admin shell).
+ */
+export function isAdminRole(role: unknown): boolean {
+  return typeof role === "string" && role.toUpperCase() === "ADMIN";
+}
 
 function hasAccess(item: NavItem, role: string): boolean {
   if (!item.roles) return true;
-  return item.roles.includes(role as "user" | "admin");
+  return item.roles.some((r) => r.toUpperCase() === role.toUpperCase());
 }
 
 export function filterNavItems(role: string, section?: "main" | "admin"): NavItem[] {

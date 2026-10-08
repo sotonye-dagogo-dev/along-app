@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useTranslation } from "@/app/providers/I18nProvider"
-import { filterNavItems, BADGED_NAV_HREFS } from "@/app/lib/config/navigation"
+import { filterNavItems, BADGED_NAV_HREFS, isAdminRole } from "@/app/lib/config/navigation"
 import { useUnreadNotifications, formatBadgeCount } from "@/app/lib/hooks/useUnreadNotifications"
 import AppLogo from "./AppLogo"
 
@@ -181,7 +181,7 @@ export default function DashboardNav() {
             )
           })}
 
-          {user?.role === "admin" && (
+          {isAdminRole(user?.role) && (
             <>
               <div className="h-px bg-border my-2 mx-3" />
               {!sidebarCollapsed && (

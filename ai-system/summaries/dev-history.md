@@ -686,3 +686,27 @@ Directive close-out in two parts: (1) the one-time prod DB reset was confirmed s
 
 **Next Sprint Focus:**
 Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — Execute-Feature: Admin Dashboard Fix, Referral Hardening, Error-Report Actualisation (Sprint 17)
+
+**Summary:**
+Closed four linked complaints in one pass: (1) the admin dashboard crashed on every visit because the stats API never returned the `recentUsers` field the page dereferenced — the API now returns it and the page tolerates older payloads; (2) admin entry points were invisible because client code compared the DB's uppercase `ADMIN` role against lowercase `"admin"` — a canonical case-insensitive `isAdminRole()` now owns the rule in the sidebar, the admin shell guard, and profile Quick Links (which gained a role-gated Admin Dashboard entry); (3) referral-link email/password signup is now referral-failure-proof (isolated resolution, FK-race retry, reward fan-out guards) and legacy null invite codes are backfilled so invite links never render `?ref=null`; (4) error boundaries no longer make the false "our team has been notified" claim — they file a real sanitized `BugReport` (message/stack/route/digest, PII redacted) and render copy that reflects whether the report actually persisted. All non-breaking (additive fields, additive endpoints payload, best-effort reporting that never fails its host), config/metadata-driven.
+
+**Completed:**
+- APIs: `GET /api/admin/stats` returns batched `recentUsers`; `POST /api/auth/register` referral isolation + retry + fan-out guards; `GET /api/invite` inviteCode backfill
+- UI: admin dashboard defensive defaults + safe initials; `AdminShell` + `DashboardNav` via `isAdminRole()`; profile Quick Links admin entry; `global-error`/`error` honest report-status copy
+- Config/service: `errorReporting.ts` + `errorReportService.ts` (barrel-exported); `navigation.ts` `isAdminRole` + uppercase roles + case-insensitive access; `NavItem.roles` type widened
+- Tests: `errorReportService.test.ts` (8) + `navigation.test.ts` (+2)
+
+**Key Changes:**
+- New: `app/lib/config/errorReporting.ts`, `app/lib/services/errorReportService.ts`, `app/__tests__/services/errorReportService.test.ts`
+- Edited: `app/api/admin/stats/route.ts`, `app/api/auth/register/route.ts`, `app/api/invite/route.ts`, `app/admin/{page.tsx,AdminShell.tsx}`, `app/components/ui/DashboardNav.tsx`, `app/(dashboard)/profile/page.tsx`, `app/global-error.tsx`, `app/error.tsx`, `app/lib/config/{index,navigation}.ts`, `app/lib/types/index.ts`, `app/__tests__/config/navigation.test.ts`
+
+**QA gate (this runner, node_modules via `npm install`):**
+- `npx tsc --noEmit` — 0 errors
+- `npx jest` — 25 suites / 220 tests pass
+- `npm run build` — clean
+- `npx next lint` — 0 issues in touched files (pre-existing feed/suggestions errors untouched)
+
+**Next Sprint Focus:**
+Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
