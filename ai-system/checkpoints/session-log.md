@@ -863,3 +863,67 @@ Next human decision — backlog candidates: live map tracking navigation, carto 
 
 **Notes / Blockers:**
 - `update-ai-system.md` is terminal per its contract — no chained commands. Findings above feed the next human decision.
+
+---
+
+## Session 2026-10-08 — execute-feature: Doc-Staleness Remediation + Real QA Gate (update-ai-system follow-up)
+
+**Completed:**
+- Step 1 planning pass: read task-queue, system-architecture, design-system, repair-system, project-context, project-decisions, test-plan, test-results, project-plan; verified all three stale items against code (zero antd imports, green @theme tokens, 42 UI files, DashboardNav MOBILE_TABS, no /api/search or SearchService, 11 test files / 122 it-test cases)
+- Step 2 self-check vs project-context scope + project-decisions: PASS, no architecture impact, no plan-feature.md needed
+- Step 3 implementation (docs-only, zero app/ code changes):
+  - design-system.md — corrected palette, radius/shadow, Tailwind+Lucide (antd unused), mobile tabs, UI count; freshness → 2026-10-08
+  - testing/test-plan.md — rolled 91/9 → 122/11 with verified per-suite counts, API-boundary done / live-DB open, search NOT IMPLEMENTED; freshness → 2026-10-08
+  - system-architecture.md — Search row → NOT IMPLEMENTED, diagram 34→42 UI + 11→15 services; updater → execute-feature 2026-10-08
+  - testing/test-results.md — replaced file-presence caveat with real-run results
+- Step 4 QA gate (all real runs after npm install): `npx tsc --noEmit` exit 0; `npx jest` 11 suites / 122 tests pass; `npx next lint` exit 0 (pre-existing no-explicit-any in feed route untouched per non-breaking constraint); `npm run build` exit 0. No code fixes needed — all tests already passing.
+- Step 5 close-out: dev-history entry appended; this session-log entry; sync-context mid-work + final (see below); in-progress.md reset to idle; update-ai-system chain run as directed
+
+**Files Modified:**
+- ai-system/design-system.md — staleness remediation (tokens, patterns, nav, counts, freshness)
+- ai-system/testing/test-plan.md — staleness remediation (counts, API-boundary status, search note, freshness)
+- ai-system/system-architecture.md — Search false-claim fix + diagram counts
+- ai-system/testing/test-results.md — real-run results replace file-presence note
+- ai-system/summaries/dev-history.md — appended this session entry
+- ai-system/checkpoints/in-progress.md — reset to idle
+- ai-system/checkpoints/session-log.md — this entry (+ update-ai-system entry follows)
+
+**Next Task:**
+- update-ai-system.md deep sync (mandated by directive + execute-feature Step 5 chain) — run now; then next human decision on backlog (live map tracking, carto key, auth linking, supercluster, rate-limiter Redis migration)
+
+**Assumptions Made:**
+- `antd@^5.23.3` staying in package.json as an unused declared dep is intentional (removal would be a breaking-adjacent dep change) — doc now states it as unused rather than removing it
+- Lint `no-explicit-any` errors in `app/api/posts/feed/route.ts` are pre-existing (present in HEAD, not introduced here) — left untouched per non-breaking directive since lint exit code is 0 and tests/build/tsc are green
+- No task-queue mutation: this remediation had no sprint tasks, so no checkboxes or last-synced marker were touched
+
+**Notes / Blockers:**
+- Sync-context (mid-work after docs edits + final at close): drift re-checked — repo-map/dependency-graph need no changes for docs-only session; design-system/test-plan/system-architecture/test-results now match code; no new drift introduced
+- Chain compliance: execute-feature Step 3 mid-work sync + Step 5 final sync done; deep-sync condition met via explicit directive (run update-ai-system when done) even though architecture impact was none
+
+---
+
+## Session 2026-10-08 — update-ai-system deep sync (execute-feature chain: doc-staleness remediation)
+
+**Completed:**
+- Read all `ai-system/` files and compared against repo state (HEAD + this session's docs edits; docs-only session, no `app/` code changes so module counts unchanged — spot-verified: 17 models / 9 enums / 7 migrations + lock file / 27 configs / 15 services / 42 UI files all match repo-map claims; 122 tests across 11 files match test-plan/test-results).
+- Fixed remaining drift found in this pass:
+  - `planning/project-plan.md` — removed duplicated `- [ ] Component tests for App* components` line (was listed twice in Phase 8)
+  - `memory/lessons-learned.md` — added "Docs Must Be Verified Against Code" lesson from this remediation
+- Confirmed resolved: design-system.md + test-plan.md no longer stale (freshness 2026-10-08 with verification sources); system-architecture.md Search row now agrees with project-plan.md (both NOT IMPLEMENTED); test-results.md reflects real runs from this session
+- Left untouched (verified, no drift): repo-map, dependency-graph, project-context, repair-system, task-queue (no sprint tasks in this remediation — no checkbox or last-synced changes), architecture-history, test-results history
+- `checkpoints/in-progress.md` reset to idle per close-out
+
+**Files Modified:**
+- ai-system/planning/project-plan.md (dedup line)
+- ai-system/memory/lessons-learned.md (new lesson)
+- ai-system/checkpoints/session-log.md (this entry)
+
+**Next Task:**
+Next human decision — backlog candidates: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md.
+
+**Assumptions Made:**
+- No code changes in this session means structural docs (repo-map, dependency-graph) need header bumps only if content changed — they didn't, so headers left at 2026-10-08 from the prior sync
+- `update-ai-system.md` is terminal per its contract — no chained commands
+
+**Notes / Blockers:**
+- None — all three items from the originating stale report are now addressed; QA gate green with real runs

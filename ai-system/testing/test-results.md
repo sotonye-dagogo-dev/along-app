@@ -1,25 +1,25 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: overwritten on every test run — always current
 
-> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 122 tests currently exist across 11 suites (per 2026-10-08 QA gate recorded in session-log; this runner has no node_modules so `npm test` could not be re-executed here — 11 test files verified present under `app/__tests__/`).
+> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 122 tests currently exist across 11 suites (verified by a real `npx jest` run in this session 2026-10-08: 11 passed, 122 passed — supersedes the prior file-presence-only note).
 
 ---
 
 ## Last Run (Build)
 
 **Date:** 2026-10-08
-**Run by:** AI agent (opencode — resume-session Sprint E close-out + QA gate)
+**Run by:** AI agent (opencode — execute-feature doc-staleness remediation + QA gate)
 
 **Build Result:**
-- `npx tsc --noEmit` — ✓ zero errors (after removing deleted `downlevelIteration` tsconfig option)
-- `npm test` — 122/122 passing (11 suites)
-- `npm run build` — ✓ Compiled successfully (clean)
-- `npx next lint` — warnings only (removed unused UserPlus import in FollowButton.tsx)
-- Zero lint errors
+- `npx tsc --noEmit` — ✓ zero errors (real run this session)
+- `npx jest` — 122/122 passing (11 suites, real run this session after `npm install`)
+- `npm run build` — ✓ Compiled successfully (real run this session, exit 0)
+- `npx next lint` — exit 0; pre-existing `no-explicit-any` errors in `app/api/posts/feed/route.ts` + pre-existing warnings elsewhere (not introduced by this docs-only session; left untouched per non-breaking constraint)
+- Zero test failures; no code fixes needed
 
 ---
 
@@ -36,8 +36,8 @@
 | AppEmptyState | 12 | all preset renders, custom content, variants |
 | AppUserLabel | 7 | name, handle, linkToProfile, verified badge, sizes, vertical layout |
 | TrustBadge | 6 | all 4 levels, tooltip hover, showTooltip=false, sm/default sizes |
-| mutations API | — | posting, liking, commenting, bookmarking, following incl. error handling + undefined/null edge cases (`mutations.test.ts`, new Sprint 7) |
-| posts API | — | POST persistence (type/description/quotedPostId), fan-out, validation (`posts.test.ts`, new Sprint 7) |
+| mutations API | 20 | posting, liking, commenting, bookmarking, following incl. error handling + undefined/null edge cases (`mutations.test.ts`, Sprint 7, Prisma mocked) |
+| posts API | 11 | POST persistence (type/description/quotedPostId), fan-out, validation (`posts.test.ts`, Sprint 7, Prisma mocked) |
 
 ---
 
@@ -53,6 +53,7 @@
 
 | Date | Passed | Failed | Notes |
 |------|--------|--------|-------|
+| 2026-10-08 | 122 | 0 | Execute-feature doc remediation QA gate: real jest/tsc/build/lint runs (11 suites) |
 | 2026-10-08 | 122 | 0 | Resume-session QA gate: Sprint 7 verify + tsconfig downlevelIteration removal (11 suites) |
 | 2026-09-15 | 91 | 0 | Fix-build: Redis timeout guard + forgot-password non-blocking (this session) |
 | 2026-09-15 | 91 | 0 | Fix: Image Upload, Feed/Explore Visibility & Production Audit (77 pages) |

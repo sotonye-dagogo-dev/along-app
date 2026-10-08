@@ -315,3 +315,19 @@ Any "respond to / share with context" feature — prefer a self-relation + rende
 
 **Supersedes:** None
 **Superseded by:** None
+
+---
+
+## Docs Must Be Verified Against Code, Not Trusted From Prior Runs
+
+**Context:**
+The 2026-10-08 update-ai-system deep sync honestly flagged design-system.md (2026-07-08) and testing/test-plan.md (2026-07-01) as stale instead of bumping their dates, and this execute-feature session remediated them: design tokens were blue (#1677ff) in docs vs green (#00623B) in `globals.css`, Ant Design was described as the component foundation while code has zero `antd` imports, mobile tabs listed Notifications instead of the Share FAB, and test counts were 91/9 vs actual 122/11.
+
+**What We Learned:**
+Staleness flags are load-bearing — carrying a stale date forward silently converts drift into false claims. When a doc can't be verified in a run, leave the old date with an explicit note (as was done) rather than refreshing metadata. Remediation then means grepping the code (`antd` imports, `@theme` tokens, `MOBILE_TABS`, test-file counts) and correcting each claim with its verification source in the freshness line.
+
+**Apply When:**
+Any sprint-end sync where a file can't be compared — flag it stale honestly; schedule the verification pass as its own execute-feature with a QA gate.
+
+**Supersedes:** None
+**Superseded by:** None

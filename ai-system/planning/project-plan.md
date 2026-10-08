@@ -134,7 +134,6 @@
 - [ ] Integration tests for API routes
 - [ ] Performance audit (Lighthouse, bundle analysis)
 - [ ] Accessibility audit (WCAG AA)
-- [ ] Component tests for App* components
 - [ ] Production environment configuration
 - [ ] Security audit (auth, input validation, secrets management)
 - [ ] Documentation complete
