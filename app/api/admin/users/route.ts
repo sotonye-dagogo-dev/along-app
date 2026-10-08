@@ -120,22 +120,34 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId, role } = body;
+    const { userId, userIds, role, verified } = body as {
+      userId?: string; userIds?: string[]; role?: string; verified?: boolean;
+    };
+    const targets: string[] = userIds?.length ? userIds : userId ? [userId] : [];
 
-    if (!userId || !role) {
-      return NextResponse.json({ error: "userId and role required" }, { status: 400 });
+    if (targets.length === 0 || !role) {
+      return NextResponse.json({ error: "userId(s) and role required" }, { status: 400 });
     }
 
     if (!["USER", "ADMIN"].includes(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { role },
+    // Capture previous roles for client-side undo.
+    const previous = await prisma.user.findMany({
+      where: { id: { in: targets } },
+      select: { id: true, role: true, verified: true },
     });
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    await prisma.user.updateMany({
+      where: { id: { in: targets } },
+      data:
+        typeof verified === "boolean"
+          ? { role: role as "USER" | "ADMIN", verified }
+          : { role: role as "USER" | "ADMIN" },
+    });
+
+    return NextResponse.json({ success: true, updated: targets.length, previous }, { status: 200 });
   } catch (error) {
     console.error("Admin user update error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -150,18 +162,24 @@ export async function DELETE(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId } = body;
+    const { userId, userIds } = body as { userId?: string; userIds?: string[] };
+    const targets: string[] = userIds?.length ? userIds : userId ? [userId] : [];
 
-    if (!userId) {
-      return NextResponse.json({ error: "userId required" }, { status: 400 });
+    if (targets.length === 0) {
+      return NextResponse.json({ error: "userId(s) required" }, { status: 400 });
     }
 
-    await prisma.user.update({
-      where: { id: userId },
+    const previous = await prisma.user.findMany({
+      where: { id: { in: targets } },
+      select: { id: true, role: true, verified: true },
+    });
+
+    await prisma.user.updateMany({
+      where: { id: { in: targets } },
       data: { role: "USER", verified: false },
     });
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true, updated: targets.length, previous }, { status: 200 });
   } catch (error) {
     console.error("Admin user action error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

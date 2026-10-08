@@ -287,6 +287,8 @@ Never commit Sentry auth tokens to `.env`. Set `dryRun` conditionally based on w
 **Date:** 2026-07-15
 **Status:** Active
 
+**Follow-up (2026-10-08):** The 2026-07-15 `dryRun` gate only covered *missing* token/DSN, so a *present-but-invalid* token (Vercel env) still attempted release creation + sourcemap upload on all three runtimes (6× 401 errors) and `silent` never applied on CI (`!process.env.CI` guard). Hardened `next.config.mjs`: `sentryConfigured` requires token + org + project + DSN and gates `dryRun`, `release.create/finalize`, and `sourcemaps.disable`; `telemetry: false` removes per-runtime Info noise; `silent: true` unconditionally; `errorHandler` warns once and swallows so Sentry can never fail the build (per Sentry docs, re-throwing is what fails the build — we don't). Same session: dropped obsolete `--no-engine` from `postinstall`/`build`/`vercel-build` (unknown option in Prisma 7, noisy on every install/build) and added `instrumentation-client.ts` (side-effect import of `sentry.client.config.ts`) for the Turbopack deprecation warning. Files: `next.config.mjs`, `package.json`, `instrumentation-client.ts` (new).
+
 ---
 
 ### Build Failure — Prisma Role Filter Invalid Enum Value
@@ -477,7 +479,6 @@ Security tokens must be durable, not cache-resident — see `memory/lessons-lear
 ---
 
 ### Build Failure — Removed TS Option `downlevelIteration` in tsconfig.json
-
 **Symptom:**
 `npx tsc --noEmit` fails with `TS5102: Option 'downlevelIteration' has been removed. Please remove it from your configuration.`
 
@@ -492,6 +493,50 @@ After TypeScript major upgrades, run `tsc --noEmit` immediately and remove delet
 
 **Files Affected:**
 - tsconfig.json
+
+**Date:** 2026-10-08
+**Status:** Active
+
+---
+
+### Build Failure — Duplicate Identifier `bugId` in Admin Bugs PATCH Route
+
+**Symptom:**
+Vercel build failed with `Module parse failed: Identifier 'bugId' has already been declared (140:14)` in `app/api/admin/bugs/route.ts`, surfaced via `@sentry/nextjs` wrappingLoader + next-flight-loader. `Build failed because of webpack errors`.
+
+**Root Cause:**
+`PATCH` destructured `bugId` from the request body (`const { bugId, bugIds, ... }`) and later redeclared `const bugId = targets[0]` in the same function scope for the single-report moderation flow. Same pattern as the earlier `formatCount` duplicate (2026-07-15).
+
+**Fix Applied:**
+Renamed the second declaration to `targetBugId` and updated its two uses (`findUnique where` + `$transaction bugReport.update where`).
+
+**Prevention:**
+When narrowing a destructured value to a single-target variable, always use a distinct name (`targetX` / `singleX`). Run `tsc --noEmit` after editing API routes — it catches redeclarations before Vercel does.
+
+**Files Affected:**
+- `app/api/admin/bugs/route.ts`
+
+**Date:** 2026-10-08
+**Status:** Active
+
+---
+
+### Build Failure — Prisma `ReviewStatus` Type Error in Admin Reviews PATCH Route
+
+**Symptom:**
+Vercel build failed at type-check: `./app/api/admin/reviews/route.ts:65:15 Type error: Type 'string' is not assignable to type 'ReviewStatus | EnumReviewStatusFieldUpdateOperationsInput | undefined'` on `data: { status }` in `prisma.userReview.updateMany`.
+
+**Root Cause:**
+`status` was destructured as `status?: string` from the request body. Runtime validation (`["APPROVED","REJECTED"].includes(status)`) narrows the value at runtime but not at the TypeScript level, so `status` stays `string` and is not assignable to the Prisma `ReviewStatus` enum. Same class of error as the earlier `UserRole '"banned"'` enum mismatch (2026-07-15).
+
+**Fix Applied:**
+Narrowed the type at the write site: `data: { status: status as "APPROVED" | "REJECTED" }` — safe because the `includes` guard above already rejects anything else with a 400.
+
+**Prevention:**
+When writing a Prisma enum field from a request-body string, always cast after an explicit allow-list guard (or type the destructured field as the enum union up front). Sibling admin routes (`bugs`, `posts`, `users`) already use `as never` casts for this — follow the same pattern.
+
+**Files Affected:**
+- `app/api/admin/reviews/route.ts`
 
 **Date:** 2026-10-08
 **Status:** Active

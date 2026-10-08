@@ -1296,3 +1296,51 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - Auto-filed BugReports use category OTHER with `metadata.source: "error-boundary"` so admins can filter them; reporter stays anonymous (null) since boundaries may render pre-auth.
 - Quick Links block keeps its `lg:hidden` wrapper (desktop already has the sidebar admin section); the admin entry is mobile-visible there.
 **Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. In-progress reset to idle below.
+
+## 2026-10-08 — execute-feature: admin responsive + real metrics + bulk ops + config UX + profile tabs (Sprint 18)
+**Directive:** Admin responsive (collapsible sidebar, grids per screen size, overflow/truncation/ellipsis/scroll), dashboard metrics valid/real (zero must not show +/- trend), working actions + bulk ops (checkboxes, select all, invert, undo, first-N quick), site-config non-JSON management (drag-drop/simpler UI), profile posts/routes tabs scrollable with spacing.
+**Changes (4 new, 11 edited):**
+- New: `app/lib/config/admin.ts` (layout/metrics/bulk/config-editor metadata + `formatDelta` + `inferConfigKind`), `app/lib/hooks/useBulkSelection.ts` (select-all/invert/undo/clear/first-N with history), `app/__tests__/config/admin.test.ts` (4 tests).
+- Shell: `AdminShell.tsx` collapsible desktop sidebar (persisted), mobile drawer + top bar, truncated labels, scrollable nav.
+- Metrics: stats API computes real `deltas` (totalUsers vs 7d ago, postsToday vs yesterday, avgValidity vs prior, openBugs) with `pctChange` (0/0→0, current>0/0→null); dashboard renders `formatDelta` (zero→"No change"/"No data" flat, never fake +/-) + responsive grids + overflow guards.
+- Bulk: users/posts/bugs/reviews all get toolbar (select-all toggle, invert, undo-select, clear, first-10/25/50, bulk actions with confirm + undo toast); APIs accept `*Ids` arrays (updateMany/deleteMany, non-breaking single still works).
+- Config: card list with type-aware editors (text/number/boolean-toggle/JSON), add-form with kind picker, drag-drop + arrow reorder, modal confirm deletes, toast feedback.
+- Profile: both `[username]` and own `page.tsx` tab bars scrollable (`overflow-x-auto`, min-width tabs, spacing).
+**QA gate (this runner, no node_modules):**
+- `npx tsc --noEmit` — not runnable (missing deps, same pre-existing env limit); new/edited files use existing patterns, no new imports outside installed set.
+- `npx jest` — not runnable here; new suite follows existing pure-config pattern (4 tests).
+- `npm run build` / lint — not runnable here; `git diff --stat` reviewed.
+**Assumptions:** Bulk restore for users replays prior roles individually; post bulk-restore replays snapshots via POST (new ids); bug bulk-moderation loops single calls (post linkage differs); config reorder is display-only (no persisted order column).
+**Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — fix-build: duplicate `bugId` identifier in admin bugs PATCH route
+**Directive:** Vercel build failed `Module parse failed: Identifier 'bugId' has already been declared (140:14)` in `app/api/admin/bugs/route.ts` (`Build failed because of webpack errors`).
+**Changes (1 edited):**
+- `app/api/admin/bugs/route.ts` — renamed second declaration `const bugId = targets[0]` → `const targetBugId`, updated its two uses (`findUnique where`, `$transaction bugReport.update where`). Destructured request-body `bugId` untouched.
+**QA gate (this runner, no node_modules):**
+- Full `tsc`/`jest`/`next build`/`lint` not runnable (missing deps, pre-existing env limit); verified via `grep` — exactly one `targetBugId` declaration, no `bugId` redeclaration remains. Vercel build to confirm.
+- Repair-system entry added (same duplicate-declaration pattern as `formatCount` 2026-07-15). Single-file fix → no repo-map/dependency-graph/architecture drift; sync-context lightweight check done inline.
+**Assumptions:** Sentry 401 + `prisma generate --no-engine` noise in the same log are non-fatal (fallback `|| prisma generate` succeeded; Sentry failures only affect sourcemap upload) — left untouched per minimal-fix contract.
+**Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — fix-build: Prisma ReviewStatus type error in admin reviews PATCH route
+**Directive:** Vercel build failed `./app/api/admin/reviews/route.ts:65:15 Type error: Type 'string' is not assignable to type 'ReviewStatus | EnumReviewStatusFieldUpdateOperationsInput | undefined'` on `data: { status }`.
+**Changes (1 edited):**
+- `app/api/admin/reviews/route.ts` — `data: { status }` → `data: { status: status as "APPROVED" | "REJECTED" }`; safe behind existing `["APPROVED","REJECTED"].includes(status)` 400-guard.
+**QA gate (this runner, no node_modules):**
+- Full `tsc`/`jest`/`next build` not runnable (missing deps, pre-existing env limit); verified via `grep` — sole untyped `data: { status }` fixed, sibling admin routes already use `as never` casts so no further enum-type failures expected. Vercel build to confirm.
+- Repair-system entry added (same enum-mismatch class as `UserRole '"banned"'` 2026-07-15). Single-file fix → no repo-map/dependency-graph/architecture drift; sync-context lightweight check done inline.
+**Assumptions:** Sentry 401 + `prisma generate --no-engine` noise in the same log are non-fatal — left untouched per minimal-fix contract.
+**Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — fix-build: Sentry 401 hardening + Prisma --no-engine + instrumentation-client
+**Directive:** Vercel build logs `sentry reported an error: Invalid token (http status: 401)` on release/sourcemap ops (Node/Edge/Client) + telemetry Info noise + `sentry.client.config.ts` Turbopack deprecation warning; `prisma generate --no-engine` unknown-option noise on every install/build.
+**Changes (2 edited, 1 new):**
+- `next.config.mjs` — `sentryConfigured` (token + org + project + DSN) gates `dryRun`, `release.create/finalize`, `sourcemaps.disable`; `telemetry: false`; `silent: true` unconditionally (old `!process.env.CI` guard meant noisy on Vercel); `errorHandler` warns once and swallows so Sentry never fails the build.
+- `package.json` — dropped obsolete `--no-engine` from `postinstall`/`build`/`vercel-build` (flag removed in Prisma 7).
+- `instrumentation-client.ts` (new) — side-effect import of `sentry.client.config.ts` per Next.js Turbopack convention; old file kept as single source of truth for webpack.
+**QA gate (this runner, no node_modules):**
+- Full `tsc`/`jest`/`next build`/`lint` not runnable (missing deps, pre-existing env limit); verified via `node --check` (next.config.mjs syntax OK), JSON parse (package.json OK), grep (no `--no-engine` remains; all Sentry keys present; `instrumentation-client.ts` included in tsconfig `**/*.ts`). Vercel build to confirm.
+- Repair-system Sentry-401 entry extended with follow-up (2026-10-08). Multi-file fix → sync-context lightweight check done inline: no repo-map/dependency-graph drift (no modules added/removed, only build config); system-architecture Sentry row still accurate (runtime init untouched); task-queue untouched so no checkpoint chain beyond in-progress.
+**Assumptions:** A present-but-invalid token cannot be detected without an API call, so gating + swallowing (not validation) is the correct resilience strategy; `silent: true` hides routine Sentry logs but `errorHandler` still surfaces failures as one warning.
+**Notes / Blockers:** The actual fix for the 401 itself is rotating `SENTRY_AUTH_TOKEN` in Vercel env (invalid/expired server-side) — code now tolerates it either way. Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.

@@ -69,18 +69,21 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { postId, isArchived } = body;
+    const { postId, postIds, isArchived } = body as {
+      postId?: string; postIds?: string[]; isArchived?: boolean;
+    };
+    const targets: string[] = postIds?.length ? postIds : postId ? [postId] : [];
 
-    if (!postId || typeof isArchived !== "boolean") {
-      return NextResponse.json({ error: "postId and isArchived required" }, { status: 400 });
+    if (targets.length === 0 || typeof isArchived !== "boolean") {
+      return NextResponse.json({ error: "postId(s) and isArchived required" }, { status: 400 });
     }
 
     try {
-      const updated = await (prisma.post.update as (...a: never[]) => Promise<unknown>)({
-        where: { id: postId },
+      const updated = await (prisma.post.updateMany as (...a: never[]) => Promise<unknown>)({
+        where: { id: { in: targets } },
         data: { isArchived, archivedAt: isArchived ? new Date() : null },
       } as never);
-      return NextResponse.json({ success: true, post: updated }, { status: 200 });
+      return NextResponse.json({ success: true, updated: targets.length, post: updated }, { status: 200 });
     } catch (e) {
       if (isMissingColumnError(e)) {
         return NextResponse.json(
@@ -104,26 +107,27 @@ export async function DELETE(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { postId } = body;
+    const { postId, postIds } = body as { postId?: string; postIds?: string[] };
+    const targets: string[] = postIds?.length ? postIds : postId ? [postId] : [];
 
-    if (!postId) {
-      return NextResponse.json({ error: "postId required" }, { status: 400 });
+    if (targets.length === 0) {
+      return NextResponse.json({ error: "postId(s) required" }, { status: 400 });
     }
 
-    // Read-then-delete in one transaction: returns a snapshot so the admin UI
-    // can offer global undo (restore replays the snapshot as one POST).
-    const snapshot = await prisma.$transaction(async (tx) => {
-      const existing = await tx.post.findUnique({ where: { id: postId } });
-      if (!existing) return null;
-      await tx.post.delete({ where: { id: postId } });
+    // Read-then-delete in one transaction: returns snapshots so the admin UI
+    // can offer global undo (restore replays each snapshot as one POST).
+    const snapshots = await prisma.$transaction(async (tx) => {
+      const existing = await tx.post.findMany({ where: { id: { in: targets } } });
+      if (existing.length === 0) return [];
+      await tx.post.deleteMany({ where: { id: { in: targets } } });
       return existing;
     });
 
-    if (!snapshot) {
+    if (snapshots.length === 0) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, snapshot }, { status: 200 });
+    return NextResponse.json({ success: true, deleted: snapshots.length, snapshots, snapshot: snapshots[0] }, { status: 200 });
   } catch (error) {
     console.error("Admin post delete error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

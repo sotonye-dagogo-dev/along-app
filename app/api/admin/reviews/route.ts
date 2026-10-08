@@ -47,22 +47,25 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { reviewId, status } = body;
+    const { reviewId, reviewIds, status } = body as {
+      reviewId?: string; reviewIds?: string[]; status?: string;
+    };
+    const targets: string[] = reviewIds?.length ? reviewIds : reviewId ? [reviewId] : [];
 
-    if (!reviewId || !status) {
-      return NextResponse.json({ error: "reviewId and status required" }, { status: 400 });
+    if (targets.length === 0 || !status) {
+      return NextResponse.json({ error: "reviewId(s) and status required" }, { status: 400 });
     }
 
     if (!["APPROVED", "REJECTED"].includes(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    await prisma.userReview.update({
-      where: { id: reviewId },
-      data: { status },
+    await prisma.userReview.updateMany({
+      where: { id: { in: targets } },
+      data: { status: status as "APPROVED" | "REJECTED" },
     });
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true, updated: targets.length }, { status: 200 });
   } catch (error) {
     console.error("Admin review update error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
