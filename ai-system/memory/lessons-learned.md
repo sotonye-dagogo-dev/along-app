@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-09-15
-> - last-verified-against-code: 2026-09-15
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -248,6 +248,70 @@ Building any file/media upload — verify end-to-end (input → FormData → API
 
 **Apply When:**
 Any route that touches Redis or Resend on the request hot path — always timeout-guard and make side effects (email, feed invalidation) background work.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Security Tokens Must Be Durable, Not Cache-Resident
+
+**Context:**
+Password-reset links reported "expired or invalid" within seconds. Tokens lived in the Redis/in-memory OTP store, which by policy degrades to memory on timeout and loses data across instances/restarts (Sept 29 fix: durable `PasswordResetToken` DB model).
+
+**What We Learned:**
+Cache is best-effort by design (timeout + fallback + eviction). Anything correctness-critical — auth tokens, reset links, OTPs that gate access — belongs in the database with explicit expiry. Cache may mirror such data for speed, but the database is the source of truth and the fallback on cache miss must be a DB read, not a failure.
+
+**Apply When:**
+Storing any token, code, or link whose loss reads as a security failure to the user (reset links, invite tokens, one-time codes).
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Background Email Must Verify the Provider Result
+
+**Context:**
+Forgot-password returned success while Resend never delivered — no mail, no error, only a Redis-timeout warning in logs (Sept 16 fix). The send was fire-and-forget with no result check.
+
+**What We Learned:**
+A false "mail sent" success is worse than an error: the user waits for mail that never arrives and blames their inbox. Every background email must check the provider send result and degrade honestly (log + surfaced error) when delivery fails.
+
+**Apply When:**
+Any flow that sends transactional email (verification, reset, notifications) — especially non-blocking `waitUntil` sends where the response already went out.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Seed Data Needs Backup-First, Markers-Only Tooling
+
+**Context:**
+Production glide-path required removing dev seed rows without touching user data (Sprint 7: `scripts/backup-seed-data.ts`, `clear-seed-data.ts`, `restore-seed-backup.ts`).
+
+**What We Learned:**
+Seed cleanup scripts must: (1) always back up before deleting, (2) target seed markers only (`*@example.com` users, seeded titles — never heuristics like "old rows"), (3) never run automatically (package.json script only), (4) treat seeded live config (`SiteConfig` keys) as untouchable. Idempotent seeds (upsert by title) prevent duplicate-seed drift.
+
+**Apply When:**
+Any environment that mixes seed data with real user data and needs a safe path to production-clean state.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Self-Relation Quoting Beats Duplication for Response Posts
+
+**Context:**
+Route responses needed to reference the original request (Sprint 7: `Post.quotedPostId` self-relation + quote block in `PostCard`).
+
+**What We Learned:**
+A nullable self-FK (`quotedPostId`) with an included quote block keeps one source of truth: the request stays deep-linkable, edits propagate, and no content is duplicated. The same pattern serves reposts/quotes anywhere.
+
+**Apply When:**
+Any "respond to / share with context" feature — prefer a self-relation + rendered quote over copying content.
 
 **Supersedes:** None
 **Superseded by:** None

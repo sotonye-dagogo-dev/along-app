@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 5)
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08 (Sprint 7 rows verified present in code: scripts/, memoryCache, useCachedFetch, RequestRouteModal, EndlessCarousel/SuggestionsRail, /api/suggestions, /api/bookmarks)
 > - last-synced: 2026-08-13 (v3 template update — pull-template-update)
 > - staleness-policy: re-verify before each session
 
