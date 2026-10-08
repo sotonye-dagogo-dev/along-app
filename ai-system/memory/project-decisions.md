@@ -410,3 +410,24 @@ Capping the ability to invite throttles the growth loop the program exists to cr
 **Implications:**
 - Invite page shows "Bonus Invites Left" instead of "Max Invites"; referral linking code must never count-check before linking.
 - If send tracking ever becomes real (e.g. in-app share sheet with receipts), revisit and reference this decision.
+
+---
+
+## Sprint 16: Early-Adopter Rank Derives From User.createdAt — No New Columns
+
+**Decision:** The "First N Users #n" badge qualifies the N earliest users by `(User.createdAt asc, id asc)` counted at read time; no rank column, no backfill, no migration. Live values (enabled/limit/label template) live in the `earlyAdopterConfig` SiteConfig row.
+**Date:** 2026-10-08
+**Made by:** AI agent (opencode) — execute-feature Sprint 16
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+The prod DB had just been cleaned and any schema change reintroduces P2022-window risk plus a `vercel-build` migration dependency (see lessons-learned "Additive Schema Changes"). createdAt is already indexed and recorded for every user, so rank is exact without new state to keep consistent.
+
+**Alternatives Considered:**
+- **Stored `earlyAdopterRank` column with backfill**: Rejected — needs a migration + backfill + ongoing consistency on every signup; heavier and riskier for identical results.
+- **Hardcoded N in code**: Rejected — directive requires admin-togglable total and visibility; KV row + seeded default + validation gives that with zero deploys.
+
+**Implications:**
+- Rank is read-time computed (per-user COUNT, Redis-cached 600s); list views use ordered takes. If user volume ever makes the COUNT hot, add a dedicated cache key or materialized rank — reference this decision.
+- `db:reset-prod` script retained manual-only (unhooked from `vercel-build` 2026-10-08); never re-hook a destructive step into a build command.

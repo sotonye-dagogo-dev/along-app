@@ -42,6 +42,17 @@ export async function GET(
       _avg: { validityScore: true },
     });
 
+    // Best-effort early-adopter badge (config-driven; never fails the request).
+    let earlyAdopter: unknown = null;
+    try {
+      const { getEarlyAdopterStatus } = await import(
+        "@/app/lib/services/earlyAdopterService"
+      );
+      earlyAdopter = await getEarlyAdopterStatus(id);
+    } catch {
+      earlyAdopter = null;
+    }
+
     return NextResponse.json({
       user: {
         ...user,
@@ -49,6 +60,7 @@ export async function GET(
         postCount: user._count.posts,
         followerCount: user._count.followers,
         followingCount: user._count.following,
+        earlyAdopter,
       },
     }, { status: 200 });
   } catch (error) {

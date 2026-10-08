@@ -6,10 +6,10 @@
  * the owner confirmed there is nothing worth keeping. This script wipes ALL
  * application rows so the next deploy starts clean.
  *
- * ⚠️  REMOVE AFTER THE CLEAN BUILD: this is wired into `vercel-build` purely
- * so it runs once on the next deploy. Once the DB is confirmed clean, delete
- * this file, drop the `db:reset-prod` script, and remove the invocation from
- * `vercel-build` — otherwise EVERY build will keep wiping the database.
+ * Status (2026-10-08): UNHOOKED from `vercel-build` after the clean build
+ * was confirmed — manual-only from here on (`npm run db:reset-prod`).
+ * Do NOT re-hook it into any build command: every build would wipe the DB.
+ * Kept (not deleted) so an operator can still run a full reset by hand.
  *
  * Safety:
  *  - TRUNCATE … CASCADE in dependency order via a single raw statement, so

@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
-> - last-verified-against-code: 2026-10-08 (Sprint 14 rows verified present in code + full QA gate green in-runner)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 16 early-adopter badge + reset unhook)
+> - last-verified-against-code: 2026-10-08 (earlyAdopter config/service/badge/APIs/admin card verified in code; QA to static-review level — no node_modules in runner)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -157,3 +157,5 @@
 - [x] Sprint 13 (2026-10-08) — post/comment moderation (edit/delete/archive, owner + admin, global confirm + undo), report lifecycle E2E (`/api/reports`, admin triage, anonymity both ways), request display rules (no map/nav/trust, responses as comments), trust tooltip viewport fix (160 tests / 17 suites, full gate green in-runner)
 - [x] Sprint 14 (2026-10-08) — post-nature immutability (PATCH strip), profile routes/requests/archived tabs, notification coverage (MENTION/DISLIKE/NEW_ROUTE, service-routed likes/comments, WELCOME fix), auth-agnostic referrals (shared service, Google `state=ref:`), invite points-cap policy, flag contrast fix (188 tests / 21 suites, full gate green in-runner)
 - [x] Auth hardening — Redis timeout fallback, non-blocking reset mail, durable DB reset tokens (Sept 15/16/29)
+- [x] Sprint 15 (2026-10-08) — notification nav/badges, referral+points coverage, username edit, landing guest-link, one-time prod reset (198 tests / 22 suites, full gate green in-runner)
+- [x] Sprint 16 (2026-10-08) — vercel-build reset unhooked (clean-DB build confirmed; script retained manual-only) + early-adopter "First N Users #n" badge E2E (config-driven SiteConfig row, createdAt-asc rank, admin toggle/limit/label card, profile badges, list + per-user APIs, admin early-adopter filter; no migration)

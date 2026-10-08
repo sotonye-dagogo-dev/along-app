@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 16 early-adopter badge + reset unhook)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -454,6 +454,34 @@ Every notification write goes through `createNotification` (now true for like/di
 
 **Apply When:**
 Any new event that notifies a user — call `createNotification`, extend `NOTIFICATION_REGISTRY` + notifications page `TYPE_ICONS`, and add the enum value via an idempotent guarded migration.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Rank Badges Should Derive From Existing Timestamps — Never New Columns
+
+**Context:**
+Sprint 16 (2026-10-08) — the "First N Users" badge needed join-order qualification without a migration (prod DB had just been cleaned; any schema change would reintroduce P2022-window risk and a vercel-build dependency).
+
+**What We Learned:**
+Rank via `COUNT(where createdAt < mine OR (createdAt == mine AND id < mine)) + 1` over the existing indexed `User.createdAt` gives a deterministic 1-based join rank with zero schema change. Keep the N/limit/label/enabled in a `SiteConfig` KV row (seeded default + admin validation + Redis invalidation) so the badge is toggleable without deploys, and expose both a per-user status endpoint and an ordered list endpoint — the list endpoint is what future rewards/filtering work will consume.
+
+**Apply When:**
+Any "earliest/top-N by join/creation" badge, cohort, or allowlist — prefer counting over `ORDER BY ... OFFSET` for single-user rank (O(1) round trip), and reserve full ordered takes for the admin/list view.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## One-Time Build Hooks Must Be Unhooked, Not Just Documented
+
+**Context:**
+Sprint 15 wired a one-time prod DB reset into `vercel-build` with a ⚠️ comment to remove it later; Sprint 16 confirmed the clean build and removed the invocation while keeping the script manual-only.
+
+**What We Learned:**
+A `|| true`-guarded destructive step in a build command is one forgotten deploy away from data loss — comments don't prevent execution. The safe pattern is: unhook immediately upon confirmation (same session if possible), keep the script file for manual runs, and record the unhook in `task-queue.md` (flip the ⚠️ to ✅ with date) plus `system-architecture.md` so no future agent re-adds it.
+
+**Apply When:**
+Any one-time migration/reset/backfill hooked into build/CI — treat "confirmed done" as a same-session removal task, not a backlog note.
 
 **Supersedes:** None
 **Superseded by:** None
