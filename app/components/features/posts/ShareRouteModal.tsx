@@ -5,12 +5,14 @@ import dynamic from "next/dynamic"
 import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
+import { SHARE_ROUTE_MODAL_CONFIG } from "@/app/lib/config"
 import { draftingCoachService } from "@/app/lib/services/DraftingCoachService"
 import { toastService } from "@/app/lib/services/toastService"
 import { estimateRoute, traceSignature, getCurrentPosition, reverseGeocode } from "@/app/lib/utils/geo"
 import { memoryCache } from "@/app/lib/cache/memoryCache"
 import type { VehicleType } from "@/app/lib/types"
 import DraftingCoach from "./DraftingCoach"
+import { RequestRouteTrigger } from "./RequestRouteTrigger"
 import type { RoutePin } from "./RouteMap"
 
 const DRAFT_KEY = "along_route_draft"
@@ -44,6 +46,8 @@ interface ShareRouteModalProps {
   isOpen: boolean
   onClose: () => void
   responseTo?: RespondToRequest | null
+  /** Opens the request-route flow (e.g. user meant to request, not share). Optional — trigger hidden when absent. */
+  onRequestRoute?: () => void
   onSubmit?: (data: {
     title: string
     description: string
@@ -66,7 +70,7 @@ const VEHICLE_OPTIONS = Object.keys(VEHICLE_REGISTRY) as VehicleType[]
 const TRACE_CACHE_TTL = 600 // 10 min — same route re-edits don't re-trace
 const TRACE_DEBOUNCE_MS = 1000
 
-export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit }: ShareRouteModalProps) {
+export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, onSubmit }: ShareRouteModalProps) {
   const isResponse = Boolean(responseTo)
   const draftKey = isResponse ? `${DRAFT_KEY}_resp` : DRAFT_KEY
   const [title, setTitle] = useState("")
@@ -82,7 +86,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit 
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
-  const [previewOpen, setPreviewOpen] = useState(true)
+  const [previewOpen, setPreviewOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.previewDefaultOpen)
+  const [formOpen, setFormOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.formDefaultOpen)
   const [trace, setTrace] = useState<{ polyline: string; distance: number; duration: number; sig: string } | null>(null)
   const [tracing, setTracing] = useState(false)
   const traceDisabledRef = useRef(false)
@@ -468,7 +473,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit 
   return (
     <AppModal open={isOpen} onClose={onClose} size="xl">
       <div className="flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-6 py-5 pb-4 border-b border-border">
+        <div className="flex items-center justify-between gap-3 px-6 py-5 pb-4 border-b border-border">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">
               {isResponse ? "Respond to Route Request" : "Share a Route"}
@@ -479,6 +484,11 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit 
                 : "Help the community with a new route"}
             </p>
           </div>
+          {onRequestRoute && SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger && !isResponse && (
+            <div className="pr-8 shrink-0">
+              <RequestRouteTrigger onClick={onRequestRoute} />
+            </div>
+          )}
         </div>
 
         {isResponse && responseTo && (
@@ -501,6 +511,23 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit 
 
         <div className="flex flex-col lg:flex-row overflow-y-auto flex-1">
           <div className="flex-1 p-4 sm:p-6 flex flex-col gap-5 overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setFormOpen((open) => !open)}
+              aria-expanded={formOpen}
+              aria-controls="route-form-panel"
+              className="w-full flex items-center justify-between gap-2 py-1 border-none bg-transparent cursor-pointer font-sans text-left group"
+            >
+              <span className="text-sm font-semibold text-text-primary">
+                {SHARE_ROUTE_MODAL_CONFIG.formTitle}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`text-text-secondary transition-transform duration-fast ${formOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {formOpen && (
+              <div id="route-form-panel" className="flex flex-col gap-5">
             <div>
               <label className="block text-sm font-medium mb-1 text-text-primary">
                 Route title <span className="text-error-text">*</span>
@@ -708,21 +735,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit 
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <span className="text-xs text-text-muted">Drafts are saved locally</span>
-              <div className="flex gap-2">
-                <button onClick={saveDraft} className="inline-flex items-center gap-1.5 h-10 px-4 radius-md bg-transparent text-text-secondary border-none text-sm font-semibold cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast">
-                  <Save size={14} />
-                  Save Draft
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  className="h-10 px-5 radius-md bg-primary text-text-inverse border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-all duration-fast"
-                >
-                  {isResponse ? "Post Response" : "Share Route"}
-                </button>
+            {/* Actions live in the modal footer below preview + score. */}
               </div>
-            </div>
+            )}
           </div>
 
           <div className="w-full lg:w-[280px] shrink-0 p-4 sm:py-5 sm:pr-6 sm:pl-0 flex flex-col gap-4 border-t lg:border-t-0 lg:border-l border-border">
@@ -736,7 +751,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit 
               >
                 <span className="flex items-center gap-1.5 text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
                   <MapPin size={14} />
-                  Route preview
+                  {SHARE_ROUTE_MODAL_CONFIG.previewTitle}
                   {tracing && (
                     <span className="text-[10px] font-normal text-text-muted animate-pulse">updating...</span>
                   )}
@@ -775,7 +790,24 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit 
               maxScore={evaluation.maxScore}
               checkpoints={evaluation.checkpoints}
               nextSuggestion={evaluation.nextSuggestion}
+              defaultOpen={SHARE_ROUTE_MODAL_CONFIG.scoreDefaultOpen}
             />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
+          <span className="text-xs text-text-muted hidden sm:inline">{SHARE_ROUTE_MODAL_CONFIG.actionsNote}</span>
+          <div className="flex gap-2 ml-auto">
+            <button onClick={saveDraft} className="inline-flex items-center gap-1.5 h-10 px-4 radius-md bg-transparent text-text-secondary border-none text-sm font-semibold cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast">
+              <Save size={14} />
+              Save Draft
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="h-10 px-5 radius-md bg-primary text-text-inverse border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-all duration-fast"
+            >
+              {isResponse ? "Post Response" : "Share Route"}
+            </button>
           </div>
         </div>
       </div>

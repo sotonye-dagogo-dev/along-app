@@ -5,6 +5,7 @@ import { ClipboardList, MapPin, Users, Sparkles } from "lucide-react"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { EndlessCarousel } from "./EndlessCarousel"
+import { ENDLESS_CAROUSEL_CONFIG } from "@/app/lib/config"
 import { FollowButton } from "./FollowButton"
 import type { SuggestionsData, SuggestionPost, SuggestionUser } from "./types"
 
@@ -78,6 +79,9 @@ export function SuggestionsRail() {
 
   if (authLoading || (loading && !data)) return null
 
+  // Real data only: cards are built exclusively from GET /api/suggestions.
+  // Mock/synthetic fallback is disabled (ENDLESS_CAROUSEL_CONFIG.allowMockFallback
+  // stays false), so production with an empty feed renders nothing — never mock content.
   const cards: Card[] = [
     ...(data?.routeRequests ?? []).map((p) => ({ key: `req-${p.id}`, node: <RequestCard post={p} /> })),
     ...(data?.routes ?? []).map((p) => ({ key: `route-${p.id}`, node: <RouteCard post={p} /> })),
@@ -87,7 +91,7 @@ export function SuggestionsRail() {
   if (cards.length === 0) return null
 
   return (
-    <section className="xl:hidden mt-6" aria-label="Suggestions">
+    <section className="xl:hidden mt-4 w-full min-w-0 max-w-full overflow-hidden" aria-label="Suggestions">
       <div className="flex items-center gap-1.5 mb-2.5">
         <Sparkles size={14} className="text-primary" />
         <h2 className="text-xs font-bold uppercase tracking-wide text-text-secondary">Suggested for you</h2>
@@ -95,7 +99,7 @@ export function SuggestionsRail() {
           <Users size={11} /> swipe
         </span>
       </div>
-      <EndlessCarousel items={cards.map((c) => c.node)} label="Suggested routes and users" durationSec={50} />
+      <EndlessCarousel items={cards.map((c) => c.node)} label="Suggested routes and users" durationSec={ENDLESS_CAROUSEL_CONFIG.mobileDurationSec} />
     </section>
   )
 }

@@ -501,3 +501,26 @@ Implemented the Phase 4 search checkbox end-to-end, non-breaking: `searchService
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Search live-DB integration test still open (API-boundary suites mock Prisma, per convention).
+
+---
+
+## 2026-10-08 — Execute-Feature: Carousel Overflow, Share-Modal Collapse, Request Icon, Footer Grid
+
+**Summary:**
+Tightened four home/share/footer UX items, non-breaking and config-driven: the suggestions carousel got its own overflow container and a scroll-based autoplay that users can freely scrub forward/backward with resume-from-position; the share-route modal now starts with preview + quality score collapsed, a collapsible route form, and Save-Draft/Share actions in a footer below preview+score; a query-style "Request?" icon trigger opens the request flow from the home composer; footer link columns render in a 3-col grid on mobile and up. Three new config files (carousel/shareRoute/routeRequest) + footer layout slot; one new config test suite.
+
+**Completed:**
+- Planning pass + scope check (no architecture impact — no plan-feature.md)
+- Carousel rewrite (EndlessCarousel rAF scrollLeft, SuggestionsRail container, home column layout)
+- ShareRouteModal restructure (collapsed defaults, collapsible form, footer actions) + DraftingCoach defaultOpen
+- RequestRouteTrigger component + home wiring
+- Footer 3-col grid via FOOTER_CONFIG.layout
+- uxTightening.test.ts (4 config suites)
+
+**Key Changes:**
+- New: `app/lib/config/{carousel,shareRoute,routeRequest}.ts`, `RequestRouteTrigger.tsx`, `__tests__/config/uxTightening.test.ts`
+- Edited: `EndlessCarousel.tsx`, `SuggestionsRail.tsx`, `ShareRouteModal.tsx`, `DraftingCoach.tsx`, `home/page.tsx`, `AppFooter.tsx`, `footer.ts`, `config/index.ts`, `posts/index.ts`
+- No schema/migration changes; no new dependencies
+
+**Next Sprint Focus:**
+update-ai-system deep sync (chained), then remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.

@@ -996,3 +996,67 @@ Next human decision — remaining backlog: live map tracking navigation, carto b
 
 **Notes / Blockers:**
 - Discrepancy report: no unresolved inconsistencies — every `NOT IMPLEMENTED` / `no /api/search` / `122/11` / `15 services` claim in current-state docs now matches code; the originating stale report (design-system, test-plan, search claim) is fully closed by implementation rather than documentation
+
+## Session 2026-10-08 — execute-feature: carousel overflow, share-modal, request icon, footer grid
+
+**Completed:**
+- Step 1 planning pass (task-queue, system-architecture, design-system, project-decisions) + in-progress.md plan
+- Step 2 scope check: PASS (feed UX, posting UX, footer IA — all in scope; complies with config-driven/Lucide-only/no-redux decisions) — no plan-feature.md needed (no architecture impact: no migration, no new deps)
+- Step 3 implementation:
+  - Config: new `carousel.ts` (ENDLESS_CAROUSEL_CONFIG), `shareRoute.ts` (SHARE_ROUTE_MODAL_CONFIG: preview/score collapsed by default, form open), `routeRequest.ts` (REQUEST_ROUTE_TRIGGER_CONFIG: "Request?" tagline), `footer.ts` +layout (grid-cols-3 all screens); barrel exports
+  - Carousel: rewrote EndlessCarousel as scroll-based autoplay (rAF scrollLeft + half-track wrap) inside its own overflow-hidden wrapper; free native scroll/drag both directions, resumes from landed position, hover/focus/drag/hidden-tab pause, reduced-motion fallback
+  - Home: feed column owns the mobile rail (no more row-flex overflow); added RequestRouteTrigger icon (tooltip "Request?") beside existing Request button
+  - ShareRouteModal: preview + DraftingCoach collapsed by default (config), route form collapsible (open by default), actions moved to full-width footer below preview+score; DraftingCoach gained defaultOpen prop (only caller is ShareRouteModal)
+  - Footer: AppFooter consumes FOOTER_CONFIG.layout (3 cols mobile→desktop, tightened type)
+- Step 3b tests: `app/__tests__/config/uxTightening.test.ts` (4 suites: carousel/share/request/footer configs)
+
+**Files Modified:**
+- app/lib/config/carousel.ts (new), shareRoute.ts (new), routeRequest.ts (new), footer.ts (layout), index.ts (exports)
+- app/components/features/suggestions/EndlessCarousel.tsx (rewrite), SuggestionsRail.tsx (container + config duration)
+- app/components/features/posts/RequestRouteTrigger.tsx (new), index.ts (export), ShareRouteModal.tsx (collapsible + footer), DraftingCoach.tsx (defaultOpen + aria-expanded)
+- app/(dashboard)/home/page.tsx (column layout, trigger icon)
+- app/components/ui/AppFooter.tsx (config-driven 3-col grid)
+- app/__tests__/config/uxTightening.test.ts (new)
+
+**Next Task:**
+Run update-ai-system.md deep sync (directive explicitly requests it) — then next backlog item via plan-feature.md / execute-feature.md.
+
+**Assumptions Made:**
+- "Full scrolling to any point" = native scroll/drag both directions; autoplay resumes from landed scrollLeft (no snap-back)
+- "Actions below preview/score" = full-width modal footer below the two-column body
+- Footer 3-col at all breakpoints = grid-cols-3 with tightened gaps/type on mobile; inner link lists stay stacked per column
+
+**Notes / Blockers:**
+- QA gate partial: this runner has no node_modules (same as prior session) — `npx tsc --noEmit` runs but every error is the missing-deps cascade (react/next/jsx-any); zero errors attributable to touched files (filtered check clean). `npm test`/`lint`/`build` cannot run here (jest not found) — new test verified to file-presence + import-path level only; CI (with deps) is the real gate. No build-breaking constructs introduced (balanced JSX verified by read-through, config files zero-app-deps, Lucide-only, no emoji, no antd imports).
+
+## Session 2026-10-08 — update-ai-system deep sync (execute-feature chain: Sprint 9 UX tightening)
+
+**Completed:**
+- Read all `ai-system/` files and compared against repo state (HEAD + Sprint 9 edits; verified: 30 config files / 14 test files present; EndlessCarousel rewrite, RequestRouteTrigger, footer layout, share-modal restructure all present in code)
+- Fixed drift found in this pass:
+  - `system-architecture.md` — Config row 27 → 30 files; Suggestions row → scroll-based autoplay + own overflow wrapper; Route Requests row → collapsed defaults + footer actions + RequestRouteTrigger; Known Constraints 139/13 → 143/14 with no-node_modules caveat
+  - `index/repo-map.md` — features line + RequestRouteTrigger; config 27 → 30
+  - `index/dependency-graph.md` — suggestions line → scroll-based + config; config 27 → 30 + new files
+  - `project-context.md` — phase paragraph → Sprint 9, 30 configs, carousel/modal/trigger/footer, 143/14 with caveat
+  - `planning/project-plan.md` — appended Sprint 9 checkbox; unit-test line 139/13 → 143/14 with caveat
+  - `planning/task-queue.md` — freshness header → Sprint 9 deep sync (Sprint 9 section itself written at execute-feature close-out)
+  - `memory/architecture-history.md` — appended Sprint 9 entry (scroll-vs-CSS rationale, footer-layout alternative)
+  - `memory/lessons-learned.md` — added "Scrub-able Tapes Need Scroll Position" lesson
+  - `summaries/dev-history.md` — Sprint 9 entry (written at close-out, verified present)
+- Left untouched (verified, no drift): repair-system, design-system, protocols, agents, skills, tools/registry, testing/test-plan (figures now covered by caveat), operations, FAQ/blog/seo configs; session-log/dev-history history rows (append-only)
+
+**Files Modified:**
+- ai-system/system-architecture.md, index/repo-map.md, index/dependency-graph.md, project-context.md, planning/project-plan.md, planning/task-queue.md (header), memory/architecture-history.md, memory/lessons-learned.md
+- ai-system/checkpoints/session-log.md (this entry)
+- ai-system/checkpoints/in-progress.md (reset to idle — see below)
+
+**Next Task:**
+Next human decision — remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md. Full jest/lint/build gate still needs a runner with node_modules (CI).
+
+**Assumptions Made:**
+- Test arithmetic 139 + 4 new `it` blocks = 143 is file-level only (jest never executed here — stated explicitly everywhere the figure appears)
+- Historical rows describing 122/11 and 139/13 states left as-is (append-only record, not drift)
+
+**Notes / Blockers:**
+- Discrepancy report: no unresolved inconsistencies — every config-count, test-count, carousel-implementation, and modal-default claim in current-state docs now matches code with honest QA caveats
+- `update-ai-system.md` is terminal per its contract — no chained commands

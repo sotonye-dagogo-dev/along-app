@@ -266,8 +266,8 @@ function HomeContent() {
 
   return (
     <>
-      <div className="flex justify-center">
-        <div className="max-w-[640px] w-full px-4 py-4 flex flex-col gap-3">
+      <div className="flex justify-center gap-6 min-w-0">
+        <div className="w-full min-w-0 max-w-[640px] px-4 py-4 flex flex-col gap-3">
         {promptVisible && (
           <button
             onClick={handlePromptClick}
@@ -331,9 +331,10 @@ function HomeContent() {
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-circle animate-spin" />
           </div>
         )}
-        </div>
 
-        <SuggestionsRail />
+          {/* Mobile suggestions tape owns its own overflow container — never the feed. */}
+          <SuggestionsRail />
+        </div>
 
         <SuggestionsPanel />
       </div>
@@ -346,6 +347,11 @@ function HomeContent() {
         }}
         responseTo={respondTo}
         onSubmit={async (data) => submitPost(data)}
+        onRequestRoute={() => {
+          setShowShareModal(false)
+          setRespondTo(null)
+          setShowRequestModal(true)
+        }}
       />
 
       <RequestRouteModal

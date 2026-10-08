@@ -102,3 +102,17 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 ---
 
 [New entries added here as architecture evolves]
+
+---
+
+## Sprint 9 — Scroll-Based Carousel, Collapsed Share Sections, Request Trigger (2026-10-08)
+
+**Change:** Replaced the CSS-keyframes EndlessCarousel (pause-only, snap-back drag) with scroll-based autoplay (`requestAnimationFrame` advancing native `scrollLeft`, wrap by half-track width) inside its own `overflow-hidden` wrapper; home feed column now owns the mobile rail so tape overflow never reaches the feed. ShareRouteModal starts with route preview + DraftingCoach collapsed (`SHARE_ROUTE_MODAL_CONFIG`), route form collapsible, Save-Draft/Share actions moved to a full-width footer below preview+score. New `RequestRouteTrigger` query-style icon ("Request?" tooltip/tagline, `REQUEST_ROUTE_TRIGGER_CONFIG`) beside the existing Request button. Footer link grid is `grid-cols-3` at all breakpoints via `FOOTER_CONFIG.layout`. Three new zero-dep configs (carousel/shareRoute/routeRequest); 30 config files, 14 test files (143 tests incl. 4 new config suites, unexecuted in this runner — no node_modules).
+
+**Reason:** Directive UX tightening — carousel overflowed the feed and fought user scrubbing; modal buried preview/score above the actions; request flow had no icon affordance; footer stacked to one column on mobile.
+
+**Alternatives Considered:**
+- CSS animation with `animation-delay` offset tricks for scrub-resume: rejected — delay math can't track arbitrary native scroll positions; scrollLeft is the single source of truth.
+- Sidebar-injected action buttons under preview/score: rejected — full-width footer below the two-column body keeps actions visible after both columns on all breakpoints with one layout.
+
+**Implications:** Carousel autoplay speed derives from measured half-track width / configured duration; new collapsible/modal/footer behaviour is config-flippable without code edits.

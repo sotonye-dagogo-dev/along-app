@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (search E2E)
-> - last-verified-against-code: 2026-10-08 (Sprint 7 rows verified present in code: scripts/, memoryCache, useCachedFetch, RequestRouteModal, EndlessCarousel/SuggestionsRail, /api/suggestions, /api/bookmarks)
-> - last-synced: 2026-10-08 (Sprint 8 search E2E — execute-feature close-out)
+> - last-updated-by: update-ai-system 2026-10-08 (Sprint 9 deep sync)
+> - last-verified-against-code: 2026-10-08 (Sprint 9 rows verified present in code: carousel/shareRoute/routeRequest configs, RequestRouteTrigger, footer layout, uxTightening test)
+> - last-synced: 2026-10-08 (Sprint 9 UX tightening — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -204,6 +204,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [M] | /search page — debounced input, All/Routes/People tabs, PostCard + FollowButton reuse, AppEmptyState search preset (fixes SuggestionsPanel dead `/search?q=` links) | [x] |
 | [S] | Wiring — apiRegistry `search` entry, middleware `/search` guest route | [x] |
 | [M] | Tests — `search.test.ts` (9 API-boundary) + `searchService.test.ts` (8 service) | [x] |
+
+---
+
+## Sprint 9 — Carousel, Share-Modal, Request Icon, Footer (2026-10-08, execute-feature)
+
+> **Section summary:** UX tightening per directive, non-breaking (no migration, no new deps). QA partial: runner has no node_modules — tsc shows only the missing-deps cascade (zero errors attributable to touched files); jest/lint/build deferred to CI.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Carousel — own overflow container + scroll-based autoplay with free scrub + resume-from-position (`ENDLESS_CAROUSEL_CONFIG`, EndlessCarousel rewrite, rail container, home column layout) | [x] |
+| [M] | Share modal — preview + score collapsed by default, collapsible route form, actions footer below preview+score (`SHARE_ROUTE_MODAL_CONFIG`, DraftingCoach `defaultOpen`) | [x] |
+| [S] | Request trigger — query-style icon with "Request?" tooltip/tagline (`REQUEST_ROUTE_TRIGGER_CONFIG`, `RequestRouteTrigger`, home composer wiring) | [x] |
+| [S] | Footer — 3-col link grid on mobile and up (`FOOTER_CONFIG.layout`, AppFooter consumes config) | [x] |
+| [S] | Tests — `__tests__/config/uxTightening.test.ts` (4 config suites) | [x] |
 
 ---
 
