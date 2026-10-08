@@ -112,6 +112,7 @@ along-app/
 │   └── reset-prod-db.ts     → Full prod reset (manual-only since 2026-10-08 — UNHOOKED from vercel-build after clean-DB build)
 │
 ├── instrumentation.ts       → Sentry runtime hooks
+├── instrumentation-client.ts → Sentry client entry (Turbopack; re-exports sentry.client.config)
 ├── next.config.mjs          → Next.js config (Sentry, PWA headers, images)
 ├── tailwind.config.ts       → Tailwind theme (colors, shadows, radii)
 ├── postcss.config.mjs       → PostCSS with @tailwindcss/postcss

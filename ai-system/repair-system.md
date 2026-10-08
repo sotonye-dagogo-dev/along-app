@@ -287,6 +287,8 @@ Never commit Sentry auth tokens to `.env`. Set `dryRun` conditionally based on w
 **Date:** 2026-07-15
 **Status:** Active
 
+**Follow-up (2026-10-08):** The 2026-07-15 `dryRun` gate only covered *missing* token/DSN, so a *present-but-invalid* token (Vercel env) still attempted release creation + sourcemap upload on all three runtimes (6× 401 errors) and `silent` never applied on CI (`!process.env.CI` guard). Hardened `next.config.mjs`: `sentryConfigured` requires token + org + project + DSN and gates `dryRun`, `release.create/finalize`, and `sourcemaps.disable`; `telemetry: false` removes per-runtime Info noise; `silent: true` unconditionally; `errorHandler` warns once and swallows so Sentry can never fail the build (per Sentry docs, re-throwing is what fails the build — we don't). Same session: dropped obsolete `--no-engine` from `postinstall`/`build`/`vercel-build` (unknown option in Prisma 7, noisy on every install/build) and added `instrumentation-client.ts` (side-effect import of `sentry.client.config.ts`) for the Turbopack deprecation warning. Files: `next.config.mjs`, `package.json`, `instrumentation-client.ts` (new).
+
 ---
 
 ### Build Failure — Prisma Role Filter Invalid Enum Value

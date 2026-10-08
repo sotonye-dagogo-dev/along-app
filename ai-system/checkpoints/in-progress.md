@@ -1,7 +1,7 @@
 # In Progress
 
-**Session:** idle — fix-build 2026-10-08 closed: Prisma `ReviewStatus` type error in `app/api/admin/reviews/route.ts:65` fixed via `status as "APPROVED" | "REJECTED"` cast (repair-system + session-log updated; single-file fix, lightweight sync-context done inline, no drift)
-**Status:** No active sprint. Next work: pick the next backlog item from `planning/task-queue.md` Backlog (live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration), then open a new sprint via `plan-feature.md` / `execute-feature.md`.
+**Session:** idle — fix-build 2026-10-08 closed: Sentry 401 hardening (`sentryConfigured` gates dryRun/release/sourcemaps, `telemetry: false`, `silent: true`, warn-and-swallow `errorHandler` in `next.config.mjs`); dropped obsolete Prisma `--no-engine` from 3 package.json scripts; new `instrumentation-client.ts` for Turbopack deprecation (repair-system + test-results + session-log + repo-map updated; no node_modules in runner so full tsc/jest/build left to Vercel)
+**Status:** No active sprint. Next work: rotate `SENTRY_AUTH_TOKEN` in Vercel env if Sentry upload is wanted (build now tolerates invalid token either way), then pick the next backlog item from `planning/task-queue.md` Backlog (live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration), then open a new sprint via `plan-feature.md` / `execute-feature.md`.
 
 ## Last completed work (archived summary)
 
