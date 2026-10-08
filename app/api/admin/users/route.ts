@@ -141,7 +141,10 @@ export async function PATCH(request: NextRequest) {
 
     await prisma.user.updateMany({
       where: { id: { in: targets } },
-      data: typeof verified === "boolean" ? { role, verified } : { role },
+      data:
+        typeof verified === "boolean"
+          ? { role: role as "USER" | "ADMIN", verified }
+          : { role: role as "USER" | "ADMIN" },
     });
 
     return NextResponse.json({ success: true, updated: targets.length, previous }, { status: 200 });
