@@ -25,6 +25,13 @@ export interface EndlessCarouselConfig {
   viewportClass: string;
   /** Track holding the (duplicated) cards. */
   trackClass: string;
+  /**
+   * Whether synthetic/mock cards may backfill the tape when real data is
+   * empty. Must stay `false` so production never renders mock content —
+   * an empty real feed renders nothing instead. Dev-only tooling may
+   * temporarily flip it locally, never in committed production config.
+   */
+  allowMockFallback: boolean;
 }
 
 export const ENDLESS_CAROUSEL_CONFIG: EndlessCarouselConfig = {
@@ -39,4 +46,5 @@ export const ENDLESS_CAROUSEL_CONFIG: EndlessCarouselConfig = {
   viewportClass:
     "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
   trackClass: "flex w-max items-stretch",
+  allowMockFallback: false,
 };

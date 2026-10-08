@@ -12,6 +12,7 @@ import { estimateRoute, traceSignature, getCurrentPosition, reverseGeocode } fro
 import { memoryCache } from "@/app/lib/cache/memoryCache"
 import type { VehicleType } from "@/app/lib/types"
 import DraftingCoach from "./DraftingCoach"
+import { RequestRouteTrigger } from "./RequestRouteTrigger"
 import type { RoutePin } from "./RouteMap"
 
 const DRAFT_KEY = "along_route_draft"
@@ -45,6 +46,8 @@ interface ShareRouteModalProps {
   isOpen: boolean
   onClose: () => void
   responseTo?: RespondToRequest | null
+  /** Opens the request-route flow (e.g. user meant to request, not share). Optional — trigger hidden when absent. */
+  onRequestRoute?: () => void
   onSubmit?: (data: {
     title: string
     description: string
@@ -67,7 +70,7 @@ const VEHICLE_OPTIONS = Object.keys(VEHICLE_REGISTRY) as VehicleType[]
 const TRACE_CACHE_TTL = 600 // 10 min — same route re-edits don't re-trace
 const TRACE_DEBOUNCE_MS = 1000
 
-export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit }: ShareRouteModalProps) {
+export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, onSubmit }: ShareRouteModalProps) {
   const isResponse = Boolean(responseTo)
   const draftKey = isResponse ? `${DRAFT_KEY}_resp` : DRAFT_KEY
   const [title, setTitle] = useState("")
@@ -470,7 +473,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit 
   return (
     <AppModal open={isOpen} onClose={onClose} size="xl">
       <div className="flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between px-6 py-5 pb-4 border-b border-border">
+        <div className="flex items-center justify-between gap-3 px-6 py-5 pb-4 border-b border-border">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">
               {isResponse ? "Respond to Route Request" : "Share a Route"}
@@ -481,6 +484,11 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onSubmit 
                 : "Help the community with a new route"}
             </p>
           </div>
+          {onRequestRoute && SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger && !isResponse && (
+            <div className="pr-8 shrink-0">
+              <RequestRouteTrigger onClick={onRequestRoute} />
+            </div>
+          )}
         </div>
 
         {isResponse && responseTo && (

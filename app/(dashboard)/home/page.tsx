@@ -6,7 +6,6 @@ import dynamic from "next/dynamic"
 import { useSearchParams } from "next/navigation"
 import { PostCard } from "@/app/components/features/posts"
 import type { RespondToRequest, RouteRequestBody } from "@/app/components/features/posts"
-import { RequestRouteTrigger } from "@/app/components/features/posts/RequestRouteTrigger"
 
 const ShareRouteModal = dynamic(() => import("@/app/components/features/posts/ShareRouteModal"), { ssr: false })
 const RequestRouteModal = dynamic(() => import("@/app/components/features/posts/RequestRouteModal"), { ssr: false })
@@ -294,7 +293,6 @@ function HomeContent() {
           <div className="flex-1 text-sm text-text-muted px-3 py-2 radius-md bg-bg-elevated">
             How far? Where we wan go?
           </div>
-          <RequestRouteTrigger onClick={() => setShowRequestModal(true)} />
           <button
             onClick={(e) => {
               e.stopPropagation()
@@ -349,6 +347,11 @@ function HomeContent() {
         }}
         responseTo={respondTo}
         onSubmit={async (data) => submitPost(data)}
+        onRequestRoute={() => {
+          setShowShareModal(false)
+          setRespondTo(null)
+          setShowRequestModal(true)
+        }}
       />
 
       <RequestRouteModal

@@ -15,6 +15,8 @@ export interface ShareRouteModalConfig {
   scoreTitle: string;
   formTitle: string;
   actionsNote: string;
+  /** Show the "Request?" query-icon trigger in the modal header (opens the request flow). */
+  showRequestTrigger: boolean;
 }
 
 export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
@@ -25,4 +27,5 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
   scoreTitle: "Route Quality Score",
   formTitle: "Route details",
   actionsNote: "Drafts are saved locally",
+  showRequestTrigger: true,
 };

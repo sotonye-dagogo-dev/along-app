@@ -79,6 +79,9 @@ export function SuggestionsRail() {
 
   if (authLoading || (loading && !data)) return null
 
+  // Real data only: cards are built exclusively from GET /api/suggestions.
+  // Mock/synthetic fallback is disabled (ENDLESS_CAROUSEL_CONFIG.allowMockFallback
+  // stays false), so production with an empty feed renders nothing — never mock content.
   const cards: Card[] = [
     ...(data?.routeRequests ?? []).map((p) => ({ key: `req-${p.id}`, node: <RequestCard post={p} /> })),
     ...(data?.routes ?? []).map((p) => ({ key: `route-${p.id}`, node: <RouteCard post={p} /> })),
