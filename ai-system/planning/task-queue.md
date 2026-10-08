@@ -185,11 +185,11 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | F1. Scroll-aware floating "new posts" prompt with scroll-depth/time throttling | [x] |
 | [M] | G1. Analytics overview tiles responsive grid (2/3/4 cols) + text wrap; quick-stats + skeleton responsive | [x] |
 | [M] | G2. Project-wide responsive sweep — footer grid, register inputs, admin widths, header wrapping, truncate/fixed-width offenders | [x] |
-| [M] | H1. Posting E2E verification (create → feed display) | [ ] |
+| [M] | H1. Posting E2E verification (create → feed display) | [x] |
 | [L] | H2. Profile tab filtering — posts/liked/bookmarks/routes fetch filtered per tab (+ any missing endpoints) | [x] |
 | [M] | H3. State-strategy review: redux-observables/subscriptions vs memoryCache/useCachedFetch/feedStream; decision documented | [x] |
-| [L] | H4. Mutation E2E tests (post/like/comment/bookmark/follow) + error handling, undefined edge cases, error-boundary hardening | [ ] |
-| [L] | QA — tsc + lint + jest + build gate; docs close-out (session-log, dev-history, decisions, sync-context, update-ai-system) | [ ] |
+| [L] | H4. Mutation E2E tests (post/like/comment/bookmark/follow) + error handling, undefined edge cases, error-boundary hardening | [x] |
+| [L] | QA — tsc + lint + jest + build gate; docs close-out (session-log, dev-history, decisions, sync-context, update-ai-system) | [x] |
 
 ---
 
