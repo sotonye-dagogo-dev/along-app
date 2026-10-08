@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08 (search E2E)
 > - last-verified-against-code: 2026-10-08 (Sprint 7 rows verified present in code: scripts/, memoryCache, useCachedFetch, RequestRouteModal, EndlessCarousel/SuggestionsRail, /api/suggestions, /api/bookmarks)
-> - last-synced: 2026-08-13 (v3 template update — pull-template-update)
+> - last-synced: 2026-10-08 (Sprint 8 search E2E — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -190,6 +190,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [M] | H3. State-strategy review: redux-observables/subscriptions vs memoryCache/useCachedFetch/feedStream; decision documented | [x] |
 | [L] | H4. Mutation E2E tests (post/like/comment/bookmark/follow) + error handling, undefined edge cases, error-boundary hardening | [x] |
 | [L] | QA — tsc + lint + jest + build gate; docs close-out (session-log, dev-history, decisions, sync-context, update-ai-system) | [x] |
+
+---
+
+## Sprint 8 — Search E2E (2026-10-08, execute-feature)
+
+> **Section summary:** Unified search implemented end-to-end, non-breaking (no schema change, no new deps). QA gate green with real runs: tsc 0, jest 139/139 (13 suites), lint zero-new-errors, build clean with `/search` route.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | SearchService — unified posts+users+tags, Redis read-through, P2022 fallback (`app/lib/services/searchService.ts`) | [x] |
+| [M] | GET /api/search — q/type/region/postType/cursor, search-bucket rate limit, sanitized errors, guest-accessible | [x] |
+| [M] | /search page — debounced input, All/Routes/People tabs, PostCard + FollowButton reuse, AppEmptyState search preset (fixes SuggestionsPanel dead `/search?q=` links) | [x] |
+| [S] | Wiring — apiRegistry `search` entry, middleware `/search` guest route | [x] |
+| [M] | Tests — `search.test.ts` (9 API-boundary) + `searchService.test.ts` (8 service) | [x] |
 
 ---
 

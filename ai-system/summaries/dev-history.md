@@ -478,3 +478,26 @@ Closed the three honest-stale items left by the 2026-10-08 update-ai-system deep
 
 **Next Sprint Focus:**
 Backlog per task-queue: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md.
+
+---
+
+## 2026-10-08 — Execute-Feature: Search E2E (unified /api/search + /search page) + Update-AI-System Chain
+
+**Summary:**
+Implemented the Phase 4 search checkbox end-to-end, non-breaking: `searchService.ts` (unified posts + users + related-tags search over Prisma `contains`/`insensitive` — no migration, no new deps), `GET /api/search` (`q`/`type`/`region`/`postType`/`cursor`/`limit`, shared `search`-bucket rate limiting, guest-accessible, sanitized user-facing errors, P2022 fallback), guest-accessible `/search` page (debounced input, All/Routes/People tabs, PostCard + FollowButton reuse, `EMPTY_STATES.search`), apiRegistry + middleware wiring. This also fixes the dead `/search?q=` links that SuggestionsPanel trending tags already pointed at. 17 new tests (9 API-boundary + 8 service). QA gate fully green with real runs: tsc 0 errors, jest 139/139 across 13 suites, lint zero new errors (7 pre-existing verified identical on stashed baseline; 2 new `no-require-imports` in the new test fixed before close), build clean with `/search` in the route table.
+
+**Completed:**
+- Step 1 planning pass (task-queue, project-plan, system-architecture, project-context, design-system, repair-system, project-decisions) + in-progress.md plan
+- Step 2 scope check: PASS (search is a Daily Commuter key interaction; complies with state-strategy/config-driven/zero-emoji decisions) — no plan-feature.md needed (no architecture impact)
+- Step 3 implementation: searchService, /api/search, /search page (page.tsx metadata + SearchPage client), apiRegistry + middleware edits
+- Step 3b tests: `app/__tests__/api/search.test.ts`, `app/__tests__/services/searchService.test.ts`
+- Step 4 QA gate: `npm install` (runner had no node_modules) then tsc/jest/lint/build real runs; fixed 2 lint errors in new test (require → typed imports)
+- Step 5 close-out: project-plan checkbox, task-queue Sprint 8 + last-synced, system-architecture Search row, test-plan/test-results 122/11 → 139/13, repo-map (search route, 16 services, dashboard search) + dependency-graph (live SearchService) freshness, session-log entries, sync-context checkpoints
+
+**Key Changes:**
+- New: `app/lib/services/searchService.ts`, `app/api/search/route.ts`, `app/(dashboard)/search/page.tsx` + `SearchPage.tsx`, 2 test suites
+- Edited: `app/lib/config/apiRegistry.ts` (search entry), `middleware.ts` (`/search` guest route)
+- No schema/migration changes; existing `CACHE_KEYS.search` + `CACHE_TTL.searchResults` + `RATE_LIMITS.search` slots reused
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Search live-DB integration test still open (API-boundary suites mock Prisma, per convention).

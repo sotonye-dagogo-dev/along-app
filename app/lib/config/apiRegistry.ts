@@ -22,6 +22,7 @@ export const API_REGISTRY: Record<string, ApiEndpoint> = {
   routesTrace: { path: "/api/routes/trace", methods: ["POST"], auth: true, rateLimit: "trace" },
   usersDetail: { path: "/api/users/[id]", methods: ["GET", "PATCH"], auth: false },
   usersSearch: { path: "/api/users/search", methods: ["GET"], auth: false, rateLimit: "search" },
+  search: { path: "/api/search", methods: ["GET"], auth: false, rateLimit: "search" },
   usersFollow: { path: "/api/users/[id]/follow", methods: ["POST", "DELETE"], auth: true },
   usersAvatar: { path: "/api/users/[id]/avatar", methods: ["PATCH"], auth: true },
   usersSuggestions: { path: "/api/users/suggestions", methods: ["GET"], auth: true },

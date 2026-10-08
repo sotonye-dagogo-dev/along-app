@@ -1,7 +1,7 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08 (search E2E)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: re-verify if project scope or phase changes
 
@@ -79,7 +79,7 @@
 - [x] ValidityEngine for route verification scoring (`app/lib/services/ValidityEngine.ts`)
 - [x] DraftingCoach for post quality guidance (`app/lib/services/DraftingCoachService.ts`)
 - [x] TrustBadge component for verified reporters (`app/components/ui/TrustBadge.tsx`)
-- [ ] Search with full-text Postgres indexes (no /api/search route or SearchService in code as of 2026-10-08)
+- [x] Search — unified posts + users + tags search (`GET /api/search`, `searchService.ts`, `/search` page; contains/insensitive queries + Redis cache, no migration needed; 2026-10-08)
 - [x] Map integration with route polyline rendering (`app/components/features/posts/RouteMap.tsx`, `app/lib/services/routeTracingService.ts`, `app/api/routes/trace/`)
 - [x] Route requests E2E — PostType enum, quotedPost self-relation, RequestRouteModal, Respond CTA + quote block, /api/suggestions (Sprint 7, 2026-10-07/08)
 - [ ] Clustering for dense map markers (supercluster dependency listed but not wired)
@@ -128,7 +128,7 @@
 
 > **Section summary:** Reliability, performance, and production readiness.
 
-- [x] Unit tests for services and utilities (122 tests across 11 suites incl. mutation E2E + posts API, per 2026-10-08 QA gate)
+- [x] Unit tests for services and utilities (139 tests across 13 suites incl. mutation E2E + posts API + search API/service, per 2026-10-08 search-session QA gate)
 - [x] Mutation E2E tests (post/like/comment/bookmark/follow) + error handling and undefined edge cases (`app/__tests__/api/mutations.test.ts`, `posts.test.ts`)
 - [ ] Component tests for App* components
 - [ ] Integration tests for API routes
