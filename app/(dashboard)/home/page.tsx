@@ -1,7 +1,7 @@
 "use client"
 
 import { Suspense, useState, useEffect, useRef, useCallback } from "react"
-import { RefreshCw, ClipboardList } from "lucide-react"
+import { RefreshCw, ClipboardList, History } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useSearchParams } from "next/navigation"
 import { PostCard } from "@/app/components/features/posts"
@@ -13,6 +13,8 @@ import { AppEmptyState, PostCardSkeleton } from "@/app/components/ui"
 import { SuggestionsPanel } from "@/app/components/ui/SuggestionsPanel"
 import { SuggestionsRail } from "@/app/components/features/suggestions/SuggestionsRail"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
+import { routeDraftsService } from "@/app/lib/services/routeDraftsService"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useFeedInteractions } from "@/app/hooks/useFeedInteractions"
 import { feedStream } from "@/app/lib/streams/feedStream"
@@ -75,6 +77,8 @@ function HomeContent() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [respondTo, setRespondTo] = useState<RespondToRequest | null>(null)
+  const [draftsCount, setDraftsCount] = useState(0)
+  const [openDraftsOnShare, setOpenDraftsOnShare] = useState(false)
   const loaderRef = useRef<HTMLDivElement>(null)
   const { user, isLoading: authLoading } = useAuth()
   const searchParams = useSearchParams()
@@ -84,6 +88,30 @@ function HomeContent() {
       setShowShareModal(true)
     }
   }, [searchParams])
+
+  // Saved route drafts: badge count stays fresh via the drafts-changed event.
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        setDraftsCount(routeDraftsService.countDrafts())
+      } catch {
+        /* never-throw: badge simply hides */
+      }
+    }
+    refresh()
+    window.addEventListener(ROUTE_DRAFTS_CONFIG.changedEvent, refresh)
+    window.addEventListener("storage", refresh)
+    return () => {
+      window.removeEventListener(ROUTE_DRAFTS_CONFIG.changedEvent, refresh)
+      window.removeEventListener("storage", refresh)
+    }
+  }, [])
+
+  const openComposerForDrafts = useCallback(() => {
+    setRespondTo(null)
+    setOpenDraftsOnShare(true)
+    setShowShareModal(true)
+  }, [])
 
   useEffect(() => {
     if (authLoading) return // wait for auth so the feed cache key is user-scoped
@@ -306,6 +334,22 @@ function HomeContent() {
           </button>
         </div>
 
+        {draftsCount > 0 && (
+          <button
+            type="button"
+            onClick={openComposerForDrafts}
+            aria-label={`Open ${ROUTE_DRAFTS_CONFIG.draftsCountLabel(draftsCount)} to restore and complete`}
+            className="inline-flex items-center gap-1.5 self-start h-8 px-3 radius-md border border-border bg-bg-card text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:bg-primary-muted hover:text-primary hover:border-primary-muted transition-colors duration-fast"
+          >
+            <History size={14} />
+            {ROUTE_DRAFTS_CONFIG.resumeChipLabel(draftsCount)}
+          </button>
+        )}
+
+        {/* Suggestions carousel: own overflow container, above the feed but
+            below the share/request trigger div — never inside the feed flow. */}
+        <SuggestionsRail />
+
         {posts.length > 0 ? (
           posts.map((post) => (
             <PostCard
@@ -331,9 +375,6 @@ function HomeContent() {
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-circle animate-spin" />
           </div>
         )}
-
-          {/* Mobile suggestions tape owns its own overflow container — never the feed. */}
-          <SuggestionsRail />
         </div>
 
         <SuggestionsPanel />
@@ -344,8 +385,10 @@ function HomeContent() {
         onClose={() => {
           setShowShareModal(false)
           setRespondTo(null)
+          setOpenDraftsOnShare(false)
         }}
         responseTo={respondTo}
+        startWithDraftsOpen={openDraftsOnShare}
         onSubmit={async (data) => submitPost(data)}
         onRequestRoute={() => {
           setShowShareModal(false)

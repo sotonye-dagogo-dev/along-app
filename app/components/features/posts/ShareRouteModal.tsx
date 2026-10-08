@@ -2,20 +2,21 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair } from "lucide-react"
+import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair, History } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { SHARE_ROUTE_MODAL_CONFIG } from "@/app/lib/config"
+import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
 import { draftingCoachService } from "@/app/lib/services/DraftingCoachService"
+import { routeDraftsService, type RouteDraft } from "@/app/lib/services/routeDraftsService"
 import { toastService } from "@/app/lib/services/toastService"
 import { estimateRoute, traceSignature, getCurrentPosition, reverseGeocode } from "@/app/lib/utils/geo"
 import { memoryCache } from "@/app/lib/cache/memoryCache"
 import type { VehicleType } from "@/app/lib/types"
 import DraftingCoach from "./DraftingCoach"
+import { RouteDraftsPanel } from "./RouteDraftsPanel"
 import { RequestRouteTrigger } from "./RequestRouteTrigger"
 import type { RoutePin } from "./RouteMap"
-
-const DRAFT_KEY = "along_route_draft"
 
 
 const RouteMap = dynamic(() => import("./RouteMap").then((m) => ({ default: m.RouteMap })), { ssr: false })
@@ -48,6 +49,8 @@ interface ShareRouteModalProps {
   responseTo?: RespondToRequest | null
   /** Opens the request-route flow (e.g. user meant to request, not share). Optional — trigger hidden when absent. */
   onRequestRoute?: () => void
+  /** Open with the saved-drafts panel expanded (used by the home drafts resume chip). */
+  startWithDraftsOpen?: boolean
   onSubmit?: (data: {
     title: string
     description: string
@@ -70,9 +73,11 @@ const VEHICLE_OPTIONS = Object.keys(VEHICLE_REGISTRY) as VehicleType[]
 const TRACE_CACHE_TTL = 600 // 10 min — same route re-edits don't re-trace
 const TRACE_DEBOUNCE_MS = 1000
 
-export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, onSubmit }: ShareRouteModalProps) {
+export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, startWithDraftsOpen, onSubmit }: ShareRouteModalProps) {
   const isResponse = Boolean(responseTo)
-  const draftKey = isResponse ? `${DRAFT_KEY}_resp` : DRAFT_KEY
+  const [drafts, setDrafts] = useState<RouteDraft[]>([])
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
+  const [showDrafts, setShowDrafts] = useState(false)
   const [title, setTitle] = useState("")
   const [description] = useState("")
   const [steps, setSteps] = useState<(RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean; _focused?: boolean; _locating?: boolean })[]>([
@@ -355,37 +360,77 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     setImages((prev) => prev.filter((_, i) => i !== idx))
   }
 
-  const saveDraft = useCallback(() => {
-    const draft = { title, steps, tags, images }
-    try {
-      localStorage.setItem(draftKey, JSON.stringify(draft))
-      toastService.success("Draft saved locally")
-    } catch {
-      toastService.error("Failed to save draft")
+  const applyDraft = useCallback((draft: RouteDraft) => {
+    if (draft.title) setTitle(draft.title)
+    if (draft.steps.length >= 2) {
+      setSteps(
+        draft.steps.map((s) => ({ ...s, _geoResults: [], _geoLoading: false }))
+      )
     }
-  }, [title, steps, tags, images, draftKey])
+    setTags(draft.tags)
+    setImages(draft.images)
+    setActiveDraftId(draft.id)
+  }, [])
 
-  const clearDraft = useCallback(() => {
-    try { localStorage.removeItem(draftKey) } catch { /* ignore */ }
-  }, [draftKey])
+  const saveDraft = useCallback(() => {
+    const stored = routeDraftsService.saveDraft({
+      title,
+      steps: steps.map(({ location, description, vehicle, fare, lat, lng }) => ({
+        location,
+        description,
+        vehicle,
+        fare,
+        ...(lat !== undefined ? { lat } : {}),
+        ...(lng !== undefined ? { lng } : {}),
+      })),
+      tags,
+      images,
+    })
+    if (!stored) {
+      toastService.error(ROUTE_DRAFTS_CONFIG.saveEmptyError)
+      return
+    }
+    setDrafts(routeDraftsService.listDrafts())
+    setActiveDraftId(stored.id)
+    toastService.success(ROUTE_DRAFTS_CONFIG.savedToast)
+  }, [title, steps, tags, images])
+
+  const restoreDraft = useCallback((draft: RouteDraft) => {
+    applyDraft(draft)
+    setShowDrafts(false)
+    toastService.success(ROUTE_DRAFTS_CONFIG.restoredToast)
+  }, [applyDraft])
+
+  const deleteDraft = useCallback((id: string) => {
+    setDrafts(routeDraftsService.deleteDraft(id))
+    setActiveDraftId((prev) => (prev === id ? null : prev))
+    toastService.success(ROUTE_DRAFTS_CONFIG.deletedToast)
+  }, [])
 
   useEffect(() => {
     if (!isOpen) return
     // Response mode: prefill from the quoted request, never absorb a normal-route draft
     if (responseTo) {
       setTitle(`Re: ${responseTo.title}`.slice(0, 100))
+      setDrafts(routeDraftsService.listDrafts())
+      setShowDrafts(false)
       return
     }
-    try {
-      const stored = localStorage.getItem(draftKey)
-      if (!stored) return
-      const draft = JSON.parse(stored) as { title?: string; steps?: (RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean })[]; tags?: string[]; images?: string[] }
-      if (draft.title) setTitle(draft.title)
-      if (draft.steps && draft.steps.length >= 2) setSteps(draft.steps)
-      if (draft.tags) setTags(draft.tags)
-      if (draft.images) setImages(draft.images)
-    } catch { /* ignore */ }
-  }, [isOpen, responseTo, draftKey])
+    const stored = routeDraftsService.listDrafts()
+    setDrafts(stored)
+    setShowDrafts(Boolean(startWithDraftsOpen && stored.length > 0))
+    // Preserve the previous auto-restore UX: when the composer opens empty and
+    // drafts exist, load the most recent one so no saved progress is stranded.
+    if (stored.length > 0) {
+      const composerEmpty =
+        title.trim().length === 0 &&
+        steps.every((s) => s.location.trim().length === 0) &&
+        tags.length === 0 &&
+        images.length === 0
+      if (composerEmpty) applyDraft(stored[0])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, responseTo, startWithDraftsOpen])
 
   const updateStep = (index: number, field: keyof RouteStep, value: string | number) => {
     setSteps((prev) => {
@@ -466,7 +511,13 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       waypoints: waypoints.length > 0 ? waypoints : undefined,
     })
     if (result === false) return // failed — keep the modal open so input isn't lost
-    clearDraft()
+    // Upload complete: drop the restored draft (or legacy keys when none was active)
+    if (activeDraftId) {
+      setDrafts(routeDraftsService.deleteDraft(activeDraftId))
+      setActiveDraftId(null)
+    } else {
+      routeDraftsService.clearLegacyKeys()
+    }
     onClose()
   }
 
@@ -508,6 +559,33 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
             </div>
           </div>
         )}
+
+        <div className="mx-6 mt-4 border border-border radius-lg bg-bg-elevated">
+          <button
+            type="button"
+            onClick={() => setShowDrafts((open) => !open)}
+            aria-expanded={showDrafts}
+            aria-controls="route-drafts-panel"
+            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 border-none bg-transparent cursor-pointer font-sans text-left"
+          >
+            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+              <History size={15} className="text-text-secondary" />
+              {ROUTE_DRAFTS_CONFIG.panelToggleLabel}
+              <span className="text-xs font-medium text-text-muted">
+                ({ROUTE_DRAFTS_CONFIG.draftsCountLabel(drafts.length)})
+              </span>
+            </span>
+            <ChevronDown
+              size={16}
+              className={`text-text-secondary transition-transform duration-fast ${showDrafts ? "rotate-180" : ""}`}
+            />
+          </button>
+          {showDrafts && (
+            <div id="route-drafts-panel" className="px-3 pb-3">
+              <RouteDraftsPanel drafts={drafts} activeDraftId={activeDraftId} onRestore={restoreDraft} onDelete={deleteDraft} />
+            </div>
+          )}
+        </div>
 
         <div className="flex flex-col lg:flex-row overflow-y-auto flex-1">
           <div className="flex-1 p-4 sm:p-6 flex flex-col gap-5 overflow-y-auto">
@@ -796,11 +874,23 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
         </div>
 
         <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
-          <span className="text-xs text-text-muted hidden sm:inline">{SHARE_ROUTE_MODAL_CONFIG.actionsNote}</span>
-          <div className="flex gap-2 ml-auto">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              type="button"
+              onClick={() => setShowDrafts((open) => !open)}
+              aria-expanded={showDrafts}
+              aria-controls="route-drafts-panel"
+              className="inline-flex items-center gap-1.5 h-9 px-3 radius-md border border-border bg-transparent text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast shrink-0"
+            >
+              <History size={14} />
+              {ROUTE_DRAFTS_CONFIG.panelToggleLabel} ({drafts.length})
+            </button>
+            <span className="text-xs text-text-muted hidden md:inline truncate">{SHARE_ROUTE_MODAL_CONFIG.actionsNote}</span>
+          </div>
+          <div className="flex gap-2 ml-auto shrink-0">
             <button onClick={saveDraft} className="inline-flex items-center gap-1.5 h-10 px-4 radius-md bg-transparent text-text-secondary border-none text-sm font-semibold cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast">
               <Save size={14} />
-              Save Draft
+              {ROUTE_DRAFTS_CONFIG.saveLabel}
             </button>
             <button
               onClick={handleSubmit}

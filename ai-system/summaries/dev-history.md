@@ -524,3 +524,26 @@ Tightened four home/share/footer UX items, non-breaking and config-driven: the s
 
 **Next Sprint Focus:**
 update-ai-system deep sync (chained), then remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+---
+
+## 2026-10-08 — Execute-Feature: Carousel Ordering + Route-Drafts Library (Sprint 10)
+
+**Summary:**
+Two directive items, non-breaking and config-driven: the home suggestions carousel now sits above the feed but below the share/request trigger div (its own overflow container unchanged, so the feed never grows); savable route drafts gained a full access/restore/complete loop — a multi-draft localStorage library with legacy single-key migration, a drafts panel inside ShareRouteModal (restore/continue-to-upload/delete), a footer drafts counter, and a home "N saved drafts — continue" resume chip that opens the composer with the drafts panel expanded.
+
+**Completed:**
+- Planning pass + scope check (no architecture impact — no plan-feature.md; no migration, no new deps)
+- Carousel reorder in `home/page.tsx` (SuggestionsRail moved above feed, below trigger div)
+- `routeDrafts.ts` config + `routeDraftsService.ts` (multi-draft, legacy migration, never-throw, change event) + `RouteDraftsPanel.tsx`
+- ShareRouteModal drafts integration (service-backed save/restore/delete, `startWithDraftsOpen` prop, auto-restore of most recent draft on empty open, delete-on-submit)
+- Home drafts resume chip (live count via drafts-changed event + storage listener)
+- `routeDrafts.test.ts` (4 suites: config, save/list/restore/delete, corrupt-safety, legacy migration)
+
+**Key Changes:**
+- New: `app/lib/config/routeDrafts.ts`, `app/lib/services/routeDraftsService.ts`, `app/components/features/posts/RouteDraftsPanel.tsx`, `app/__tests__/config/routeDrafts.test.ts`
+- Edited: `home/page.tsx`, `ShareRouteModal.tsx`, `lib/config/index.ts`, `posts/index.ts`
+- No schema/migration changes; no new dependencies
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Full jest/lint/build gate still needs a runner with node_modules (CI).
