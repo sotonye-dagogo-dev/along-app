@@ -326,6 +326,23 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 
 ---
 
+## Sprint 19 (Planned) — Keyless Map Stack: OpenFreeMap + OSRM + Proxied Geocoding (plan-feature 2026-10-08)
+
+> **Section summary:** PLAN ONLY — no code written. Directive: long-term keyless map service/tools/renderers (pins + polylines, scalable, no API-key failures). Recommendation: keep MapLibre GL renderer; tiles → OpenFreeMap keyless vector styles (verified 2026-10-08: free, no limits, no registration/keys, MapLibre-native `tiles.openfreemap.org/styles/{liberty,bright,positron}`, self-host path); routing → OSRM demo via server proxy + Redis cache + straight-line fallback (demo policy 1 req/s, no SLA — never call browser-direct); geocoding → `/api/maps/*` proxy (Nominatim server-side + Photon fallback, fixes browser-direct policy violation). Mapbox/ORS/MapTiler/Stadia/Geoapify demoted to optional keyed overrides; Carto `?apiKey=` dependency removed.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | MAP_STACK_CONFIG — `app/lib/config/mapStack.ts`: tile style URLs (primary OpenFreeMap liberty/bright/positron + dark mapping), raster fallback chain (Carto keyless → OSM → Esri), routing provider order (osrm → ors → mapbox → straight), geocode order (nominatim → photon), TTLs, attribution strings, dark-mode mapping; barrel export | [ ] |
+| [M] | Server proxy — `/api/maps/route`, `/api/maps/geocode`, `/api/maps/reverse` + `mapProxyService` (Redis read-through on traceSignature/query, per-IP rate limit, server User-Agent/Referer, keyed providers only when env present, straight-line final fallback, sanitized errors) | [ ] |
+| [M] | Renderer cutover — shared map-style builder; RouteMap.tsx + explore/page.tsx consume it (drop `mapbox://` branch + `cartoParam` apiKey logic, vector primary + raster fallback + onError provider step-down); remove `api.mapbox.com` preconnect hints if Mapbox fully optional | [ ] |
+| [S] | Geocode client cutover — RouteStepInput, ShareRouteModal, `geo.ts reverseGeocode` call internal `/api/maps/*` (keep debounce/abort); Nominatim URLs removed from client | [ ] |
+| [M] | routeTracingService chain reorder — OSRM-first via internal proxy shape (GeoJSON → polyline5), keep ORS/Mapbox as env-gated overrides, straight-line fallback preserved; `/api/routes/trace` delegates to mapProxyService | [ ] |
+| [S] | Env/config hygiene — `.env.example` marks CARTO/MAPBOX/MAPTILER/ORS keys optional-override; system-architecture config table updated; rateLimits `maps` bucket entry | [ ] |
+| [M] | Tests — mapStack config (fallback order, dark mapping, attribution), proxy cache/fallback unit, trace reorder (keyless-first, no-key no-call) | [ ] |
+| [S] | QA gate — tsc + jest + build + lint; verify pins render + polyline draws with ALL map keys unset (the keyless proof) | [ ] |
+
+---
+
 ## Backlog
 
 > **Section summary:** Known work that needs to be done but hasn't been scheduled yet.
