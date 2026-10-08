@@ -5,14 +5,15 @@ import Link from "next/link"
 import { useState, useCallback } from "react"
 import dynamic from "next/dynamic"
 import {
-  Home, Compass, MapPin, Bookmark, User,
+  Home, Compass, MapPin, Bell, User,
   Shield, ShieldCheck,
   PanelLeftClose, PanelRight,
   Settings, Navigation,
 } from "lucide-react"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useTranslation } from "@/app/providers/I18nProvider"
-import { filterNavItems } from "@/app/lib/config/navigation"
+import { filterNavItems, BADGED_NAV_HREFS } from "@/app/lib/config/navigation"
+import { useUnreadNotifications, formatBadgeCount } from "@/app/lib/hooks/useUnreadNotifications"
 import AppLogo from "./AppLogo"
 
 const ShareRouteModal = dynamic(
@@ -24,7 +25,7 @@ const MOBILE_TABS = [
   { label: "Home", href: "/home", icon: Home },
   { label: "Explore", href: "/explore", icon: Compass },
   { label: "Share Route", href: "/home?share=true", icon: MapPin, isFab: true },
-  { label: "Bookmarks", href: "/bookmarks", icon: Bookmark },
+  { label: "Notifications", href: "/notifications", icon: Bell },
   { label: "Profile", href: "/profile", icon: User },
 ]
 
@@ -36,6 +37,10 @@ export default function DashboardNav() {
   const [showShareModal, setShowShareModal] = useState(false)
 
   const mainNavItems = filterNavItems(user?.role ?? "user", "main")
+  // Badge reads the live unread count (0 for guests — no badge, no traffic).
+  const unreadCount = useUnreadNotifications(!isGuest && Boolean(user))
+  const showBadge = (href: string) =>
+    !isGuest && unreadCount > 0 && (BADGED_NAV_HREFS as readonly string[]).includes(href)
 
   const isActive = (href: string) => {
     if (href === "/home") return pathname === "/home"
@@ -67,15 +72,27 @@ export default function DashboardNav() {
             )
           }
           const active = isActive(tab.href)
+          const badged = showBadge(tab.href)
           return (
             <Link
               key={tab.label}
               href={tab.href}
-              className={`flex flex-col items-center gap-0.5 px-2 py-1 min-w-[48px] transition-colors ${
+              className={`relative flex flex-col items-center gap-0.5 px-2 py-1 min-w-[48px] transition-colors ${
                 active ? "text-primary" : "text-text-muted"
               }`}
             >
-              <tab.icon className={`w-5 h-5 ${active ? "stroke-primary" : ""}`} />
+              <span className="relative">
+                <tab.icon className={`w-5 h-5 ${active ? "stroke-primary" : ""}`} />
+                {badged && (
+                  <span
+                    role="status"
+                    aria-label={`${unreadCount} unread notifications`}
+                    className="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#E11D48] text-white text-[10px] font-bold grid place-items-center leading-none"
+                  >
+                    {formatBadgeCount(unreadCount)}
+                  </span>
+                )}
+              </span>
               <span className="text-[10px] font-medium tracking-wide">{tab.label}</span>
             </Link>
           )
@@ -127,6 +144,7 @@ export default function DashboardNav() {
           {mainNavItems.map((item) => {
             const active = isActive(item.href)
             const Icon = item.icon
+            const badged = showBadge(item.href)
             return (
               <Link
                 key={item.href}
@@ -138,8 +156,27 @@ export default function DashboardNav() {
                 } ${sidebarCollapsed ? "justify-center px-0" : ""}`}
                 title={sidebarCollapsed ? item.label : undefined}
               >
-                <Icon className={`w-5 h-5 shrink-0 ${active ? "stroke-primary" : ""}`} />
+                <span className="relative shrink-0">
+                  <Icon className={`w-5 h-5 shrink-0 ${active ? "stroke-primary" : ""}`} />
+                  {badged && (
+                    <span
+                      role="status"
+                      aria-label={`${unreadCount} unread notifications`}
+                      className={`absolute -top-1.5 ${sidebarCollapsed ? "-right-2" : "-right-2.5"} min-w-[18px] h-[18px] px-1 rounded-full bg-[#E11D48] text-white text-[10px] font-bold grid place-items-center leading-none`}
+                    >
+                      {formatBadgeCount(unreadCount)}
+                    </span>
+                  )}
+                </span>
                 {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                {!sidebarCollapsed && badged && (
+                  <span
+                    aria-hidden="true"
+                    className="ml-auto min-w-[20px] h-5 px-1.5 rounded-full bg-[#E11D48] text-white text-[11px] font-bold grid place-items-center leading-none"
+                  >
+                    {formatBadgeCount(unreadCount)}
+                  </span>
+                )}
               </Link>
             )
           })}

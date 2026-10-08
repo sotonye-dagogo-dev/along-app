@@ -119,11 +119,16 @@ export default function OwnProfilePage() {
   const handleEditProfile = async (data: Record<string, unknown>) => {
     if (!authUser?.id) return
     try {
-      await fetch(`/api/users/${authUser.id}`, {
+      const res = await fetch(`/api/users/${authUser.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => null)) as { error?: string } | null
+        toastService.error(err?.error ?? "Failed to update profile")
+        return
+      }
       toastService.success("Profile updated!")
       await refreshProfile()
     } catch {
@@ -337,6 +342,7 @@ export default function OwnProfilePage() {
         open={showEditModal}
         onClose={() => setShowEditModal(false)}
         initialValues={{
+          userName: profile.userName,
           firstName: profile.firstName,
           lastName: profile.lastName,
           bio: profile.bio ?? "",

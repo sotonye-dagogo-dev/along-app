@@ -1,8 +1,8 @@
 export { VEHICLE_REGISTRY } from "./vehicles";
 export { ROUTE_STATUS_REGISTRY } from "./routeStatus";
 export { NAV_REGISTRY, filterNavItems } from "./navigation";
-export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, POST_CREATE_FIELDS, BUG_REPORT_FIELDS, CONTACT_FIELDS } from "./forms";
-export { NOTIFICATION_REGISTRY } from "./notifications";
+export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, USERNAME_RULE, POST_CREATE_FIELDS, BUG_REPORT_FIELDS, CONTACT_FIELDS } from "./forms";
+export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
 export { DEFAULT_FEED_CONFIG } from "./feedAlgorithm";
 export { QUALITY_CHECKPOINTS } from "./draftingCoach";
 export { DEFAULT_VALIDITY_CONFIG } from "./validityConfig";

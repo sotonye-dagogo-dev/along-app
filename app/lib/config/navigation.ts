@@ -27,3 +27,20 @@ export function filterNavItems(role: string, section?: "main" | "admin"): NavIte
     (item) => hasAccess(item, role) && (!section || item.section === section)
   );
 }
+
+/**
+ * Notification badge policy (config-driven, zero app deps).
+ * - `pollMs`: how often the nav re-reads the unread count (60s mirrors the
+ *   server notifications cache TTL so polls stay cheap).
+ * - `maxDisplay`: counts above this render as "99+".
+ * - `endpoint`: unread source — limit=1 keeps the payload tiny; the
+ *   `unreadCount` field is what the badge reads.
+ */
+export const NOTIFICATION_BADGE_CONFIG = {
+  pollMs: 60_000,
+  maxDisplay: 99,
+  endpoint: "/api/notifications?limit=1",
+} as const;
+
+/** Hrefs whose nav entries render the unread badge. */
+export const BADGED_NAV_HREFS: readonly string[] = ["/notifications"] as const;

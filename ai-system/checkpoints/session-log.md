@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 15 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: append-only — never modify past entries
 
@@ -1235,3 +1235,24 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - `app/lib/config/avatar.ts` — curated 12-style catalogue (category + description), AVATAR_CATEGORIES/BACKGROUNDS/SEED_PRESETS/EDITOR_CONFIG + randomAvatarSeed(); `AvatarEditor.tsx` rebuilt: category filter, style grid with descriptions, seed input + Surprise-me dice + one-tap presets, background swatches, flip toggle, how-to tips, re-sync on open.
 - Tests updated: avatar catalogue (>=5, legacy styles present), moderation fare assertion.
 **QA gate:** no node_modules in this runner (`tsc`/`jest`/`lint` not runnable); verified to static-review level — all touched files re-read, mutate-callback null-safety fixed, unused imports/vars removed. Full gate (tsc + lint + tests + build) to be run where deps exist; no new architecture introduced (all config/metadata-driven).
+
+## 2026-10-08 — execute-feature: notification badges, referral+points coverage, username edit, landing guest-link, one-time prod reset (Sprint 15)
+**Directive:** notifications replace bookmarks on mobile menu + badge counts on desktop sidebar & mobile tab; notification service captures referral conversions + points/tier-ups; username editable with uniqueness; landing "continue as guest" hidden under the same logic as "continue to feed"; one-time prod DB reset wired into vercel-build (to be removed after the clean build).
+**Changes (3 new, ~12 edited):**
+- Nav: `MOBILE_TABS` Bookmarks→Notifications (bookmarks route + desktop entry untouched); `NOTIFICATION_BADGE_CONFIG` (60s poll = server cache TTL, 99 cap, limit=1 endpoint) + `BADGED_NAV_HREFS`; new `useUnreadNotifications` hook (auth-gated, AbortController, never throws); badge on desktop sidebar item (icon dot + count pill) and mobile tab (dot), `role=status` labels, solid `#E11D48`/white (no `--color-danger` token exists — `bg-danger` was corrected before commit).
+- Notifications: `NOTIFICATION_MESSAGES` (referralConversion / pointsEarned / tierUp) in config; `notifyReferralConversion` (REWARD to inviter, actor = new user, self-ref guard) called in register + Google callback new-signup + first-time-OAuth-link paths; `notifyPointsAwarded` (REWARD + BADGE tier-up) in rewards worker with POINTS_CONFIG action label; `NOTIFICATION_REGISTRY` export extended via barrel.
+- Profile: `userName` first in EDIT_PROFILE_FIELDS + `USERNAME_RULE` (mirrors REGISTER_SCHEMA, barrel-exported); PATCH allowlist + trim + shape check (400) + uniqueness vs other users (409) + P2002 race guard; profile page passes userName initialValue and surfaces 409 message instead of false success.
+- Landing: `GuestContinueLink` (same AuthContext `isAuthenticated` gate as HeroCtas/BottomCta, null while loading/authed) replaces the static always-visible link in `(public)/page.tsx`.
+- Ops: `scripts/reset-prod-db.ts` (TRUNCATE … CASCADE all 16 app tables, SiteConfig preserved, DATABASE_URL-guarded, never fails build) + `db:reset-prod` + prepended (`|| true`) to `vercel-build`.
+- Tests: `__tests__/sprint15/tightening.test.ts` (10 tests: badge config/caps/format, copy templates, username field+rule). One interim self-failure fixed (toMatch string arg is substring, not regex — split into two assertions).
+**QA gate (this runner, node_modules via `npm ci`):**
+- `npx tsc --noEmit` — 0 errors
+- `npx jest` — 22 suites / 198 tests, all pass
+- `npm run build` — clean
+- `npx next lint` (touched files) — 1 pre-existing warning (`Settings` unused in DashboardNav, predates this sprint), 0 new
+**Assumptions Made:**
+- Desktop sidebar keeps Bookmarks (directive only replaced it on mobile); bookmarks route/page untouched.
+- Referral conversion notice reuses REWARD type (no migration) — copy distinguishes it from points notices, which arrive separately via the rewards worker.
+- REWARD/BADGE system notifications use the earner as actor with allowSelf (same pattern as WELCOME).
+- No `update-ai-system.md` deep sync: no schema/architecture change, no [L]/[XL] task-queue entries (largest is [M]); sync-context markers updated inline instead.
+**Notes / Blockers:** ⚠️ After the next production deploy confirms a clean DB, delete `scripts/reset-prod-db.ts`, drop `db:reset-prod`, and remove its `vercel-build` invocation — otherwise every build wipes the DB. Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. In-progress reset to idle below.
