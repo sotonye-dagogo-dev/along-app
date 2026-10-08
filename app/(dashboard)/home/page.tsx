@@ -113,6 +113,25 @@ function HomeContent() {
     setShowShareModal(true)
   }, [])
 
+  // Stable modal identities: AppModal keys its Escape listener off onClose,
+  // so inline arrow props churned the listener on every feed re-render and
+  // (pre-focus-guard) cost input focus per keystroke on mobile keyboards.
+  const closeShareModal = useCallback(() => {
+    setShowShareModal(false)
+    setRespondTo(null)
+    setOpenDraftsOnShare(false)
+  }, [])
+
+  const closeRequestModal = useCallback(() => {
+    setShowRequestModal(false)
+  }, [])
+
+  const openRequestFromShare = useCallback(() => {
+    setShowShareModal(false)
+    setRespondTo(null)
+    setShowRequestModal(true)
+  }, [])
+
   useEffect(() => {
     if (authLoading) return // wait for auth so the feed cache key is user-scoped
     let cancelled = false
@@ -382,24 +401,16 @@ function HomeContent() {
 
       <ShareRouteModal
         isOpen={showShareModal}
-        onClose={() => {
-          setShowShareModal(false)
-          setRespondTo(null)
-          setOpenDraftsOnShare(false)
-        }}
+        onClose={closeShareModal}
         responseTo={respondTo}
         startWithDraftsOpen={openDraftsOnShare}
         onSubmit={async (data) => submitPost(data)}
-        onRequestRoute={() => {
-          setShowShareModal(false)
-          setRespondTo(null)
-          setShowRequestModal(true)
-        }}
+        onRequestRoute={openRequestFromShare}
       />
 
       <RequestRouteModal
         isOpen={showRequestModal}
-        onClose={() => setShowRequestModal(false)}
+        onClose={closeRequestModal}
         onSubmit={async (data: RouteRequestBody) => submitPost(data)}
       />
     </>

@@ -46,10 +46,21 @@ export function AppModal({
     [onClose],
   )
 
+  // Focus once when the modal opens — never on subsequent re-renders.
+  // The previous version focused inside this effect alongside the Escape
+  // listener, so any parent re-render (e.g. every keystroke producing a new
+  // onClose closure) yanked focus off the input and collapsed mobile keyboards.
+  useEffect(() => {
+    if (!open) return
+    const active = document.activeElement
+    if (!contentRef.current?.contains(active)) {
+      contentRef.current?.focus({ preventScroll: true })
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) return
     document.addEventListener('keydown', handleEscape)
-    contentRef.current?.focus()
     return () => document.removeEventListener('keydown', handleEscape)
   }, [open, handleEscape])
 
