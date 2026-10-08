@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { ClipboardList, MapPin } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 
@@ -40,7 +40,10 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
   }
   const isValid = !errors.title && !errors.description && !errors.from && !errors.to
 
-  const reset = () => {
+  // Stable identities: AppModal keys its Escape listener off onClose, so
+  // inline closures here churned the listener on every keystroke (and the
+  // old focus effect stole input focus — mobile keyboard dismissal).
+  const reset = useCallback(() => {
     setTitle("")
     setDescription("")
     setFrom("")
@@ -49,12 +52,12 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
     setTagInput("")
     setShowErrors(false)
     setSubmitting(false)
-  }
+  }, [])
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     reset()
     onClose()
-  }
+  }, [reset, onClose])
 
   const addTag = () => {
     const t = tagInput.trim().replace(/^#/, "").toLowerCase()
