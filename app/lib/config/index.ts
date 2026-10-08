@@ -1,6 +1,7 @@
 export { VEHICLE_REGISTRY } from "./vehicles";
 export { ROUTE_STATUS_REGISTRY } from "./routeStatus";
-export { NAV_REGISTRY, filterNavItems } from "./navigation";
+export { NAV_REGISTRY, filterNavItems, isAdminRole } from "./navigation";
+export { ERROR_REPORTING_CONFIG, ERROR_SENSITIVE_PATTERNS } from "./errorReporting";
 export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, USERNAME_RULE, POST_CREATE_FIELDS, BUG_REPORT_FIELDS, CONTACT_FIELDS } from "./forms";
 export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
 export { DEFAULT_FEED_CONFIG } from "./feedAlgorithm";

@@ -1272,3 +1272,27 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - Admin `?earlyAdopter=true` ignores cursor pagination (returns earliest-first ranked take) — documented as audience/rewards tooling, not a general user browser.
 - `db:reset-prod` script kept (manual-only) rather than deleted — directive asked only to remove it from vercel builds.
 **Notes / Blockers:** Full QA gate (tsc + jest + build + lint) still to run where node_modules exists; test count after this sprint is 24 suites / ~209 tests (198 + 11 new) pending execution. Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. In-progress reset to idle below.
+
+## 2026-10-08 — execute-feature: admin dashboard fix, referral signup hardening, error-report actualisation, admin links (Sprint 17)
+**Directive:** Fix admin-dashboard visit error + referral-link email/password signup error; make "our team has been notified" true (or remove it) via sanitized console/stack bug capture; add admin-page links to desktop sidebar + profile Quick Links for admin-role users.
+**Root causes found:**
+- Admin dashboard crash: `GET /api/admin/stats` never returned `recentUsers`, but `app/admin/page.tsx` dereferenced `stats.recentUsers.length` → TypeError on every visit → error boundary.
+- Admin links invisible: Prisma `UserRole` is `USER | ADMIN` (uppercase) but `NAV_REGISTRY` roles were `["admin"]` and `DashboardNav` compared `user?.role === "admin"` → admin section never rendered for real admins.
+- Referral signup fragility: referral resolution + reward fan-out sat on the critical path (a stale/deleted inviter FK race or `crypto.randomUUID` gap could 500 the signup); legacy users with null `inviteCode` produced dead `/register?ref=null` invite links via `/api/invite`.
+- False claim: `global-error.tsx` printed "Our team has been notified" while only calling Sentry (unconfigured DSN in most envs ⇒ nobody notified, zero context).
+**Changes (3 new, 13 edited):**
+- API: stats route now selects `recentUsers` (latest 8, batched in the same `Promise.all`); register isolates referral resolution (try/catch), `randomUUID` fallback, P2003 FK-race retry-once without the link, reward/notify fan-out guarded; invite route backfills missing `inviteCode`.
+- UI: admin page null-tolerates older payloads (`?? []`) + safe initials; `AdminShell` guard uses `isAdminRole()`; profile Quick Links gains role-gated Admin Dashboard entry.
+- Config/service: `navigation.ts` gains canonical `isAdminRole()` (case-insensitive) + uppercase registry roles + case-insensitive `hasAccess`; new `errorReporting.ts` (category/endpoint/caps/copy/sanitize patterns) + `errorReportService.ts` (sanitize + POST BugReport, never throws, `{ reported }`); `global-error.tsx` + `error.tsx` file the report on mount and render pending/reported/unreported copy honestly.
+- Types: `NavItem.roles` widened to accept `USER | ADMIN` literals.
+- Tests: `errorReportService.test.ts` (8: redaction, truncation, ok/false/network-false, no email leak) + `navigation.test.ts` (+2: uppercase ADMIN grants admin items, `isAdminRole` cases).
+**QA gate (this runner, node_modules via `npm install`):**
+- `npx tsc --noEmit` — 0 errors
+- `npx jest` — 25 suites / 220 tests, all pass
+- `npm run build` — clean (all `/admin*` + `/api/admin/*` routes present)
+- `npx next lint` — 0 issues in touched files (remaining feed/suggestions `any` errors + DashboardNav `Settings` warning are pre-existing)
+**Assumptions Made:**
+- `MODERATOR` string still tolerated in server-side admin API guards (forward-compat) but canonical gate is `isAdminRole()` (ADMIN only per current enum); no migration to add a MODERATOR enum value.
+- Auto-filed BugReports use category OTHER with `metadata.source: "error-boundary"` so admins can filter them; reporter stays anonymous (null) since boundaries may render pre-auth.
+- Quick Links block keeps its `lg:hidden` wrapper (desktop already has the sidebar admin section); the admin entry is mobile-visible there.
+**Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. In-progress reset to idle below.

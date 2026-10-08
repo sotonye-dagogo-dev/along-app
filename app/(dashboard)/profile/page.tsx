@@ -2,7 +2,8 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Camera, Bell, BarChart3, UserPlus } from "lucide-react"
+import { Camera, Bell, BarChart3, UserPlus, Shield } from "lucide-react"
+import { isAdminRole } from "@/app/lib/config/navigation"
 import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import dynamic from "next/dynamic"
@@ -285,6 +286,15 @@ export default function OwnProfilePage() {
             <UserPlus size={18} className="shrink-0" />
             Invite Friends
           </Link>
+          {isAdminRole(authUser?.role) && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline"
+            >
+              <Shield size={18} className="shrink-0" />
+              Admin Dashboard
+            </Link>
+          )}
         </div>
 
         <div className="flex border-b border-border mb-4">
