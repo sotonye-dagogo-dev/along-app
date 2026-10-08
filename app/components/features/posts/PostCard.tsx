@@ -184,10 +184,11 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
   const images = post.images ?? []
   const user = post.user
   // Route requests are not routes: no map, no navigation affordance, no trust
-  // score (metadata-driven via MODERATION_CONFIG.routeRequestHides).
+  // score, no fare/amount (metadata-driven via MODERATION_CONFIG.routeRequestHides).
   const isRouteRequest = post.type === "ROUTE_REQUEST"
   const showMap = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.map)
   const showTrust = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.trustScore)
+  const showFare = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.fare)
   const viewerId = (auth?.user as { id?: string } | null)?.id ?? null
   const viewerRole = (auth?.user as { role?: string } | null)?.role ?? null
 
@@ -382,7 +383,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
                   <span className="text-sm text-text-muted italic">Stop {index + 1}</span>
                 )}
               </div>
-              {step.fare !== undefined && step.fare !== null && (
+              {showFare && step.fare !== undefined && step.fare !== null && (
                 <span className="text-sm font-semibold text-text-primary flex items-center gap-1 shrink-0">
                   <BadgeDollarSign size={14} className="text-text-muted" />
                   ₦{step.fare}

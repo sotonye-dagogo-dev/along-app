@@ -1224,3 +1224,14 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - INVITE_SENT credit is awarded on conversion inside the cap window (sends are not server-observable; documented in INVITE_CONFIG).
 
 **Notes / Blockers:** Production DB needs `prisma migrate deploy` (runs in `vercel-build`) for the new enum values; pre-migration DISLIKE/NEW_ROUTE writes fail safe (service returns null, request succeeds). In-progress reset to idle below.
+
+## 2026-10-08 — execute-feature: landing real stats, request fare hiding, profile interactions, edit-profile fix, avatar editor
+**Directive:** landing stats real + recent real posts; route requests hide fare/amount; profile post actions (like/dislike/bookmark/share work, comment opens modal with expand fallback); edit-profile "[object Object]" fix; intuitive DiceBear avatar editor with seed guidance.
+**Changes:**
+- `app/(public)/page.tsx` — `getLandingStats()` (prisma user/post counts + distinct regions, P2022-safe fallbacks) replaces hardcoded 10k/50k; `getLandingPosts()` now ROUTE+ROUTE_RESPONSE, unarchived, take 3, P2022 fallback.
+- `app/lib/config/moderation.ts` — `routeRequestHides.fare: true`; `PostCard.tsx` + `posts/[id]/page.tsx` gate fare badges on `showFare`; moderation test extended.
+- `app/components/features/profile/ProfilePostCard.tsx` (new) — PostCard wrapper with working like (LIKE toggle), dislike (DISLIKE toggle), bookmark, share (navigator.share → clipboard + POST_ACTIONS_CONFIG copy), comment modal (CommentInput/List + expand-post fallback link); wired into own + [username] profile tabs with full post normalization and `onRemoved` cache filtering.
+- `app/components/ui/ConfigDrivenForm.tsx` — root cause of "[object Object]": onChange received native events, not strings. Now accepts string|event, coerces all initialValues to strings (objects → ""), and re-syncs when async initialValues arrive.
+- `app/lib/config/avatar.ts` — curated 12-style catalogue (category + description), AVATAR_CATEGORIES/BACKGROUNDS/SEED_PRESETS/EDITOR_CONFIG + randomAvatarSeed(); `AvatarEditor.tsx` rebuilt: category filter, style grid with descriptions, seed input + Surprise-me dice + one-tap presets, background swatches, flip toggle, how-to tips, re-sync on open.
+- Tests updated: avatar catalogue (>=5, legacy styles present), moderation fare assertion.
+**QA gate:** no node_modules in this runner (`tsc`/`jest`/`lint` not runnable); verified to static-review level — all touched files re-read, mutate-callback null-safety fixed, unused imports/vars removed. Full gate (tsc + lint + tests + build) to be run where deps exist; no new architecture introduced (all config/metadata-driven).

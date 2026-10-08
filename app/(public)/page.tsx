@@ -38,15 +38,72 @@ const VEHICLE_CHIPS: Record<string, { bg: string; color: string }> = {
 
 async function getLandingPosts(): Promise<LandingPost[]> {
   try {
-    return await prisma.post.findMany({
-      where: { type: "ROUTE" },
+    return (await prisma.post.findMany({
+      where: { type: { in: ["ROUTE", "ROUTE_RESPONSE"] }, isArchived: false },
       orderBy: { createdAt: "desc" },
-      take: 2,
+      take: 3,
       include: { user: { select: { userName: true, firstName: true, lastName: true } } },
-    }) as unknown as LandingPost[];
+    })) as unknown as LandingPost[];
   } catch {
-    return [];
+    // Fallback for DBs where the additive isArchived column has not migrated yet.
+    try {
+      return (await prisma.post.findMany({
+        where: { type: { in: ["ROUTE", "ROUTE_RESPONSE"] } },
+        orderBy: { createdAt: "desc" },
+        take: 3,
+        include: { user: { select: { userName: true, firstName: true, lastName: true } } },
+      })) as unknown as LandingPost[];
+    } catch {
+      return [];
+    }
   }
+}
+
+interface LandingStats {
+  routeCount: number;
+  commuterCount: number;
+  regions: string[];
+}
+
+async function getLandingStats(): Promise<LandingStats> {
+  const fallback: LandingStats = { routeCount: 0, commuterCount: 0, regions: [] };
+  try {
+    const [routeCount, commuterCount, regionRows] = await Promise.all([
+      prisma.post
+        .count({ where: { isArchived: false } })
+        .catch(() => prisma.post.count()),
+      prisma.user.count().catch(() => 0),
+      prisma.post
+        .findMany({
+          where: { isArchived: false, region: { not: null } },
+          select: { region: true },
+          distinct: ["region"],
+          take: 3,
+        })
+        .catch(() =>
+          prisma.post
+            .findMany({
+              where: { region: { not: null } },
+              select: { region: true },
+              distinct: ["region"],
+              take: 3,
+            })
+            .catch(() => [] as { region: string | null }[]),
+        ),
+    ]);
+    const regions = (regionRows ?? [])
+      .map((r) => r.region)
+      .filter((r): r is string => Boolean(r));
+    return { routeCount, commuterCount, regions };
+  } catch {
+    return fallback;
+  }
+}
+
+function formatCompact(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K`;
+  return String(n);
 }
 
 function relativeTime(date: Date): string {
@@ -103,7 +160,8 @@ function toPreviewProps(post: LandingPost) {
 }
 
 export default async function LandingPage() {
-  const landingPosts = await getLandingPosts();
+  const [landingPosts, stats] = await Promise.all([getLandingPosts(), getLandingStats()]);
+  const regionLabel = stats.regions.length > 0 ? stats.regions.join(" · ") : "Lagos · Abuja · Port Harcourt";
   return (
     <>
       <StructuredData data={websiteSchema()} />
@@ -151,12 +209,12 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* Social Proof */}
+      {/* Social Proof — real platform stats, never hardcoded marketing numbers */}
       <section className="py-6 px-5 text-center glass">
         <p className="text-sm font-medium text-text-secondary tracking-wide">
-          <strong className="text-primary">10,000+</strong> Routes &middot;{" "}
-          <strong className="text-primary">50,000+</strong> Commuters &middot;{" "}
-          Lagos &middot; Abuja &middot; Port Harcourt
+          <strong className="text-primary">{formatCompact(stats.routeCount)}+</strong> Routes &middot;{" "}
+          <strong className="text-primary">{formatCompact(stats.commuterCount)}+</strong> Commuters &middot;{" "}
+          {regionLabel}
         </p>
       </section>
 

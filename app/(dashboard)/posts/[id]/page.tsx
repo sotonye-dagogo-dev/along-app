@@ -351,11 +351,12 @@ export default function PostDetailPage() {
   }
 
   // Route requests are not routes: no map, no navigation guide, no trust
-  // score (metadata-driven via MODERATION_CONFIG.routeRequestHides).
+  // score, no fare/amount (metadata-driven via MODERATION_CONFIG.routeRequestHides).
   const isRouteRequest = post.type === "ROUTE_REQUEST"
   const showMap = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.map) && routePins.length > 0
   const showNav = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.navigationGuide)
   const showTrust = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.trustScore)
+  const showFare = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.fare)
   const isArchived = post.isArchived ?? false
   const responses = post.responses ?? []
   const viewerRole = (currentUser as { role?: string } | null)?.role ?? null
@@ -520,7 +521,7 @@ export default function PostDetailPage() {
                 <div className="text-sm text-text-muted italic mb-1.5">Stop {index + 1}</div>
               )}
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                {step.fare !== undefined && step.fare !== null && (
+                {showFare && step.fare !== undefined && step.fare !== null && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-xs font-medium bg-bg-elevated text-text-secondary">
                     <BadgeDollarSign size={12} />₦{step.fare}
                   </span>
