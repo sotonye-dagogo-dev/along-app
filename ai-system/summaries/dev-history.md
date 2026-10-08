@@ -571,3 +571,27 @@ Five directive items, all non-breaking, config/metadata-driven. Root-caused the 
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+---
+
+## 2026-10-08 — Execute-Feature: Posting Hardening + Viewer/Carousel Fixes (Sprint 12)
+
+**Summary:**
+Five directive iron-out items, all non-breaking, config-driven, no new dependencies, no migration. Double-click route duplicates eliminated at three layers (disabled submit button with spinner, client in-flight dedup, server idempotency replay); like/dislike undo toasts removed; image viewer rewritten around a state-owned index; carousel autoplay restored for touch users and sparse feeds.
+
+**Completed:**
+- Submit guard: `ShareRouteModal` gained `isSubmitting` (Share/Save disabled, `Loader2` spinner, re-entry ignored; labels from `POST_SUBMIT_CONFIG`); `RequestRouteModal` submit button gained the same spinner (guard/disabled pre-existed)
+- Posting ACID: per-composer `clientMutationId` → `X-Idempotency-Key` header (stripped from JSON body) → server replay (`200 + deduplicated`) or concurrent-duplicate 409 via TTL `idempotencyService`; `POST /api/posts` now scores validity first and inserts in a single atomic `create`; key released on create/quote failure
+- Like/dislike: post-detail unlike no longer registers `undoService` or fires `toastService.undo` (success note on like only; bookmark undo kept)
+- ImageLightbox: `useState` index replaces `getElementById` src mutation — prev/next, ArrowLeft/Right, Escape, and the `n / total` counter all derive from one value; re-syncs when a different thumbnail opens the viewer
+- EndlessCarousel: hover-pause is mouse-only (touch taps no longer stall autoplay); item set repeats (cap `ENDLESS_CAROUSEL_CONFIG.maxRepeat`) until one half overflows the viewport so autoplay stays visible with 1–2 cards
+
+**Key Changes:**
+- New: `app/lib/config/postSubmit.ts`, `app/lib/services/idempotencyService.ts`, `app/__tests__/config/postSubmit.test.ts`
+- Edited: `ShareRouteModal.tsx`, `RequestRouteModal.tsx`, `home/page.tsx`, `api/posts/route.ts`, `posts/[id]/page.tsx`, `ImageLightbox.tsx`, `EndlessCarousel.tsx`, `carousel.ts`, `config/index.ts`
+- No schema/migration changes; no new dependencies
+
+**QA gate (this runner, node_modules installed via `npm ci`): tsc 0 errors; jest 16 suites / 154 tests pass; next build clean; lint clean for touched files (2 pre-existing warnings in untouched code paths).**
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.

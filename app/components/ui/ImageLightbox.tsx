@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useCallback } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
 
 interface ImageLightboxProps {
@@ -9,17 +9,46 @@ interface ImageLightboxProps {
   onClose: () => void
 }
 
+function clampIndex(n: number, length: number): number {
+  if (length <= 0) return 0
+  if (n < 0) return 0
+  if (n >= length) return length - 1
+  return n
+}
+
 export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxProps) {
-  const safeIndex = Math.min(initialIndex, images.length - 1)
+  // State-owned index (not direct DOM src mutation): prev/next and the
+  // counter always derive from the same value, so repeated navigation and
+  // the "n / total" badge can never drift apart.
+  const [index, setIndex] = useState(() => clampIndex(initialIndex, images.length))
+
+  // Re-sync when a different thumbnail opens the viewer or the list changes.
+  useEffect(() => {
+    setIndex(clampIndex(initialIndex, images.length))
+  }, [initialIndex, images.length])
+
+  const goPrev = useCallback(() => {
+    setIndex((prev) => (prev <= 0 ? images.length - 1 : prev - 1))
+  }, [images.length])
+
+  const goNext = useCallback(() => {
+    setIndex((prev) => (prev >= images.length - 1 ? 0 : prev + 1))
+  }, [images.length])
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault()
         onClose()
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault()
+        goPrev()
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault()
+        goNext()
       }
     },
-    [onClose]
+    [onClose, goPrev, goNext]
   )
 
   useEffect(() => {
@@ -32,6 +61,7 @@ export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxPr
   }, [handleKeyDown])
 
   if (images.length === 0) return null
+  const safeIndex = clampIndex(index, images.length)
 
   return (
     <div
@@ -40,7 +70,7 @@ export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxPr
     >
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
         {images.length > 1 && (
-          <span className="text-xs text-white/70 bg-black/40 px-2.5 py-1 radius-pill">
+          <span className="text-xs text-white/70 bg-black/40 px-2.5 py-1 radius-pill" aria-live="polite">
             {safeIndex + 1} / {images.length}
           </span>
         )}
@@ -58,15 +88,7 @@ export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxPr
           <button
             onClick={(e) => {
               e.stopPropagation()
-              const prev = safeIndex <= 0 ? images.length - 1 : safeIndex - 1
-              const img = document.getElementById("lightbox-image") as HTMLImageElement | null
-              if (img) {
-                img.style.opacity = "0"
-                setTimeout(() => {
-                  img.src = images[prev]
-                  img.style.opacity = "1"
-                }, 100)
-              }
+              goPrev()
             }}
             className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-circle bg-black/40 text-white flex items-center justify-center border-none cursor-pointer hover:bg-black/60 transition-colors"
             aria-label="Previous image"
@@ -76,15 +98,7 @@ export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxPr
           <button
             onClick={(e) => {
               e.stopPropagation()
-              const next = safeIndex >= images.length - 1 ? 0 : safeIndex + 1
-              const img = document.getElementById("lightbox-image") as HTMLImageElement | null
-              if (img) {
-                img.style.opacity = "0"
-                setTimeout(() => {
-                  img.src = images[next]
-                  img.style.opacity = "1"
-                }, 100)
-              }
+              goNext()
             }}
             className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-circle bg-black/40 text-white flex items-center justify-center border-none cursor-pointer hover:bg-black/60 transition-colors"
             aria-label="Next image"
@@ -96,11 +110,10 @@ export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxPr
 
       <div className="flex items-center justify-center w-full h-full p-4" onClick={(e) => e.stopPropagation()}>
         <img
-          id="lightbox-image"
+          key={images[safeIndex]}
           src={images[safeIndex]}
-          alt="Expanded route photo"
-          className="max-w-[95vw] max-h-[90vh] object-contain radius-sm transition-opacity duration-200"
-          style={{ opacity: 1 }}
+          alt={`Expanded route photo ${safeIndex + 1} of ${images.length}`}
+          className="max-w-[95vw] max-h-[90vh] object-contain radius-sm"
         />
       </div>
     </div>

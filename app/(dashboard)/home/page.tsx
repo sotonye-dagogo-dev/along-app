@@ -67,7 +67,14 @@ interface NewPostPayload {
   endLat?: number
   endLng?: number
   waypoints?: { lat: number; lng: number }[]
+  /** Idempotency key for this composer session — dedups double-clicks/retries. */
+  clientMutationId?: string
 }
+
+// In-flight POST /api/posts dedup: a second submit carrying the same
+// clientMutationId while the first is unresolved is ignored (the modal's
+// disabled button is the first layer; this is the second).
+const inflightPostKeys = new Set<string>()
 
 function HomeContent() {
   const [posts, setPosts] = useState<FeedPost[]>([])
@@ -272,11 +279,20 @@ function HomeContent() {
 
   /** Shared POST /api/posts handler — returns false on failure so modals stay open. */
   const submitPost = async (data: NewPostPayload): Promise<boolean> => {
+    const { clientMutationId, ...body } = data
+    // Second layer of double-submit protection (first layer: disabled button
+    // + guard in the modal). Same key in flight → ignore the duplicate.
+    if (clientMutationId && inflightPostKeys.has(clientMutationId)) return false
+    if (clientMutationId) inflightPostKeys.add(clientMutationId)
     try {
+      const { POST_SUBMIT_CONFIG } = await import("@/app/lib/config/postSubmit")
       const res = await fetch("/api/posts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        headers: {
+          "Content-Type": "application/json",
+          ...(clientMutationId ? { [POST_SUBMIT_CONFIG.idempotencyHeader]: clientMutationId } : {}),
+        },
+        body: JSON.stringify(body),
       })
       let payload: { error?: string; message?: string; details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] }; post?: unknown } = {}
       try {
@@ -305,6 +321,8 @@ function HomeContent() {
       const { toastService } = await import("@/app/lib/services/toastService")
       toastService.error("Network error. Please check your connection and try again.")
       return false
+    } finally {
+      if (clientMutationId) inflightPostKeys.delete(clientMutationId)
     }
   }
 

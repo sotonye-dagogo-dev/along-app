@@ -19,6 +19,11 @@ export interface EndlessCarouselConfig {
   resumeDelayMs: number;
   /** Default accessible name for the carousel region. */
   defaultLabel: string;
+  /**
+   * Max times the item set is repeated inside each track half so the tape
+   * still overflows (and autoplays) when there are very few cards.
+   */
+  maxRepeat: number;
   /** Outer wrapper: owns the overflow so the feed column never grows. */
   wrapperClass: string;
   /** Native scroll viewport: the element that actually scrolls. */
@@ -42,6 +47,7 @@ export const ENDLESS_CAROUSEL_CONFIG: EndlessCarouselConfig = {
   pauseWhenHidden: true,
   resumeDelayMs: 1200,
   defaultLabel: "Suggestions",
+  maxRepeat: 3,
   wrapperClass: "w-full min-w-0 max-w-full overflow-hidden",
   viewportClass:
     "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
