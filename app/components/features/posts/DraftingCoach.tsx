@@ -16,10 +16,12 @@ interface DraftingCoachProps {
   maxScore: number
   checkpoints: CheckpointResult[]
   nextSuggestion: string | null
+  /** Collapsed by default per share-route config; callers may override. */
+  defaultOpen?: boolean
 }
 
-export default function DraftingCoach({ score, maxScore, checkpoints, nextSuggestion }: DraftingCoachProps) {
-  const [isOpen, setIsOpen] = useState(true)
+export default function DraftingCoach({ score, maxScore, checkpoints, nextSuggestion, defaultOpen = false }: DraftingCoachProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
 
   const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0
 
@@ -36,6 +38,7 @@ export default function DraftingCoach({ score, maxScore, checkpoints, nextSugges
     <div className="border border-border radius-lg overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
         className="w-full flex items-center justify-between px-4 py-3 bg-bg-elevated border-b border-border cursor-pointer transition-colors duration-fast border-none text-left"
       >
         <div className="flex items-center gap-2 text-sm font-semibold">

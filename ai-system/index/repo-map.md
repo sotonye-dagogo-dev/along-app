@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (search E2E)
-> - last-verified-against-code: 2026-10-08
+> - last-updated-by: update-ai-system 2026-10-08 (Sprint 9 deep sync)
+> - last-verified-against-code: 2026-10-08 (30 configs, 14 test files, carousel/share/footer/request-trigger edits)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -86,12 +86,12 @@ along-app/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
 │   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
-│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal, profile, explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
+│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger, profile, explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
 │   │   ├── services/        → 16 OOP services (feed, search, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
 │   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth
-│   │   ├── config/          → 27 config registry files (incl. reviews/SITE_REVIEWS)
+│   │   ├── config/          → 30 config registry files (incl. reviews/SITE_REVIEWS, carousel, shareRoute, routeRequest, footer layout)
 │   │   ├── db/              → Database layer (prisma.ts, redis.ts)
 │   │   ├── hooks/           → Server-compatible custom React hooks
 │   │   ├── schemas/         → Zod validation schemas
