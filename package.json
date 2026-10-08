@@ -13,7 +13,7 @@
     "db:restore-seed": "tsx scripts/restore-seed-backup.ts",
     "db:reset-prod": "tsx scripts/reset-prod-db.ts",
     "build": "prisma generate --no-engine || prisma generate; next build",
-    "vercel-build": "prisma generate --no-engine || prisma generate; prisma migrate deploy || true; npm run db:reset-prod || true; next build",
+    "vercel-build": "prisma generate --no-engine || prisma generate; prisma migrate deploy || true; next build",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",

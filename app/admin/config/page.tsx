@@ -1,8 +1,13 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import React, { useState, useEffect, useMemo } from "react"
+import { Plus, Trash2, Sparkles } from "lucide-react"
 import { AppInput, AppButton } from "@/app/components/ui"
+import {
+  EARLY_ADOPTER_CONFIG_KEY,
+  EARLY_ADOPTER_CONFIG_META,
+  normalizeEarlyAdopterConfig,
+} from "@/app/lib/config/earlyAdopter"
 
 interface SiteConfigItem {
   id: string
@@ -26,6 +31,63 @@ export default function AdminConfigPage() {
       const data = await res.json()
       setConfigs(data.configs ?? [])
     } catch (err) { console.error("[AdminError]", err) } finally { setLoading(false) }
+  }
+
+  // --- Early Adopters badge card (admin-manageable, metadata-driven) ---
+  const storedEarlyAdopter = useMemo(() => {
+    const found = configs.find((c) => c.key === EARLY_ADOPTER_CONFIG_KEY)
+    return normalizeEarlyAdopterConfig(found?.value)
+  }, [configs])
+  const [eaEnabled, setEaEnabled] = useState<boolean | null>(null)
+  const [eaLimit, setEaLimit] = useState<string>("")
+  const [eaTemplate, setEaTemplate] = useState<string>("")
+  const [eaSaving, setEaSaving] = useState(false)
+  const [eaError, setEaError] = useState<string | null>(null)
+  const eaDirty = useMemo(() => {
+    if (eaEnabled === null) return false
+    return (
+      eaEnabled !== storedEarlyAdopter.enabled ||
+      eaLimit !== String(storedEarlyAdopter.limit) ||
+      eaTemplate !== storedEarlyAdopter.badgeLabelTemplate
+    )
+  }, [eaEnabled, eaLimit, eaTemplate, storedEarlyAdopter])
+
+  useEffect(() => {
+    // Sync local editors when the stored config loads/changes (not while dirty-editing).
+    if (eaEnabled === null) {
+      setEaEnabled(storedEarlyAdopter.enabled)
+      setEaLimit(String(storedEarlyAdopter.limit))
+      setEaTemplate(storedEarlyAdopter.badgeLabelTemplate)
+    }
+  }, [storedEarlyAdopter, eaEnabled])
+
+  const handleEarlyAdopterSave = async () => {
+    if (eaEnabled === null) return
+    setEaSaving(true)
+    setEaError(null)
+    try {
+      const limitNum = Number(eaLimit)
+      const res = await fetch("/api/admin/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: EARLY_ADOPTER_CONFIG_KEY,
+          value: {
+            enabled: eaEnabled,
+            limit: Number.isFinite(limitNum) ? Math.floor(limitNum) : eaLimit,
+            badgeLabelTemplate: eaTemplate,
+          },
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error ?? "Request failed")
+      setEaEnabled(null)
+      await load()
+    } catch (err) {
+      setEaError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setEaSaving(false)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -70,6 +132,49 @@ export default function AdminConfigPage() {
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Config</h1>
           <div className="text-sm text-text-secondary">Site configuration settings</div>
+        </div>
+      </div>
+
+      <div className="bg-bg-card border border-border radius-lg p-5 shadow-xs mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles size={16} className="text-primary" />
+          <h3 className="text-sm font-semibold">{EARLY_ADOPTER_CONFIG_META.title}</h3>
+        </div>
+        <p className="text-xs text-text-secondary mb-4">{EARLY_ADOPTER_CONFIG_META.description}</p>
+        <div className="flex flex-col gap-3 max-w-[560px]">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={eaEnabled ?? storedEarlyAdopter.enabled}
+              onChange={(e) => setEaEnabled(e.target.checked)}
+              className="w-4 h-4 accent-primary"
+            />
+            Show badge on profiles
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold text-text-secondary">First N users</span>
+            <AppInput
+              type="number"
+              min={1}
+              value={eaLimit || String(storedEarlyAdopter.limit)}
+              onChange={(e) => setEaLimit(e.target.value)}
+              placeholder="e.g. 100"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-semibold text-text-secondary">Badge label (use {"{N}"} and {"{rank}"})</span>
+            <AppInput
+              value={eaTemplate || storedEarlyAdopter.badgeLabelTemplate}
+              onChange={(e) => setEaTemplate(e.target.value)}
+              placeholder="First {N} Users #{rank}"
+            />
+          </label>
+          {eaError && <p className="text-xs text-error-text">{eaError}</p>}
+          <div>
+            <AppButton onClick={handleEarlyAdopterSave} disabled={!eaDirty || eaSaving}>
+              {eaSaving ? "Saving..." : "Save badge settings"}
+            </AppButton>
+          </div>
         </div>
       </div>
 

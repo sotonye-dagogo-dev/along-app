@@ -40,7 +40,18 @@ export async function GET(
       isFollowing = !!follow;
     }
 
-    return NextResponse.json({ user, isFollowing });
+    // Best-effort early-adopter badge (config-driven; never fails the request).
+    let earlyAdopter: unknown = null;
+    try {
+      const { getEarlyAdopterStatus } = await import(
+        "@/app/lib/services/earlyAdopterService"
+      );
+      earlyAdopter = await getEarlyAdopterStatus(user.id);
+    } catch {
+      earlyAdopter = null;
+    }
+
+    return NextResponse.json({ user, isFollowing, earlyAdopter });
   } catch (error) {
     console.error("Error fetching user by username:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

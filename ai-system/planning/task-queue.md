@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 15 close-out)
-> - last-verified-against-code: 2026-10-08 (Sprint 15 rows verified present in code + full QA gate green in-runner: tsc 0, jest 198/198, build clean)
-> - last-synced: 2026-10-08 (Sprint 15 notification nav/badges, referral+points coverage, username edit, landing guest-link, one-time prod reset — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 16 early-adopter badge + reset unhook)
+> - last-verified-against-code: 2026-10-08 (Sprint 16 rows verified present in code; QA to static-review level — no node_modules in runner)
+> - last-synced: 2026-10-08 (Sprint 16 early-adopter badge + vercel-build reset removal — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -305,8 +305,24 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [M] | Referral+points notification coverage — `NOTIFICATION_MESSAGES` templates; `notifyReferralConversion` (inviter: `@user signed up through your referral…`) wired in register + Google callback (new + first-time-OAuth); `notifyPointsAwarded` (REWARD points + BADGE tier-up `moved from X to Y…`) in rewards worker | [x] |
 | [M] | Username edit — `userName` first in EDIT_PROFILE_FIELDS + `USERNAME_RULE`; PATCH allowlist + shape validation + uniqueness check (409, P2002 race guard, self-keep allowed); profile page initialValues + server-error toast (no false success on 409) | [x] |
 | [S] | Landing guest-link — `GuestContinueLink` (same `isAuthenticated` gate as HeroCtas/BottomCta, null while loading/authed); replaces static always-on link in `page.tsx` | [x] |
-| [S] | One-time prod reset — `scripts/reset-prod-db.ts` (TRUNCATE CASCADE all app tables, SiteConfig preserved, never fails build) + `db:reset-prod` + prepended to `vercel-build` — ⚠️ REMOVE after the clean build or every deploy wipes the DB | [x] |
+| [S] | One-time prod reset — `scripts/reset-prod-db.ts` (TRUNCATE CASCADE all app tables, SiteConfig preserved, never fails build) + `db:reset-prod` + prepended to `vercel-build` — ✅ UNHOOKED 2026-10-08 (Sprint 16, clean-DB build confirmed; script retained manual-only) | [x] |
 | [S] | Tests — `__tests__/sprint15/tightening.test.ts` (10: badge config/cap/format, message copy, username field+rule) | [x] |
+
+---
+
+## Sprint 16 — Vercel-Build Reset Removal + Early-Adopter "First N Users" Badge (2026-10-08, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no removed APIs; badge derives rank from existing `User.createdAt`, all badge writes are reads, admin validation rejects bad shapes with 400). QA to static-review level in this runner (no node_modules: tsc/jest/lint not runnable; new files parse clean — zero non-environment diagnostics; package.json valid; full gate to run where deps exist).
+
+| Size | Task | Status |
+|------|------|--------|
+| [XS] | Vercel-build reset removal — drop `npm run db:reset-prod` from `vercel-build` (clean-DB build confirmed; `db:reset-prod` script + `scripts/reset-prod-db.ts` retained manual-only) | [x] |
+| [M] | Early-adopter config — `app/lib/config/earlyAdopter.ts` (`EARLY_ADOPTER_CONFIG_KEY`, `DEFAULT_EARLY_ADOPTER_CONFIG` enabled/limit 100/`First {N} Users #{rank}` template, normalize/validate/label+tooltip builders, admin card meta, badge display meta) + barrel export + seed row | [x] |
+| [M] | Early-adopter service — `earlyAdopterService.ts` (config via `getSiteConfig`, deterministic rank by `createdAt` asc + id tie-break, Redis-cached rank 600s, `getEarlyAdopterStatus`, `listEarlyAdopters` for filtering/rewards tooling) | [x] |
+| [M] | Badge APIs — `GET /api/users/early-adopters` (config + earliest users), `GET /api/users/[id]/early-adopter` (per-user status, 404 unknown), `earlyAdopter` embedded best-effort in `/api/users/[id]` + `/by-username/[username]`, registry entries | [x] |
+| [M] | Admin management — `/api/admin/config` validates `earlyAdopterConfig` (400 on bad shape) + invalidates `siteConfig` Redis on PUT/DELETE; Config page dedicated badge card (toggle + N + label template, dirty-gated save, server-error surfacing); `/api/admin/users?earlyAdopter=true` earliest-first filter with rank + label (rewards/audience tooling) | [x] |
+| [S] | Profile badge UI — `EarlyAdopterBadge` + `EarlyAdopterBadgeFromStatus` (tooltip, null-safe) rendered next to the name on own + other profiles (wrap-safe) | [x] |
+| [S] | Tests — `earlyAdopter.test.ts` (key/defaults, label/tooltip builders, normalize, validation) + `EarlyAdopterBadge.test.tsx` (label, a11y tooltip, qualified/disabled/unqualified/null) | [x] |
 
 ---
 

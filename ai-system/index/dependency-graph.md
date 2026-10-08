@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 notification/referral close-out)
-> - last-verified-against-code: 2026-10-08 (35 config files, mentionService + referralService, DISLIKE/NEW_ROUTE fan-out)
+> - last-updated-by: execute-feature 2026-10-08 (early-adopter badge + vercel-build reset removal)
+> - last-verified-against-code: 2026-10-08 (36 config files incl. earlyAdopter, earlyAdopterService, per-user + list badge endpoints, badge on both profiles)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -59,6 +59,8 @@ Follower API Routes (app/api/users/[id]/follow*, app/api/users/[id]/followers, a
 Profile Pages (app/(dashboard)/profile/*)
     → Follower API Routes
     → UserList component (app/components/features/profile/UserList.tsx)
+    → EarlyAdopterBadge / EarlyAdopterBadgeFromStatus (app/components/features/profile/EarlyAdopterBadge.tsx — renders only when API `earlyAdopter` payload qualifies)
+    → User badge APIs: /api/users/[id] + /api/users/by-username/[username] (embed `earlyAdopter`), /api/users/[id]/early-adopter (per-user), /api/users/early-adopters (list for filtering/rewards tooling)
     → AppAvatar, AppEmptyState
 
 Push API Routes (app/api/push/*)
@@ -97,10 +99,11 @@ Service Layer (app/lib/services/*)
     → PostCard + post detail (`POST_ACTIONS_CONFIG`, `MODERATION_CONFIG`) → PostMenu/ReportDialog → PATCH/DELETE/archive + POST /api/reports (transactional dedup, reporter receipt + admin triage notifications)
     → Notification fan-out: posts route (ROUTE_REQUEST/NEW_ROUTE/ROUTE_RESPONSE) + like route (LIKE/DISLIKE) + comments routes (COMMENT/MENTION) → `notificationService.createNotification` (+ `mentionService` extract/diff/resolve) → Prisma Notification + Redis invalidation
     → Referrals (auth-agnostic): register page + login/register Google buttons (`?ref=` → `state=ref:`) → register route + google callback → `referralService` (unlimited linking, send-credit cap via INVITE_CONFIG) → QStash rewards worker
+    → Early adopters: `earlyAdopterConfig` SiteConfig row (seeded, admin-editable via /api/admin/config with validation + Redis invalidation) → `earlyAdopterService` (createdAt-asc rank, Redis-cached; `listEarlyAdopters`) → profile badge + admin `?earlyAdopter=true` user filter
 
 Config Registries (app/lib/config/*)
     → (no app dependencies — pure config objects)
-    → 35 files (+ index.ts) incl. reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), footer layout slot
+    → 36 files (+ index.ts) incl. earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), footer layout slot
 
 Client Utilities (app/lib/utils/*)
     → pushClient → navigator.serviceWorker, fetch (/api/push/*)
@@ -149,6 +152,11 @@ DraftingCoachService
 RewardsService
     → UserModel, UserActivityModel (Prisma)
     → Config: rewards
+
+EarlyAdopterService (`app/lib/services/earlyAdopterService.ts` — badge rank/status/list, no migration)
+    → UserModel (Prisma: createdAt-asc count + ordered take), SiteConfig via siteConfig util
+    → Redis (per-user rank cache 600s, best-effort; config via siteConfig read-through)
+    → Config: earlyAdopter (key/defaults/normalize/label builders)
 
 RouteTracingService
     → PostModel (Prisma)

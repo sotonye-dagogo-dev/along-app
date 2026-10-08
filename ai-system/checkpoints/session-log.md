@@ -1256,3 +1256,19 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - REWARD/BADGE system notifications use the earner as actor with allowSelf (same pattern as WELCOME).
 - No `update-ai-system.md` deep sync: no schema/architecture change, no [L]/[XL] task-queue entries (largest is [M]); sync-context markers updated inline instead.
 **Notes / Blockers:** ⚠️ After the next production deploy confirms a clean DB, delete `scripts/reset-prod-db.ts`, drop `db:reset-prod`, and remove its `vercel-build` invocation — otherwise every build wipes the DB. Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. In-progress reset to idle below.
+
+## 2026-10-08 — execute-feature: vercel-build reset removal + early-adopter "First N Users" badge (Sprint 16)
+**Directive:** DB clear confirmed successful — remove it from vercel builds; add a dynamic admin-editable "First N users #n" profile badge (admin-toggled total + visibility, platform-derived qualification from createdAt, future-proof for filtering/rewards); then run update-ai-system.md.
+**Changes (7 new, 12 edited — see dev-history Sprint 16 entry for the file list):**
+- Ops: `vercel-build` no longer runs `db:reset-prod` (script + `scripts/reset-prod-db.ts` retained manual-only).
+- Config/service: `earlyAdopter.ts` (key/defaults/normalize/validate/label builders/meta) + `earlyAdopterService.ts` (createdAt-asc rank, Redis-cached, status + list); barrel + seed row.
+- APIs: `GET /api/users/early-adopters`, `GET /api/users/[id]/early-adopter`, `earlyAdopter` embedded in both user-profile endpoints, registry entries; admin config validation + Redis invalidation; admin users `?earlyAdopter=true` filter.
+- UI: `EarlyAdopterBadge(_FromStatus)` on own + other profiles; admin Config badge card (toggle/limit/template).
+- Tests: `earlyAdopter.test.ts` (5) + `EarlyAdopterBadge.test.tsx` (6).
+**QA gate (this runner — no node_modules):** tsc new/edited files zero non-environment diagnostics (no syntax errors); jest/lint/build not runnable here — full gate to run where deps exist. package.json re-validated as JSON.
+**Assumptions Made:**
+- Rank = COUNT(earlier createdAt OR same-createdAt + smaller id) + 1 (deterministic, no migration); ties broken by id asc to match list ordering.
+- Badge hidden when disabled, unqualified, unknown user, or payload null (null-safe component + best-effort API embeds that never fail the host request).
+- Admin `?earlyAdopter=true` ignores cursor pagination (returns earliest-first ranked take) — documented as audience/rewards tooling, not a general user browser.
+- `db:reset-prod` script kept (manual-only) rather than deleted — directive asked only to remove it from vercel builds.
+**Notes / Blockers:** Full QA gate (tsc + jest + build + lint) still to run where node_modules exists; test count after this sprint is 24 suites / ~209 tests (198 + 11 new) pending execution. Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. In-progress reset to idle below.

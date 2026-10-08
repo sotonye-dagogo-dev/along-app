@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 notification/referral close-out)
-> - last-verified-against-code: 2026-10-08 (35 config files incl. moderation.ts, 8 migrations incl. 20261008000000_post_moderation, 17 test suites / 160 tests, new moderation/ components + /api/reports)
+> - last-updated-by: execute-feature 2026-10-08 (early-adopter badge + vercel-build reset removal)
+> - last-verified-against-code: 2026-10-08 (36 config files incl. earlyAdopter.ts, 22 services incl. earlyAdopterService, new /api/users/early-adopters + /api/users/[id]/early-adopter, EarlyAdopterBadge component, 2 new test suites)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -73,25 +73,27 @@ along-app/
    │   │   │   └── vapid-public-key/ → GET: VAPID public key
    │   │   ├── users/
    │   │   │   ├── [id]/
-   │   │   │   │   ├── route.ts        → GET (profile), PATCH (edit)
+   │   │   │   │   ├── route.ts        → GET (profile + earlyAdopter badge), PATCH (edit)
+   │   │   │   │   ├── early-adopter/ → GET per-user badge status (rank from createdAt)
    │   │   │   │   ├── avatar/        → PATCH avatar config
    │   │   │   │   ├── follow/        → POST/DELETE follow/unfollow
    │   │   │   │   ├── followers/     → GET followers list
    │   │   │   │   └── following/     → GET following list
+   │   │   │   ├── early-adopters/  → GET badge config + earliest-joined users (filtering/rewards tooling)
    │   │   │   └── by-username/[username]/
-   │   │   │       └── route.ts       → GET user by username + isFollowing
+   │   │   │       └── route.ts       → GET user by username + isFollowing + earlyAdopter badge
 │   │   ├── workers/         → QStash background worker endpoints
 │   │   │   ├── feed-invalidate/
 │   │   │   ├── rewards/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
 │   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
-│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel/ShareRouteModal edit mode, moderation [PostMenu, ReportDialog], profile, explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
+│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel/ShareRouteModal edit mode, moderation [PostMenu, ReportDialog], profile [RewardsPanel, EarlyAdopterBadge], explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
-│   │   ├── services/        → 21 service modules (feed, search, routeDrafts, postModeration, mention, referral, notification, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
+│   │   ├── services/        → 22 service modules (earlyAdopter rank/status/list, feed, search, routeDrafts, postModeration, mention, referral, notification, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
 │   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth
-│   │   ├── config/          → 35 config files incl. index.ts (reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation incl. immutablePostFields, notifications incl. DISLIKE/NEW_ROUTE, inviteConfig points-cap policy, footer layout)
+│   │   ├── config/          → 36 config files incl. index.ts (earlyAdopter badge key/defaults/validation/labels, reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation incl. immutablePostFields, notifications incl. DISLIKE/NEW_ROUTE, inviteConfig points-cap policy, footer layout)
 │   │   ├── db/              → Database layer (prisma.ts, redis.ts)
 │   │   ├── hooks/           → Server-compatible custom React hooks
 │   │   ├── schemas/         → Zod validation schemas
@@ -106,7 +108,8 @@ along-app/
 ├── scripts/                 → DB maintenance scripts
 │   ├── backup-seed-data.ts  → Dumps seed-marked rows to backups/seed-backup-<ts>.json
 │   ├── clear-seed-data.ts   → Deletes seed markers only (manual, backup-first)
-│   └── restore-seed-backup.ts → Restores a seed backup
+│   ├── restore-seed-backup.ts → Restores a seed backup
+│   └── reset-prod-db.ts     → Full prod reset (manual-only since 2026-10-08 — UNHOOKED from vercel-build after clean-DB build)
 │
 ├── instrumentation.ts       → Sentry runtime hooks
 ├── next.config.mjs          → Next.js config (Sentry, PWA headers, images)
@@ -131,7 +134,7 @@ along-app/
 | `ai-system/`    | AI development orchestration — agent instructions, plans, protocols, designs   | `protocols/entry-protocol.md`, `planning/task-queue.md`, `designs/*.html`          |
 | `.github/`      | GitHub CI and project documentation                                            | `workflows/ci.yml`, `plan.md`, `project-context.md`                                |
 | `prisma/`       | Database schema, migrations, and seed data                                     | `schema.prisma` (17 models, 9 enums incl. PostType + extended NotificationType), `seed.ts` (idempotent), `migrations/` (8) |
-| `scripts/`      | Seed backup/clear/restore tooling (manual-only, seed-markers only)             | `backup-seed-data.ts`, `clear-seed-data.ts`, `restore-seed-backup.ts`          |
+| `scripts/`      | Seed backup/clear/restore tooling (manual-only, seed-markers only) + full prod reset script (manual-only, unhooked from builds) | `backup-seed-data.ts`, `clear-seed-data.ts`, `restore-seed-backup.ts`, `reset-prod-db.ts`          |
 | `public/`       | Static assets served at root path                                              | `sw.js` (service worker), `manifest.json`, `offline.html`                          |
 | `app/`          | Next.js App Router pages, API routes, components, providers, config registries | `layout.tsx`, `globals.css`, `providers/`, `api/`, `components/ui/`, `lib/config/` |
 | `node_modules/` | NPM dependencies                                                               | —                                                                                  |
