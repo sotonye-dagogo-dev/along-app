@@ -278,7 +278,7 @@ function HomeContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
-      let payload: { error?: string; post?: unknown } = {}
+      let payload: { error?: string; message?: string; details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] }; post?: unknown } = {}
       try {
         const text = await res.text()
         payload = text ? JSON.parse(text) : {}
@@ -293,7 +293,13 @@ function HomeContent() {
         return true
       }
       const { toastService } = await import("@/app/lib/services/toastService")
-      toastService.error(payload.error ?? "Failed to post. Please try again.")
+      // Surface the first field-level message when the API returns zod details,
+      // so "Validation failed" never shows without context. Details stay in the console.
+      const fieldErrors = payload.details?.fieldErrors ?? {}
+      const firstFieldError = Object.values(fieldErrors).flat().find(Boolean)
+      const friendly = firstFieldError ?? payload.details?.formErrors?.[0] ?? payload.message ?? payload.error ?? "Failed to post. Please try again."
+      console.error("[submitPost] failed", { status: res.status, error: payload.error, details: payload.details })
+      toastService.error(friendly)
       return false
     } catch {
       const { toastService } = await import("@/app/lib/services/toastService")
@@ -302,8 +308,8 @@ function HomeContent() {
     }
   }
 
-  const handleRespond = (post: { id: string; title: string; user?: RespondToRequest["user"] }) => {
-    setRespondTo({ id: post.id, title: post.title, user: post.user ?? undefined })
+  const handleRespond = (post: { id: string; title: string; tags?: string[]; user?: RespondToRequest["user"] }) => {
+    setRespondTo({ id: post.id, title: post.title, tags: post.tags ?? [], user: post.user ?? undefined })
     setShowShareModal(true)
   }
 

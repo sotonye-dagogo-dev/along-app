@@ -1,11 +1,11 @@
 # Test Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08
-> - last-verified-against-code: 2026-10-08 (13 test files under app/__tests__/, 139 tests by real jest run incl. search API + searchService suites; jest.config.js thresholds branches 70 / functions 70 / lines 80 / statements 80)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
+> - last-verified-against-code: 2026-10-08 (15 suites under app/__tests__/, 149 tests by real jest run; jest.config.js thresholds branches 70 / functions 70 / lines 80 / statements 80)
 > - staleness-policy: re-verify if new features are added
 
-> **Overview:** Defines what needs to be tested in Along and at what level. Agents reference this when writing tests or running the verify-work quality gate. Jest + React Testing Library are configured with coverage thresholds (branches 70%, functions 70%, lines 80%, statements 80%). 139 tests currently exist across 13 suites (verified by real `npx jest` run 2026-10-08, search feature session).
+> **Overview:** Defines what needs to be tested in Along and at what level. Agents reference this when writing tests or running the verify-work quality gate. Jest + React Testing Library are configured with coverage thresholds (branches 70%, functions 70%, lines 80%, statements 80%). 149 tests currently exist across 15 suites (verified by real `npx jest` run 2026-10-08, Sprint 11 session).
 
 ---
 

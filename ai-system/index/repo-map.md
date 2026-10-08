@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-08 (Sprint 9 deep sync)
-> - last-verified-against-code: 2026-10-08 (31 configs, 15 test files, Sprint 10 carousel ordering + drafts library)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 posting/UX tightening close-out)
+> - last-verified-against-code: 2026-10-08 (33 configs, 15 test suites / 149 tests, Sprint 11: share-description fix, toast single-timer, post report/copy-link, reviews on EndlessCarousel)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -91,7 +91,7 @@ along-app/
 │   │   ├── services/        → 17 OOP services (feed, search, routeDrafts, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
 │   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth
-│   │   ├── config/          → 31 config registry files (incl. reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, footer layout)
+│   │   ├── config/          → 33 config registry files (incl. reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, footer layout)
 │   │   ├── db/              → Database layer (prisma.ts, redis.ts)
 │   │   ├── hooks/           → Server-compatible custom React hooks
 │   │   ├── schemas/         → Zod validation schemas

@@ -41,6 +41,8 @@ export interface RespondToRequest {
   id: string
   title: string
   user?: { userName: string; firstName: string; lastName: string }
+  /** Tags from the original request — inherited by the response composer. */
+  tags?: string[]
 }
 
 interface ShareRouteModalProps {
@@ -53,7 +55,7 @@ interface ShareRouteModalProps {
   startWithDraftsOpen?: boolean
   onSubmit?: (data: {
     title: string
-    description: string
+    description?: string
     type?: "ROUTE" | "ROUTE_RESPONSE"
     quotedPostId?: string
     routes: RouteStep[]
@@ -74,12 +76,15 @@ const TRACE_CACHE_TTL = 600 // 10 min — same route re-edits don't re-trace
 const TRACE_DEBOUNCE_MS = 1000
 
 export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, startWithDraftsOpen, onSubmit }: ShareRouteModalProps) {
-  const isResponse = Boolean(responseTo)
+  const [restoredResponseTo, setRestoredResponseTo] = useState<RespondToRequest | null>(null)
+  /** Prop wins; a restored draft keeps its response linkage when opened without one. */
+  const effectiveResponseTo = responseTo ?? restoredResponseTo
+  const isResponse = Boolean(effectiveResponseTo)
   const [drafts, setDrafts] = useState<RouteDraft[]>([])
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
   const [showDrafts, setShowDrafts] = useState(false)
   const [title, setTitle] = useState("")
-  const [description] = useState("")
+  const [description, setDescription] = useState("")
   const [steps, setSteps] = useState<(RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean; _focused?: boolean; _locating?: boolean })[]>([
     { location: "", description: "", vehicle: "bus", fare: 0, _geoResults: [], _geoLoading: false },
     { location: "", description: "", vehicle: "", fare: 0, _geoResults: [], _geoLoading: false },
@@ -362,6 +367,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
 
   const applyDraft = useCallback((draft: RouteDraft) => {
     if (draft.title) setTitle(draft.title)
+    setDescription(draft.description ?? "")
     if (draft.steps.length >= 2) {
       setSteps(
         draft.steps.map((s) => ({ ...s, _geoResults: [], _geoLoading: false }))
@@ -370,11 +376,19 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     setTags(draft.tags)
     setImages(draft.images)
     setActiveDraftId(draft.id)
+    // Maintain response linkage: a draft saved as a response restores it.
+    setRestoredResponseTo(draft.responseTo ? {
+      id: draft.responseTo.id,
+      title: draft.responseTo.title,
+      ...(draft.responseTo.user ? { user: draft.responseTo.user } : {}),
+      ...(draft.responseTo.tags ? { tags: draft.responseTo.tags } : {}),
+    } : null)
   }, [])
 
   const saveDraft = useCallback(() => {
     const stored = routeDraftsService.saveDraft({
       title,
+      description,
       steps: steps.map(({ location, description, vehicle, fare, lat, lng }) => ({
         location,
         description,
@@ -385,6 +399,12 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       })),
       tags,
       images,
+      responseTo: effectiveResponseTo ? {
+        id: effectiveResponseTo.id,
+        title: effectiveResponseTo.title,
+        ...(effectiveResponseTo.user ? { user: effectiveResponseTo.user } : {}),
+        ...(effectiveResponseTo.tags ? { tags: effectiveResponseTo.tags } : {}),
+      } : null,
     })
     if (!stored) {
       toastService.error(ROUTE_DRAFTS_CONFIG.saveEmptyError)
@@ -393,7 +413,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     setDrafts(routeDraftsService.listDrafts())
     setActiveDraftId(stored.id)
     toastService.success(ROUTE_DRAFTS_CONFIG.savedToast)
-  }, [title, steps, tags, images])
+  }, [title, description, steps, tags, images, effectiveResponseTo])
 
   const restoreDraft = useCallback((draft: RouteDraft) => {
     applyDraft(draft)
@@ -409,9 +429,15 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
 
   useEffect(() => {
     if (!isOpen) return
-    // Response mode: prefill from the quoted request, never absorb a normal-route draft
-    if (responseTo) {
-      setTitle(`Re: ${responseTo.title}`.slice(0, 100))
+    // Response mode: prefill from the quoted request, never absorb a normal-route draft.
+    // Tags are inherited from the request when the composer has none yet.
+    if (effectiveResponseTo) {
+      const responseTitle = effectiveResponseTo.title
+      const responseTags = effectiveResponseTo.tags ?? []
+      setTitle((prev) => prev || `Re: ${responseTitle}`.slice(0, 100))
+      if (responseTags.length > 0) {
+        setTags((prev) => (prev.length === 0 ? [...responseTags] : prev))
+      }
       setDrafts(routeDraftsService.listDrafts())
       setShowDrafts(false)
       return
@@ -424,13 +450,14 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     if (stored.length > 0) {
       const composerEmpty =
         title.trim().length === 0 &&
+        description.trim().length === 0 &&
         steps.every((s) => s.location.trim().length === 0) &&
         tags.length === 0 &&
         images.length === 0
       if (composerEmpty) applyDraft(stored[0])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, responseTo, startWithDraftsOpen])
+  }, [isOpen, effectiveResponseTo, startWithDraftsOpen])
 
   const updateStep = (index: number, field: keyof RouteStep, value: string | number) => {
     setSteps((prev) => {
@@ -443,8 +470,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   }
 
   const addTag = () => {
-    const trimmed = tagInput.trim().replace(/^#/, "")
-    if (trimmed && !tags.includes(trimmed)) {
+    const trimmed = tagInput.trim().replace(/^#/, "").slice(0, 30)
+    if (trimmed && !tags.includes(trimmed) && tags.length < 10) {
       setTags([...tags, trimmed])
     }
     setTagInput("")
@@ -499,11 +526,13 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       .map((s) => ({ lat: s.lat!, lng: s.lng! }))
     const result = await onSubmit?.({
       title: title.trim(),
-      description,
-      ...(isResponse && responseTo ? { type: "ROUTE_RESPONSE" as const, quotedPostId: responseTo.id } : {}),
-      routes: stepsToSubmit.map(({ _geoResults, _geoLoading, ...rest }) => rest),
+      // Omit empty descriptions: the API treats "" as a min-length failure,
+      // and the quality-score checkpoint needs >=10 chars to pass.
+      ...(description.trim() ? { description: description.trim() } : {}),
+      ...(isResponse && effectiveResponseTo ? { type: "ROUTE_RESPONSE" as const, quotedPostId: effectiveResponseTo.id } : {}),
+      routes: stepsToSubmit.map(({ _geoResults, _geoLoading, _focused, _locating, ...rest }) => rest),
       images,
-      tags,
+      tags: tags.slice(0, 10),
       startLat: first?.lat,
       startLng: first?.lng,
       endLat: last?.lat && last !== first ? last.lat : undefined,
@@ -518,6 +547,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     } else {
       routeDraftsService.clearLegacyKeys()
     }
+    setRestoredResponseTo(null)
     onClose()
   }
 
@@ -542,7 +572,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
           )}
         </div>
 
-        {isResponse && responseTo && (
+        {isResponse && effectiveResponseTo && (
           <div className="mx-6 mt-4 flex items-start gap-3 px-4 py-3 bg-warning/10 border border-warning/30 radius-lg">
             <span className="mt-0.5 text-warning shrink-0" aria-hidden>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -553,9 +583,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
             </span>
             <div className="min-w-0">
               <div className="text-[11px] font-semibold tracking-wider uppercase text-text-muted">
-                Replying to{responseTo.user ? ` ${responseTo.user.firstName} ${responseTo.user.lastName}` : ""}&apos;s request
+                Replying to{effectiveResponseTo.user ? ` ${effectiveResponseTo.user.firstName} ${effectiveResponseTo.user.lastName}` : ""}&apos;s request
               </div>
-              <div className="text-sm font-medium text-text-primary truncate">{responseTo.title}</div>
+              <div className="text-sm font-medium text-text-primary truncate">{effectiveResponseTo.title}</div>
             </div>
           </div>
         )}
@@ -617,6 +647,22 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                 placeholder='e.g. "Marina to Yaba via Obalende"'
                 className="w-full h-10 px-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none transition-colors duration-fast bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
               />
+            </div>
+
+            <div>
+              <label htmlFor="route-description" className="block text-sm font-medium mb-1 text-text-primary">
+                {SHARE_ROUTE_MODAL_CONFIG.descriptionTitle} <span className="text-text-muted font-normal">(optional)</span>
+              </label>
+              <textarea
+                id="route-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={SHARE_ROUTE_MODAL_CONFIG.descriptionPlaceholder}
+                rows={3}
+                maxLength={500}
+                className="w-full min-h-[72px] px-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none transition-colors duration-fast resize-y bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
+              />
+              <p className="text-[11px] text-text-muted mt-1">{SHARE_ROUTE_MODAL_CONFIG.descriptionHint}</p>
             </div>
 
             <div>

@@ -1,7 +1,7 @@
 # Architecture History
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale — only the current architecture (in system-architecture.md) needs re-verification
 
@@ -116,3 +116,17 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 - Sidebar-injected action buttons under preview/score: rejected — full-width footer below the two-column body keeps actions visible after both columns on all breakpoints with one layout.
 
 **Implications:** Carousel autoplay speed derives from measured half-track width / configured duration; new collapsible/modal/footer behaviour is config-flippable without code edits.
+
+---
+
+## Sprint 11 — Posting Fix, Response/Draft Linkage, Toast Single-Timer, Post Actions, Shared Reviews Tape (2026-10-08)
+
+**Change:** Fixed the universal share failure (`description: ""` vs `z.min(10).optional()` — new generic description input, client omits blanks, server preprocess-tolerant, friendly first-field `message` + server warn log, `waypoints` accepted by schema). Response composer inherits request tags; drafts carry `description` + `responseTo` ref with a panel badge and restore-time linkage. Toast timing centralized in `TOAST_CONFIG` with GlobalUndoToast as the single timer owner (provider remounts per toast; fixed close() self-recursion). PostCard Copy link + Report dialog (`POST_ACTIONS_CONFIG`) filing linked bug-reports with reporter attribution. About reviews now ride the shared `EndlessCarousel`. Two new zero-dep configs (toast/postActions); 33 config files, 15 test suites (149 tests). QA gate green in-runner: tsc 0, jest 149/149, next build clean, lint clean for touched files.
+
+**Reason:** Directive tightening — posting was broken for both normal shares and request responses with misleading feedback; response drafts lost linkage; toast bar vanished early; report/copy menu items were no-ops; reviews tape was a bespoke janky implementation.
+
+**Alternatives Considered:**
+- New dedicated `/api/reports` table/route: rejected — `BugReport` already has `postId` + `metadata`, so an additive extension covers moderation triage with zero migration.
+- Separate reviews carousel component with its own physics: rejected — `EndlessCarousel` already takes generic `ReactNode[]`; reuse keeps one animation implementation to maintain.
+
+**Implications:** Description remains optional end-to-end (blank posts now pass); `message` on 400s is additive (existing `error`/`details` assertions unaffected); report triage flows through the existing bug-report admin surface.

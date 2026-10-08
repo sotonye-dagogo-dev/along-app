@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 10 close-out)
-> - last-verified-against-code: 2026-10-08 (Sprint 10 rows verified present in code: routeDrafts config/service/panel, carousel reorder + drafts chip in home/page, ShareRouteModal drafts integration, routeDrafts test)
-> - last-synced: 2026-10-08 (Sprint 10 carousel ordering + drafts library — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
+> - last-verified-against-code: 2026-10-08 (Sprint 11 rows verified present in code + full QA gate green in-runner: tsc 0, jest 149/149, build clean)
+> - last-synced: 2026-10-08 (Sprint 11 posting fix + response/draft linkage + toast/report/carousel — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -230,6 +230,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Carousel ordering — SuggestionsRail above feed, below share/request trigger div (own overflow container unchanged) | [x] |
 | [M] | Route-drafts library — ROUTE_DRAFTS_CONFIG + routeDraftsService (multi-draft, legacy migration, never-throw) + RouteDraftsPanel + ShareRouteModal integration + home resume chip | [x] |
 | [S] | Tests — `__tests__/config/routeDrafts.test.ts` (4 suites: config, save/restore/delete, corrupt-safety, legacy migration) | [x] |
+
+---
+
+## Sprint 11 — Posting Fix + Response/Draft Linkage + Toast/Report/Carousel (2026-10-08, execute-feature)
+
+> **Section summary:** Directive items, non-breaking (no migration, no new deps). QA full: runner installed node_modules — tsc 0 errors, jest 15 suites / 149 tests pass, next build clean, lint clean for touched files.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Posting "Validation failed" root-cause fix — generic description input, omit-blank submit, empty-tolerant schema, first-field message + server warn log | [x] |
+| [S] | Response linkage — request tag inheritance + drafts persist/restore `responseTo` (badge in panel) | [x] |
+| [S] | Undo-toast single timer (`TOAST_CONFIG`, duration pass-through, per-toast remount) | [x] |
+| [S] | Post actions — working Copy link + Report dialog (`POST_ACTIONS_CONFIG`, linked bug-reports) | [x] |
+| [S] | About reviews on shared `EndlessCarousel` (same wrapper/animation as home) | [x] |
 
 ---
 

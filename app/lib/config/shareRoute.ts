@@ -17,6 +17,11 @@ export interface ShareRouteModalConfig {
   actionsNote: string;
   /** Show the "Request?" query-icon trigger in the modal header (opens the request flow). */
   showRequestTrigger: boolean;
+  /** Generic route description input (feeds the quality-score description checkpoint). */
+  descriptionTitle: string;
+  descriptionPlaceholder: string;
+  descriptionHint: string;
+  descriptionMinLength: number;
 }
 
 export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
@@ -28,4 +33,8 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
   formTitle: "Route details",
   actionsNote: "Drafts are saved locally",
   showRequestTrigger: true,
+  descriptionTitle: "Route description",
+  descriptionPlaceholder: "Describe the route experience, best time to go, cost tips… (min 10 characters)",
+  descriptionHint: "Adds to your Route Quality Score and helps others trust this route.",
+  descriptionMinLength: 10,
 };

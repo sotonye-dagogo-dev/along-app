@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: append-only — never modify past entries
 
@@ -1092,3 +1092,35 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 
 **Notes / Blockers:**
 - QA gate partial: this runner has no node_modules (same as Sprint 9) — `npx tsc --noEmit` shows only the missing-deps cascade (react/next/jsx-any/jest-types); zero errors attributable to touched files (filtered check clean). `npm test`/`lint`/`build` cannot run here — new test verified to file-presence + import-path level only; CI (with deps) is the real gate. No build-breaking constructs introduced (balanced JSX verified by read-through, config zero-app-deps, Lucide-only, no emoji, no antd imports).
+
+---
+
+## Session 2026-10-08 — Sprint 11: Posting Fix + Response/Draft Linkage + Toast/Report/Carousel (execute-feature)
+
+**Directive:** posting "Validation failed" with no console/server trace (normal + response shares); score hinted description with no generic input; responses should inherit request tags; drafts should keep response linkage; undo-toast bar vanishes before elapsing; Report button + copy-link dead; About reviews should reuse the carousel wrapper. Non-breaking, config/metadata-driven, close with update-ai-system.
+
+**Root cause (posting):** `ShareRouteModal` `const [description] = useState("")` (no setter) always submitted `description: ""`; `CREATE_POST_SCHEMA.description = z.string().min(10).optional()` rejects `""` (optional ≠ empty-tolerant) → every POST 400'd. Client showed generic `payload.error`, server logged nothing.
+
+**Changes (14 edited, 2 new):**
+- `schemas/post.ts` — `optionalText(10)` preprocess (""→undefined) + `waypoints` accepted
+- `ShareRouteModal.tsx` — editable generic description input (config labels), omit-when-blank submit, `RespondToRequest.tags`, tag inheritance, `restoredResponseTo`/`effectiveResponseTo`, draft save/restore of description+responseTo, tag cap 10, `_focused/_locating` stripped from payload, `onSubmit.description` optional
+- `home/page.tsx` — `handleRespond` forwards tags; `submitPost` surfaces first field error + `console.error`
+- `api/posts/route.ts` — first-field `message` (additive) + `console.warn` of flattened details
+- `routeDraftsService.ts`/`routeDrafts.ts`/`RouteDraftsPanel.tsx` — `description` + `responseTo` ref, `responseBadgeLabel`
+- `toast.ts` (new, `TOAST_CONFIG`) + `toastService.ts` + `GlobalToastProvider.tsx` — single timer owner, duration pass-through, per-toast remount, close() recursion fix
+- `postActions.ts` (new, `POST_ACTIONS_CONFIG`) + `PostCard.tsx` — working copy-link + report dialog
+- `api/bug-reports/route.ts` — optional `postId` link (verified) + `metadata` + best-effort reporter
+- `AboutPageClient.tsx` — reviews on shared `EndlessCarousel` (ReviewCard, fixed widths)
+
+**QA gate (this runner — `npm ci` installed, unlike Sprints 9–10):**
+- `npx tsc --noEmit` — 0 errors
+- `npx jest` — 15 suites / 149 tests, all pass (incl. existing `posts.test.ts` "Validation failed" assertion, unaffected)
+- `npm run build` — clean (static + dynamic routes emitted)
+- `npm run lint` — only pre-existing issues in untouched files (`feed/route.ts` no-explicit-any etc.); zero in touched files
+
+**Assumptions Made:**
+- Blank description stays optional (checkpoint needs ≥10 chars for the 10 pts; hint copy unchanged)
+- Report triage reuses bug-report admin surface (no new table) with `metadata.kind: "post-report"`
+- Toast `undo()` without duration falls back to `TOAST_CONFIG.undoMs`
+
+**Notes / Blockers:** None. Session-log append-only honored; in-progress cleared below.
