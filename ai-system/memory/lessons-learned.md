@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -360,6 +360,22 @@ If the requirement includes "scroll to any point and continue from there", the s
 
 **Apply When:**
 Any auto-advancing rail/tape where users may grab, wheel, or keyboard-scroll — start with scrollLeft-driven motion, not keyframes.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Optional Zod Strings Reject Empty Input — Normalize "" to undefined
+
+**Context:**
+Sprint 11 (2026-10-08) — every route share failed with "Validation failed" and no console/server trace. Root cause: the composer held an uneditable `description` state stuck at `""` and submitted it; `z.string().min(10).optional()` accepts `undefined` but rejects `""`, so the optional field failed on every payload. The quality-score hint ("add description") had no corresponding input, confirming the client/server mismatch.
+
+**What We Learned:**
+`optional()` is not empty-tolerant — any text input wired to an optional zod string must either be omitted when blank on the client or normalized server-side with `z.preprocess(v => v === "" ? undefined : v, ...)`. Do both (defense in depth): client omits, server tolerates. Also: when an API returns only a generic message ("Validation failed"), always log structured details server-side and surface the first field error client-side, otherwise real payload bugs are invisible.
+
+**Apply When:**
+Any optional free-text field validated with `.min(n).optional()` — search for the pattern `z.string().min(` + `.optional()` and check what the client sends for untouched inputs.
 
 **Supersedes:** None
 **Superseded by:** None

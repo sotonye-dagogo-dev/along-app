@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale
 
@@ -547,3 +547,27 @@ Two directive items, non-breaking and config-driven: the home suggestions carous
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Full jest/lint/build gate still needs a runner with node_modules (CI).
+
+---
+
+## 2026-10-08 — Execute-Feature: Posting Fix + Response/Draft Linkage + Toast/Report/Carousel Tightening (Sprint 11)
+
+**Summary:**
+Five directive items, all non-breaking, config/metadata-driven. Root-caused the "Validation failed" posting bug: `ShareRouteModal` held `description` in a setter-less `useState("")` and always submitted `""`, which fails `z.string().min(10).optional()` (optional allows `undefined`, not `""`) — every share and every request-response failed, with the quality-score "add description" hint and no input to satisfy it. Fixed on both sides plus four UX items.
+
+**Completed:**
+- Posting validation: generic route-description input added to ShareRouteModal (config-driven via `SHARE_ROUTE_MODAL_CONFIG.description*`); empty descriptions omitted from payloads; `CREATE_POST_SCHEMA.description` now empty-string-tolerant (`z.preprocess` → `undefined`) and schema accepts client-sent `waypoints`; API returns first-field `message` alongside `error: "Validation failed"` + `details` (shape preserved for existing tests) with a server `console.warn`; `submitPost` surfaces the first field message and logs details to the console
+- Response linkage: `RespondToRequest.tags` added; `handleRespond` forwards request tags; response composer inherits tags when empty; drafts persist `description` + `responseTo` ref (`routeDraftsService` + `ROUTE_DRAFTS_CONFIG.responseBadgeLabel` badge in panel); restored response drafts keep their linkage via `effectiveResponseTo`
+- Undo toast: single timer owner (GlobalUndoToast); provider no longer races it, passes `duration` through, remounts per toast (`key`) so the progress bar fully elapses; durations centralized in `TOAST_CONFIG` (also fixed a `toastService.close()` self-recursion in provider `close`)
+- Post actions: PostCard Copy link (clipboard + execCommand fallback, toast feedback) and Report (reason dialog → `POST /api/bug-reports` with optional `postId` link + reporter attribution, both non-breaking additive); `POST_ACTIONS_CONFIG` registry
+- Carousel: About reviews replaced the bespoke interval/`translateX` tape with the shared `EndlessCarousel` (`SITE_REVIEWS` cards, same animation/physics as home)
+
+**Key Changes:**
+- New: `app/lib/config/toast.ts`, `app/lib/config/postActions.ts`
+- Edited: `ShareRouteModal.tsx`, `home/page.tsx`, `PostCard.tsx`, `RouteDraftsPanel.tsx`, `AboutPageClient.tsx`, `GlobalToastProvider.tsx`, `toastService.ts`, `routeDraftsService.ts`, `routeDrafts.ts`, `shareRoute.ts`, `config/index.ts`, `schemas/post.ts`, `api/posts/route.ts`, `api/bug-reports/route.ts`
+- No schema/migration changes (BugReport.postId already existed); no new dependencies
+
+**QA gate (this runner, node_modules installed via `npm ci`): tsc 0 errors; jest 15 suites / 149 tests pass; next build clean; lint shows only pre-existing issues in untouched files (none in touched files).**
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.

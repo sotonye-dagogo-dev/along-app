@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+/** Empty-string-tolerant optional text: "" (e.g. untouched optional inputs) parses as undefined. */
+const optionalText = (min: number) =>
+  z.preprocess(
+    (v) => (typeof v === "string" && v.trim().length === 0 ? undefined : v),
+    z.string().min(min).optional()
+  );
+
 export const POST_ROUTE_STEP_SCHEMA = z.object({
   location: z.string().min(1),
   description: z.string().optional(),
@@ -9,7 +16,7 @@ export const POST_ROUTE_STEP_SCHEMA = z.object({
 
 export const CREATE_POST_SCHEMA = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100),
-  description: z.string().min(10).optional(),
+  description: optionalText(10),
   type: z.enum(["ROUTE", "ROUTE_REQUEST", "ROUTE_RESPONSE"]).default("ROUTE"),
   quotedPostId: z.string().min(1).optional(),
   routes: z.array(POST_ROUTE_STEP_SCHEMA).min(2, "At least 2 route steps required"),
@@ -20,6 +27,7 @@ export const CREATE_POST_SCHEMA = z.object({
   startLng: z.number().optional(),
   endLat: z.number().optional(),
   endLng: z.number().optional(),
+  waypoints: z.array(z.object({ lat: z.number(), lng: z.number() })).optional(),
   totalDistanceKm: z.number().optional(),
   estimatedMins: z.number().optional(),
 });

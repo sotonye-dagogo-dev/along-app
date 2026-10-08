@@ -8,7 +8,7 @@ const VALID_CATEGORIES = ["UI", "ROUTING", "AUTH", "PERFORMANCE", "DATA", "NOTIF
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, category, description } = body;
+    const { title, category, description, postId, metadata } = body;
 
     if (!title || !category || !description) {
       return NextResponse.json({ error: "title, category, and description are required" }, { status: 400 });
@@ -30,12 +30,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Description must be between 1 and 10000 characters" }, { status: 400 });
     }
 
+    // Optional post-report linkage (non-breaking additive): when a postId is
+    // supplied (e.g. PostCard Report flow), verify the post exists and link it.
+    let linkedPostId: string | null = null;
+    if (postId !== undefined && postId !== null) {
+      if (typeof postId !== "string" || postId.length === 0) {
+        return NextResponse.json({ error: "Invalid postId" }, { status: 400 });
+      }
+      const post = await prisma.post.findUnique({ where: { id: postId }, select: { id: true } });
+      if (!post) {
+        return NextResponse.json({ error: "The reported post no longer exists." }, { status: 400 });
+      }
+      linkedPostId = post.id;
+    }
+
+    // Best-effort reporter attribution — anonymous reports stay allowed.
+    let reporterId: string | null = null;
+    try {
+      const { getUserFromRequest } = await import("@/app/lib/utils/auth");
+      const user = await getUserFromRequest();
+      reporterId = (user?.id as string | undefined) ?? null;
+    } catch {
+      reporterId = null;
+    }
+
     await prisma.bugReport.create({
       data: {
         title,
         category: category as never,
         description,
-        reporterId: null,
+        reporterId,
+        ...(linkedPostId ? { postId: linkedPostId } : {}),
+        ...(metadata && typeof metadata === "object" ? { metadata } : {}),
       },
     });
 

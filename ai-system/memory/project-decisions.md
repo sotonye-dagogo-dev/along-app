@@ -305,3 +305,24 @@ Evidence from the codebase: `package.json` contains `rxjs@^7.8.1` and no redux/z
 - New client state follows existing patterns: server reads → `useCachedFetch` + namespaced `memoryCache` keys (viewer-scoped where user-specific); event/feed streams → `feedStream`-style RxJS subject; auth → `AuthContext`; everything else → component state
 - Any future proposal to add a global store must reference this decision and demonstrate a concrete capability gap
 - Revisit only if requirements emerge for cross-tree realtime collaboration or complex client-only global state beyond feeds
+
+---
+
+## Sprint 11: Post Reports Reuse BugReport (No New Table/Route)
+
+**Decision:** Post reports file through the existing `POST /api/bug-reports` (extended additively with optional `postId` link, `metadata`, best-effort reporter) with `metadata.kind: "post-report"`, triaged on the existing bug-report admin surface — no dedicated reports table or endpoint.
+**Date:** 2026-10-08
+**Made by:** AI agent (opencode) — execute-feature Sprint 11
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+`BugReport` already carries `postId` + `metadata` + reporter/reviewer relations; moderation triage needs a queue with states, which the bug admin surface already provides. A dedicated table would duplicate that machinery for one reason-code field.
+
+**Alternatives Considered:**
+- **New `/api/reports` + Report model**: Rejected — zero migration, zero new admin UI needed with the additive extension.
+- **Client-only report (mailto/toast)**: Rejected — reports must be persisted and triaged server-side.
+
+**Implications:**
+- Report reasons are metadata-driven (`POST_ACTIONS_CONFIG.reportReasons`); adding reasons needs no API change.
+- If moderation volume outgrows the bug queue (SLA/routing needs), revisit with a dedicated surface and reference this decision.
