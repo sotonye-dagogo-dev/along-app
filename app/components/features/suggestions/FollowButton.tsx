@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useContext } from "react"
-import { UserPlus } from "lucide-react"
 import { AuthContext } from "@/app/providers/AuthProvider"
 import { toastService } from "@/app/lib/services/toastService"
 

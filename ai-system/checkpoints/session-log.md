@@ -772,13 +772,13 @@ Live map tracking navigation, carto.com basemap API key wiring, auth provider li
 
 ---
 
-## Session 2026-10-07 � Execute-Feature: Mock/Seed Cleanup, Route Requests E2E, Caching, Live Preview, Responsive (planning pass)
+## Session 2026-10-07 � Execute-Feature: Mock/Seed Cleanup, Route Requests E2E, Caching, Live Preview, Responsive (planning pass)
 
 **Completed:**
 - Step 1 planning pass per `commands/execute-feature.md`: read task-queue, system-architecture, design-system, repair-system, project-context, project-decisions; ran 5 parallel codebase research passes (seed/mock audit, route preview UI, caching/feed, notifications/follows, analytics/responsive)
 - Architecture impact identified ? `plan-feature.md` logic run: Prisma schema migration (Post.type/description/quotedPostId + NotificationType extension), new `/api/suggestions` route, new cache services, new UI components (EndlessCarousel, RequestRouteModal)
 - Wrote plan to `checkpoints/in-progress.md`; appended Sprint 7 task table to `planning/task-queue.md` (this entry is the required mutation trace)
-- Self-check vs project-context scope (in-scope: social route platform, notifications, offline/caching) and project-decisions (no conflicts) � passed
+- Self-check vs project-context scope (in-scope: social route platform, notifications, offline/caching) and project-decisions (no conflicts) � passed
 
 **Tasks Added to task-queue.md:**
 - Sprint 7: Route Requests E2E, Live Preview, Caching & Data Hygiene (27 granular steps grouped in 7 workstreams A-G, see in-progress.md)
@@ -792,11 +792,37 @@ Live map tracking navigation, carto.com basemap API key wiring, auth provider li
 
 ---
 
-## Session 2026-10-07 (resume) � resume-session + directive addendum
+## Session 2026-10-07 (resume) � resume-session + directive addendum
 
 **Completed:**
 - resume-session.md Step 1-2: read in-progress.md, session-log last entry, task-queue Sprint 7; ran sync-context focused drift check on checkpoint claims (scripts exist + db:* present; ShareRouteModal previewOpen/locateMe present; feedStream loadInitial(userId) + hidden-tab pause present; no foreign commits since 2026-09-29)
-- Drift classified MINOR: checkpoint status still said "Awaiting go/no-go" and all Sprint 7 rows unchecked despite A1/A2/B1/B2/C1/C2/D1 done � corrected in in-progress.md + task-queue.md in the same pass (checkpoint compliance)
-- Directive addendum logged as H1-H4 (posting E2E, profile tab filtering, redux-observables review, mutation tests + error-boundary hardening) � additive, does not invalidate Sprint plan
+- Drift classified MINOR: checkpoint status still said "Awaiting go/no-go" and all Sprint 7 rows unchecked despite A1/A2/B1/B2/C1/C2/D1 done � corrected in in-progress.md + task-queue.md in the same pass (checkpoint compliance)
+- Directive addendum logged as H1-H4 (posting E2E, profile tab filtering, redux-observables review, mutation tests + error-boundary hardening) � additive, does not invalidate Sprint plan
 
 **Status:** Resuming at Sprint E (route requests E2E).
+
+---
+
+## Session 2026-10-08 (resume) — resume-session, Sprint E close-out + QA gate
+
+**Completed:**
+- resume-session.md Steps 1–3: read in-progress.md, session-log last entry, task-queue Sprint 7; drift check vs repo (git log: HEAD b6e169e already contains A–E2 work; verified F1 prompt in home/page.tsx:127-179, per-tab profile filtering in profile pages, H3 decision in project-decisions.md, mutations/posts tests present)
+- Drift classified MINOR: in-progress NEXT pointer stale (said "NEXT: F1…" though F1/G/H2/H3 already in code); Sprint E (schema, fan-out, Respond CTA, RequestRouteModal) verified complete in code — no re-implementation needed
+- QA gate run: `npx tsc --noEmit` 0 errors (after removing removed `downlevelIteration` option from tsconfig.json for current TS + `npm install`), `npm test` 122/122 across 11 suites, `npx next lint` warnings-only (removed unused UserPlus import in FollowButton.tsx), `npm run build` clean
+- H1 verified (POST persists type/description/quotedPostId, fan-out non-blocking, feed refresh + cold-start reload); H4 verified (mutations.test.ts + posts.test.ts passing); task-queue H1/H4/QA marked [x]; in-progress status reconciled
+
+**Files Modified:**
+- tsconfig.json — removed `downlevelIteration: true` (TS5102: option removed in current TS; es2015 target handles iteration natively)
+- app/components/features/suggestions/FollowButton.tsx — removed unused `UserPlus` import (lint warning)
+- ai-system/planning/task-queue.md — H1/H4/QA [ ] → [x]
+- ai-system/checkpoints/in-progress.md — status reconciled to post-QA state
+
+**Next Task:**
+- Sprint 7 fully complete; run `update-ai-system.md` deep sync (repo-map, architecture, dev-history) and clear in-progress.md per close-out step 27
+
+**Assumptions Made:**
+- tsc/lint/test/build run in CI-like runner without preinstalled node_modules; `npm install` was required and is environment-only (not a code change)
+- No code changes needed for Sprint E/F/G/H — all already implemented in HEAD commit; this session was verify + gate + reconcile only
+
+**Notes / Blockers:**
+- None — QA gate fully green
