@@ -457,3 +457,24 @@ Full Sprint 7 workstream A–H delivered: seed backup/clear/restore scripts + `d
 
 **Next Sprint Focus:**
 Live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration — per backlog.
+
+---
+
+## 2026-10-08 — Execute-Feature: Doc-Staleness Remediation (design-system, test-plan, search claim) + Real QA Gate
+
+**Summary:**
+Closed the three honest-stale items left by the 2026-10-08 update-ai-system deep sync. design-system.md (2026-07-08) and testing/test-plan.md (2026-07-01) are now verified against code and fresh; the search false-claim class was extended (project-plan.md was already fixed — system-architecture.md Search row now matches it); test figures are no longer trusted-to-record — a real `npx jest` run in this session proves 122/122 across 11 suites. QA gate fully green with real runs (tsc 0, jest 122/122, lint exit 0, build exit 0); no code changes needed, so no non-breaking fixes were applied.
+
+**Completed:**
+- design-system.md — primary tokens corrected to green brand (#00623B/#00A862/#004A2C from globals.css @theme), radius/shadow tokens corrected to real scale, App* described as Tailwind + Lucide (zero antd imports in app/, antd dep unused), mobile tabs corrected to Home/Explore/Share-FAB/Bookmarks/Profile, UI count 42 files, freshness → 2026-10-08
+- testing/test-plan.md — 91/9 → 122/11 with per-suite verified counts, API-boundary suites marked done (Prisma-mocked), live-DB integration left honestly open, search line marked NOT IMPLEMENTED, freshness → 2026-10-08
+- system-architecture.md — Search module row corrected to NOT IMPLEMENTED (same claim class as project-plan fix), UI diagram 34 → 42 files + antd-unused note, services 11 → 15, updater → execute-feature 2026-10-08
+- testing/test-results.md — replaced file-presence-only caveat with real-run results from this session
+- QA gate — `npm install` then real runs: tsc exit 0, jest 11/122 pass, lint exit 0 (pre-existing no-explicit-any in feed route left untouched), build exit 0
+
+**Key Changes:**
+- Docs-only session — zero `app/` code changes; prior session-log test figures (122/122) independently reproduced by execution, not trust
+- No architecture impact — no plan-feature.md needed; no task-queue mutation (no sprint tasks for this remediation)
+
+**Next Sprint Focus:**
+Backlog per task-queue: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md.

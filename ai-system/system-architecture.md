@@ -1,7 +1,7 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08
+> - last-updated-by: execute-feature 2026-10-08
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
@@ -23,7 +23,8 @@ Client (Browser / PWA)
                ↓
     ┌──────────────────────────────┐
     │   UI Components              │
-    │  (34 App* wrappers ← AntD)   │
+    │  (42 App* files ← Tailwind +   │
+    │   Lucide; antd dep unused)     │
     │  (AppLogo, GuestBanner,      │
     │   OfflineIndicator, etc.)    │
     └──────────┬───────────────────┘
@@ -44,7 +45,7 @@ Client (Browser / PWA)
                ↓
     ┌──────────────────────────────┐
     │   Service Layer              │
-    │  11 OOP services including:  │
+    │  15 services including:        │
     │  pushSubscriptionService     │
     │  qstashService               │
     │  offlineQueue (client-side)  │
@@ -73,7 +74,7 @@ Client (Browser / PWA)
 | Maps | Route visualization with MapLibre GL, clustering | `app/components/features/map*` | MapLibre GL, supercluster, polyline |
 | Notifications | Real-time + push notifications via Web Push API | `app/lib/services/notification*` | Prisma, web-push, QStash |
 | Admin | Dashboard, user management, site config, bug reports | `app/(admin)/` | Prisma, Sentry |
-| Search | Route and post search with full-text indexes | `app/lib/services/search*` | Prisma (full-text search) |
+| Search | NOT IMPLEMENTED — no `/api/search` route or SearchService in code (verified 2026-10-08); explore/suggestions use filtered post queries instead | (none yet) | — |
 | Profile | User profiles, follower/following system, per-tab filtering (posts/liked/bookmarks/routes), rewards | `app/(dashboard)/profile/*`, `app/api/users/[id]/follow*`, `app/api/users/[id]/followers`, `app/api/users/[id]/following`, `app/api/bookmarks/`, `app/components/features/profile/UserList.tsx` | Prisma (Follow, Bookmark models), Cloudinary |
 | Rewards | Gamification: tiers, badges, points | `app/lib/services/rewards*` | Prisma |
 | ValidityEngine | Route verification and trust scoring | `app/lib/services/validity*` | Prisma, Redis |
