@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect, useCallback } from "react";
 import {
   AlertTriangle,
   Clock,
@@ -50,6 +50,9 @@ const METRICS = [
   { label: "Recency", key: "recency" },
 ];
 
+/** Estimated tooltip width (matches min-w + padding); used for clamping. */
+const TOOLTIP_WIDTH = 240;
+
 export function TrustBadge({
   level,
   score,
@@ -57,6 +60,10 @@ export function TrustBadge({
   showTooltip = true,
 }: TrustBadgeProps) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
+  // Viewport-aware placement: clamped horizontally, flips below the badge
+  // when there is no room above — the breakdown is always fully readable.
+  const [placement, setPlacement] = useState<{ left: number; top?: number; bottom?: number }>({ left: 0 });
+  const anchorRef = useRef<HTMLDivElement>(null);
   const config = TRUST_CONFIG[level];
   const Icon = config.icon;
 
@@ -68,26 +75,73 @@ export function TrustBadge({
     };
   });
 
+  const close = useCallback(() => setTooltipOpen(false), []);
+
+  useLayoutEffect(() => {
+    if (!tooltipOpen) return;
+    const measure = () => {
+      const el = anchorRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const margin = 8;
+      // Center on the badge, then clamp so the whole tooltip stays on-screen.
+      const idealLeft = rect.left + rect.width / 2 - TOOLTIP_WIDTH / 2;
+      const left = Math.min(Math.max(idealLeft, margin), Math.max(margin, vw - TOOLTIP_WIDTH - margin));
+      // Flip below when there isn't room above (tooltip ≈ 190px tall).
+      const above = rect.top > 210;
+      setPlacement(
+        above
+          ? { left, bottom: window.innerHeight - rect.top + 8 }
+          : { left, top: rect.bottom + 8 }
+      );
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [tooltipOpen, close]);
+
   return (
     <div
+      ref={anchorRef}
       className="relative inline-flex"
-      onMouseEnter={() => setTooltipOpen(true)}
+      onMouseEnter={() => showTooltip && setTooltipOpen(true)}
       onMouseLeave={() => setTooltipOpen(false)}
-      onFocus={() => setTooltipOpen(true)}
+      onFocus={() => showTooltip && setTooltipOpen(true)}
       onBlur={() => setTooltipOpen(false)}
     >
-      <div
-        className={`inline-flex items-center gap-1 radius-pill ${config.bg} ${config.text} ${
+      <button
+        type="button"
+        aria-label={`Trust score ${score}, ${config.label}. Activate for breakdown.`}
+        aria-expanded={tooltipOpen}
+        onClick={() => showTooltip && setTooltipOpen((v) => !v)}
+        className={`inline-flex items-center gap-1 radius-pill ${config.bg} ${config.text} border-none cursor-pointer font-sans ${
           size === "sm" ? "px-1.5 py-0.5 text-xs" : "px-2.5 py-1 text-sm"
         }`}
       >
         <Icon size={12} />
         <span>{config.label}</span>
         <span className="font-bold">{score}</span>
-      </div>
+      </button>
 
       {showTooltip && tooltipOpen && (
-        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-bg-card border border-border radius-lg shadow-lg p-4 min-w-[220px] z-50">
+        <div
+          role="tooltip"
+          className="fixed z-[60] bg-bg-card border border-border radius-lg shadow-lg p-4 w-[240px] max-w-[calc(100vw-1rem)]"
+          style={{
+            left: placement.left,
+            ...(placement.bottom !== undefined ? { bottom: placement.bottom } : { top: placement.top ?? 0 }),
+          }}
+        >
           <p className="text-sm font-semibold text-text-primary mb-3">
             Trust Breakdown
           </p>

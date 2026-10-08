@@ -38,9 +38,22 @@ export async function GET(_request: NextRequest) {
     const followingIds = following.map((f) => f.followingId);
     const excludeIds = [userId, ...followingIds];
 
+    // Archived posts never surface as suggestions; P2022 fallback keeps the
+    // route working if the moderation migration has not applied yet.
+    const safePostList = async (args: Record<string, unknown>): Promise<Record<string, any>[]> => {
+      try {
+        return await (prisma.post.findMany as any)({ ...args, where: { ...(args.where as object), isArchived: false } });
+      } catch (e) {
+        if (e instanceof Error && ((e as any).code === "P2022" || e.name === "PrismaClientKnownRequestError")) {
+          return await (prisma.post.findMany as any)(args);
+        }
+        throw e;
+      }
+    };
+
     const [routeRequests, routes, suggestedUsers] = await Promise.all([
       // Open route requests from others, most recent first
-      prisma.post.findMany({
+      safePostList({
         where: { type: "ROUTE_REQUEST", userId: { not: userId } },
         include: {
           user: { select: USER_SELECT },
@@ -49,7 +62,7 @@ export async function GET(_request: NextRequest) {
         take: 6,
       }),
       // Recent community routes
-      prisma.post.findMany({
+      safePostList({
         where: { type: "ROUTE" },
         include: {
           user: { select: USER_SELECT },

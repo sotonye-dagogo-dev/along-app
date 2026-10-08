@@ -15,6 +15,8 @@ interface FeedPost {
   validityScore: number
   validityTier: string | null
   isPlatformGen?: boolean
+  isArchived?: boolean
+  type?: string
   createdAt: string
   user: {
     id: string
@@ -200,8 +202,7 @@ export class FeedStream {
     }
   }
 
-  applyInteraction(event: InteractionEvent) {
-    const cache = this.interactionCache$.value
+  applyInteraction(event: InteractionEvent) {    const cache = this.interactionCache$.value
     const current = cache.get(event.postId) ?? {}
     if (event.type === "like") {
       current._isLiked = event.value
@@ -213,6 +214,31 @@ export class FeedStream {
     }
     cache.set(event.postId, current)
     this.interactionCache$.next(new Map(cache))
+  }
+
+  /** Removes a post from the in-memory feed (delete/archive). Persisted. */
+  removePost(postId: string) {
+    const current = this.feedStateSubject.value
+    const posts = current.posts.filter((p) => p.id !== postId)
+    if (posts.length === current.posts.length) return
+    const next = { ...current, posts }
+    this.feedStateSubject.next(next)
+    this.persist(next)
+  }
+
+  /** Patches a post in place (e.g. isArchived flag, edited title). Persisted. */
+  updatePost(postId: string, patch: Partial<FeedPost>) {
+    const current = this.feedStateSubject.value
+    let changed = false
+    const posts = current.posts.map((p) => {
+      if (p.id !== postId) return p
+      changed = true
+      return { ...p, ...patch }
+    })
+    if (!changed) return
+    const next = { ...current, posts }
+    this.feedStateSubject.next(next)
+    this.persist(next)
   }
 
   destroy() {

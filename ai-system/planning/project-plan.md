@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
-> - last-verified-against-code: 2026-10-08 (Sprint 11 rows verified present in code + full QA gate green in-runner)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
+> - last-verified-against-code: 2026-10-08 (Sprint 13 rows verified present in code + full QA gate green in-runner)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -153,4 +153,6 @@
 - [x] Sprint 9 (2026-10-08) — scroll-based suggestions carousel with own overflow container, share-modal collapsed preview/score + footer actions, RequestRouteTrigger ("Request?") icon, 3-col footer grid, config tests (143 tests / 14 suites; newest 4 not yet executed — no node_modules in runner)
 - [x] Sprint 10 (2026-10-08) — carousel reordered above feed below share/request triggers, route-drafts library (config + service + panel + modal integration + home resume chip), config/service tests (147 tests / 15 suites; newest 8 not yet executed — no node_modules in runner)
 - [x] Sprint 11 (2026-10-08) — posting validation fix (generic description input, empty-tolerant schema, first-field feedback), response tag inheritance + draft linkage, toast single-timer, PostCard copy-link/report, About reviews on shared EndlessCarousel (149 tests / 15 suites, full gate green in-runner)
+- [x] Sprint 12 (2026-10-08) — posting hardening (submit guard + idempotency ACID), like/dislike undo removal, ImageLightbox rewrite, EndlessCarousel autoplay fix (154 tests / 16 suites, full gate green in-runner)
+- [x] Sprint 13 (2026-10-08) — post/comment moderation (edit/delete/archive, owner + admin, global confirm + undo), report lifecycle E2E (`/api/reports`, admin triage, anonymity both ways), request display rules (no map/nav/trust, responses as comments), trust tooltip viewport fix (160 tests / 17 suites, full gate green in-runner)
 - [x] Auth hardening — Redis timeout fallback, non-blocking reset mail, durable DB reset tokens (Sept 15/16/29)

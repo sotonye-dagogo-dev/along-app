@@ -46,6 +46,16 @@ export interface RespondToRequest {
   tags?: string[]
 }
 
+/** An existing post opened for editing — the modal prefills and PATCHes it. */
+export interface EditPost {
+  id: string
+  title: string
+  description?: string | null
+  routes: { location?: string; description?: string; vehicle?: string; fare?: number }[]
+  tags?: string[]
+  images?: string[]
+}
+
 interface ShareRouteModalProps {
   isOpen: boolean
   onClose: () => void
@@ -54,6 +64,21 @@ interface ShareRouteModalProps {
   onRequestRoute?: () => void
   /** Open with the saved-drafts panel expanded (used by the home drafts resume chip). */
   startWithDraftsOpen?: boolean
+  /** Edit mode: prefill from this post and PATCH on submit (drafts/response UI hidden). */
+  editPost?: EditPost | null
+  /** Handles the edit submit; return false to keep the modal open. */
+  onEditSubmit?: (postId: string, data: {
+    title: string
+    description?: string
+    routes: RouteStep[]
+    images: string[]
+    tags: string[]
+    startLat?: number
+    startLng?: number
+    endLat?: number
+    endLng?: number
+    waypoints?: { lat: number; lng: number }[]
+  }) => boolean | void | Promise<boolean | void>
   onSubmit?: (data: {
     title: string
     description?: string
@@ -87,11 +112,13 @@ function newMutationKey(): string {
 const TRACE_CACHE_TTL = 600 // 10 min — same route re-edits don't re-trace
 const TRACE_DEBOUNCE_MS = 1000
 
-export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, startWithDraftsOpen, onSubmit }: ShareRouteModalProps) {
+export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, startWithDraftsOpen, onSubmit, editPost, onEditSubmit }: ShareRouteModalProps) {
   const [restoredResponseTo, setRestoredResponseTo] = useState<RespondToRequest | null>(null)
   /** Prop wins; a restored draft keeps its response linkage when opened without one. */
   const effectiveResponseTo = responseTo ?? restoredResponseTo
   const isResponse = Boolean(effectiveResponseTo)
+  /** Edit mode: owner correcting their own post (or admin) — no drafts, no response UI. */
+  const isEditing = Boolean(editPost)
   const [drafts, setDrafts] = useState<RouteDraft[]>([])
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
   const [showDrafts, setShowDrafts] = useState(false)
@@ -446,6 +473,29 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
 
   useEffect(() => {
     if (!isOpen) return
+    // Edit mode: prefill from the post, never absorb drafts or response state.
+    if (editPost) {
+      setTitle(editPost.title ?? "")
+      setDescription(editPost.description ?? "")
+      const prefill = (editPost.routes ?? []).map((s) => ({
+        location: s.location ?? "",
+        description: s.description ?? "",
+        vehicle: s.vehicle ?? "",
+        fare: typeof s.fare === "number" ? s.fare : 0,
+        _geoResults: [] as GeoResult[],
+        _geoLoading: false,
+      }))
+      setSteps(prefill.length >= 2 ? prefill : [
+        { location: "", description: "", vehicle: "bus", fare: 0, _geoResults: [], _geoLoading: false },
+        { location: "", description: "", vehicle: "", fare: 0, _geoResults: [], _geoLoading: false },
+      ])
+      setTags(editPost.tags ?? [])
+      setImages(editPost.images ?? [])
+      setActiveDraftId(null)
+      setShowDrafts(false)
+      setRestoredResponseTo(null)
+      return
+    }
     // Response mode: prefill from the quoted request, never absorb a normal-route draft.
     // Tags are inherited from the request when the composer has none yet.
     if (effectiveResponseTo) {
@@ -474,7 +524,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       if (composerEmpty) applyDraft(stored[0])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, effectiveResponseTo, startWithDraftsOpen])
+  }, [isOpen, effectiveResponseTo, startWithDraftsOpen, editPost])
 
   const updateStep = (index: number, field: keyof RouteStep, value: string | number) => {
     setSteps((prev) => {
@@ -544,6 +594,37 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     const waypoints = stepsToSubmit
       .filter((s) => s.lat && s.lng && s !== first && s !== last)
       .map((s) => ({ lat: s.lat!, lng: s.lng! }))
+    // Edit mode: PATCH the existing post (single atomic update server-side).
+    if (isEditing && editPost) {
+      try {
+        const { POST_ACTIONS_CONFIG } = await import("@/app/lib/config/postActions")
+        const ok = await onEditSubmit?.(editPost.id, {
+          title: title.trim(),
+          ...(description.trim() ? { description: description.trim() } : {}),
+          routes: stepsToSubmit.map(({ _geoResults, _geoLoading, _focused, _locating, ...rest }) => rest),
+          images,
+          tags: tags.slice(0, 10),
+          startLat: first?.lat,
+          startLng: first?.lng,
+          endLat: last?.lat && last !== first ? last.lat : undefined,
+          endLng: last?.lng && last !== first ? last.lng : undefined,
+          waypoints: waypoints.length > 0 ? waypoints : undefined,
+        })
+        if (ok === false) {
+          setIsSubmitting(false)
+          return
+        }
+        toastService.success(POST_ACTIONS_CONFIG.editSuccess)
+      } catch {
+        const { POST_ACTIONS_CONFIG } = await import("@/app/lib/config/postActions")
+        toastService.error(POST_ACTIONS_CONFIG.editError)
+        setIsSubmitting(false)
+        return
+      }
+      setIsSubmitting(false)
+      onClose()
+      return
+    }
     let result: boolean | void
     try {
       result = await onSubmit?.({
@@ -590,22 +671,24 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
         <div className="flex items-center justify-between gap-3 px-6 py-5 pb-4 border-b border-border">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">
-              {isResponse ? "Respond to Route Request" : "Share a Route"}
+              {isEditing ? "Edit Route" : isResponse ? "Respond to Route Request" : "Share a Route"}
             </h2>
             <p className="text-sm text-text-secondary mt-0.5">
-              {isResponse
-                ? "Post the route that answers this request"
-                : "Help the community with a new route"}
+              {isEditing
+                ? "Update your route details"
+                : isResponse
+                  ? "Post the route that answers this request"
+                  : "Help the community with a new route"}
             </p>
           </div>
-          {onRequestRoute && SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger && !isResponse && (
+          {onRequestRoute && SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger && !isResponse && !isEditing && (
             <div className="pr-8 shrink-0">
               <RequestRouteTrigger onClick={onRequestRoute} />
             </div>
           )}
         </div>
 
-        {isResponse && effectiveResponseTo && (
+        {isResponse && effectiveResponseTo && !isEditing && (
           <div className="mx-6 mt-4 flex items-start gap-3 px-4 py-3 bg-warning/10 border border-warning/30 radius-lg">
             <span className="mt-0.5 text-warning shrink-0" aria-hidden>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -623,6 +706,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
           </div>
         )}
 
+        {!isEditing && (
         <div className="mx-6 mt-4 border border-border radius-lg bg-bg-elevated">
           <button
             type="button"
@@ -649,6 +733,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
             </div>
           )}
         </div>
+        )}
 
         <div className="flex flex-col lg:flex-row overflow-y-auto flex-1">
           <div className="flex-1 p-4 sm:p-6 flex flex-col gap-5 overflow-y-auto">
@@ -954,6 +1039,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
 
         <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
           <div className="flex items-center gap-2 min-w-0">
+            {!isEditing && (
             <button
               type="button"
               onClick={() => setShowDrafts((open) => !open)}
@@ -964,9 +1050,11 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
               <History size={14} />
               {ROUTE_DRAFTS_CONFIG.panelToggleLabel} ({drafts.length})
             </button>
+            )}
             <span className="text-xs text-text-muted hidden md:inline truncate">{SHARE_ROUTE_MODAL_CONFIG.actionsNote}</span>
           </div>
           <div className="flex gap-2 ml-auto shrink-0">
+            {!isEditing && (
             <button
               onClick={saveDraft}
               disabled={isSubmitting}
@@ -975,6 +1063,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
               <Save size={14} />
               {ROUTE_DRAFTS_CONFIG.saveLabel}
             </button>
+            )}
             <button
               onClick={handleSubmit}
               disabled={isSubmitting || uploading}
@@ -983,8 +1072,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
             >
               {isSubmitting && <Loader2 size={15} className="animate-spin" aria-hidden />}
               {isSubmitting
-                ? (isResponse ? POST_SUBMIT_CONFIG.responseSharingLabel : POST_SUBMIT_CONFIG.sharingLabel)
-                : (isResponse ? POST_SUBMIT_CONFIG.responseShareLabel : POST_SUBMIT_CONFIG.shareLabel)}
+                ? (isEditing ? "Saving…" : isResponse ? POST_SUBMIT_CONFIG.responseSharingLabel : POST_SUBMIT_CONFIG.sharingLabel)
+                : (isEditing ? "Save changes" : isResponse ? POST_SUBMIT_CONFIG.responseShareLabel : POST_SUBMIT_CONFIG.shareLabel)}
             </button>
           </div>
         </div>

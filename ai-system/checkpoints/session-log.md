@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: append-only — never modify past entries
 
@@ -1160,3 +1160,35 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - Unlike stays silent (heart toggle is its own affordance); bookmark undo untouched per directive scope
 
 **Notes / Blockers:** None. In-progress reset to idle below.
+
+## Session 2026-10-08 — Sprint 13: Post/Comment Moderation + Report Lifecycle (execute-feature)
+
+**Directive:** delete/edit/archive for posts/comments/requests (users + admin) with global confirm modal + global undo; report E2E with user notification (anonymity) + admin management/actions; report/copy menu on individual post views; route requests hide map/navigation/trust; responses shown comment-style on expanded request; trust tooltip viewport fix. Non-breaking, config/metadata-driven, modular, ACID platform-wide.
+
+**Root causes / gaps found:**
+- Delete/edit APIs existed but had zero feed/detail UI; archive had no model field, no API, no UI; comment had DELETE only (no PATCH, no admin override, no confirm/undo).
+- Report posted to generic bug-reports with no dedup, no reporter receipt, no admin post-action, no outcome notification; `modalService.confirm` had zero call sites (admin page used a local modal).
+- `PostCard` rendered MiniRouteMap + TrustBadge unconditionally (incl. ROUTE_REQUEST); detail page had no overflow menu and always rendered map/nav/trust.
+- TrustBadge tooltip was `absolute ... left-1/2 -translate-x-1/2` — off-screen near viewport edges with no flip.
+
+**Changes (6 new, ~20 edited — see dev-history Sprint 13 entry for the file list):**
+- Migration `20261008000000_post_moderation` (idempotent IF NOT EXISTS/DO guards): `Post.isArchived/archivedAt`, `NotificationType` REPORT/MODERATION.
+- `postModerationService` + `moderation/ReportDialog` + `PostMenu` shared by cards and detail views; snapshot-restore undo replays one POST (no torn state).
+- ACID: report dedup-check + insert in one transaction; admin action (bug status + archive/delete) in one transaction; comment delete + counter in the pre-existing transaction pattern; archive via single atomic update.
+- Archive reads are P2022-tolerant (feed/search/list/suggestions/sitemap strip-and-retry) so the app works before/after the migration applies; regenerated Prisma client picks up new enum values (`prisma generate` required after schema enum edits).
+- One interim jest failure (`posts.test.ts` guest-where expectation) updated to the intended archived-exclusion behavior; TrustBadge tests pass unmodified.
+
+**QA gate (this runner, node_modules via `npm ci`):**
+- `npx tsc --noEmit` — 0 errors (fixed 3 during gate: mutate updater null-return, Comment/CommentList `createdAt` duality, stale generated client)
+- `npm test` — 17 suites / 160 tests, all pass
+- `npm run build` — clean
+- `npx next lint` (touched files) — zero warnings/errors after fixing 2 flagged items
+
+**Assumptions Made:**
+- Comments are not archivable (directive: "not really posts") — delete/edit/report only.
+- Archived posts: hidden from all listings; direct link renders a tombstone for non-owners, full view for owner/admin; owner self-profile (`?userId=self`) still lists them.
+- Undo of hard delete replays the snapshot as a NEW post (new id); admin undo same path via DELETE snapshot.
+- Reporter identity stored for outcome notification but never exposed to the author; admin identity never exposed to either party.
+- `MODERATOR` role accepted alongside `ADMIN` in new checks (forward-compat; schema enum still USER/ADMIN only).
+
+**Notes / Blockers:** Production DB needs `prisma migrate deploy` (runs in `vercel-build`) for `isArchived` + new enum values; pre-migration reads degrade gracefully via P2022 fallbacks. In-progress reset to idle below.

@@ -18,7 +18,9 @@ export interface CreateNotificationInput {
     | "ROUTE_RESPONSE"
     | "REWARD"
     | "BADGE"
-    | "VERIFIED";
+    | "VERIFIED"
+    | "REPORT"
+    | "MODERATION";
   actorId: string;
   message: string;
   postId?: string;
