@@ -12,6 +12,8 @@ export { ENDLESS_CAROUSEL_CONFIG } from "./carousel";
 export type { EndlessCarouselConfig } from "./carousel";
 export { SHARE_ROUTE_MODAL_CONFIG } from "./shareRoute";
 export type { ShareRouteModalConfig } from "./shareRoute";
+export { ROUTE_DRAFTS_CONFIG } from "./routeDrafts";
+export type { RouteDraftsConfig } from "./routeDrafts";
 export { REQUEST_ROUTE_TRIGGER_CONFIG } from "./routeRequest";
 export type { RequestRouteTriggerConfig } from "./routeRequest";
 export { TEAM_MEMBERS } from "./teamConfig";

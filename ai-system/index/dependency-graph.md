@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: update-ai-system 2026-10-08 (Sprint 9 deep sync)
-> - last-verified-against-code: 2026-10-08 (30 configs, scroll-based carousel, share-modal footer)
+> - last-verified-against-code: 2026-10-08 (31 configs, scroll-based carousel, share-modal footer + drafts library)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -96,7 +96,7 @@ Service Layer (app/lib/services/*)
 
 Config Registries (app/lib/config/*)
     → (no app dependencies — pure config objects)
-    → 30 files incl. reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), footer layout slot
+    → 31 files incl. reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library), footer layout slot
 
 Client Utilities (app/lib/utils/*)
     → pushClient → navigator.serviceWorker, fetch (/api/push/*)

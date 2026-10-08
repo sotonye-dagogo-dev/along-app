@@ -1060,3 +1060,35 @@ Next human decision — remaining backlog: live map tracking navigation, carto b
 **Notes / Blockers:**
 - Discrepancy report: no unresolved inconsistencies — every config-count, test-count, carousel-implementation, and modal-default claim in current-state docs now matches code with honest QA caveats
 - `update-ai-system.md` is terminal per its contract — no chained commands
+
+## Session 2026-10-08 — execute-feature: carousel ordering + route-drafts library (Sprint 10)
+
+**Completed:**
+- Step 1 planning pass (task-queue, system-architecture, design-system, repair-system) + in-progress.md plan
+- Step 2 scope check: PASS (home feed ordering + share-route drafts — in scope; complies with config-driven/Lucide-only/no-emoji/no-antan decisions) — no plan-feature.md needed (no architecture impact: no migration, no new deps)
+- Step 3 implementation:
+  - Config: new `routeDrafts.ts` (ROUTE_DRAFTS_CONFIG: collection/legacy keys, maxDrafts 10, labels, changed event); barrel export
+  - Service: new `routeDraftsService.ts` (list/get/save/delete, legacy `along_route_draft` migration, newest-first cap, never-throw, `along:drafts-changed` event)
+  - UI: new `RouteDraftsPanel.tsx` (config-driven list, Restore/Continue-to-upload/Delete, active-draft highlight); posts barrel export
+  - ShareRouteModal: single-key draft logic replaced with service; collapsible drafts section above the form; footer drafts counter button; `startWithDraftsOpen` prop; auto-restore most recent draft when composer opens empty (preserves prior UX); restored draft deleted on successful submit
+  - Home: `<SuggestionsRail />` moved above the feed, below the share/request trigger div; drafts resume chip (`History` icon + "N saved drafts — continue") shown only when drafts exist, opens composer with drafts panel expanded; count kept fresh via changed-event + storage listeners
+- Step 3b tests: `app/__tests__/config/routeDrafts.test.ts` (4 suites: config values, save/list/restore/delete, empty-refuse + corrupt-safety, legacy migration)
+
+**Files Modified:**
+- app/lib/config/routeDrafts.ts (new), app/lib/config/index.ts (export)
+- app/lib/services/routeDraftsService.ts (new)
+- app/components/features/posts/RouteDraftsPanel.tsx (new), posts/index.ts (export)
+- app/components/features/posts/ShareRouteModal.tsx (drafts library integration)
+- app/(dashboard)/home/page.tsx (carousel reorder + drafts chip)
+- app/__tests__/config/routeDrafts.test.ts (new)
+
+**Next Task:**
+Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md. (No update-ai-system deep sync: no architecture impact and no [L]/[XL] task — sync-context only, per execute-feature Step 5.)
+
+**Assumptions Made:**
+- "Above the feed but below the trigger div" = SuggestionsRail directly after the composer trigger div (+ drafts chip), before the first PostCard/skeleton — desktop sidebar SuggestionsPanel untouched
+- "Access drafts and restore/complete to upload" = in-modal drafts panel + home resume chip; "complete to upload" = restore fills the composer and the user taps Share Route (no separate upload path, keeps one submit flow)
+- Auto-restore most recent draft on empty open preserves the previous single-draft UX; multi-draft switching via the panel
+
+**Notes / Blockers:**
+- QA gate partial: this runner has no node_modules (same as Sprint 9) — `npx tsc --noEmit` shows only the missing-deps cascade (react/next/jsx-any/jest-types); zero errors attributable to touched files (filtered check clean). `npm test`/`lint`/`build` cannot run here — new test verified to file-presence + import-path level only; CI (with deps) is the real gate. No build-breaking constructs introduced (balanced JSX verified by read-through, config zero-app-deps, Lucide-only, no emoji, no antd imports).
