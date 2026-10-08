@@ -124,23 +124,9 @@ export default function PostDetailPage() {
     const prevLiked = post._isLiked ?? false
     const prevLikes = post.likes
     mutatePost({ post: { ...post, _isLiked: newLiked, likes: post.likes + (newLiked ? 1 : -1) } })
-    const undoId = `like:${postId}`
-    if (!newLiked) {
-      undoService.register({
-        id: undoId,
-        label: "Undo unlike",
-        onUndo: () => {
-          mutatePost((prev) =>
-            prev
-              ? { post: { ...prev.post, _isLiked: true, likes: prev.post.likes + 1 } }
-              : { post: { ...post, _isLiked: true, likes: post.likes + 1 } }
-          )
-          fetch(`/api/posts/${postId}/like`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "LIKE" }) }).catch(() => {})
-          toastService.success("Like restored!")
-        },
-      })
-      toastService.undo({ message: "Route unliked", undoLabel: "Undo", onUndo: () => undoService.execute(undoId) })
-    } else {
+    // Like/dislike is intentionally undo-toast-free: a lightweight success
+    // note on like, silence on unlike (the heart toggle is its own affordance).
+    if (newLiked) {
       toastService.success("Route liked!")
     }
     try {

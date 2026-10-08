@@ -1,8 +1,8 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 posting/UX tightening close-out)
-> - last-verified-against-code: 2026-10-08 (33 configs, 15 test suites / 149 tests, Sprint 11 verified in code + full QA gate green)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 12 posting hardening + viewer/carousel close-out)
+> - last-verified-against-code: 2026-10-08 (34 configs, 16 test suites / 154 tests, Sprint 12 verified in code + full QA gate green)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
@@ -44,8 +44,8 @@ Client (Browser / PWA)
     └──────────┬───────────────────┘
                ↓
     ┌──────────────────────────────┐
-    │   Service Layer              │
-    │  17 services including:        │
+     │   Service Layer              │
+     │  18 services including:        │
     │  pushSubscriptionService     │
     │  qstashService               │
     │  offlineQueue (client-side)  │
@@ -87,11 +87,11 @@ Client (Browser / PWA)
 | Transact | [FROZEN] External marketplace integration — code preserved, nav removed | `app/lib/integrations/transact.ts`, `app/api/integrations/transact/`, `app/api/webhooks/transact/`, `app/(dashboard)/marketplace/` | Prisma, QStash (webhook) |
 | Tega | [FROZEN] External events integration — code preserved, removed from sidebar | `app/lib/integrations/tega.ts`, `app/api/integrations/tega/`, `app/api/webhooks/tega/`, `app/components/features/events/` | Prisma, QStash (webhook) |
 | FAQ | Public FAQ page with categorized searchable Q&A | `app/(public)/faq/*`, `app/lib/config/faq.ts` | None (config-driven) |
-| Config | Centralized config registries for all domains (33 files, incl. reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, footer layout) | `app/lib/config/*` | None |
-| Route Requests | Request/response post lifecycle: PostType enum (ROUTE/ROUTE_REQUEST/ROUTE_RESPONSE), quotedPost self-relation, fan-out notifications, Respond CTA; ShareRouteModal starts with preview + quality score collapsed and actions in a footer below them (`SHARE_ROUTE_MODAL_CONFIG`); query-style RequestRouteTrigger icon ("Request?" tooltip) opens the request flow; savable multi-draft library (`ROUTE_DRAFTS_CONFIG`, `routeDraftsService` with legacy migration, `RouteDraftsPanel` restore/continue/delete, home resume chip); response composer has a generic description input (feeds the quality-score checkpoint), inherits request tags, and drafts persist the response linkage (`responseTo` ref + badge) | `app/components/features/posts/RequestRouteModal.tsx`, `RequestRouteTrigger.tsx`, `RouteDraftsPanel.tsx`, `ShareRouteModal.tsx` (response mode), `PostCard.tsx` (badge/quote block), `app/api/suggestions/`, `app/api/posts/` | Prisma, Redis (suggestions 1800s), QStash |
+| Config | Centralized config registries for all domains (34 files, incl. reviews/SITE_REVIEWS, carousel, shareRoute, postSubmit, routeDrafts, routeRequest, toast, postActions, footer layout) | `app/lib/config/*` | None |
+| Route Requests | Request/response post lifecycle: PostType enum (ROUTE/ROUTE_REQUEST/ROUTE_RESPONSE), quotedPost self-relation, fan-out notifications, Respond CTA; ShareRouteModal starts with preview + quality score collapsed and actions in a footer below them (`SHARE_ROUTE_MODAL_CONFIG`); query-style RequestRouteTrigger icon ("Request?" tooltip) opens the request flow; savable multi-draft library (`ROUTE_DRAFTS_CONFIG`, `routeDraftsService` with legacy migration, `RouteDraftsPanel` restore/continue/delete, home resume chip); response composer has a generic description input (feeds the quality-score checkpoint), inherits request tags, and drafts persist the response linkage (`responseTo` ref + badge); submit is double-click-safe (`isSubmitting` disabled buttons + spinner, per-session `clientMutationId` → `X-Idempotency-Key` replay-or-409 via `idempotencyService`, atomic single-statement create — `POST_SUBMIT_CONFIG`) | `app/components/features/posts/RequestRouteModal.tsx`, `RequestRouteTrigger.tsx`, `RouteDraftsPanel.tsx`, `ShareRouteModal.tsx` (response mode), `PostCard.tsx` (badge/quote block), `app/api/suggestions/`, `app/api/posts/` | Prisma, Redis (suggestions 1800s), QStash |
 | Post Actions | Copy-link (clipboard + fallback) and Report (reason dialog → linked bug-report) on every post card; validation errors surface the first field message with server-side warn logging | `PostCard.tsx` (`POST_ACTIONS_CONFIG`), `app/api/bug-reports/` (optional postId link + reporter attribution), `app/api/posts/` (friendly `message` + `details`), `home/page.tsx` (`submitPost`) | Prisma, clipboard |
-| Toasts | Single-timer toasts: GlobalUndoToast owns auto-close + progress bar from one duration (`TOAST_CONFIG`); provider remounts per toast so the bar fully elapses | `app/providers/GlobalToastProvider.tsx`, `app/components/ui/GlobalUndoToast.tsx`, `app/lib/services/toastService.ts` | None |
-| Suggestions | Ordered discovery: route requests → routes → accounts; live desktop panel + mobile rail (above the home feed, below the share/request trigger div) + endless carousel (scroll-based rAF `scrollLeft` autoplay in its own overflow-hidden wrapper — free scrub both directions, resumes from landed position; `ENDLESS_CAROUSEL_CONFIG`); About reviews reuse the same wrapper with `SITE_REVIEWS` cards | `app/components/ui/SuggestionsPanel.tsx`, `app/components/features/suggestions/{EndlessCarousel,SuggestionsRail,FollowButton}.tsx`, `app/(public)/about/AboutPageClient.tsx`, `app/api/suggestions/` | Prisma, Redis |
+| Toasts | Single-timer toasts: GlobalUndoToast owns auto-close + progress bar from one duration (`TOAST_CONFIG`); provider remounts per toast so the bar fully elapses; like/dislike are undo-toast-free by design (success note on like only), undo stays for bookmark/delete-class actions | `app/providers/GlobalToastProvider.tsx`, `app/components/ui/GlobalUndoToast.tsx`, `app/lib/services/toastService.ts` | None |
+| Suggestions | Ordered discovery: route requests → routes → accounts; live desktop panel + mobile rail (above the home feed, below the share/request trigger div) + endless carousel (scroll-based rAF `scrollLeft` autoplay in its own overflow-hidden wrapper — free scrub both directions, resumes from landed position, mouse-only hover pause, item-set `repeat` capped by `ENDLESS_CAROUSEL_CONFIG.maxRepeat` so the tape overflows with few cards; `ENDLESS_CAROUSEL_CONFIG`); About reviews reuse the same wrapper with `SITE_REVIEWS` cards | `app/components/ui/SuggestionsPanel.tsx`, `app/components/features/suggestions/{EndlessCarousel,SuggestionsRail,FollowButton}.tsx`, `app/(public)/about/AboutPageClient.tsx`, `app/api/suggestions/` | Prisma, Redis |
 | Client Cache | In-app read-through cache + SWR + in-flight dedup; hydrates feedStream without skeleton flash | `app/lib/cache/memoryCache.ts`, `app/lib/hooks/useCachedFetch.ts`, `app/lib/streams/feedStream.ts` | None (in-memory; mirrors redis.ts never-throw semantics) |
 | Seed Tooling | Manual-only seed backup/clear/restore scoped to seed markers | `scripts/{backup-seed-data,clear-seed-data,restore-seed-backup}.ts`, `db:seed`/`db:backup`/`db:clear-seed`/`db:restore-seed` | Prisma, tsx |
 
@@ -220,7 +220,7 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - Tailwind CSS v4 uses the new `@tailwindcss/postcss` plugin — v3-style `@tailwind` directives will not work
 - Dual PostCSS config files exist (`postcss.config.js` CJS + `postcss.config.mjs` ESM) — may cause confusion
 - Sentry DSN and all secrets are populated in `.env` — must not commit or expose
-- 147 Jest tests across 15 suites incl. mutation E2E + posts API + search API/service + uxTightening config + routeDrafts config/service (per 2026-10-08 Sprint 10; +8 newest tests not yet executed in this runner — no node_modules, CI is the real gate)
+- 154 Jest tests across 16 suites incl. mutation E2E + posts API + search API/service + uxTightening config + routeDrafts config/service + postSubmit config/idempotency (per 2026-10-08 Sprint 12; full gate green in-runner)
 - `tsconfig.json` no longer sets `downlevelIteration` (removed 2026-10-08: option deleted in current TS; ES2015 target handles iteration natively)
 - Password reset uses durable `PasswordResetToken` DB rows (not Redis OTP) — survives cache loss; fixed Sept 29 "link expired/invalid" false negatives
 - Forgot-password email is double-guarded: non-blocking `waitUntil` + Resend send-result check (fixed Sept 16 false-positive "mail sent" with no delivery)

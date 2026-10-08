@@ -326,3 +326,25 @@ Evidence from the codebase: `package.json` contains `rxjs@^7.8.1` and no redux/z
 **Implications:**
 - Report reasons are metadata-driven (`POST_ACTIONS_CONFIG.reportReasons`); adding reasons needs no API change.
 - If moderation volume outgrows the bug queue (SLA/routing needs), revisit with a dedicated surface and reference this decision.
+
+---
+
+## Sprint 12: Post Idempotency Is Process-Local (No DB Column)
+
+**Decision:** Deduplicate `POST /api/posts` double-submits with a per-composer `clientMutationId` sent as `X-Idempotency-Key`, checked against a process-local TTL (`POST_SUBMIT_CONFIG.idempotencyTtlMs`) `idempotencyService` — replay returns the original post, concurrent duplicates get 409, the key releases on failure. No `idempotencyKey` column or migration.
+**Date:** 2026-10-08
+**Made by:** AI agent (opencode) — execute-feature Sprint 12
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Double-clicks are already stopped at two client layers (disabled submit button + re-entry guard; in-flight dedup in `submitPost`), so the server layer only needs to catch the residual race (retry storms, multi-tab). A process-local store does that with zero migration and zero schema coupling; a serverless replay landing on a cold instance simply misses and creates once — still exactly one row per user intent in every realistic path. The atomic single-statement create (validity precomputed) removes the old create-then-update window entirely.
+
+**Alternatives Considered:**
+- **Unique `clientMutationId` DB column**: Rejected — migration + unique-violation handling for a race the client layers already absorb; revisit if duplicate-post reports persist.
+- **Redis-backed idempotency**: Rejected — adds a hot-path Redis dependency to posting (which must stay up when Redis is down, per the Redis-hardening decision); process-local is sufficient for a 5-minute replay window.
+- **409-then-poll for concurrent duplicates**: Rejected — client in-flight dedup makes the concurrent case vanishingly rare; a friendly 409 message is enough.
+
+**Implications:**
+- `POST_SUBMIT_CONFIG.idempotencyHeader` is the contract between composer, `submitPost`, and the route — renaming needs all three.
+- If duplicate posts are ever reported again, check server logs for 409s/deduplicated-200s before touching the client; escalate to a DB column and reference this decision.

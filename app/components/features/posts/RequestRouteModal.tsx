@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { ClipboardList, MapPin } from "lucide-react"
+import { ClipboardList, MapPin, Loader2 } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 
 export interface RouteRequestBody {
@@ -10,6 +10,8 @@ export interface RouteRequestBody {
   type: "ROUTE_REQUEST"
   routes: { location: string; description?: string }[]
   tags: string[]
+  /** Idempotency key for this composer session — dedups double-clicks/retries server-side. */
+  clientMutationId?: string
 }
 
 interface RequestRouteModalProps {
@@ -22,6 +24,15 @@ interface RequestRouteModalProps {
 const inputClass =
   "w-full h-10 px-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none transition-colors duration-fast bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
 
+function newRequestKey(): string {
+  try {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID()
+  } catch {
+    /* fall through to Math.random fallback */
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
 export default function RequestRouteModal({ isOpen, onClose, onSubmit }: RequestRouteModalProps) {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -31,6 +42,8 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
   const [tags, setTags] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [showErrors, setShowErrors] = useState(false)
+  // One idempotency key per composer session (regenerated after each success).
+  const [mutationKey, setMutationKey] = useState(() => newRequestKey())
 
   const errors = {
     title: title.trim().length < 5 ? "Title must be at least 5 characters" : null,
@@ -76,12 +89,14 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
         type: "ROUTE_REQUEST",
         routes: [{ location: from.trim() }, { location: to.trim() }],
         tags,
+        clientMutationId: mutationKey,
       })
       if (result === false) {
         setSubmitting(false)
         return // failed — keep input, allow retry
       }
       reset()
+      setMutationKey(newRequestKey())
       onClose()
     } catch {
       // Parent threw; allow retry
@@ -224,8 +239,10 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="h-10 px-5 radius-md bg-primary text-white border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-colors duration-fast disabled:opacity-60 disabled:cursor-not-allowed"
+            aria-busy={submitting}
+            className="inline-flex items-center justify-center gap-2 h-10 px-5 radius-md bg-primary text-white border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-colors duration-fast disabled:opacity-60 disabled:cursor-not-allowed"
           >
+            {submitting && <Loader2 size={15} className="animate-spin" aria-hidden />}
             {submitting ? "Posting…" : "Post Request"}
           </button>
         </div>

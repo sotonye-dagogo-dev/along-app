@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
-> - last-verified-against-code: 2026-10-08 (Sprint 11 rows verified present in code + full QA gate green in-runner: tsc 0, jest 149/149, build clean)
-> - last-synced: 2026-10-08 (Sprint 11 posting fix + response/draft linkage + toast/report/carousel — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 12 close-out)
+> - last-verified-against-code: 2026-10-08 (Sprint 12 rows verified present in code + full QA gate green in-runner: tsc 0, jest 154/154, build clean)
+> - last-synced: 2026-10-08 (Sprint 12 posting hardening + viewer/carousel fixes — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -244,6 +244,21 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Undo-toast single timer (`TOAST_CONFIG`, duration pass-through, per-toast remount) | [x] |
 | [S] | Post actions — working Copy link + Report dialog (`POST_ACTIONS_CONFIG`, linked bug-reports) | [x] |
 | [S] | About reviews on shared `EndlessCarousel` (same wrapper/animation as home) | [x] |
+
+---
+
+## Sprint 12 — Posting Hardening + Viewer/Carousel Fixes (2026-10-08, execute-feature)
+
+> **Section summary:** Directive iron-out items, non-breaking (no migration, no new deps). QA full in-runner: tsc 0 errors, jest 16 suites / 154 tests pass, next build clean, lint clean for touched files (2 pre-existing warnings in untouched code paths).
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Share-route submit guard — `isSubmitting` state, disabled Share/Save buttons, spinner feedback, re-entry guard (config labels in `POST_SUBMIT_CONFIG`); RequestRouteModal spinner icon | [x] |
+| [M] | Posting ACID/idempotency E2E — per-session `clientMutationId`, in-flight dedup in `submitPost`, `X-Idempotency-Key` header, atomic single-statement create (validity precomputed), server replay-or-409 via TTL `idempotencyService` | [x] |
+| [S] | Like/dislike undo-toast removal — post detail `handleLike` no longer registers undo (bookmark undo kept) | [x] |
+| [S] | ImageLightbox rewrite — state-owned index (no DOM src mutation), ArrowLeft/Right keys, accurate `n / total` counter, re-sync on thumbnail change | [x] |
+| [S] | EndlessCarousel autoplay fix — mouse-only hover pause (touch taps no longer stall), item-set `repeat` (cap `maxRepeat`) so the tape overflows with few cards | [x] |
+| [S] | Tests — `__tests__/config/postSubmit.test.ts` (5 suites: config, claim/replay, release, blank keys, carousel repeat) | [x] |
 
 ---
 

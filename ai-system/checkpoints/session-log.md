@@ -1124,3 +1124,39 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - Toast `undo()` without duration falls back to `TOAST_CONFIG.undoMs`
 
 **Notes / Blockers:** None. Session-log append-only honored; in-progress cleared below.
+
+---
+
+## Session 2026-10-08 — Sprint 12: Posting Hardening + Viewer/Carousel Fixes (execute-feature)
+
+**Directive:** share-route post button needs loading feedback + disabled state (double-clicks duplicated routes); no undo toast for like/dislike; ACID for posting; ImageLightbox sometimes won't advance + counter inaccurate; EndlessCarousel no longer auto-moves. Non-breaking, config-driven, all tests passing.
+
+**Root causes:**
+- Posting duplicates: `ShareRouteModal.handleSubmit` had no in-flight state (button stayed enabled, re-entry unguarded) and `POST /api/posts` did create-then-update in two statements with no idempotency — every double-click inserted two rows.
+- Like/dislike undo: post-detail `handleLike` registered an `undoService` action + `toastService.undo` on unlike.
+- Viewer stuck/counter drift: prev/next mutated `img.src` via `getElementById` while the `safeIndex` prop-derived value never changed — the counter stayed frozen and the second navigation recomputed from the same stale index.
+- Carousel stall: (a) touch taps fire `pointerenter` with no matching `pointerleave`, pausing rAF autoplay forever; (b) with 1–2 cards the track is narrower than the viewport so `scrollLeft` maxes at 0 and autoplay is invisible.
+
+**Changes (9 edited, 3 new):**
+- `postSubmit.ts` (new, `POST_SUBMIT_CONFIG`) + `config/index.ts` — idempotency header/TTL/prefix + submit-button labels
+- `idempotencyService.ts` (new) — process-local TTL claim/complete/replay/release store, never-throw
+- `ShareRouteModal.tsx` — `isSubmitting` guard + disabled Share/Save + `Loader2` spinner + per-session `clientMutationId` plumbed through `onSubmit`
+- `RequestRouteModal.tsx` — `Loader2` spinner on the (already guarded/disabled) submit + same `clientMutationId` passthrough
+- `home/page.tsx` — `submitPost` in-flight dedup by key + `X-Idempotency-Key` header (key stripped from JSON body)
+- `api/posts/route.ts` — replay returns original post (`200 + deduplicated`), concurrent duplicate gets 409, validity precomputed so create is a single atomic statement, key released on create/quote failure; header read is defensive (fixed `posts.test.ts` mock without `headers`)
+- `posts/[id]/page.tsx` — like/unlike undo registration removed (success note on like only; bookmark undo kept)
+- `ImageLightbox.tsx` — state-owned index, ArrowLeft/Right + Escape, accurate counter, re-sync effect
+- `EndlessCarousel.tsx` + `carousel.ts` (`maxRepeat: 3`) — mouse-only hover pause, `repeat` growth until half-track overflows viewport
+- `postSubmit.test.ts` (new, 5 suites)
+
+**QA gate (this runner, node_modules via `npm ci`):**
+- `npx tsc --noEmit` — 0 errors
+- `npm test` — 16 suites / 154 tests, all pass (one interim failure in `posts.test.ts` fixed in code via defensive header read — no test edits)
+- `npm run build` — clean
+- `npx next lint` (touched files) — zero new warnings (2 pre-existing: ImageLightbox `no-img-element`, post-detail `exhaustive-deps` on untouched `routePins`)
+
+**Assumptions Made:**
+- Idempotency store is process-local (serverless-safe miss = single create; client guard is the primary layer) — documented in `memory/project-decisions.md`
+- Unlike stays silent (heart toggle is its own affordance); bookmark undo untouched per directive scope
+
+**Notes / Blockers:** None. In-progress reset to idle below.

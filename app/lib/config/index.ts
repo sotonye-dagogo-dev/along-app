@@ -20,6 +20,8 @@ export { ROUTE_DRAFTS_CONFIG } from "./routeDrafts";
 export type { RouteDraftsConfig } from "./routeDrafts";
 export { REQUEST_ROUTE_TRIGGER_CONFIG } from "./routeRequest";
 export type { RequestRouteTriggerConfig } from "./routeRequest";
+export { POST_SUBMIT_CONFIG } from "./postSubmit";
+export type { PostSubmitConfig } from "./postSubmit";
 export { TEAM_MEMBERS } from "./teamConfig";
 export { SITE_REVIEWS } from "./reviews";
 export type { SiteReview } from "./reviews";
