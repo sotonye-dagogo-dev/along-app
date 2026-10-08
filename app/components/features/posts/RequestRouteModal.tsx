@@ -114,7 +114,7 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
       <div className="flex flex-col max-h-[90vh]">
         <div className="flex items-start justify-between px-6 py-5 pb-4 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-circle bg-warning/15 text-warning flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-circle bg-warning text-warning-text flex items-center justify-center shrink-0">
               <ClipboardList size={18} />
             </div>
             <div>

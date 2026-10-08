@@ -42,6 +42,32 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       include: { user: { select: { ...COMMENT_USER_SELECT } } },
     });
 
+    // Comment nature is text-only (no type to preserve), but @mentions added
+    // by the edit still notify their targets (diffed, non-blocking).
+    try {
+      const { createNotification } = await import("@/app/lib/services/notificationService");
+      const { diffMentions, resolveMentionedUserIds } = await import(
+        "@/app/lib/services/mentionService"
+      );
+      const added = diffMentions(comment.text, parsed.data.text);
+      if (added.length > 0) {
+        const actorName =
+          `${(user as { firstName?: string }).firstName ?? ""} ${(user as { lastName?: string }).lastName ?? ""}`.trim() ||
+          "Someone";
+        const ids = await resolveMentionedUserIds(added);
+        if (ids.length > 0) {
+          void createNotification({
+            type: "MENTION",
+            actorId: user.id as string,
+            message: `${actorName} mentioned you in a comment`,
+            postId: (comment as { postId: string }).postId,
+            commentId,
+            recipientIds: ids,
+          });
+        }
+      }
+    } catch { /* notifications are non-critical */ }
+
     return NextResponse.json({ comment: updated }, { status: 200 });
   } catch (error) {
     console.error("Update comment error:", error);

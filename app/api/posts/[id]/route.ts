@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { UPDATE_POST_SCHEMA } from "@/app/lib/schemas/post";
+import { MODERATION_CONFIG } from "@/app/lib/config";
 import { z } from "zod";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- P2022-tolerant casts: isArchived may be absent on DBs where the moderation migration has not applied yet */
@@ -168,14 +169,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     // Content edit path (owner edits own; admin may correct any post).
+    // Post nature is immutable: `type`/`quotedPostId` (see
+    // MODERATION_CONFIG.immutablePostFields) are stripped so an edit can
+    // never morph a ROUTE into a ROUTE_REQUEST (or re-parent a response).
+    // Archive state is equally untouched here — archiving has its own path
+    // above and never alters content or type.
     const parsed = UPDATE_POST_SCHEMA.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 400 });
     }
+    const { ...editable } = parsed.data as Record<string, unknown>;
+    for (const field of MODERATION_CONFIG.immutablePostFields) {
+      delete editable[field];
+    }
 
     const updated = await prisma.post.update({
       where: { id },
-      data: parsed.data as any,
+      data: editable as any,
       include: {
         user: {
           select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },

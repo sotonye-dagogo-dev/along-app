@@ -17,11 +17,16 @@ jest.mock("@/app/lib/db/prisma", () => ({
     post: { findUnique: jest.fn(), findMany: jest.fn(), update: jest.fn() },
     notification: { create: jest.fn(), deleteMany: jest.fn() },
     follow: { findUnique: jest.fn(), create: jest.fn(), delete: jest.fn() },
-    user: { findUnique: jest.fn() },
+    user: { findUnique: jest.fn(), findMany: jest.fn() },
     $transaction: jest.fn(),
   },
 }))
 jest.mock("@/app/lib/utils/auth", () => ({ getUserFromRequest: jest.fn() }))
+jest.mock("@/app/lib/services/notificationService", () => ({
+  createNotification: jest.fn().mockResolvedValue("n1"),
+  getFollowerIds: jest.fn().mockResolvedValue([]),
+  invalidateNotificationCaches: jest.fn().mockResolvedValue(undefined),
+}))
 jest.mock("@/app/lib/services/qstashService", () => ({
   qstashService: {
     publishRewardsAward: jest.fn(),
@@ -32,6 +37,9 @@ jest.mock("@/app/lib/services/qstashService", () => ({
 
 import { prisma } from "@/app/lib/db/prisma"
 import { getUserFromRequest } from "@/app/lib/utils/auth"
+import { createNotification } from "@/app/lib/services/notificationService"
+
+const mockNotify = createNotification as jest.Mock
 
 type ModelMock = Record<string, jest.Mock>
 const mockPrisma = prisma as unknown as {
@@ -79,7 +87,22 @@ describe("POST /api/posts/[id]/like", () => {
     expect(mockPrisma.like.create).toHaveBeenCalledWith({
       data: { postId: "p1", userId: "u1", type: "LIKE" },
     })
-    expect(mockPrisma.notification.create).toHaveBeenCalled()
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "LIKE", postId: "p1", recipientIds: ["u2"] })
+    )
+  })
+
+  it("creates a new DISLIKE and notifies the author with the dislike copy", async () => {
+    mockAuth.mockResolvedValue(me)
+    mockPrisma.like.findUnique.mockResolvedValue(null)
+    mockPrisma.post.findUnique.mockResolvedValue({ userId: "u2", title: "Their post" })
+
+    const res = await likePost(jsonReq({ type: "DISLIKE" }), params)
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ liked: true, type: "DISLIKE" })
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "DISLIKE", postId: "p1", recipientIds: ["u2"] })
+    )
   })
 
   it("toggles off an existing identical like", async () => {
@@ -102,7 +125,7 @@ describe("POST /api/posts/[id]/like", () => {
     mockPrisma.post.findUnique.mockResolvedValue({ userId: "u1", title: "My post" })
 
     await likePost(jsonReq({ type: "LIKE" }), params)
-    expect(mockPrisma.notification.create).not.toHaveBeenCalled()
+    expect(mockNotify).not.toHaveBeenCalled()
   })
 
   it("returns 500 on unexpected failure", async () => {
@@ -182,7 +205,31 @@ describe("POST /api/posts/[id]/comments", () => {
     expect(mockPrisma.post.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { comments: { increment: 1 } } })
     )
-    expect(mockPrisma.notification.create).toHaveBeenCalled()
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "COMMENT", postId: "p1", commentId: "c1", recipientIds: ["u2"] })
+    )
+  })
+
+  it("notifies @mentioned users when a comment names them", async () => {
+    mockAuth.mockResolvedValue({ ...me, userName: "adal" })
+    mockPrisma.comment.create.mockResolvedValue({ id: "c9", text: "cc @kofi, thoughts?" })
+    mockPrisma.post.findUnique.mockResolvedValue({ userId: "u2", title: "Their post" })
+    mockPrisma.user.findMany.mockResolvedValue([{ id: "u3" }])
+
+    const res = await commentPost(jsonReq({ text: "cc @kofi, thoughts?" }), params)
+    expect(res.status).toBe(201)
+    expect(mockNotify).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "MENTION", commentId: "c9", recipientIds: ["u3"] })
+    )
+  })
+
+  it("skips mention fan-out when no @username is referenced", async () => {
+    mockAuth.mockResolvedValue(me)
+    mockPrisma.comment.create.mockResolvedValue({ id: "c2", text: "plain comment" })
+    mockPrisma.post.findUnique.mockResolvedValue({ userId: "u2", title: "Their post" })
+
+    await commentPost(jsonReq({ text: "plain comment" }), params)
+    expect(mockNotify).not.toHaveBeenCalledWith(expect.objectContaining({ type: "MENTION" }))
   })
 
   it("GET lists comments for the post", async () => {

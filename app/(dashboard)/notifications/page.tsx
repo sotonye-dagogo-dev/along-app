@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Heart, MessageCircle, UserPlus, AtSign, Star, Award, CheckCircle, Sparkles, ClipboardList, Reply, Bell } from "lucide-react"
+import { Heart, ThumbsDown, MessageCircle, UserPlus, AtSign, Star, Award, CheckCircle, Sparkles, ClipboardList, Reply, Route as RouteIcon, Bell, ShieldCheck } from "lucide-react"
 import { AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { useAuth } from "@/app/hooks/useAuth"
@@ -13,6 +13,7 @@ interface NotificationItem {
   id: string
   type:
     | "LIKE"
+    | "DISLIKE"
     | "COMMENT"
     | "FOLLOW"
     | "MENTION"
@@ -22,6 +23,9 @@ interface NotificationItem {
     | "WELCOME"
     | "ROUTE_REQUEST"
     | "ROUTE_RESPONSE"
+    | "NEW_ROUTE"
+    | "REPORT"
+    | "MODERATION"
   message: string
   createdAt: string
   actor: {
@@ -50,6 +54,7 @@ function getTimeAgo(date: string): string {
 
 const TYPE_ICONS: Record<string, { icon: React.ElementType; color: string }> = {
   LIKE: { icon: Heart, color: "#EF4444" },
+  DISLIKE: { icon: ThumbsDown, color: "#64748B" },
   COMMENT: { icon: MessageCircle, color: "#3B82F6" },
   FOLLOW: { icon: UserPlus, color: "#10B981" },
   MENTION: { icon: AtSign, color: "#8B5CF6" },
@@ -59,6 +64,9 @@ const TYPE_ICONS: Record<string, { icon: React.ElementType; color: string }> = {
   WELCOME: { icon: Sparkles, color: "#1677FF" },
   ROUTE_REQUEST: { icon: ClipboardList, color: "#F97316" },
   ROUTE_RESPONSE: { icon: Reply, color: "#10B981" },
+  NEW_ROUTE: { icon: RouteIcon, color: "#00A862" },
+  REPORT: { icon: ShieldCheck, color: "#F59E0B" },
+  MODERATION: { icon: ShieldCheck, color: "#1677FF" },
 }
 
 interface NotificationsResponse {

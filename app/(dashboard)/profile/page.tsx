@@ -2,11 +2,12 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Camera, ThumbsUp, MessageCircle, Bell, BarChart3, UserPlus } from "lucide-react"
+import { Camera, Bell, BarChart3, UserPlus } from "lucide-react"
 import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import dynamic from "next/dynamic"
 import { RewardsPanel, EditProfileModal } from "@/app/components/features/profile"
+import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 import { AuthLinkPanel } from "@/app/components/features/profile/AuthLinkPanel"
 import { toastService } from "@/app/lib/services/toastService"
 
@@ -41,16 +42,30 @@ interface ProfileData {
 interface PostItem {
   id: string
   title: string
-  likes: number
-  comments: number
+  description?: string | null
+  routes?: unknown
+  images?: string[]
   tags: string[]
+  likes: number
+  dislikes?: number
+  comments: number
+  bookmarks?: number
+  validityScore?: number
+  validityTier?: string | null
   createdAt: string
-  user: { userName: string; firstName: string; lastName: string }
+  type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
+  isArchived?: boolean
+  user: { id?: string; userName: string; firstName: string; lastName: string }
 }
+
+// Profile content tabs: "routes" lists actual routes (ROUTE + ROUTE_RESPONSE),
+// "requests" lists route requests, "archived" is the owner's private library.
+const PROFILE_TABS = ["posts", "routes", "requests", "liked", "bookmarks", "archived"] as const
+type ProfileTab = (typeof PROFILE_TABS)[number]
 
 export default function OwnProfilePage() {
   const { user: authUser, isLoading: authLoading } = useAuth()
-  const [activeTab, setActiveTab] = useState("posts")
+  const [activeTab, setActiveTab] = useState<ProfileTab>("posts")
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
 
@@ -67,16 +82,20 @@ export default function OwnProfilePage() {
     "/api/rewards/history",
     { ttlSec: 300, enabled: ready }
   )
-  // Per-tab post lists (posts / liked / bookmarks / routes)
+  // Per-tab post lists (posts / routes / requests / liked / bookmarks / archived)
   const tabQuery =
     activeTab === "bookmarks"
       ? "/api/bookmarks?limit=20"
       : activeTab === "liked"
         ? `/api/posts?limit=20&likedBy=${userId}`
         : activeTab === "routes"
-          ? `/api/posts?limit=20&userId=${userId}&type=ROUTE`
-          : `/api/posts?limit=20&userId=${userId}`
-  const { data: postsData, loading: postsLoading } = useCachedFetch<{ posts: PostItem[] }>(
+          ? `/api/posts?limit=20&userId=${userId}&type=ROUTE,ROUTE_RESPONSE`
+          : activeTab === "requests"
+            ? `/api/posts?limit=20&userId=${userId}&type=ROUTE_REQUEST`
+            : activeTab === "archived"
+              ? `/api/posts?limit=20&userId=${userId}&archived=true`
+              : `/api/posts?limit=20&userId=${userId}`
+  const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
     ready ? `profile-tab:${userId}:${activeTab}` : null,
     tabQuery,
     { ttlSec: 120, enabled: ready }
@@ -256,7 +275,7 @@ export default function OwnProfilePage() {
         </div>
 
         <div className="flex border-b border-border mb-4">
-          {["posts", "liked", "bookmarks", "routes"].map((tab) => (
+          {PROFILE_TABS.map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -277,29 +296,39 @@ export default function OwnProfilePage() {
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
           {posts.map((post) => (
-            <Link
+            <ProfilePostCard
               key={post.id}
-              href={`/posts/${post.id}`}
-              className="bg-bg-card border border-border radius-lg p-3.5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-base no-underline block"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Link href={`/profile/${post.user.userName}`} onClick={(e) => e.stopPropagation()} className="w-7 h-7 rounded-circle bg-primary-muted flex items-center justify-center text-[10px] font-bold text-primary shrink-0 no-underline">
-                  {(post.user.firstName?.[0] ?? post.user.userName?.[0] ?? "?").toUpperCase()}{(post.user.lastName?.[0] ?? "").toUpperCase()}
-                </Link>
-                <Link href={`/profile/${post.user.userName}`} onClick={(e) => e.stopPropagation()} className="text-xs font-semibold text-text-primary no-underline hover:underline flex-1">
-                  {post.user.firstName} {post.user.lastName}
-                </Link>
-                <Link href={`/profile/${post.user.userName}`} onClick={(e) => e.stopPropagation()} className="text-[11px] text-text-muted ml-auto no-underline hover:underline">@{post.user.userName}</Link>
-              </div>
-              <div className="text-sm font-semibold text-text-primary mb-1.5">{post.title}</div>
-              <div className="text-[11px] text-text-muted flex items-center gap-2">
-                <span className="inline-flex items-center gap-1"><ThumbsUp size={12} /> {post.likes}</span>
-                <span className="inline-flex items-center gap-1"><MessageCircle size={12} /> {post.comments}</span>
-                {post.tags.slice(0, 2).map((t) => (
-                  <Link key={t} href={`/explore?tag=${encodeURIComponent(t)}`} onClick={(e) => e.stopPropagation()} className="inline-flex px-1.5 py-0.5 radius-pill text-[10px] font-medium bg-bg-elevated text-text-secondary no-underline hover:bg-primary-muted hover:text-primary">#{t}</Link>
-                ))}
-              </div>
-            </Link>
+              post={
+                {
+                  id: post.id,
+                  title: post.title,
+                  description: post.description ?? null,
+                  type: post.type,
+                  routes: post.routes ?? [],
+                  images: post.images ?? [],
+                  tags: post.tags ?? [],
+                  likes: post.likes ?? 0,
+                  dislikes: post.dislikes ?? 0,
+                  comments: post.comments ?? 0,
+                  bookmarks: post.bookmarks ?? 0,
+                  validityScore: post.validityScore ?? 0,
+                  validityTier: post.validityTier ?? null,
+                  isArchived: post.isArchived,
+                  createdAt: post.createdAt,
+                  user: {
+                    id: post.user.id ?? userId,
+                    userName: post.user.userName,
+                    firstName: post.user.firstName,
+                    lastName: post.user.lastName,
+                  },
+                } as never
+              }
+              onRemoved={(postId) =>
+                mutatePosts((prev) =>
+                  prev ? { posts: prev.posts.filter((p) => p.id !== postId) } : { posts: [] },
+                )
+              }
+            />
           ))}
         </div>
       </div>

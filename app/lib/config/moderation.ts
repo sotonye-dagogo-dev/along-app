@@ -33,7 +33,17 @@ export interface ModerationConfig {
     map: boolean;
     navigationGuide: boolean;
     trustScore: boolean;
+    /** Fares/amounts belong to concrete routes, never to requests for them. */
+    fare: boolean;
   };
+  /**
+   * Post nature preservation: these fields are set once at creation and are
+   * stripped from every edit/archive payload server-side, so operations like
+   * editing or archiving can never turn a ROUTE into a ROUTE_REQUEST (or
+   * re-parent a ROUTE_RESPONSE). The undo-restore replay re-sends the
+   * snapshot through POST (create), where they are still honoured.
+   */
+  immutablePostFields: string[];
 }
 
 export const MODERATION_CONFIG: ModerationConfig = {
@@ -58,5 +68,7 @@ export const MODERATION_CONFIG: ModerationConfig = {
     map: true,
     navigationGuide: true,
     trustScore: true,
+    fare: true,
   },
+  immutablePostFields: ["type", "quotedPostId"],
 };

@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
-> - last-verified-against-code: 2026-10-08 (Sprint 13 rows verified present in code + full QA gate green in-runner)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
+> - last-verified-against-code: 2026-10-08 (Sprint 14 rows verified present in code + full QA gate green in-runner)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -155,4 +155,5 @@
 - [x] Sprint 11 (2026-10-08) — posting validation fix (generic description input, empty-tolerant schema, first-field feedback), response tag inheritance + draft linkage, toast single-timer, PostCard copy-link/report, About reviews on shared EndlessCarousel (149 tests / 15 suites, full gate green in-runner)
 - [x] Sprint 12 (2026-10-08) — posting hardening (submit guard + idempotency ACID), like/dislike undo removal, ImageLightbox rewrite, EndlessCarousel autoplay fix (154 tests / 16 suites, full gate green in-runner)
 - [x] Sprint 13 (2026-10-08) — post/comment moderation (edit/delete/archive, owner + admin, global confirm + undo), report lifecycle E2E (`/api/reports`, admin triage, anonymity both ways), request display rules (no map/nav/trust, responses as comments), trust tooltip viewport fix (160 tests / 17 suites, full gate green in-runner)
+- [x] Sprint 14 (2026-10-08) — post-nature immutability (PATCH strip), profile routes/requests/archived tabs, notification coverage (MENTION/DISLIKE/NEW_ROUTE, service-routed likes/comments, WELCOME fix), auth-agnostic referrals (shared service, Google `state=ref:`), invite points-cap policy, flag contrast fix (188 tests / 21 suites, full gate green in-runner)
 - [x] Auth hardening — Redis timeout fallback, non-blocking reset mail, durable DB reset tokens (Sept 15/16/29)

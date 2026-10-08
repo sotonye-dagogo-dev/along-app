@@ -46,7 +46,7 @@ export function RouteDraftsPanel({ drafts, activeDraftId, onRestore, onDelete }:
             <span className="flex-1 min-w-0">
               <span className="block text-sm font-semibold text-text-primary truncate">{title}</span>
               {draft.responseTo && (
-                <span className="inline-flex items-center px-1.5 py-px radius-pill text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30 mt-0.5">
+                <span className="inline-flex items-center px-1.5 py-px radius-pill text-[10px] font-semibold bg-warning text-warning-text border border-warning-border mt-0.5">
                   {ROUTE_DRAFTS_CONFIG.responseBadgeLabel(draft.responseTo.title)}
                 </span>
               )}

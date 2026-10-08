@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
-> - last-verified-against-code: 2026-10-08 (Sprint 13 rows verified present in code + full QA gate green in-runner: tsc 0, jest 160/160, build clean)
-> - last-synced: 2026-10-08 (Sprint 13 post/comment moderation + report lifecycle + request display rules + trust tooltip — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
+> - last-verified-against-code: 2026-10-08 (Sprint 14 rows verified present in code + full QA gate green in-runner: tsc 0, jest 188/188, build clean)
+> - last-synced: 2026-10-08 (Sprint 14 notification/referral/profile tightening — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -275,6 +275,23 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | TrustBadge viewport fix — fixed-position tooltip, clamped horizontally, flips below when no room above, click toggle + Escape | [x] |
 | [S] | Archive filtering — `isArchived` excluded from feed/guest/search/suggestions/sitemap (P2022-tolerant fallbacks); owner-profile self view + direct link (owner/admin) still resolve | [x] |
 | [S] | Tests — `__tests__/post-moderation.test.ts` (config registry, admin roles, hide rules, notification types); `posts.test.ts` guest expectation updated to archived-exclusion | [x] |
+
+---
+
+## Sprint 14 — Notification/Referral/Profile Tightening (2026-10-08, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive migration with enum guards; service never throws so pre-migration writes fail safe). QA full in-runner: tsc 0 errors, jest 21 suites / 188 tests pass, next build clean, lint zero new errors (11 pre-existing).
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Post-nature preservation — PATCH strips `type`/`quotedPostId` via `MODERATION_CONFIG.immutablePostFields` (edits + admin corrections can never morph a post; archive path content-neutral) | [x] |
+| [M] | Profile tabs — own profile posts/routes/requests/liked/bookmarks/archived, other-user posts/routes/requests/liked; Routes = ROUTE+ROUTE_RESPONSE (actual routes, requests excluded); `?archived=true` owner-only library; type/archived pills on cards | [x] |
+| [S] | `GET /api/posts` — comma-separated `type` filter + `archived=true` (owner-only; non-owners silently get unarchived) | [x] |
+| [L] | Notification coverage — MENTION on comment create + edit-diff (`mentionService`), DISLIKE + NEW_ROUTE enum/migration/registry/UI/fan-out, LIKE/COMMENT re-routed through `createNotification` (cache invalidation), WELCOME `allowSelf` fix, follower fan-out on ROUTE/RESPONSE uploads | [x] |
+| [L] | Referrals auth-agnostic — shared `referralService` (unlimited linking, send-credit cap), `?ref=` forwarded by register page, Google OAuth `state=ref:` → callback links new + first-time-OAuth signups, welcome notification on Google signup | [x] |
+| [S] | Invite policy — maxInvites caps send-credit points only (config docs + server cap + invite page "Bonus Invites Left" copy); leaderboard verified zero-point-inclusive | [x] |
+| [S] | Route-request flag contrast — `bg-warning text-warning-text border-warning-border` pairing on PostCard, detail view, RequestRouteModal, drafts panel, ShareRouteModal banner, admin pills, invite ranks | [x] |
+| [M] | Tests — `post-nature.test.ts` (4), `mentionService.test.ts` (8), `referralService.test.ts` (6), `leaderboard.test.ts` (2), posts/mutations extensions (like/dislike/mention/multi-type/archived) | [x] |
 
 ---
 

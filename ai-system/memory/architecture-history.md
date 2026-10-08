@@ -1,7 +1,7 @@
 # Architecture History
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale — only the current architecture (in system-architecture.md) needs re-verification
 
@@ -130,3 +130,18 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 - Separate reviews carousel component with its own physics: rejected — `EndlessCarousel` already takes generic `ReactNode[]`; reuse keeps one animation implementation to maintain.
 
 **Implications:** Description remains optional end-to-end (blank posts now pass); `message` on 400s is additive (existing `error`/`details` assertions unaffected); report triage flows through the existing bug-report admin surface.
+
+---
+
+## Sprint 14 — Immutable Post Nature, Notification Coverage, Auth-Agnostic Referrals (2026-10-08)
+
+**Change:** Post `type`/`quotedPostId` immutable after creation (server strip via `MODERATION_CONFIG.immutablePostFields`); profile tabs split into routes (ROUTE+ROUTE_RESPONSE) / requests / owner-only archived (`GET /api/posts` multi-type + `?archived=true`); notifications cover MENTION (new `mentionService`), DISLIKE + NEW_ROUTE (enum, migration, registry, UI, fan-out), service-routed LIKE/COMMENT, self-addressable WELCOME; referrals unified in `referralService` across email register (`?ref=`) and Google OAuth (`state=ref:`) with unlimited linking + send-credit cap; invite page reframes the cap as bonus points; warning token pairing fixed everywhere for light/dark contrast. 35 config files, 21 service modules, 21 test suites (188 tests). QA gate green in-runner: tsc 0, jest 188/188, next build clean, lint 11 pre-existing / 0 new.
+
+**Reason:** Directive tightening — edits could morph post nature; Routes tab hid real routes; mention/dislike/follower-upload notifications never fired; referrals broke across auth methods; invite cap read as a growth limit; request flag unreadable in both modes.
+
+**Alternatives Considered:**
+- Per-type edit schemas: rejected — one config strip-list covers the class with less surface.
+- Hard invite limit or send-tracking endpoint: rejected — cap points, never growth; sends aren't server-observable.
+- New notification tables/endpoints: rejected — additive enum values + central service cover all six triggers.
+
+**Implications:** Nature changes require delete + recreate; `?archived=true` is owner-only by viewer check; pre-migration DISLIKE/NEW_ROUTE writes fail safe (null, request succeeds); production needs `prisma migrate deploy` for the enum values.

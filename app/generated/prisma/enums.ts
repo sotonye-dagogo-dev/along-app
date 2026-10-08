@@ -89,7 +89,9 @@ export const NotificationType = {
   BADGE: 'BADGE',
   VERIFIED: 'VERIFIED',
   REPORT: 'REPORT',
-  MODERATION: 'MODERATION'
+  MODERATION: 'MODERATION',
+  DISLIKE: 'DISLIKE',
+  NEW_ROUTE: 'NEW_ROUTE'
 } as const
 
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]
