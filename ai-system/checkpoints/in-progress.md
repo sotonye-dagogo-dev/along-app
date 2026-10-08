@@ -1,7 +1,7 @@
 # In Progress
 
-**Session:** idle — Sprint 18 admin responsive + real metrics + bulk ops + config UX closed out by `execute-feature.md` on 2026-10-08 (with chained `update-ai-system.md` deep sync: session-log + dev-history appended; full QA gate not runnable here — no node_modules, pre-existing env limit; new `admin.test.ts` follows existing patterns)
-**Status:** No active sprint. Next work: pick the next backlog item from `planning/task-queue.md` Backlog (live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration), then open a new sprint via `plan-feature.md` / `execute-feature.md`. Note: QA gate ran fully in this runner (node_modules via `npm install`): tsc 0 errors, jest 25 suites / 220 tests pass, next build clean, lint 0 issues in touched files. No schema migration was introduced (all changes additive/defensive; `db:reset-prod` untouched, still manual-only).
+**Session:** idle — fix-build 2026-10-08 closed: duplicate `bugId` in `app/api/admin/bugs/route.ts` renamed to `targetBugId` (repair-system + test-results + session-log updated; lightweight sync-context done inline, no drift)
+**Status:** No active sprint. Next work: pick the next backlog item from `planning/task-queue.md` Backlog (live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration), then open a new sprint via `plan-feature.md` / `execute-feature.md`.
 
 ## Last completed work (archived summary)
 

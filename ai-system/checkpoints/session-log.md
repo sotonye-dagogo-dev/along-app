@@ -1312,3 +1312,13 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - `npm run build` / lint — not runnable here; `git diff --stat` reviewed.
 **Assumptions:** Bulk restore for users replays prior roles individually; post bulk-restore replays snapshots via POST (new ids); bug bulk-moderation loops single calls (post linkage differs); config reorder is display-only (no persisted order column).
 **Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — fix-build: duplicate `bugId` identifier in admin bugs PATCH route
+**Directive:** Vercel build failed `Module parse failed: Identifier 'bugId' has already been declared (140:14)` in `app/api/admin/bugs/route.ts` (`Build failed because of webpack errors`).
+**Changes (1 edited):**
+- `app/api/admin/bugs/route.ts` — renamed second declaration `const bugId = targets[0]` → `const targetBugId`, updated its two uses (`findUnique where`, `$transaction bugReport.update where`). Destructured request-body `bugId` untouched.
+**QA gate (this runner, no node_modules):**
+- Full `tsc`/`jest`/`next build`/`lint` not runnable (missing deps, pre-existing env limit); verified via `grep` — exactly one `targetBugId` declaration, no `bugId` redeclaration remains. Vercel build to confirm.
+- Repair-system entry added (same duplicate-declaration pattern as `formatCount` 2026-07-15). Single-file fix → no repo-map/dependency-graph/architecture drift; sync-context lightweight check done inline.
+**Assumptions:** Sentry 401 + `prisma generate --no-engine` noise in the same log are non-fatal (fallback `|| prisma generate` succeeded; Sentry failures only affect sourcemap upload) — left untouched per minimal-fix contract.
+**Notes / Blockers:** Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
