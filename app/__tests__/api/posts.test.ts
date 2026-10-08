@@ -151,7 +151,33 @@ describe("POST /api/posts", () => {
     expect(createNotification).toHaveBeenCalledWith(
       expect.objectContaining({ type: "ROUTE_RESPONSE" })
     )
-    expect(getFollowerIds).not.toHaveBeenCalled()
+    // Followers also hear about the new route (NEW_ROUTE), excluding the
+    // request author who already got the ROUTE_RESPONSE notification.
+    expect(getFollowerIds).toHaveBeenCalledWith("u2")
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "NEW_ROUTE", recipientIds: ["follower-1"] })
+    )
+  })
+
+  it("fans out NEW_ROUTE to followers when a plain ROUTE is shared", async () => {
+    mockAuth.mockResolvedValue({ id: "u1", firstName: "Ama", lastName: "Boat" })
+    mockPrisma.post.create.mockResolvedValue({
+      id: "p3",
+      type: "ROUTE",
+      userId: "u1",
+      validityScore: 60,
+      validityTier: "Verified",
+      user: { id: "u1", userName: "sharer" },
+    })
+
+    const res = await POST(
+      postReq({ ...validPayload, type: "ROUTE", title: "Accra to Kumasi express" })
+    )
+    expect(res.status).toBe(201)
+    expect(getFollowerIds).toHaveBeenCalledWith("u1")
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "NEW_ROUTE", postId: "p3" })
+    )
   })
 
   it("returns 500 on unexpected database failure", async () => {
@@ -191,6 +217,7 @@ describe("GET /api/posts", () => {
           type: "ROUTE",
           postLikes: { some: { userId: "u9", type: "LIKE" } },
           postBookmarks: { some: { userId: "u9" } },
+          isArchived: false,
         },
       })
     )
@@ -201,6 +228,42 @@ describe("GET /api/posts", () => {
     await GET(getReq("http://localhost/api/posts?limit=20"))
     const args = mockPrisma.post.findMany.mock.calls[0][0]
     expect(args.where).toEqual({ isArchived: false })
+  })
+
+  it("supports comma-separated types for the profile Routes tab", async () => {
+    mockAuth.mockResolvedValue(null)
+    mockPrisma.post.findMany.mockResolvedValue([])
+    await GET(getReq("http://localhost/api/posts?userId=u1&type=ROUTE,ROUTE_RESPONSE&limit=20"))
+    const args = mockPrisma.post.findMany.mock.calls[0][0]
+    expect(args.where).toEqual({
+      userId: "u1",
+      type: { in: ["ROUTE", "ROUTE_RESPONSE"] },
+      isArchived: false,
+    })
+  })
+
+  it("ignores invalid type values instead of filtering everything out", async () => {
+    mockAuth.mockResolvedValue(null)
+    mockPrisma.post.findMany.mockResolvedValue([])
+    await GET(getReq("http://localhost/api/posts?userId=u1&type=BOGUS&limit=20"))
+    const args = mockPrisma.post.findMany.mock.calls[0][0]
+    expect(args.where).toEqual({ userId: "u1", isArchived: false })
+  })
+
+  it("returns only archived posts for the owner's archived tab", async () => {
+    mockAuth.mockResolvedValue({ id: "u1" })
+    mockPrisma.post.findMany.mockResolvedValue([])
+    await GET(getReq("http://localhost/api/posts?userId=u1&archived=true&limit=20"))
+    const args = mockPrisma.post.findMany.mock.calls[0][0]
+    expect(args.where).toEqual({ userId: "u1", isArchived: true })
+  })
+
+  it("never leaks archived posts to non-owners, even when requested", async () => {
+    mockAuth.mockResolvedValue({ id: "u2" })
+    mockPrisma.post.findMany.mockResolvedValue([])
+    await GET(getReq("http://localhost/api/posts?userId=u1&archived=true&limit=20"))
+    const args = mockPrisma.post.findMany.mock.calls[0][0]
+    expect(args.where).toEqual({ userId: "u1", isArchived: false })
   })
 
   it("returns 503 when the database is unavailable", async () => {

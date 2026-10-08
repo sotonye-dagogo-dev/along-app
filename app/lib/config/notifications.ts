@@ -1,8 +1,9 @@
-import { Heart, MessageCircle, UserPlus, AtSign, Star, Award, ShieldCheck, Sparkles, ClipboardList, Reply } from "lucide-react";
+import { Heart, ThumbsDown, MessageCircle, UserPlus, AtSign, Star, Award, ShieldCheck, Sparkles, ClipboardList, Reply, Route } from "lucide-react";
 import type { NotificationTypeConfig } from "@/app/lib/types";
 
 type NotificationType =
   | "LIKE"
+  | "DISLIKE"
   | "COMMENT"
   | "FOLLOW"
   | "MENTION"
@@ -12,6 +13,7 @@ type NotificationType =
   | "WELCOME"
   | "ROUTE_REQUEST"
   | "ROUTE_RESPONSE"
+  | "NEW_ROUTE"
   | "REPORT"
   | "MODERATION";
 
@@ -21,6 +23,12 @@ export const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationTypeCon
     icon: Heart,
     color: "#EF4444",
     messageTemplate: "{actor} liked your post",
+  },
+  DISLIKE: {
+    label: "Dislike",
+    icon: ThumbsDown,
+    color: "#64748B",
+    messageTemplate: "{actor} disliked your post",
   },
   COMMENT: {
     label: "Comment",
@@ -75,6 +83,12 @@ export const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationTypeCon
     icon: Reply,
     color: "#10B981",
     messageTemplate: "{actor} responded to your route request",
+  },
+  NEW_ROUTE: {
+    label: "New route",
+    icon: Route,
+    color: "#00A862",
+    messageTemplate: "{actor} shared a new route",
   },
   REPORT: {
     label: "Report",

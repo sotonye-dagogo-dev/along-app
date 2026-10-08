@@ -33,6 +33,7 @@ interface PostItem {
   comments: number
   tags: string[]
   createdAt: string
+  type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
   user: { userName: string; firstName: string; lastName: string }
 }
 
@@ -69,15 +70,19 @@ export default function OtherProfilePage() {
     `/api/users/by-username/${encodeURIComponent(userName)}`,
     { ttlSec: 120, enabled: ready }
   )
-  // Per-tab post lists for this profile (posts / liked / routes)
+  // Per-tab post lists for this profile (posts / routes / requests / liked).
+  // "routes" = actual routes (ROUTE + ROUTE_RESPONSE); requests live on
+  // their own tab so they never masquerade as routes.
   const profileId = profileRes?.user?.id
   const tabQuery = !profileId
     ? "/api/posts?limit=20"
     : activeTab === "liked"
       ? `/api/posts?limit=20&likedBy=${profileId}`
       : activeTab === "routes"
-        ? `/api/posts?limit=20&userId=${profileId}&type=ROUTE`
-        : `/api/posts?limit=20&userId=${profileId}`
+        ? `/api/posts?limit=20&userId=${profileId}&type=ROUTE,ROUTE_RESPONSE`
+        : activeTab === "requests"
+          ? `/api/posts?limit=20&userId=${profileId}&type=ROUTE_REQUEST`
+          : `/api/posts?limit=20&userId=${profileId}`
   const { data: postsData, loading: postsLoading } = useCachedFetch<{ posts: PostItem[] }>(
     ready && profileId ? `profile-tab:${profileId}:${activeTab}` : null,
     tabQuery,
@@ -247,7 +252,7 @@ export default function OtherProfilePage() {
         )}
 
         <div className="flex border-b border-border mb-4">
-          {["posts", "liked", "routes"].map((tab) => (
+          {["posts", "routes", "requests", "liked"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -286,6 +291,16 @@ export default function OtherProfilePage() {
               <div className="text-[11px] text-text-muted flex items-center gap-2">
                 <span className="inline-flex items-center gap-1"><ThumbsUp size={12} /> {post.likes}</span>
                 <span className="inline-flex items-center gap-1"><MessageCircle size={12} /> {post.comments}</span>
+                {post.type === "ROUTE_REQUEST" && (
+                  <span className="inline-flex px-1.5 py-0.5 radius-pill text-[10px] font-semibold bg-warning text-warning-text border border-warning-border">
+                    Request
+                  </span>
+                )}
+                {post.type === "ROUTE_RESPONSE" && (
+                  <span className="inline-flex px-1.5 py-0.5 radius-pill text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border">
+                    Response
+                  </span>
+                )}
                 {post.tags.slice(0, 2).map((t) => (
                   <Link key={t} href={`/explore?tag=${encodeURIComponent(t)}`} onClick={(e) => e.stopPropagation()} className="inline-flex px-1.5 py-0.5 radius-pill text-[10px] font-medium bg-bg-elevated text-text-secondary no-underline hover:bg-primary-muted hover:text-primary">#{t}</Link>
                 ))}

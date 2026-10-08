@@ -10,12 +10,14 @@ import { prisma } from "@/app/lib/db/prisma";
 export interface CreateNotificationInput {
   type:
     | "LIKE"
+    | "DISLIKE"
     | "COMMENT"
     | "FOLLOW"
     | "MENTION"
     | "WELCOME"
     | "ROUTE_REQUEST"
     | "ROUTE_RESPONSE"
+    | "NEW_ROUTE"
     | "REWARD"
     | "BADGE"
     | "VERIFIED"
@@ -27,6 +29,12 @@ export interface CreateNotificationInput {
   commentId?: string;
   /** Users who receive this notification. Duplicates/self are filtered out. */
   recipientIds: string[];
+  /**
+   * Allow a self-notification (actor === recipient). Only used by WELCOME,
+   * which is addressed to the new user themselves; every other type keeps
+   * the self-filter so users never notify themselves.
+   */
+  allowSelf?: boolean;
 }
 
 /**
@@ -34,7 +42,9 @@ export interface CreateNotificationInput {
  * Returns the notification id, or null if creation failed / no recipients.
  */
 export async function createNotification(input: CreateNotificationInput): Promise<string | null> {
-  const recipientIds = [...new Set(input.recipientIds.filter(Boolean))].filter((id) => id !== input.actorId);
+  const recipientIds = [...new Set(input.recipientIds.filter(Boolean))].filter(
+    (id) => input.allowSelf || id !== input.actorId
+  );
   if (recipientIds.length === 0) return null;
 
   try {

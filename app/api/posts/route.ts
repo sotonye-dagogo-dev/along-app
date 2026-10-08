@@ -131,7 +131,13 @@ export async function POST(request: NextRequest) {
     qstashService.publishFeedInvalidation({ followersOfUserId: user.id as string, userIds: [user.id as string] });
     qstashService.publishValidityRecompute({ postId: post.id });
 
-    // Fan-out notifications for route requests/responses — non-blocking, never throws
+    // Fan-out notifications for route requests/responses/uploads —
+    // non-blocking, never throws.
+    // - ROUTE_REQUEST → followers (someone you follow needs a route).
+    // - ROUTE_RESPONSE → the request author (your request got an answer).
+    // - ROUTE / ROUTE_RESPONSE → followers as NEW_ROUTE (someone you follow
+    //   shared a route). The request author is excluded from the follower
+    //   fan-out so they never get two notifications for one response.
     try {
       const { createNotification, getFollowerIds } = await import("@/app/lib/services/notificationService");
       const actorName = `${(user as { firstName?: string }).firstName ?? ""} ${(user as { lastName?: string }).lastName ?? ""}`.trim() || "Someone";
@@ -151,6 +157,23 @@ export async function POST(request: NextRequest) {
           message: `${actorName} responded to your route request: "${title}"`,
           postId: post.id,
           recipientIds: [quotedAuthorId],
+        });
+        const followers = (await getFollowerIds(user.id as string)).filter((id) => id !== quotedAuthorId);
+        void createNotification({
+          type: "NEW_ROUTE",
+          actorId: user.id as string,
+          message: `${actorName} shared a new route: "${title}"`,
+          postId: post.id,
+          recipientIds: followers,
+        });
+      } else if (type === "ROUTE" || type === "ROUTE_RESPONSE") {
+        const followers = await getFollowerIds(user.id as string);
+        void createNotification({
+          type: "NEW_ROUTE",
+          actorId: user.id as string,
+          message: `${actorName} shared a new route: "${title}"`,
+          postId: post.id,
+          recipientIds: followers,
         });
       }
     } catch { /* notifications are non-critical */ }
@@ -183,26 +206,38 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get("cursor");
     const limit = Math.min(Number(searchParams.get("limit")) || 10, 50);
     const userId = searchParams.get("userId");
-    const type = searchParams.get("type");
+    const typeParam = searchParams.get("type");
     const likedBy = searchParams.get("likedBy");
     const bookmarkedBy = searchParams.get("bookmarkedBy");
+    // Owner-only archived library (?archived=true with ?userId=self). Any
+    // other viewer asking for it silently gets the normal (unarchived) list.
+    const archivedOnly = searchParams.get("archived") === "true";
 
     const validTypes = new Set(["ROUTE", "ROUTE_REQUEST", "ROUTE_RESPONSE"]);
+    // Comma-separated types power the profile Routes tab
+    // (?type=ROUTE,ROUTE_RESPONSE = actual routes, requests excluded).
+    const requestedTypes = (typeParam ?? "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => validTypes.has(t));
     const where: Record<string, unknown> = {};
     if (userId) where.userId = userId;
-    if (type && validTypes.has(type)) where.type = type;
+    if (requestedTypes.length === 1) where.type = requestedTypes[0];
+    else if (requestedTypes.length > 1) where.type = { in: requestedTypes };
     if (likedBy) where.postLikes = { some: { userId: likedBy, type: "LIKE" } };
     if (bookmarkedBy) where.postBookmarks = { some: { userId: bookmarkedBy } };
 
     // Archived posts stay hidden from public listings. Exception: an owner
-    // browsing their own profile (?userId=self) still sees them for restore.
+    // browsing their own profile (?userId=self) gets the archive library via
+    // ?archived=true, and their normal tabs exclude archived posts.
     let viewerId: string | null = null;
     try {
       const viewer = await getUserFromRequest();
       viewerId = (viewer?.id as string | undefined) ?? null;
     } catch { viewerId = null; }
     const ownerView = !!userId && !!viewerId && userId === viewerId;
-    if (!ownerView) where.isArchived = false;
+    if (ownerView && archivedOnly) where.isArchived = true;
+    else where.isArchived = false;
 
     const fetchArgs = {
       ...(Object.keys(where).length > 0 ? { where } : {}),

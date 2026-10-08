@@ -54,24 +54,27 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }),
     ]);
 
-    // Create notification for LIKE only
-    if (type === "LIKE") {
-      const post = await prisma.post.findUnique({ where: { id }, select: { userId: true, title: true } });
-      if (post && post.userId !== userId && user.firstName && user.lastName) {
-        await prisma.notification.create({
-          data: {
-            type: "LIKE",
-            actorId: userId,
-            postId: id,
-            message: `${user.firstName} ${user.lastName} liked your post`,
-            recipients: { create: { userId: post.userId } },
-          },
-        });
-      }
-      if (post && post.userId !== userId) {
-        qstashService.publishRewardsAward({ userId: post.userId, actionKey: "RECEIVE_LIKE" });
-        qstashService.publishFeedInvalidation({ userIds: [post.userId] });
-      }
+    // Engagement notifications (LIKE + DISLIKE) go through the central
+    // service so per-user notification caches are invalidated. Self
+    // interactions never notify. Rewards stay like-only (RECEIVE_LIKE).
+    const post = await prisma.post.findUnique({ where: { id }, select: { userId: true, title: true } });
+    if (post && post.userId !== userId && user.firstName && user.lastName) {
+      const { createNotification } = await import("@/app/lib/services/notificationService");
+      const actorName = `${user.firstName} ${user.lastName}`;
+      void createNotification({
+        type,
+        actorId: userId,
+        message:
+          type === "LIKE"
+            ? `${actorName} liked your post`
+            : `${actorName} disliked your post`,
+        postId: id,
+        recipientIds: [post.userId],
+      });
+    }
+    if (type === "LIKE" && post && post.userId !== userId) {
+      qstashService.publishRewardsAward({ userId: post.userId, actionKey: "RECEIVE_LIKE" });
+      qstashService.publishFeedInvalidation({ userIds: [post.userId] });
     }
 
     return NextResponse.json({ liked: true, type }, { status: 200 });

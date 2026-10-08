@@ -147,7 +147,7 @@ export default function AdminBugsPage() {
           <div key={bug.id} className="bg-bg-card border border-border radius-lg p-4 shadow-xs">
             <div className="flex items-start justify-between mb-2">
               <div className="flex items-center gap-2">
-                {isReport ? <Flag size={14} className="text-warning shrink-0" /> : <Bug size={14} className="text-text-muted shrink-0" />}
+                {isReport ? <Flag size={14} className="text-warning-text shrink-0" /> : <Bug size={14} className="text-text-muted shrink-0" />}
                 <h3 className="text-sm font-semibold">{bug.title}</h3>
               </div>
               <span className={`inline-flex px-2 py-0.5 radius-pill text-[10px] font-semibold ${statusColors[bug.status] ?? "bg-bg-elevated text-text-secondary"}`}>

@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale
 
@@ -613,6 +613,28 @@ Directive close-out: delete/edit/archive for posts, comments and route requests 
 - Edited: `schema.prisma`, `postActions.ts`, `notifications.ts` (+service type), `apiRegistry.ts`, `config/index.ts`, `feedService.ts`, `searchService.ts`, post/comment/admin APIs, `PostCard.tsx`, `CommentList.tsx`, `posts/[id]/page.tsx`, `ShareRouteModal.tsx`, `TrustBadge.tsx`, `home/page.tsx`, `SearchPage.tsx`, admin posts/bugs pages, `sitemap.ts`, `feedStream.ts`, `posts.test.ts`
 
 **QA gate (this runner, node_modules via `npm ci`): tsc 0 errors; jest 17 suites / 160 tests pass; next build clean; lint clean for touched files (fixed 1 unused var + 1 exhaustive-deps during the gate).**
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+## 2026-10-08 — Execute-Feature: Notification/Referral/Profile Tightening (Sprint 14)
+
+**Summary:**
+Directive close-out: post nature (ROUTE / ROUTE_REQUEST / ROUTE_RESPONSE) preserved through edit/archive/admin operations; profile Archived tab + Routes tab showing actual routes (ROUTE + ROUTE_RESPONSE) with requests on their own tab; full notification coverage (mentions, likes, dislikes, comments, request responses, follower uploads/requests); invite cap converted from a growth limit to a send-points cap with auth-type-agnostic referrals (email+password and Google OAuth); leaderboard confirmed zero-point-inclusive; route-request flag contrast fixed in both modes. All non-breaking (additive migration `20261008000001_notification_coverage`, P2022-style fail-safe notification writes), config/metadata-driven, ACID-preserving.
+
+**Completed:**
+- Schema: `NotificationType` += DISLIKE/NEW_ROUTE; idempotent migration SQL with duplicate_object guards; regenerated Prisma client
+- Config: `MODERATION_CONFIG.immutablePostFields` (["type","quotedPostId"]); DISLIKE/NEW_ROUTE in `NOTIFICATION_REGISTRY` (ThumbsDown slate, Route green); `INVITE_CONFIG` growth-policy docs (cap send-credit, never linking)
+- Services: `mentionService.ts` (extract/diff/resolve, 10-mention cap, never throws); `referralService.ts` (resolveReferral + linkReferralRewards: ACCEPTED always, SENT inside cap, self-referral guard); `createNotification` `allowSelf` (WELCOME fix)
+- APIs: post PATCH strips immutable fields; GET /api/posts comma-separated `type` + owner-only `?archived=true` (non-owners silently unarchived); POST /api/posts NEW_ROUTE fan-out (request-author excluded from double-notify); like route LIKE+DISLIKE via service; comments POST (COMMENT with commentId + MENTION fan-out, post-author excluded) and PATCH (edit-diff mentions); register via referralService; Google callback `state=ref:` linking (new + first-time-OAuth) + welcome; invite API unchanged (field-compatible)
+- UI: own/other profile tabs + type/archived pills; register/login `?ref=` forwarding (effect-based, no hydration mismatch) + cross-page ref links; invite page "Bonus Invites Left" + unlimited-invite copy; notifications page DISLIKE/NEW_ROUTE/REPORT/MODERATION icons; warning pairing fix (`bg-warning text-warning-text border-warning-border`) on PostCard, detail, RequestRouteModal, drafts panel, ShareRouteModal banner, admin pills, bugs flag, invite ranks
+- Tests: new `post-nature.test.ts` (4), `mentionService.test.ts` (8), `referralService.test.ts` (6), `leaderboard.test.ts` (2); extended `posts.test.ts` (ROUTE fan-out, multi-type, archived owner/non-owner) + `mutations.test.ts` (service-routed like/dislike/comment/mention)
+
+**Key Changes:**
+- New: `prisma/migrations/20261008000001_notification_coverage/`, `app/lib/services/mentionService.ts`, `app/lib/services/referralService.ts`, `app/__tests__/api/post-nature.test.ts`, `app/__tests__/api/leaderboard.test.ts`, `app/__tests__/services/mentionService.test.ts`, `app/__tests__/services/referralService.test.ts`
+- Edited: `schema.prisma`, `moderation.ts`, `notifications.ts`, `inviteConfig.ts`, `notificationService.ts`, `app/api/posts/[id]/route.ts` (PATCH strip), `app/api/posts/route.ts` (GET filters + NEW_ROUTE fan-out), like/comments/commentId/register/google-callback routes, register/login pages, own/other profile pages, invite page, notifications page, PostCard, posts/[id] page, RequestRouteModal, RouteDraftsPanel, ShareRouteModal, admin posts/bugs pages, `posts.test.ts`, `mutations.test.ts`
+
+**QA gate (this runner, node_modules via `npm ci`): tsc 0 errors (after `prisma generate` for new enum values); jest 21 suites / 188 tests pass; next build clean; next lint 11 pre-existing errors / 0 new.**
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.

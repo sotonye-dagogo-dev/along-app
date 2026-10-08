@@ -50,6 +50,10 @@ export default function InvitePage() {
 
   const inviteUrl = data ? `${window.location.origin}/register?ref=${data.inviteCode}` : ""
 
+  // Send-credit bonus window: the first `maxInvites` converted invites also
+  // earn send points — inviting itself is unlimited (see INVITE_CONFIG).
+  const bonusLeft = data ? Math.max(0, data.maxInvites - data.inviteCount) : 0
+
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(inviteUrl).then(() => {
       setCopied(true)
@@ -90,17 +94,20 @@ export default function InvitePage() {
             <div className="text-xs text-text-muted">
               {data.pointsPerInvite} pts per invite sent &bull; {data.pointsPerAccepted} pts per accepted invite
             </div>
+            <div className="text-xs text-text-muted mt-0.5">
+              Invite as many friends as you like — bonus send points cover your first {data.maxInvites} accepted invites.
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-4 mb-4">
           <div className="flex-1 bg-bg-card border border-border radius-md p-3 text-center">
             <div className="text-2xl font-bold text-primary">{data.inviteCount}</div>
-            <div className="text-[11px] text-text-muted uppercase tracking-wider">Invites Sent</div>
+            <div className="text-[11px] text-text-muted uppercase tracking-wider">Invites Accepted</div>
           </div>
           <div className="flex-1 bg-bg-card border border-border radius-md p-3 text-center">
-            <div className="text-2xl font-bold text-primary">{data.maxInvites}</div>
-            <div className="text-[11px] text-text-muted uppercase tracking-wider">Max Invites</div>
+            <div className="text-2xl font-bold text-primary">{bonusLeft}</div>
+            <div className="text-[11px] text-text-muted uppercase tracking-wider">Bonus Invites Left</div>
           </div>
         </div>
 
@@ -139,7 +146,7 @@ export default function InvitePage() {
 
       <AppCard className="p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Trophy size={18} className="text-warning-border" />
+          <Trophy size={18} className="text-warning-text" />
           <h2 className="text-base font-semibold">Leaderboard</h2>
         </div>
         {leaderboard.length === 0 ? (
@@ -148,7 +155,7 @@ export default function InvitePage() {
           <div className="flex flex-col gap-2">
             {leaderboard.map((entry) => (
               <div key={entry.id} className="flex items-center gap-3 px-3 py-2 radius-md hover:bg-bg-elevated transition-colors duration-fast">
-                <span className={`w-6 text-center text-xs font-bold ${entry.rank <= 3 ? "text-warning-border" : "text-text-muted"}`}>
+                <span className={`w-6 text-center text-xs font-bold ${entry.rank <= 3 ? "text-warning-text" : "text-text-muted"}`}>
                   #{entry.rank}
                 </span>
                 <Link href={`/profile/${entry.userName}`} className="no-underline">

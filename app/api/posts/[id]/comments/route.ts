@@ -61,22 +61,49 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
       await tx.post.update({ where: { id }, data: { comments: { increment: 1 } } });
 
-      // Create notification for COMMENT
-      const post = await tx.post.findUnique({ where: { id }, select: { userId: true, title: true } });
-      if (post && post.userId !== userId && user.firstName && user.lastName) {
-        await tx.notification.create({
-          data: {
-            type: "COMMENT",
-            actorId: userId,
-            postId: id,
-            message: `${user.firstName} ${user.lastName} commented on your post`,
-            recipients: { create: { userId: post.userId } },
-          },
-        });
-      }
-
       return c;
     });
+
+    // Post-commit notifications (non-blocking, never fail the comment):
+    // COMMENT to the post author + MENTION to every @username referenced.
+    try {
+      const { createNotification } = await import("@/app/lib/services/notificationService");
+      const { extractMentionedUsernames, resolveMentionedUserIds } = await import(
+        "@/app/lib/services/mentionService"
+      );
+      const actorName =
+        `${(user as { firstName?: string }).firstName ?? ""} ${(user as { lastName?: string }).lastName ?? ""}`.trim() ||
+        "Someone";
+      const post = await prisma.post.findUnique({ where: { id }, select: { userId: true, title: true } });
+      if (post && post.userId !== userId) {
+        void createNotification({
+          type: "COMMENT",
+          actorId: userId,
+          message: `${actorName} commented on your post`,
+          postId: id,
+          commentId: comment.id,
+          recipientIds: [post.userId],
+        });
+      }
+      const mentioned = extractMentionedUsernames(parsed.data.text).filter(
+        (u) => u !== ((user as { userName?: string }).userName ?? "").toLowerCase()
+      );
+      if (mentioned.length > 0) {
+        const mentionedIds = (await resolveMentionedUserIds(mentioned)).filter(
+          (mid) => mid !== userId && mid !== post?.userId
+        );
+        if (mentionedIds.length > 0) {
+          void createNotification({
+            type: "MENTION",
+            actorId: userId,
+            message: `${actorName} mentioned you in a comment`,
+            postId: id,
+            commentId: comment.id,
+            recipientIds: mentionedIds,
+          });
+        }
+      }
+    } catch { /* notifications are non-critical */ }
 
     return NextResponse.json({ comment }, { status: 201 });
   } catch (error) {

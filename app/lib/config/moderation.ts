@@ -34,6 +34,14 @@ export interface ModerationConfig {
     navigationGuide: boolean;
     trustScore: boolean;
   };
+  /**
+   * Post nature preservation: these fields are set once at creation and are
+   * stripped from every edit/archive payload server-side, so operations like
+   * editing or archiving can never turn a ROUTE into a ROUTE_REQUEST (or
+   * re-parent a ROUTE_RESPONSE). The undo-restore replay re-sends the
+   * snapshot through POST (create), where they are still honoured.
+   */
+  immutablePostFields: string[];
 }
 
 export const MODERATION_CONFIG: ModerationConfig = {
@@ -59,4 +67,5 @@ export const MODERATION_CONFIG: ModerationConfig = {
     navigationGuide: true,
     trustScore: true,
   },
+  immutablePostFields: ["type", "quotedPostId"],
 };

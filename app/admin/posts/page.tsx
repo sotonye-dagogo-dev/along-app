@@ -171,7 +171,7 @@ export default function AdminPostsPage() {
                       </span>
                     )}
                     {(p._count?.bugReports ?? 0) > 0 && (
-                      <span className="inline-flex items-center gap-0.5 px-1.5 py-px radius-pill text-[10px] font-semibold bg-warning/15 text-warning">
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-px radius-pill text-[10px] font-semibold bg-warning text-warning-text border border-warning-border">
                         <Flag size={9} /> {p._count?.bugReports} report{(p._count?.bugReports ?? 0) === 1 ? "" : "s"}
                       </span>
                     )}
