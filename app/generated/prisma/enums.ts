@@ -60,6 +60,15 @@ export const ReviewStatus = {
 export type ReviewStatus = (typeof ReviewStatus)[keyof typeof ReviewStatus]
 
 
+export const PostType = {
+  ROUTE: 'ROUTE',
+  ROUTE_REQUEST: 'ROUTE_REQUEST',
+  ROUTE_RESPONSE: 'ROUTE_RESPONSE'
+} as const
+
+export type PostType = (typeof PostType)[keyof typeof PostType]
+
+
 export const LikeType = {
   LIKE: 'LIKE',
   DISLIKE: 'DISLIKE'
@@ -72,7 +81,13 @@ export const NotificationType = {
   LIKE: 'LIKE',
   COMMENT: 'COMMENT',
   FOLLOW: 'FOLLOW',
-  MENTION: 'MENTION'
+  MENTION: 'MENTION',
+  WELCOME: 'WELCOME',
+  ROUTE_REQUEST: 'ROUTE_REQUEST',
+  ROUTE_RESPONSE: 'ROUTE_RESPONSE',
+  REWARD: 'REWARD',
+  BADGE: 'BADGE',
+  VERIFIED: 'VERIFIED'
 } as const
 
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]

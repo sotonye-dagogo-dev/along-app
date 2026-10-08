@@ -121,6 +121,9 @@ model Post {
   id              String   @id @default(cuid())
   userId          String
   title           String
+  description     String?
+  type            PostType @default(ROUTE)
+  quotedPostId    String?
   routes          Json // Array of Route objects
   images          String[] // Array of Cloudinary URLs
   tags            String[]
@@ -146,6 +149,8 @@ model Post {
 
   // Relations
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quotedPost      Post?            @relation("PostQuote", fields: [quotedPostId], references: [id], onDelete: SetNull)
+  quotes          Post[]           @relation("PostQuote")
   postComments    Comment[]
   postLikes       Like[]
   postBookmarks   Bookmark[]
@@ -155,6 +160,8 @@ model Post {
   bugReports      BugReport[]
 
   @@index([userId])
+  @@index([type])
+  @@index([quotedPostId])
   @@index([validityScore])
   @@index([validityTier])
   @@index([isPlatformGen])
@@ -163,6 +170,15 @@ model Post {
   @@index([endLat, endLng])
   @@index([createdAt(sort: Desc)])
   @@index([tags])
+}
+
+// Post type discriminator: ROUTE = normal shared route, ROUTE_REQUEST = a user
+// asking the community for a route, ROUTE_RESPONSE = a route posted to satisfy
+// a ROUTE_REQUEST (linked via quotedPostId).
+enum PostType {
+  ROUTE
+  ROUTE_REQUEST
+  ROUTE_RESPONSE
 }
 
 // Comment Model
@@ -250,6 +266,12 @@ enum NotificationType {
   COMMENT
   FOLLOW
   MENTION
+  WELCOME
+  ROUTE_REQUEST
+  ROUTE_RESPONSE
+  REWARD
+  BADGE
+  VERIFIED
 }
 
 // NotificationRecipient Model (Many-to-many between Notification and User)

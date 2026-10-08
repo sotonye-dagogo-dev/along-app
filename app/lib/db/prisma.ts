@@ -20,6 +20,7 @@ function resolveDatabaseUrl(): string {
 }
 
 function createPrismaClient(): PrismaClient {
+  /* eslint-disable @typescript-eslint/no-explicit-any -- runtime constructor options differ per delivery mode (adapter vs accelerateUrl) */
   const dbUrl = resolveDatabaseUrl().trim();
 
   // Build-time fallback: no DB URL configured (e.g. `next build` on CI without env)
@@ -36,6 +37,7 @@ function createPrismaClient(): PrismaClient {
 
   const adapter = new PrismaPg({ connectionString: dbUrl });
   return new PrismaClient({ adapter } as any);
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();

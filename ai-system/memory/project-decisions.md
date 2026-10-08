@@ -1,8 +1,8 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-08 (session 5)
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -282,3 +282,26 @@ Transact Marketplace and Tega Events integrations were fully implemented but the
 - All integration code stays in the repository — compilation passes but routes are unreachable via normal UX
 - Re-activation requires only: re-add nav item + re-add component import
 - Document frozen modules with `[FROZEN]` tag in architecture docs
+
+---
+
+## State Strategy: No Redux/Redux-Observables — Keep memoryCache + useCachedFetch + feedStream
+
+**Decision:** Keep the current client state stack (`memoryCache` + `useCachedFetch` for server reads, `feedStream` (RxJS) for the home feed, `AuthContext` for session, local component state for UI). Do not introduce redux, redux-observables, Zustand/Jotai, or a third-party data-fetching library (SWR/React Query).
+**Date:** 2026-10-07
+**Made by:** AI agent (opencode) — H3 review, evidence-based
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Evidence from the codebase: `package.json` contains `rxjs@^7.8.1` and no redux/zustand/jotai/swr/react-query dependencies; `grep` for `createStore|useSelector|useDispatch|configureStore|@reduxjs` across `app/` returns zero matches — there is no existing redux surface to extend. The dominant client state class is server data (feed, notifications, analytics, profiles), which is already handled by `app/lib/hooks/useCachedFetch.ts` (per-key envelopes, TTL freshness, in-flight request dedup, manual `mutate`) over `app/lib/cache/memoryCache.ts`, with viewer-scoped cache keys. Streaming/subscription behavior (hydration, polling, load-more, hidden-tab pause, persistence) is already implemented once in `app/lib/streams/feedStream.ts` using an RxJS `Subject` — the exact capability redux-observables would provide, without a global store. Introducing a redux store would duplicate server state client-side (two sources of truth, staleness bugs), require migrating every feature that currently works with local state, and add epic/middleware plumbing with no capability gap.
+
+**Alternatives Considered:**
+- **Redux + redux-observables**: Rejected — no existing store to build on; epics would mostly re-implement feedStream and useCachedFetch network effects; global client copy of server data conflicts with the cache-key strategy already built
+- **Zustand/Jotai (lightweight global stores)**: Rejected — the only plausible global UI state (feed, auth) already has dedicated homes; adding stores would fragment the caching story
+- **SWR / React Query library**: Rejected — `useCachedFetch` already implements the needed subset (TTL, dedup, mutate); migration churn with no feature gain
+
+**Implications:**
+- New client state follows existing patterns: server reads → `useCachedFetch` + namespaced `memoryCache` keys (viewer-scoped where user-specific); event/feed streams → `feedStream`-style RxJS subject; auth → `AuthContext`; everything else → component state
+- Any future proposal to add a global store must reference this decision and demonstrate a concrete capability gap
+- Revisit only if requirements emerge for cross-tree realtime collaboration or complex client-only global state beyond feeds

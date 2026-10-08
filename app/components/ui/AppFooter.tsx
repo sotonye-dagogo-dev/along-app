@@ -6,7 +6,7 @@ export function AppFooter() {
   return (
     <footer className="border-t border-border bg-bg-card">
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
-        <div className="grid grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-8">
           {FOOTER_CONFIG.columns.map((column) => (
             <div key={column.title}>
               <h3 className="font-semibold text-sm mb-3 text-text-primary">

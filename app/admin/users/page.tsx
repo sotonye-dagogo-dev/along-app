@@ -80,12 +80,12 @@ export default function AdminUsersPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Users</h1>
           <div className="text-sm text-text-secondary">Manage registered users</div>
         </div>
-        <div className="w-64">
+        <div className="w-full sm:w-64">
           <AppInput
             placeholder="Search users..."
             value={search}

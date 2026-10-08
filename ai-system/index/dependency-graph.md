@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-09-15
-> - last-verified-against-code: 2026-09-15
+> - last-updated-by: execute-feature 2026-10-08 (search E2E)
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -26,7 +26,11 @@ Next.js App Router (pages/layouts)
 Page Components (app/(auth|dashboard|admin|public|admin)/)
     → UI Components (app/components/ui/App*)
     → Feature Components (app/components/features/*)
+        → posts/RequestRouteModal (route-request composer, response-mode ShareRouteModal)
+        → suggestions/EndlessCarousel + SuggestionsRail (mobile, xl:hidden) + FollowButton
+        → ui/SuggestionsPanel (live /api/suggestions: who-to-follow, open requests, trending tags)
     → App-level Hooks (app/hooks/useAuth, useFeedInteractions)
+    → Client Cache (app/lib/cache/memoryCache + app/lib/hooks/useCachedFetch)
     → Server Utilities (app/lib/utils/metadata, structuredData, blog)
 
 API Routes (app/api/*)
@@ -67,6 +71,20 @@ QStash Workers (app/api/workers/*)
     → Signature verification via Receiver
     → Prisma (feed invalidation, rewards, validity)
 
+Suggestions API Route (app/api/suggestions/*)
+    → Prisma (Post ROUTE_REQUEST/ROUTE + Follow)
+    → Redis (suggestions cache, 1800s TTL)
+    → Auth utility (getUserFromRequest)
+
+Bookmarks API Route (app/api/bookmarks/*)
+    → Prisma (Bookmark model, per-tab post/liked/bookmarks/routes filtering)
+    → Auth utility (getUserFromRequest)
+
+Client Cache Layer (app/lib/cache/memoryCache + app/lib/hooks/useCachedFetch)
+    → TTL Map with prefix invalidation, never-throw (mirrors redis.ts semantics)
+    → read-through + stale-while-revalidate + in-flight request dedup
+    → Consumers: home feed (hydrates feedStream, pauses poll when tab hidden), notifications, analytics, post detail, profile, explore
+
 Service Layer (app/lib/services/*)
     → BaseRepository<T>
     → Config Registries (app/lib/config/*)
@@ -78,6 +96,7 @@ Service Layer (app/lib/services/*)
 
 Config Registries (app/lib/config/*)
     → (no app dependencies — pure config objects)
+    → 27 files incl. reviews.ts (SITE_REVIEWS for About page)
 
 Client Utilities (app/lib/utils/*)
     → pushClient → navigator.serviceWorker, fetch (/api/push/*)
@@ -105,10 +124,10 @@ FeedService
     → Redis (feed caching)
     → Config: feedAlgorithm, cache
 
-SearchService
-    → PostModel, UserModel (Prisma full-text search)
-    → Redis (search cache)
-    → Config: cache
+SearchService (`app/lib/services/searchService.ts`, live 2026-10-08 — powers `GET /api/search`)
+    → PostModel, UserModel (Prisma `contains`/`insensitive`, no migration; P2022 avatarConfig fallback)
+    → Redis (unified search cache, 120s TTL, never-throw)
+    → Config: cache (CACHE_KEYS.search, CACHE_TTL.searchResults), rateLimits (search bucket)
 
 SuggestionsService
     → UserModel, FollowModel (Prisma)
@@ -134,9 +153,19 @@ RouteTracingService
 
 NotificationService
     → NotificationModel, PushSubscriptionModel (Prisma)
+    → Fan-out: ROUTE_REQUEST → followers; ROUTE_RESPONSE → requester (non-blocking)
+    → WELCOME notification on signup (non-blocking)
     → sendPushNotification (utility)
     → QStash (background delivery)
     → Config: notifications, rateLimits
+
+EmailService
+    → Resend (transactional: verification, password reset)
+    → Non-blocking via waitUntil on hot paths (register, forgot-password)
+
+OtpStore / ResetTokenStore
+    → Redis via shared wrapper (1.5s timeout, in-memory Map fallback)
+    → PasswordResetToken (Prisma, durable DB tokens — survives Redis loss; fixed Sept 29 "link expired" bug)
 
 PushSubscriptionService
     → PushSubscriptionModel (Prisma)

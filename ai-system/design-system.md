@@ -1,11 +1,11 @@
 # Design System
 
 > **Metadata**
-> - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08
+> - last-updated-by: execute-feature 2026-10-08
+> - last-verified-against-code: 2026-10-08 (globals.css @theme, app/components/ui/ 42 files, DashboardNav MOBILE_TABS, zero antd imports in app/)
 > - staleness-policy: re-verify if UI components or styling dependencies change
 
-> **Overview:** Along uses a dual design system — Ant Design 5 for complex UI components (tables, modals, forms, navigation) and Tailwind CSS 4 for layout, spacing, and utility styling. A universal component library of App* wrappers (AppButton, AppCard, AppInput, etc.) abstracts raw Ant Design imports, ensuring consistent theming and preventing direct Ant Design usage outside of `app/components/ui/`. Color tokens are defined as CSS custom properties supporting light and dark modes via a `class`-based dark mode toggle. Zero emoji policy — all icons use Lucide React exclusively.
+> **Overview:** Along uses Tailwind CSS 4 (CSS-first `@theme` tokens in `app/globals.css`) plus a universal library of App* components (`app/components/ui/`, 42 files) built on Tailwind + Lucide React. `antd@^5.23.3` remains a declared dependency in `package.json` but is NOT imported anywhere in `app/` (verified 2026-10-08: zero `antd` / `@ant-design` imports) — App* wrappers do not wrap Ant Design in the current code. Color tokens are defined as CSS custom properties supporting light and dark modes via a `class`-based dark mode toggle (`ThemeProvider` toggles `dark` on document root). Zero emoji policy — all icons use Lucide React exclusively (72 `lucide-react` imports across `app/`).
 
 ---
 
@@ -13,21 +13,23 @@
 
 ### Colour Palette
 
+Verified against `app/globals.css` `@theme` 2026-10-08. Full token set (semantic success/warning/error/info, trust-level, radius, shadow scales) lives in `globals.css`; table below is the brand core.
+
 | Token | Light Mode | Dark Mode | Usage |
 |-------|-----------|-----------|-------|
-| `--color-primary` | #1677ff | #1677ff | Buttons, links, CTAs |
-| `--color-primary-light` | #e6f4ff | #1a3a5c | Background highlights |
-| `--color-primary-dark` | #0958d9 | #0958d9 | Hover states |
-| `--color-success` | #52c41a | #49aa19 | Confirmations, verified routes |
-| `--color-warning` | #faad14 | #d89614 | Warnings, pending verifications |
-| `--color-error` | #ff4d4f | #d84a4b | Errors, destructive actions |
-| `--color-background` | #ffffff | #141414 | Page background |
-| `--color-foreground` | #1a1a2e | #e5e7eb | Body text |
-| `--color-border` | #e5e7eb | #303030 | Dividers, borders |
-| `--color-muted` | #6b7280 | #a0a0a0 | Labels, captions, secondary text |
-| `--color-bg-elevated` | #f9fafb | #1f1f1f | Elevated surfaces |
-| `--color-bg-card` | #ffffff | #1d1d1d | Card backgrounds |
-| `--color-suggestion` | #e8f5e9 | #1b3d1b | Suggested routes highlight |
+| `--color-primary` | #00623B | #00A862 (`--color-primary-dark-mode`) | Buttons, links, CTAs |
+| `--color-primary-light` | #00A862 | #00C876 (`--color-primary-light-dark`) | Background highlights |
+| `--color-primary-dark` | #004A2C | #007A48 (`--color-primary-dark-dark`) | Hover states |
+| `--color-primary-muted` | #E6F4EE | rgba(0,168,98,0.12) (`--color-primary-muted-dark`) | Muted brand backgrounds |
+| `--color-success` | #D1FAE5 (bg) / #065F46 (text) | same scale | Confirmations, verified routes |
+| `--color-warning` | #FEF3C7 (bg) / #92400E (text) | same scale | Warnings, pending verifications |
+| `--color-error` | #FEE2E2 (bg) / #7F1D1D (text) | same scale | Errors, destructive actions |
+| `--color-bg-base` | #FFFFFF | #0F0F0F (`--color-bg-base-dark`) | Page background |
+| `--color-text-primary` | #1A1A1A | #F0F0F0 (`--color-text-primary-dark`) | Body text |
+| `--color-border` | #E5E7EB | #2A2A2A (`--color-border-dark`) | Dividers, borders |
+| `--color-text-secondary` | #6B7280 | #9CA3AF | Labels, captions, secondary text |
+| `--color-bg-elevated` | #F7F7F7 | #1A1A1A (`--color-bg-elevated-dark`) | Elevated surfaces |
+| `--color-bg-card` | #FFFFFF | #1F1F1F (`--color-bg-card-dark`) | Card backgrounds |
 
 ### Typography
 
@@ -50,33 +52,33 @@ Base unit 4px: 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96
 ## Component Patterns
 
 ### Buttons
-- **Primary**: Solid `--color-primary` background, white text, border-radius `--radius-button` (8px)
-- **Secondary**: Outlined with `--color-border`, default text color
-- **Destructive**: Solid `--color-error` background, white text
+- **Primary**: Solid `--color-primary` (#00623B) background, white text, pill/rounded radius (`rounded-circle` / 8px per variant)
+- **Secondary**: Outlined with `--color-primary` border, primary text color
+- **Destructive**: Solid `--color-error-text` background, white text
 - **Ghost**: No background/border, used in navigation contexts
 - **Disabled state**: Opacity 0.4, pointer-events none
-- App* wrapper: `AppButton` — accepts Ant Design Button props + custom loading/icon variants
+- App* wrapper: `AppButton` — pure Tailwind + `lucide-react` Loader2 spinner (no Ant Design import in code; verified 2026-10-08)
 
 ### Forms
-- **Input fields**: Bordered, rounded (8px), clear focus ring using `--color-primary`
-- **Validation**: Inline error messages below the field in `--color-error` with red border
+- **Input fields**: Bordered, rounded (8px via `--radius-md`), clear focus ring using `--color-primary`
+- **Validation**: Inline error messages below the field in `--color-error-text` with red border
 - **Submit buttons**: Show loading spinner during async operations
-- App* wrappers: `AppInput`, `AppTextarea`, `AppSelect`, `ConfigDrivenForm`
+- App* wrappers: `AppInput`, `AppTextarea`, `AppSelect`, `ConfigDrivenForm` — Tailwind-based (no Ant Design Form import in code)
 
 ### Navigation
-- **Mobile**: Bottom tab bar with 5 icons (Home, Explore, Bookmarks, Notifications, Profile)
-- **Desktop**: Top nav bar with search, notifications bell, user avatar dropdown
+- **Mobile**: Bottom tab bar (`DashboardNav` MOBILE_TABS, verified 2026-10-08) — Home, Explore, Share-Route FAB (center), Bookmarks, Profile
+- **Desktop**: Collapsible sidebar (`w-60` / `w-16`) with main nav items via `filterNavItems(role, "main")` + top nav actions
 - **Admin**: Left sidebar with collapsible menu
-- Ant Design Menu component via App wrappers
+- No Ant Design Menu in code — nav is Tailwind + `lucide-react` icons + `next/link`
 
 ### Cards / Containers
-- Border-radius: `--radius-card` (12px)
-- Shadow: `--shadow-card` (0 2px 8px rgba(0,0,0,0.08))
-- Hover shadow: `--shadow-card-hover` (0 4px 16px rgba(0,0,0,0.12))
+- Border-radius: `--radius-lg` (12px) for cards; scale `--radius-xs` (4px) through `--radius-2xl` (24px), `--radius-pill`, `--radius-circle` (verified in `globals.css` 2026-10-08)
+- Shadow: `--shadow-sm` (0 2px 8px rgba(0,0,0,0.08)) for cards
+- Hover shadow: `--shadow-md` (0 4px 16px rgba(0,0,0,0.10))
 - Glass morphism variant available for overlay cards
 
 ### Modals / Dialogs
-- `AppModal` wrapper around Ant Design Modal
+- `AppModal` — Tailwind-based modal wrapper (no Ant Design Modal import in code; verified 2026-10-08)
 - Global confirm modal via `GlobalConfirmModal` context provider
 - Confirmation required for destructive actions
 - Centered, backdrop blur

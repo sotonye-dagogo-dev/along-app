@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
+
+interface CachedNotifications {
+  notifications: unknown[];
+  nextCursor: string | null;
+  unreadCount: number;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +21,16 @@ export async function GET(request: NextRequest) {
     const cursor = searchParams.get("cursor");
     const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
     const userId = user.id as string;
+
+    // First-page reads are cached (60s) — invalidation happens on every write
+    const cacheKey = CACHE_KEYS.notifications(userId, filter ?? "all");
+    if (!cursor) {
+      try {
+        const { redis } = await import("@/app/lib/db/redis");
+        const cached = await redis.get<CachedNotifications>(cacheKey);
+        if (cached) return NextResponse.json(cached, { status: 200 });
+      } catch { /* fall through to DB */ }
+    }
 
     const notifications = await prisma.notification.findMany({
       where: {
@@ -43,7 +60,16 @@ export async function GET(request: NextRequest) {
       where: { userId, read: false },
     });
 
-    return NextResponse.json({ notifications: resultNotifications, nextCursor, unreadCount }, { status: 200 });
+    const payload: CachedNotifications = { notifications: resultNotifications, nextCursor, unreadCount };
+
+    if (!cursor) {
+      try {
+        const { redis } = await import("@/app/lib/db/redis");
+        await redis.set(cacheKey, payload, { ex: CACHE_TTL.notifications });
+      } catch { /* non-critical */ }
+    }
+
+    return NextResponse.json(payload, { status: 200 });
   } catch (error) {
     console.error("List notifications error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -71,6 +97,13 @@ export async function PATCH(request: NextRequest) {
         data: { read: true },
       });
     }
+
+    // Read state changed → bust every filter variant of the list cache
+    try {
+      const { redis } = await import("@/app/lib/db/redis");
+      const { CACHE_KEYS } = await import("@/app/lib/config");
+      await redis.del(...CACHE_KEYS.notificationsAll(userId));
+    } catch { /* non-critical */ }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

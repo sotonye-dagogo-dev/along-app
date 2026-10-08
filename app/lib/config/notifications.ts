@@ -1,7 +1,17 @@
-import { Heart, MessageCircle, UserPlus, AtSign, Star, Award, ShieldCheck } from "lucide-react";
+import { Heart, MessageCircle, UserPlus, AtSign, Star, Award, ShieldCheck, Sparkles, ClipboardList, Reply } from "lucide-react";
 import type { NotificationTypeConfig } from "@/app/lib/types";
 
-type NotificationType = "LIKE" | "COMMENT" | "FOLLOW" | "MENTION" | "REWARD" | "BADGE" | "VERIFIED";
+type NotificationType =
+  | "LIKE"
+  | "COMMENT"
+  | "FOLLOW"
+  | "MENTION"
+  | "REWARD"
+  | "BADGE"
+  | "VERIFIED"
+  | "WELCOME"
+  | "ROUTE_REQUEST"
+  | "ROUTE_RESPONSE";
 
 export const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationTypeConfig> = {
   LIKE: {
@@ -45,5 +55,23 @@ export const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationTypeCon
     icon: ShieldCheck,
     color: "#10B981",
     messageTemplate: "Your route has been verified",
+  },
+  WELCOME: {
+    label: "Welcome",
+    icon: Sparkles,
+    color: "#1677FF",
+    messageTemplate: "Welcome to Along, {firstName}!",
+  },
+  ROUTE_REQUEST: {
+    label: "Route request",
+    icon: ClipboardList,
+    color: "#F97316",
+    messageTemplate: "{actor} requested a new route",
+  },
+  ROUTE_RESPONSE: {
+    label: "Route response",
+    icon: Reply,
+    color: "#10B981",
+    messageTemplate: "{actor} responded to your route request",
   },
 };

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState } from "react"
 import Link from "next/link"
 import { Camera, ThumbsUp, MessageCircle, Bell, BarChart3, UserPlus } from "lucide-react"
 import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
@@ -12,6 +12,7 @@ import { toastService } from "@/app/lib/services/toastService"
 
 const AvatarEditor = dynamic(() => import("@/app/components/features/profile/AvatarEditor").then((m) => m.AvatarEditor), { ssr: false })
 import { useAuth } from "@/app/hooks/useAuth"
+import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 
 interface RewardHistoryItem {
   id: string
@@ -48,68 +49,53 @@ interface PostItem {
 }
 
 export default function OwnProfilePage() {
-  const { user: authUser } = useAuth()
-  const [profile, setProfile] = useState<ProfileData | null>(null)
-  const [posts, setPosts] = useState<PostItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const { user: authUser, isLoading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState("posts")
-  const [rewardHistory, setRewardHistory] = useState<RewardHistoryItem[]>([])
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
 
-  useEffect(() => {
-    if (!authUser?.id) return
-    const abort = new AbortController()
-    const load = async () => {
-      try {
-        const [profileRes, historyRes] = await Promise.all([
-          fetch(`/api/users/${authUser.id}`, { signal: abort.signal }),
-          fetch("/api/rewards/history", { signal: abort.signal }),
-        ])
-        if (!profileRes.ok) throw new Error("Failed to load profile")
-        const profileData = await profileRes.json()
-        if (!abort.signal.aborted) setProfile(profileData.user)
-        if (historyRes.ok && !abort.signal.aborted) {
-          const historyData = await historyRes.json()
-          setRewardHistory(historyData.history ?? [])
-        }
-      } catch (err: unknown) {
-        if (abort.signal.aborted) return
-        console.error("Failed to load profile")
-      } finally {
-        if (!abort.signal.aborted) setLoading(false)
-      }
-    }
-    load()
-    return () => abort.abort()
-  }, [authUser?.id])
+  const ready = !authLoading && Boolean(authUser?.id)
+  const userId = (authUser?.id as string) ?? ""
 
-  useEffect(() => {
-    if (!profile) return
-    const abort = new AbortController()
-    const loadPosts = async () => {
-      try {
-        const res = await fetch("/api/posts?limit=20", { signal: abort.signal })
-        if (!res.ok) throw new Error("Failed to load posts")
-        const data = await res.json()
-        if (!abort.signal.aborted) setPosts(data.posts ?? [])
-      } catch (err: unknown) {
-        if (abort.signal.aborted) return
-        console.error("Failed to load posts")
-      }
-    }
-    loadPosts()
-    return () => abort.abort()
-  }, [profile])
+  const { data: profileRes, loading: profileLoading, mutate: mutateProfile } = useCachedFetch<{ user: ProfileData }>(
+    ready ? `me-profile:${userId}` : null,
+    `/api/users/${userId}`,
+    { ttlSec: 120, enabled: ready }
+  )
+  const { data: historyRes, loading: historyLoading } = useCachedFetch<{ history: RewardHistoryItem[] }>(
+    ready ? `rewards-history:${userId}` : null,
+    "/api/rewards/history",
+    { ttlSec: 300, enabled: ready }
+  )
+  // Per-tab post lists (posts / liked / bookmarks / routes)
+  const tabQuery =
+    activeTab === "bookmarks"
+      ? "/api/bookmarks?limit=20"
+      : activeTab === "liked"
+        ? `/api/posts?limit=20&likedBy=${userId}`
+        : activeTab === "routes"
+          ? `/api/posts?limit=20&userId=${userId}&type=ROUTE`
+          : `/api/posts?limit=20&userId=${userId}`
+  const { data: postsData, loading: postsLoading } = useCachedFetch<{ posts: PostItem[] }>(
+    ready ? `profile-tab:${userId}:${activeTab}` : null,
+    tabQuery,
+    { ttlSec: 120, enabled: ready }
+  )
 
-  const loadProfile = useCallback(async () => {
-    if (!authUser?.id) return
+  const profile = profileRes?.user ?? null
+  const rewardHistory = historyRes?.history ?? []
+  const posts = postsData?.posts ?? []
+  const loading = authLoading || profileLoading || historyLoading
+
+  const refreshProfile = async () => {
     try {
-      const res = await fetch(`/api/users/${authUser.id}`)
-      const data = await res.json()
-      setProfile(data.user)
+      const res = await fetch(`/api/users/${userId}`)
+      if (res.ok) {
+        const data = await res.json()
+        mutateProfile(data)
+      }
     } catch { /* ignore */ }
-  }, [authUser?.id])
+  }
 
   const handleEditProfile = async (data: Record<string, unknown>) => {
     if (!authUser?.id) return
@@ -120,7 +106,7 @@ export default function OwnProfilePage() {
         body: JSON.stringify(data),
       })
       toastService.success("Profile updated!")
-      await loadProfile()
+      await refreshProfile()
     } catch {
       toastService.error("Failed to update profile")
     }
@@ -135,7 +121,7 @@ export default function OwnProfilePage() {
         body: JSON.stringify({ avatarConfig }),
       })
       toastService.success("Avatar saved!")
-      await loadProfile()
+      await refreshProfile()
     } catch {
       toastService.error("Failed to save avatar")
     }
@@ -287,7 +273,7 @@ export default function OwnProfilePage() {
         </div>
 
         <div className="flex flex-col gap-3 pb-8">
-          {posts.length === 0 && activeTab === "posts" && (
+          {posts.length === 0 && !postsLoading && (
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
           {posts.map((post) => (
@@ -298,7 +284,7 @@ export default function OwnProfilePage() {
             >
               <div className="flex items-center gap-2 mb-2">
                 <Link href={`/profile/${post.user.userName}`} onClick={(e) => e.stopPropagation()} className="w-7 h-7 rounded-circle bg-primary-muted flex items-center justify-center text-[10px] font-bold text-primary shrink-0 no-underline">
-                  {post.user.firstName[0]}{post.user.lastName[0]}
+                  {(post.user.firstName?.[0] ?? post.user.userName?.[0] ?? "?").toUpperCase()}{(post.user.lastName?.[0] ?? "").toUpperCase()}
                 </Link>
                 <Link href={`/profile/${post.user.userName}`} onClick={(e) => e.stopPropagation()} className="text-xs font-semibold text-text-primary no-underline hover:underline flex-1">
                   {post.user.firstName} {post.user.lastName}

@@ -1,8 +1,8 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-09-15
-> - last-verified-against-code: 2026-09-15
+> - last-updated-by: execute-feature 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
@@ -23,7 +23,8 @@ Client (Browser / PWA)
                ↓
     ┌──────────────────────────────┐
     │   UI Components              │
-    │  (34 App* wrappers ← AntD)   │
+    │  (42 App* files ← Tailwind +   │
+    │   Lucide; antd dep unused)     │
     │  (AppLogo, GuestBanner,      │
     │   OfflineIndicator, etc.)    │
     └──────────┬───────────────────┘
@@ -44,7 +45,7 @@ Client (Browser / PWA)
                ↓
     ┌──────────────────────────────┐
     │   Service Layer              │
-    │  11 OOP services including:  │
+    │  16 services including:        │
     │  pushSubscriptionService     │
     │  qstashService               │
     │  offlineQueue (client-side)  │
@@ -73,8 +74,8 @@ Client (Browser / PWA)
 | Maps | Route visualization with MapLibre GL, clustering | `app/components/features/map*` | MapLibre GL, supercluster, polyline |
 | Notifications | Real-time + push notifications via Web Push API | `app/lib/services/notification*` | Prisma, web-push, QStash |
 | Admin | Dashboard, user management, site config, bug reports | `app/(admin)/` | Prisma, Sentry |
-| Search | Route and post search with full-text indexes | `app/lib/services/search*` | Prisma (full-text search) |
-| Profile | User profiles, follower/following system, rewards | `app/(dashboard)/profile/*`, `app/api/users/[id]/follow*`, `app/api/users/[id]/followers`, `app/api/users/[id]/following`, `app/components/features/profile/UserList.tsx` | Prisma (Follow model), Cloudinary |
+| Search | Unified posts + users + tags search: `GET /api/search` (q/type/region/postType/cursor), `searchService.ts`, guest-accessible `/search` page (fixes SuggestionsPanel dead links) | `app/api/search/`, `app/lib/services/searchService.ts`, `app/(dashboard)/search/` | Prisma (contains/insensitive, P2022 fallback), Redis (unified cache 120s), rate-limit `search` bucket |
+| Profile | User profiles, follower/following system, per-tab filtering (posts/liked/bookmarks/routes), rewards | `app/(dashboard)/profile/*`, `app/api/users/[id]/follow*`, `app/api/users/[id]/followers`, `app/api/users/[id]/following`, `app/api/bookmarks/`, `app/components/features/profile/UserList.tsx` | Prisma (Follow, Bookmark models), Cloudinary |
 | Rewards | Gamification: tiers, badges, points | `app/lib/services/rewards*` | Prisma |
 | ValidityEngine | Route verification and trust scoring | `app/lib/services/validity*` | Prisma, Redis |
 | DraftingCoach | AI-assisted post composition guidance | `app/lib/services/drafting*` | N/A (rule-based) |
@@ -86,7 +87,11 @@ Client (Browser / PWA)
 | Transact | [FROZEN] External marketplace integration — code preserved, nav removed | `app/lib/integrations/transact.ts`, `app/api/integrations/transact/`, `app/api/webhooks/transact/`, `app/(dashboard)/marketplace/` | Prisma, QStash (webhook) |
 | Tega | [FROZEN] External events integration — code preserved, removed from sidebar | `app/lib/integrations/tega.ts`, `app/api/integrations/tega/`, `app/api/webhooks/tega/`, `app/components/features/events/` | Prisma, QStash (webhook) |
 | FAQ | Public FAQ page with categorized searchable Q&A | `app/(public)/faq/*`, `app/lib/config/faq.ts` | None (config-driven) |
-| Config | Centralized config registries for all domains (25 files) | `app/lib/config/*` | None |
+| Config | Centralized config registries for all domains (27 files, incl. reviews/SITE_REVIEWS) | `app/lib/config/*` | None |
+| Route Requests | Request/response post lifecycle: PostType enum (ROUTE/ROUTE_REQUEST/ROUTE_RESPONSE), quotedPost self-relation, fan-out notifications, Respond CTA | `app/components/features/posts/RequestRouteModal.tsx`, `ShareRouteModal.tsx` (response mode), `PostCard.tsx` (badge/quote block), `app/api/suggestions/`, `app/api/posts/` | Prisma, Redis (suggestions 1800s), QStash |
+| Suggestions | Ordered discovery: route requests → routes → accounts; live desktop panel + mobile rail + endless carousel | `app/components/ui/SuggestionsPanel.tsx`, `app/components/features/suggestions/{EndlessCarousel,SuggestionsRail,FollowButton}.tsx`, `app/api/suggestions/` | Prisma, Redis |
+| Client Cache | In-app read-through cache + SWR + in-flight dedup; hydrates feedStream without skeleton flash | `app/lib/cache/memoryCache.ts`, `app/lib/hooks/useCachedFetch.ts`, `app/lib/streams/feedStream.ts` | None (in-memory; mirrors redis.ts never-throw semantics) |
+| Seed Tooling | Manual-only seed backup/clear/restore scoped to seed markers | `scripts/{backup-seed-data,clear-seed-data,restore-seed-backup}.ts`, `db:seed`/`db:backup`/`db:clear-seed`/`db:restore-seed` | Prisma, tsx |
 
 ---
 
@@ -147,6 +152,9 @@ Write operation → API route
 | VAPID_PRIVATE_KEY | Web Push private key | .env | — |
 | QSTASH_TOKEN | QStash worker token | .env | — |
 | NEXT_PUBLIC_MAPBOX_TOKEN | MapLibre tile access | .env | — |
+| NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN | Mapbox alias (same purpose) | .env | — |
+| NEXT_PUBLIC_MAPTILER_API_KEY / NEXT_PUBLIC_MAPTILER_STYLE_URL | MapTiler tiles/style | .env | — |
+| NEXT_PUBLIC_CARTO_API_KEY (alias NEXT_PUBLIC_CARTO_KEY) | Carto basemap API key (requested by carto.com/basemaps endpoint) | .env | — |
 | RATE_LIMIT_WINDOW | API rate limit window (ms) | `app/lib/config/rateLimits` | 60000 |
 | RATE_LIMIT_MAX | Max requests per window | `app/lib/config/rateLimits` | 100 |
 | CACHE_TTL | Default Redis TTL (s) | `app/lib/config/cache` | 300 |
@@ -210,7 +218,10 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - Tailwind CSS v4 uses the new `@tailwindcss/postcss` plugin — v3-style `@tailwind` directives will not work
 - Dual PostCSS config files exist (`postcss.config.js` CJS + `postcss.config.mjs` ESM) — may cause confusion
 - Sentry DSN and all secrets are populated in `.env` — must not commit or expose
-- 91 Jest tests across 9 suites (services, config, utils, components)
+- 139 Jest tests across 13 suites incl. mutation E2E + posts API + search API/service (per 2026-10-08 search-session QA gate; real `npx jest` run after `npm install`)
+- `tsconfig.json` no longer sets `downlevelIteration` (removed 2026-10-08: option deleted in current TS; ES2015 target handles iteration natively)
+- Password reset uses durable `PasswordResetToken` DB rows (not Redis OTP) — survives cache loss; fixed Sept 29 "link expired/invalid" false negatives
+- Forgot-password email is double-guarded: non-blocking `waitUntil` + Resend send-result check (fixed Sept 16 false-positive "mail sent" with no delivery)
 - Coverage thresholds configured: branches 70%, functions 70%, lines 80%, statements 80%
 - Prior codebase with Phases 1-7 was removed as part of a planned clean rebuild
 - Two `useRequireAuth` hooks exist: one in `app/hooks/` (router-based redirect) and one in `app/lib/hooks/` (permission check) — potential confusion

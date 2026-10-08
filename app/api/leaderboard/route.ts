@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,6 +9,13 @@ export async function GET(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
+
+    // Global ranking — safe to share across viewers, 10 min TTL
+    try {
+      const { redis } = await import("@/app/lib/db/redis");
+      const cached = await redis.get<Record<string, unknown>>(CACHE_KEYS.leaderboard());
+      if (cached) return NextResponse.json(cached, { status: 200 });
+    } catch { /* fall through to DB */ }
 
     const users = await prisma.user.findMany({
       select: {
@@ -36,6 +44,11 @@ export async function GET(request: NextRequest) {
       postCount: u._count.posts,
       followerCount: u._count.followers,
     }));
+
+    try {
+      const { redis } = await import("@/app/lib/db/redis");
+      await redis.set(CACHE_KEYS.leaderboard(), { leaderboard }, { ex: CACHE_TTL.leaderboard });
+    } catch { /* non-critical */ }
 
     return NextResponse.json({ leaderboard }, { status: 200 });
   } catch (error) {

@@ -46,12 +46,12 @@ export default function AdminReviewsPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Reviews</h1>
           <div className="text-sm text-text-secondary">User-to-user reviews moderation</div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {["PENDING", "APPROVED", "REJECTED", ""].map(s => (
             <button
               key={s}

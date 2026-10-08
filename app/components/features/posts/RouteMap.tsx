@@ -70,7 +70,6 @@ function RouteMap({
   const [mapError, setMapError] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const mapRef = useRef<MapRef>(null)
-  const pendingFitRef = useRef(false)
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'))
@@ -240,14 +239,6 @@ function RouteMap({
     setMapLoaded(true)
   }, [])
 
-  if (mapError) {
-    return (
-      <div className={`relative overflow-hidden rounded-md ${className}`} style={{ height }}>
-        <MapSkeleton />
-      </div>
-    )
-  }
-
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -258,6 +249,14 @@ function RouteMap({
     }
     return () => { document.body.style.overflow = '' }
   }, [expanded])
+
+  if (mapError) {
+    return (
+      <div className={`relative overflow-hidden rounded-md ${className}`} style={{ height }}>
+        <MapSkeleton />
+      </div>
+    )
+  }
 
   const toggleExpanded = () => setExpanded((e) => !e)
 

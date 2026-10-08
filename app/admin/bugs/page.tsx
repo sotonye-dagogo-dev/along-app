@@ -57,12 +57,12 @@ export default function AdminBugsPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Bugs</h1>
           <div className="text-sm text-text-secondary">Bug reports from users</div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); load(e.target.value || undefined) }}

@@ -52,7 +52,7 @@ export default function BookmarksPage() {
         const res = await fetch("/api/bookmarks")
         if (res.ok) {
           const data = await res.json()
-          setBookmarks(data.bookmarks ?? [])
+          setBookmarks(data.posts ?? data.bookmarks ?? [])
         }
       } catch {
         console.error("Failed to load bookmarks")

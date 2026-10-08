@@ -39,10 +39,10 @@ export default function AdminDashboard() {
       <div className="flex flex-col gap-6">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-bg-elevated radius-md w-1/4" />
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {[1,2,3,4].map(i => <div key={i} className="h-28 bg-bg-elevated radius-lg" />)}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[1,2].map(i => <div key={i} className="h-64 bg-bg-elevated radius-lg" />)}
           </div>
         </div>
@@ -85,7 +85,7 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Dashboard</h1>
           <div className="text-sm text-text-secondary">Admin overview &middot; Last 7 days</div>
@@ -101,7 +101,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 max-lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {[
           {
             label: "Total Users",
@@ -211,7 +211,7 @@ export default function AdminDashboard() {
           <div className="flex flex-col gap-2.5">
             {stats.topPosts.map((post, i) => (
               <div key={post.id} className="flex items-center gap-2.5">
-                <Link href={`/posts/${post.id}`} className="text-xs font-medium w-[140px] shrink-0 truncate no-underline hover:underline text-text-primary">{post.title}</Link>
+                <Link href={`/posts/${post.id}`} className="text-xs font-medium flex-1 min-w-0 truncate no-underline hover:underline text-text-primary">{post.title}</Link>
                 <div className="flex-1 h-5 bg-bg-elevated radius-pill overflow-hidden">
                   <div
                     className="h-full radius-pill"

@@ -1,5 +1,8 @@
 export { default as PostCard } from "./PostCard"
 export { default as ShareRouteModal } from "./ShareRouteModal"
+export type { RespondToRequest } from "./ShareRouteModal"
+export { default as RequestRouteModal } from "./RequestRouteModal"
+export type { RouteRequestBody } from "./RequestRouteModal"
 export { default as DraftingCoach } from "./DraftingCoach"
 export { default as NavigationGuide } from "./NavigationGuide"
 export { RouteMap, MapSkeleton } from "./RouteMap"

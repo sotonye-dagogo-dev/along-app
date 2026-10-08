@@ -1,8 +1,8 @@
 # Architecture History
 
 > **Metadata**
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale — only the current architecture (in system-architecture.md) needs re-verification
 
 > **Overview:** Chronological record of how the Along system architecture has evolved. Useful for understanding why things are structured the way they are, and for identifying patterns in how the codebase has grown.
@@ -49,6 +49,55 @@ Full application code was needed to move from infrastructure-only state to a wor
 - `siteConfig` utility uses read-through cache (Redis → Prisma → default)
 - Two `useRequireAuth` variants: router-redirect (`app/hooks/`) and permission-checker (`app/lib/hooks/`)
 - `OfflineQueue` uses localStorage for persistence with `fetch` replay on flush
+
+---
+
+### 2026-09-16 — Reset-Mail False Positive Fix
+
+**State:**
+Forgot-password returned success without Resend ever sending. Root cause: fire-and-forget email with no send-result verification. Fix: check Resend send result and surface failure instead of false success (commit `a347a9c`).
+
+**Rationale:**
+A success toast for an unsent email is worse than an error — the user waits for mail that never arrives. Every background email must verify the provider result and degrade honestly.
+
+---
+
+### 2026-09-29 — Durable DB Reset Tokens
+
+**State:**
+Password-reset links reported "expired or invalid" within seconds. Root cause: tokens lived in Redis/in-memory OTP store subject to timeout fallback and multi-instance loss. Fix: `PasswordResetToken` Prisma model — reset tokens persisted in Postgres with expiry, independent of cache (commit `d589183`).
+
+**Rationale:**
+Security tokens must be durable, not cache-resident. Cache is best-effort by policy (timeout + memory fallback); anything correctness-critical (auth tokens, reset links) belongs in the database.
+
+---
+
+### 2026-10-07/08 — Sprint 7: Route Requests E2E, Client Caching, Seed Hygiene
+
+**State:**
+`PostType` enum (`ROUTE`/`ROUTE_REQUEST`/`ROUTE_RESPONSE`) + `Post.description` + `Post.quotedPostId` self-relation; `NotificationType` extended (`WELCOME`/`ROUTE_REQUEST`/`ROUTE_RESPONSE`/`REWARD`/`BADGE`/`VERIFIED`); new `GET /api/suggestions` (1800s cache) and `GET /api/bookmarks`; client `memoryCache` + `useCachedFetch` wired into home/notifications/analytics/post/profile/explore with `feedStream` hydration + hidden-tab pause; server `CACHE_KEYS` slots (notifications/post/analytics/leaderboard/suggestions) with write invalidation; `RequestRouteModal` + `ShareRouteModal` response mode + `PostCard` Respond CTA/quote block; `EndlessCarousel` + mobile `SuggestionsRail` + live `SuggestionsPanel`; seed backup/clear/restore scripts + `db:*` package scripts; landing preview = latest real posts, About reviews → `SITE_REVIEWS` config; scroll-aware new-posts prompt; analytics/responsive sweep; per-tab profile filtering; state-strategy decision (no redux — keep memoryCache/useCachedFetch/feedStream). QA gate green: tsc 0, lint warnings-only, 122/122 jest (11 suites), next build clean.
+
+**Rationale:**
+Route requests close the loop between "I need a route" and "here is a route" without leaving the feed; client caching removes skeleton flash and cuts redundant reads while server Redis slots bound staleness; seed tooling makes glide-path to production data safe (backup-first, markers-only).
+
+**Key Architectural Decisions:**
+- Response posts quote the request via `quotedPostId` self-relation (no duplication, deep-linkable)
+- `useCachedFetch` implements the SWR subset needed (TTL, dedup, mutate) — SWR/React Query rejected as migration churn
+- No global store (redux/zustand) — see `memory/project-decisions.md` 2026-10-07 entry
+
+---
+
+### 2026-10-08 — Sprint 8: Search E2E (no migration, no new deps)
+
+**State:**
+`searchService.ts` (unified posts + users + related-tags; Prisma `contains`/`insensitive`, P2022 avatarConfig fallback, Redis read-through 120s); `GET /api/search` (`q`/`type`/`region`/`postType`/`cursor`, search-bucket rate limit, guest-accessible, sanitized errors); guest-accessible `/search` page (debounced, All/Routes/People tabs, PostCard/FollowButton reuse) fixing dead SuggestionsPanel `/search?q=` links; `apiRegistry` search entry + `/search` middleware guest route. No schema change, no migration, no new dependencies. QA gate green: tsc 0, 139/139 jest (13 suites), lint zero-new-errors, build clean.
+
+**Rationale:**
+`contains`/`insensitive` chosen over Postgres full-text/GIN indexes deliberately — zero-migration and non-breaking for current scale; GIN/trigram is a future optimization. Cursor pagination is post-id based (user hits top-N per query), matching the routes-drive-discovery product shape.
+
+**Key Architectural Decisions:**
+- Reuse existing `CACHE_KEYS.search` / `CACHE_TTL.searchResults` / `RATE_LIMITS.search` slots instead of new config surface
+- Repair-system patterns honored verbatim (P2022 fallback, never-throw Redis, sanitized errors, `data.field ?? []` guards)
 
 ---
 

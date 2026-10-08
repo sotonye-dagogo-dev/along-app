@@ -1,5 +1,5 @@
 import {
-  Home, Compass, MapPin, Bookmark, Bell, User, BarChart3,
+  Home, Compass, Bookmark, Bell, User, BarChart3,
   UserPlus, Shield, ShieldCheck, Trophy,
 } from "lucide-react";
 import type { NavItem } from "@/app/lib/types";

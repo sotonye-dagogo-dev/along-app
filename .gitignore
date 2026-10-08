@@ -36,3 +36,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# seed data backups (produced by npm run db:backup / db:clear-seed)
+/backups/

@@ -5,6 +5,7 @@ import { websiteSchema } from "@/app/lib/utils/structuredData";
 import { StructuredData } from "@/app/components/ui/StructuredData";
 import AppLogo from "../components/ui/AppLogo";
 import { HeroCtas, BottomCta } from "@/app/components/ui/LandingCtas";
+import { prisma } from "@/app/lib/db/prisma";
 
 export const metadata = buildMetadata({
   title: "Navigate Together",
@@ -12,7 +13,97 @@ export const metadata = buildMetadata({
   path: "/",
 });
 
-export default function LandingPage() {
+type LandingRouteStep = { location?: string; description?: string; vehicle?: string; fare?: string | number };
+
+type LandingPost = {
+  id: string;
+  title: string;
+  routes: unknown;
+  likes: number;
+  comments: number;
+  validityScore: number;
+  validityTier: string | null;
+  createdAt: Date;
+  user: { userName: string; firstName: string; lastName: string };
+};
+
+const VEHICLE_CHIPS: Record<string, { bg: string; color: string }> = {
+  TAXI: { bg: "#FFFBEB", color: "#92400E" },
+  BUS: { bg: "#EFF6FF", color: "#1E40AF" },
+  KEKE: { bg: "#F0FDF4", color: "#166534" },
+  BIKE: { bg: "#FFF7ED", color: "#9A341E" },
+  TREK: { bg: "#F5F5F4", color: "#44403C" },
+  CAR: { bg: "#EEF2FF", color: "#3730A3" },
+};
+
+async function getLandingPosts(): Promise<LandingPost[]> {
+  try {
+    return await prisma.post.findMany({
+      where: { type: "ROUTE" },
+      orderBy: { createdAt: "desc" },
+      take: 2,
+      include: { user: { select: { userName: true, firstName: true, lastName: true } } },
+    }) as unknown as LandingPost[];
+  } catch {
+    return [];
+  }
+}
+
+function relativeTime(date: Date): string {
+  const mins = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  if (mins < 1) return "now";
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+function trustMeta(score: number, tier: string | null): { label: string; bg: string; color: string } {
+  const label = tier ? tier.charAt(0) + tier.slice(1).toLowerCase() : score >= 70 ? "Trusted" : score >= 40 ? "Developing" : "Unverified";
+  if (score >= 70) return { label, bg: "#D1FAE5", color: "#065F46" };
+  if (score >= 40) return { label, bg: "#FEF3C7", color: "#92400E" };
+  return { label, bg: "#F3F4F6", color: "#4B5563" };
+}
+
+function toPreviewProps(post: LandingPost) {
+  const steps = (Array.isArray(post.routes) ? (post.routes as LandingRouteStep[]) : [])
+    .filter((r) => r?.location)
+    .slice(0, 3)
+    .map((r, i) => ({
+      num: i + 1,
+      text: r.description ? `${r.location} — ${r.description}` : String(r.location),
+      fare: r.fare != null && r.fare !== "" ? `₦${r.fare}` : "",
+    }));
+  const seen = new Set<string>();
+  const chips = (Array.isArray(post.routes) ? (post.routes as LandingRouteStep[]) : [])
+    .map((r) => (r?.vehicle ?? "").toUpperCase())
+    .filter((v) => VEHICLE_CHIPS[v] && !seen.has(v) && seen.add(v) !== undefined)
+    .slice(0, 3)
+    .map((v) => ({ label: v.charAt(0) + v.slice(1).toLowerCase(), ...VEHICLE_CHIPS[v] }));
+  const trust = trustMeta(post.validityScore ?? 0, post.validityTier);
+  const fullName = `${post.user.firstName ?? ""} ${post.user.lastName ?? ""}`.trim();
+  const initials = (fullName || post.user.userName || "?")
+    .split(/\s+/).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+  return {
+    initials,
+    name: fullName || post.user.userName,
+    handle: `@${post.user.userName}`,
+    time: relativeTime(post.createdAt),
+    chips,
+    title: post.title,
+    steps,
+    likes: post.likes ?? 0,
+    comments: post.comments ?? 0,
+    trustLabel: trust.label,
+    trustScore: Math.round(post.validityScore ?? 0),
+    trustBg: trust.bg,
+    trustColor: trust.color,
+    isSuggestion: false,
+  };
+}
+
+export default async function LandingPage() {
+  const landingPosts = await getLandingPosts();
   return (
     <>
       <StructuredData data={websiteSchema()} />
@@ -75,48 +166,17 @@ export default function LandingPage() {
           <span className="text-xs font-medium text-text-muted tracking-wide uppercase">
             Recent from the community
           </span>
-          <PostPreviewCard
-            initials="TC"
-            name="Tega C."
-            handle="@tega_c"
-            time="12m"
-            chips={[
-              { label: "Taxi", bg: "#FFFBEB", color: "#92400E" },
-              { label: "Keke", bg: "#F0FDF4", color: "#166534" },
-            ]}
-            title="Yaba \u2192 CMS via Third Mainland"
-            steps={[
-              { num: 1, text: "Yaba \u2014 start at Unilag gate", fare: "\u20A6200" },
-              { num: 2, text: "Third Mainland Bridge \u2014 drop at Adeniji", fare: "\u20A6300" },
-              { num: 3, text: "CMS \u2014 final stop at Marina", fare: "\u20A6150" },
-            ]}
-            likes={42}
-            comments={12}
-            trustLabel="Trusted"
-            trustScore={78}
-            trustBg="#D1FAE5"
-            trustColor="#065F46"
-            isSuggestion={false}
-          />
-          <PostPreviewCard
-            initials=""
-            name="Along Suggestion"
-            handle="Curated route"
-            time="2h"
-            chips={[]}
-            title="Ikeja \u2192 Oshodi \u2014 Quick Alternative"
-            steps={[
-              { num: 1, text: "Ikeja Alausa \u2014 bus stop", fare: "\u20A6150" },
-              { num: 2, text: "Oshodi-Apapa express \u2014 drop at Oshodi", fare: "\u20A6200" },
-            ]}
-            likes={28}
-            comments={8}
-            trustLabel="Developing"
-            trustScore={45}
-            trustBg="#FEF3C7"
-            trustColor="#92400E"
-            isSuggestion={true}
-          />
+          {landingPosts.length > 0 ? (
+            landingPosts.map((post) => <PostPreviewCard key={post.id} {...toPreviewProps(post)} />)
+          ) : (
+            <div className="bg-bg-card border border-border rounded-xl px-4 py-6 text-center text-sm text-text-muted">
+              No routes shared yet —{" "}
+              <Link href="/register" className="text-primary font-semibold hover:underline">
+                be the first to share one
+              </Link>
+              .
+            </div>
+          )}
         </div>
       </section>
 

@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: update-ai-system
-> - last-verified-against-code: 2026-07-08 (session 5)
-> - last-synced: 2026-08-13 (v3 template update — pull-template-update)
+> - last-updated-by: execute-feature 2026-10-08 (search E2E)
+> - last-verified-against-code: 2026-10-08 (Sprint 7 rows verified present in code: scripts/, memoryCache, useCachedFetch, RequestRouteModal, EndlessCarousel/SuggestionsRail, /api/suggestions, /api/bookmarks)
+> - last-synced: 2026-10-08 (Sprint 8 search E2E — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -163,6 +163,47 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | Size | Task | Status |
 |------|------|--------|
 | [M] | Leaderboard API route, page, layout, nav config, middleware | [x] |
+
+---
+
+## Sprint 7 — Route Requests E2E, Live Preview, Caching & Data Hygiene
+
+> **Section summary:** execute-feature directive 2026-10-07. Architecture impact: Prisma migration (Post.type/description/quotedPostId, NotificationType extension), new /api/suggestions, new cache services, EndlessCarousel + RequestRouteModal. Plan detail in `checkpoints/in-progress.md`.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | A1. Seed backup + clear scripts (`scripts/backup-seed-data.ts`, `scripts/clear-seed-data.ts`), package.json `db:seed`/`db:backup`/`db:clear-seed` | [x] |
+| [S] | A2. Remove dead mock-api/dev:all scripts + json-server dep + README refs; make seed idempotent | [x] |
+| [M] | A3. Replace hardcoded mock data — SuggestionsPanel live, landing preview real posts, About reviews to config | [x] |
+| [S] | B1. Prisma migration — Post.type/description/quotedPostId + NotificationType(WELCOME/ROUTE_REQUEST/ROUTE_RESPONSE/REWARD/BADGE/VERIFIED) | [x] |
+| [S] | B2. Welcome notification on signup + notifications UI types/deep-links + rewards filter fix | [x] |
+| [M] | C1. Collapsible route preview panel (DraftingCoach pattern) + live debounced route trace (polyline/distance/duration) | [x] |
+| [S] | C2. Location autofill — "use my current location" geolocation + reverse geocode in location inputs | [x] |
+| [L] | D1. Client memoryCache + useCachedFetch; wire home/notifications/analytics/post/profile/explore; feedStream hydrate + hidden-tab pause; server CACHE_KEYS slots with invalidation | [x] |
+| [XL] | E1. Route requests E2E — schema+Zod, fan-out notifications, /api/suggestions, RequestRouteModal, PostCard Respond CTA + quote block, response-mode ShareRouteModal | [x] |
+| [M] | E2. EndlessCarousel (endless tape, smooth, interactive, reduced-motion) + mobile suggestions rail below feed (xl:hidden) + live desktop SuggestionsPanel | [x] |
+| [S] | F1. Scroll-aware floating "new posts" prompt with scroll-depth/time throttling | [x] |
+| [M] | G1. Analytics overview tiles responsive grid (2/3/4 cols) + text wrap; quick-stats + skeleton responsive | [x] |
+| [M] | G2. Project-wide responsive sweep — footer grid, register inputs, admin widths, header wrapping, truncate/fixed-width offenders | [x] |
+| [M] | H1. Posting E2E verification (create → feed display) | [x] |
+| [L] | H2. Profile tab filtering — posts/liked/bookmarks/routes fetch filtered per tab (+ any missing endpoints) | [x] |
+| [M] | H3. State-strategy review: redux-observables/subscriptions vs memoryCache/useCachedFetch/feedStream; decision documented | [x] |
+| [L] | H4. Mutation E2E tests (post/like/comment/bookmark/follow) + error handling, undefined edge cases, error-boundary hardening | [x] |
+| [L] | QA — tsc + lint + jest + build gate; docs close-out (session-log, dev-history, decisions, sync-context, update-ai-system) | [x] |
+
+---
+
+## Sprint 8 — Search E2E (2026-10-08, execute-feature)
+
+> **Section summary:** Unified search implemented end-to-end, non-breaking (no schema change, no new deps). QA gate green with real runs: tsc 0, jest 139/139 (13 suites), lint zero-new-errors, build clean with `/search` route.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | SearchService — unified posts+users+tags, Redis read-through, P2022 fallback (`app/lib/services/searchService.ts`) | [x] |
+| [M] | GET /api/search — q/type/region/postType/cursor, search-bucket rate limit, sanitized errors, guest-accessible | [x] |
+| [M] | /search page — debounced input, All/Routes/People tabs, PostCard + FollowButton reuse, AppEmptyState search preset (fixes SuggestionsPanel dead `/search?q=` links) | [x] |
+| [S] | Wiring — apiRegistry `search` entry, middleware `/search` guest route | [x] |
+| [M] | Tests — `search.test.ts` (9 API-boundary) + `searchService.test.ts` (8 service) | [x] |
 
 ---
 

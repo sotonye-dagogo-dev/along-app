@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    await prisma.user.create({
+    const createdUser = await prisma.user.create({
       data: {
         userName,
         firstName,
@@ -62,6 +62,15 @@ export async function POST(request: NextRequest) {
         inviteCode: crypto.randomUUID(),
         invitedById,
       },
+    });
+
+    // Welcome notification for the new signup (non-blocking, never fails the request)
+    const { createNotification } = await import("@/app/lib/services/notificationService");
+    void createNotification({
+      type: "WELCOME",
+      actorId: createdUser.id,
+      message: `Welcome to Along, ${firstName}! Share your first route to get started.`,
+      recipientIds: [createdUser.id],
     });
 
     if (invitedById) {

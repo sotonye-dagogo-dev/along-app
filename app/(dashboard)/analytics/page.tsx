@@ -1,8 +1,10 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import Link from "next/link"
 import { Eye, Heart, Award, TrendingUp } from "lucide-react"
+import { useAuth } from "@/app/hooks/useAuth"
+import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 
 interface KpiData {
   totalViews: number
@@ -49,30 +51,26 @@ function formatCompact(n: number): string {
 }
 
 export default function AnalyticsPage() {
-  const [data, setData] = useState<AnalyticsData | null>(null)
-  const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState("30")
+  const { user, isLoading: authLoading } = useAuth()
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      try {
-        const res = await fetch(`/api/analytics/user?period=${period}`)
-        if (res.ok) setData(await res.json())
-      } catch { /* ignore */ } finally { setLoading(false) }
-    }
-    load()
-  }, [period])
+  const { data, loading, refetch } = useCachedFetch<AnalyticsData>(
+    authLoading ? null : `analytics:${user?.id ?? "guest"}:${period}`,
+    `/api/analytics/user?period=${period}`,
+    { ttlSec: 300, enabled: !authLoading }
+  )
 
-  if (loading) {
+  const isLoading = authLoading || loading
+
+  if (isLoading && !data) {
     return (
-      <div className="max-w-[1100px] mx-auto px-6 py-8">
+      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-bg-elevated radius-md w-1/4" />
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
             {[1,2,3,4].map(i => <div key={i} className="h-24 bg-bg-elevated radius-lg" />)}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="h-64 bg-bg-elevated radius-lg" />
             <div className="h-64 bg-bg-elevated radius-lg" />
           </div>
@@ -83,8 +81,16 @@ export default function AnalyticsPage() {
 
   if (!data) {
     return (
-      <div className="max-w-[1100px] mx-auto px-6 py-8">
-        <div className="text-center py-12 text-text-muted">Failed to load analytics</div>
+      <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8">
+        <div className="text-center py-12 text-text-muted">
+          <div>Failed to load analytics</div>
+          <button
+            onClick={() => refetch()}
+            className="mt-3 px-4 py-2 radius-md border border-border bg-bg-card text-sm font-medium cursor-pointer font-sans"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     )
   }
@@ -163,7 +169,7 @@ export default function AnalyticsPage() {
   const bookmarksLine = data.engagementData.find(s => s.label === "Bookmarks")
 
   return (
-    <div className="max-w-[1100px] mx-auto px-6 py-8 flex flex-col gap-6">
+    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[28px] font-bold tracking-tight">Analytics</h1>
@@ -182,7 +188,7 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 max-md:grid-cols-1 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
         {[
           { icon: <Eye size={20} />, num: formatCompact(data.kpi.totalViews), label: "Total Views", bg: "var(--color-primary-muted)", color: "var(--color-primary)" },
           { icon: <Heart size={20} />, num: formatCompact(data.kpi.totalLikes), label: "Total Likes", bg: "var(--color-error)", color: "var(--color-error-text)" },
@@ -193,15 +199,15 @@ export default function AnalyticsPage() {
             <div className="w-10 h-10 radius-md flex items-center justify-center shrink-0" style={{ background: kpi.bg, color: kpi.color }}>
               {kpi.icon}
             </div>
-            <div>
-              <div className="text-[22px] font-bold leading-tight">{kpi.num}</div>
-              <div className="text-xs text-text-secondary font-medium">{kpi.label}</div>
+            <div className="min-w-0">
+              <div className="text-[22px] font-bold leading-tight break-words">{kpi.num}</div>
+              <div className="text-xs text-text-secondary font-medium break-words">{kpi.label}</div>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 max-md:grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-bg-card border border-border radius-lg p-5 shadow-xs">
           <div className="flex items-center justify-between mb-3.5">
             <h3 className="text-[15px] font-semibold">Engagement over time</h3>
@@ -246,7 +252,7 @@ export default function AnalyticsPage() {
               const colors = ["var(--color-primary)", "var(--color-error-text)", "var(--color-info-text)", "var(--color-warning-border)", "var(--color-text-muted)"]
               return (
                 <div key={post.id} className="flex items-center gap-2">
-                  <Link href={`/posts/${post.id}`} className="text-xs font-medium w-[130px] shrink-0 truncate no-underline hover:underline text-text-primary">{post.title}</Link>
+                  <Link href={`/posts/${post.id}`} className="text-xs font-medium flex-1 min-w-0 truncate no-underline hover:underline text-text-primary">{post.title}</Link>
                   <div className="flex-1 h-[18px] bg-bg-elevated radius-pill overflow-hidden">
                     <div className="h-full radius-pill" style={{ width: `${post.validityScore}%`, background: colors[i % colors.length], transition: "width 200ms" }} />
                   </div>
@@ -261,7 +267,7 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 max-md:grid-cols-1 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-bg-elevated border border-border radius-lg p-5">
           <div className="flex items-center justify-between mb-3.5">
             <h3 className="text-[15px] font-semibold">Follower growth</h3>
@@ -299,9 +305,9 @@ export default function AnalyticsPage() {
                 <div className="w-9 h-9 radius-md bg-primary-muted text-primary flex items-center justify-center shrink-0">
                   {stat.icon}
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-lg font-bold">{stat.value}</div>
-                  <div className="text-[10px] text-text-muted uppercase tracking-wider">{stat.label}</div>
+                  <div className="text-[10px] text-text-muted uppercase tracking-wider break-words">{stat.label}</div>
                 </div>
               </div>
             ))}

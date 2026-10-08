@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { UserMinus, UserPlus, UserCheck, ThumbsUp, MessageCircle } from "lucide-react"
 import { AppAvatar, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { useAuth } from "@/app/hooks/useAuth"
+import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 
 interface ProfileData {
   id: string
@@ -34,74 +36,107 @@ interface PostItem {
   user: { userName: string; firstName: string; lastName: string }
 }
 
+interface ProfileApiResponse {
+  user: {
+    id: string
+    userName: string
+    firstName: string
+    lastName: string
+    avatar: string | null
+    avatarConfig: ProfileData["avatarConfig"]
+    bio: string | null
+    verified: boolean
+    rewardPoints: number
+    rewardTier: string
+    _count: { posts: number; followers: number; following: number }
+  }
+  isFollowing?: boolean
+}
+
 export default function OtherProfilePage() {
   const params = useParams()
-  const [profile, setProfile] = useState<ProfileData | null>(null)
-  const [posts, setPosts] = useState<PostItem[]>([])
-  const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState("posts")
-  const [isFollowing, setIsFollowing] = useState(false)
   const [mutualCount] = useState(0)
 
   const userName = params.username as string
+  const { user: viewer, isLoading: authLoading } = useAuth()
+  const ready = !authLoading && Boolean(userName)
+  const viewerId = viewer?.id ?? "guest"
 
-  useEffect(() => {
-    if (!userName) return
-    const load = async () => {
-      try {
-        const [profileRes, postsRes] = await Promise.all([
-          fetch(`/api/users/by-username/${encodeURIComponent(userName)}`),
-          fetch("/api/posts?limit=20"),
-        ])
-        if (profileRes.ok) {
-          const profileData = await profileRes.json()
-          setProfile({
-            id: profileData.user.id,
-            userName: profileData.user.userName,
-            firstName: profileData.user.firstName,
-            lastName: profileData.user.lastName,
-            avatar: profileData.user.avatar,
-            avatarConfig: profileData.user.avatarConfig,
-            bio: profileData.user.bio,
-            verified: profileData.user.verified,
-            rewardPoints: profileData.user.rewardPoints,
-            rewardTier: profileData.user.rewardTier,
-            postCount: profileData.user._count.posts,
-            followerCount: profileData.user._count.followers,
-            followingCount: profileData.user._count.following,
-            avgValidityScore: profileData.user._count.posts > 0 ? Math.round(profileData.user.rewardPoints / profileData.user._count.posts) : 0,
-          })
-          setIsFollowing(profileData.isFollowing ?? false)
-        }
-        if (postsRes.ok) {
-          const postsData = await postsRes.json()
-          const matchingPosts = (postsData.posts ?? []).filter(
-            (p: PostItem) => p.user.userName === userName
-          )
-          setPosts(matchingPosts)
-        }
-      } catch { /* ignore */ } finally { setLoading(false) }
+  // isFollowing is viewer-specific → cache key is viewer-scoped
+  const { data: profileRes, loading: profileLoading, mutate: mutateProfile } = useCachedFetch<ProfileApiResponse>(
+    ready ? `profile:${viewerId}:${userName}` : null,
+    `/api/users/by-username/${encodeURIComponent(userName)}`,
+    { ttlSec: 120, enabled: ready }
+  )
+  // Per-tab post lists for this profile (posts / liked / routes)
+  const profileId = profileRes?.user?.id
+  const tabQuery = !profileId
+    ? "/api/posts?limit=20"
+    : activeTab === "liked"
+      ? `/api/posts?limit=20&likedBy=${profileId}`
+      : activeTab === "routes"
+        ? `/api/posts?limit=20&userId=${profileId}&type=ROUTE`
+        : `/api/posts?limit=20&userId=${profileId}`
+  const { data: postsData, loading: postsLoading } = useCachedFetch<{ posts: PostItem[] }>(
+    ready && profileId ? `profile-tab:${profileId}:${activeTab}` : null,
+    tabQuery,
+    { ttlSec: 120, enabled: ready }
+  )
+
+  const profile = useMemo<ProfileData | null>(() => {
+    const u = profileRes?.user
+    if (!u) return null
+    return {
+      id: u.id,
+      userName: u.userName,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      avatar: u.avatar,
+      avatarConfig: u.avatarConfig,
+      bio: u.bio,
+      verified: u.verified,
+      rewardPoints: u.rewardPoints,
+      rewardTier: u.rewardTier,
+      postCount: u._count.posts,
+      followerCount: u._count.followers,
+      followingCount: u._count.following,
+      avgValidityScore: u._count.posts > 0 ? Math.round(u.rewardPoints / u._count.posts) : 0,
     }
-    load()
-  }, [userName])
+  }, [profileRes])
+
+  const isFollowing = profileRes?.isFollowing ?? false
+
+  const posts = useMemo(
+    () => (postsData?.posts ?? []).filter((p) => p.user.userName === userName),
+    [postsData, userName]
+  )
+
+  const loading = authLoading || profileLoading
 
   const handleFollow = async () => {
-    if (!profile) return
-    const method = isFollowing ? "DELETE" : "POST"
+    if (!profileRes) return
+    const newFollowing = !isFollowing
+    const prev = profileRes
+    mutateProfile({
+      ...profileRes,
+      isFollowing: newFollowing,
+      user: {
+        ...profileRes.user,
+        _count: {
+          ...profileRes.user._count,
+          followers: profileRes.user._count.followers + (newFollowing ? 1 : -1),
+        },
+      },
+    })
     try {
-      const res = await fetch(`/api/users/${profile.id}/follow`, { method })
-      if (res.ok) {
-        setIsFollowing(!isFollowing)
-        setProfile((prev) =>
-          prev
-            ? {
-                ...prev,
-                followerCount: prev.followerCount + (isFollowing ? -1 : 1),
-              }
-            : prev
-        )
-      }
-    } catch { /* ignore */ }
+      const res = await fetch(`/api/users/${profileRes.user.id}/follow`, {
+        method: newFollowing ? "POST" : "DELETE",
+      })
+      if (!res.ok) mutateProfile(prev)
+    } catch {
+      mutateProfile(prev)
+    }
   }
 
   if (loading) {
@@ -229,7 +264,7 @@ export default function OtherProfilePage() {
         </div>
 
         <div className="flex flex-col gap-3 pb-8">
-          {posts.length === 0 && activeTab === "posts" && (
+          {posts.length === 0 && !postsLoading && (
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
           {posts.map((post) => (

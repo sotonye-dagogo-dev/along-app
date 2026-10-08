@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: fix-build 2026-09-15
-> - last-verified-against-code: 2026-09-15
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -401,3 +401,103 @@ Fixed 504 `FUNCTION_INVOCATION_TIMEOUT` on `POST /api/auth/forgot-password` caus
 
 **Next Sprint Focus:**
 Same as above plus rotation of `UPSTASH_REDIS_REST_URL` env var in Vercel from `willing-gazelle-101748.upstash.io` (ENOTFOUND) to valid instance.
+
+---
+
+## 2026-09-16 — Fix-Build: False-Positive Reset Email (no Resend delivery)
+
+**Summary:**
+Forgot-password returned success while Resend never sent anything — no mail, no failure, no Vercel error, only an OTP-store Redis-timeout warning. Root cause was fire-and-forget email with no send-result verification. Fixed by checking the Resend send result and surfacing failure honestly instead of a false success toast.
+
+**Completed:**
+- `app/lib/services/emailService.ts` — verify Resend send result before reporting success
+- Forgot-password flow no longer claims "mail sent" when delivery failed
+
+**Key Changes:**
+- Background email must verify provider result — a false success is worse than an error because the user waits for mail that never arrives
+
+**Next Sprint Focus:**
+Reset-link "expired/invalid" reports; live map tracking; carto basemap key; auth provider linking.
+
+---
+
+## 2026-09-29 — Fix-Build: Durable DB Reset Tokens ("link expired" false negatives)
+
+**Summary:**
+Reset links reported "expired or invalid" within seconds of delivery. Root cause: tokens lived in the Redis/in-memory OTP store subject to timeout fallback and multi-instance loss. Fixed with a durable `PasswordResetToken` Prisma model — reset tokens now persist in Postgres with expiry, independent of cache state. Also shipped alongng.com domain reference updates.
+
+**Completed:**
+- `PasswordResetToken` model + migration — durable reset tokens with expiry
+- Forgot/reset-password routes read tokens from DB instead of volatile OTP store
+- Domain references updated from along.app to alongng.com
+
+**Key Changes:**
+- Security tokens must be durable, not cache-resident — cache is best-effort by policy (timeout + memory fallback)
+
+**Next Sprint Focus:**
+Sprint 7 execute-feature (route requests E2E, caching, seed hygiene).
+
+---
+
+## 2026-10-07/08 — Sprint 7: Route Requests E2E, Caching, Seed Hygiene, Responsive (execute-feature + resume-session QA)
+
+**Summary:**
+Full Sprint 7 workstream A–H delivered: seed backup/clear/restore scripts + `db:*` package scripts with dead mock-api removal and idempotent seed; welcome notification on signup + notification type registry; collapsible live route preview with debounced trace + location autofill; client `memoryCache` + `useCachedFetch` wired across home/notifications/analytics/post/profile/explore with feedStream hydration + hidden-tab pause and server CACHE_KEYS slots with write invalidation; route requests E2E (PostType enum, quotedPost self-relation, fan-out, /api/suggestions, RequestRouteModal, Respond CTA + quote block, response-mode ShareRouteModal); EndlessCarousel + mobile SuggestionsRail + live SuggestionsPanel with mock EVENTS removed; landing preview = latest real posts, About reviews → SITE_REVIEWS config; scroll-aware new-posts prompt; analytics + project-wide responsive sweep; posting E2E verification; per-tab profile filtering + /api/bookmarks; state-strategy decision (no redux); mutation E2E tests + error hardening. QA gate green: tsc 0 errors (removed deleted `downlevelIteration` tsconfig option), lint warnings-only, jest 122/122 across 11 suites, next build clean.
+
+**Completed:**
+- Sprints A–D (seed hygiene, welcome notification, live preview + autofill, client/server caching)
+- Sprint E1 (route requests E2E) + E2 (carousel, rails, live suggestions, mock cleanup)
+- Sprint F (scroll-aware prompt), G (analytics/responsive), H1–H4 (posting E2E, profile tabs, state review, mutation tests)
+- QA gate + task-queue/in-progress reconciliation (drift was MINOR — code already contained the work; pointers were stale)
+
+**Key Changes:**
+- Prisma: `Post.type`/`description`/`quotedPostId` + extended `NotificationType`; migration `20261007114036_route_requests_and_welcome_notifications`
+- New: `GET /api/suggestions`, `GET /api/bookmarks`, `RequestRouteModal`, `EndlessCarousel`/`SuggestionsRail`/`FollowButton`, `memoryCache`/`useCachedFetch`, `scripts/` tooling
+- State strategy formally decided: keep memoryCache/useCachedFetch/feedStream, no redux (see project-decisions.md)
+
+**Next Sprint Focus:**
+Live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration — per backlog.
+
+---
+
+## 2026-10-08 — Execute-Feature: Doc-Staleness Remediation (design-system, test-plan, search claim) + Real QA Gate
+
+**Summary:**
+Closed the three honest-stale items left by the 2026-10-08 update-ai-system deep sync. design-system.md (2026-07-08) and testing/test-plan.md (2026-07-01) are now verified against code and fresh; the search false-claim class was extended (project-plan.md was already fixed — system-architecture.md Search row now matches it); test figures are no longer trusted-to-record — a real `npx jest` run in this session proves 122/122 across 11 suites. QA gate fully green with real runs (tsc 0, jest 122/122, lint exit 0, build exit 0); no code changes needed, so no non-breaking fixes were applied.
+
+**Completed:**
+- design-system.md — primary tokens corrected to green brand (#00623B/#00A862/#004A2C from globals.css @theme), radius/shadow tokens corrected to real scale, App* described as Tailwind + Lucide (zero antd imports in app/, antd dep unused), mobile tabs corrected to Home/Explore/Share-FAB/Bookmarks/Profile, UI count 42 files, freshness → 2026-10-08
+- testing/test-plan.md — 91/9 → 122/11 with per-suite verified counts, API-boundary suites marked done (Prisma-mocked), live-DB integration left honestly open, search line marked NOT IMPLEMENTED, freshness → 2026-10-08
+- system-architecture.md — Search module row corrected to NOT IMPLEMENTED (same claim class as project-plan fix), UI diagram 34 → 42 files + antd-unused note, services 11 → 15, updater → execute-feature 2026-10-08
+- testing/test-results.md — replaced file-presence-only caveat with real-run results from this session
+- QA gate — `npm install` then real runs: tsc exit 0, jest 11/122 pass, lint exit 0 (pre-existing no-explicit-any in feed route left untouched), build exit 0
+
+**Key Changes:**
+- Docs-only session — zero `app/` code changes; prior session-log test figures (122/122) independently reproduced by execution, not trust
+- No architecture impact — no plan-feature.md needed; no task-queue mutation (no sprint tasks for this remediation)
+
+**Next Sprint Focus:**
+Backlog per task-queue: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md.
+
+---
+
+## 2026-10-08 — Execute-Feature: Search E2E (unified /api/search + /search page) + Update-AI-System Chain
+
+**Summary:**
+Implemented the Phase 4 search checkbox end-to-end, non-breaking: `searchService.ts` (unified posts + users + related-tags search over Prisma `contains`/`insensitive` — no migration, no new deps), `GET /api/search` (`q`/`type`/`region`/`postType`/`cursor`/`limit`, shared `search`-bucket rate limiting, guest-accessible, sanitized user-facing errors, P2022 fallback), guest-accessible `/search` page (debounced input, All/Routes/People tabs, PostCard + FollowButton reuse, `EMPTY_STATES.search`), apiRegistry + middleware wiring. This also fixes the dead `/search?q=` links that SuggestionsPanel trending tags already pointed at. 17 new tests (9 API-boundary + 8 service). QA gate fully green with real runs: tsc 0 errors, jest 139/139 across 13 suites, lint zero new errors (7 pre-existing verified identical on stashed baseline; 2 new `no-require-imports` in the new test fixed before close), build clean with `/search` in the route table.
+
+**Completed:**
+- Step 1 planning pass (task-queue, project-plan, system-architecture, project-context, design-system, repair-system, project-decisions) + in-progress.md plan
+- Step 2 scope check: PASS (search is a Daily Commuter key interaction; complies with state-strategy/config-driven/zero-emoji decisions) — no plan-feature.md needed (no architecture impact)
+- Step 3 implementation: searchService, /api/search, /search page (page.tsx metadata + SearchPage client), apiRegistry + middleware edits
+- Step 3b tests: `app/__tests__/api/search.test.ts`, `app/__tests__/services/searchService.test.ts`
+- Step 4 QA gate: `npm install` (runner had no node_modules) then tsc/jest/lint/build real runs; fixed 2 lint errors in new test (require → typed imports)
+- Step 5 close-out: project-plan checkbox, task-queue Sprint 8 + last-synced, system-architecture Search row, test-plan/test-results 122/11 → 139/13, repo-map (search route, 16 services, dashboard search) + dependency-graph (live SearchService) freshness, session-log entries, sync-context checkpoints
+
+**Key Changes:**
+- New: `app/lib/services/searchService.ts`, `app/api/search/route.ts`, `app/(dashboard)/search/page.tsx` + `SearchPage.tsx`, 2 test suites
+- Edited: `app/lib/config/apiRegistry.ts` (search entry), `middleware.ts` (`/search` guest route)
+- No schema/migration changes; existing `CACHE_KEYS.search` + `CACHE_TTL.searchResults` + `RATE_LIMITS.search` slots reused
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Search live-DB integration test still open (API-boundary suites mock Prisma, per convention).

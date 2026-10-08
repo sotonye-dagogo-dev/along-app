@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: bootstrap-project
-> - last-verified-against-code: 2026-07-01
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -769,3 +769,230 @@ Live map tracking navigation, carto.com basemap API key wiring, auth provider li
 **Notes / Blockers:**
 - Vercel env var `UPSTASH_REDIS_REST_URL` currently points at `willing-gazelle-101748.upstash.io` which is ENOTFOUND — needs rotation to valid Upstash instance or removal to rely on in-memory fallback
 - Rate limiter remains in-memory (`app/lib/utils/rateLimit.ts`) — tracked as P1 to migrate to Upstash Redis with sliding window
+
+---
+
+## Session 2026-10-07 � Execute-Feature: Mock/Seed Cleanup, Route Requests E2E, Caching, Live Preview, Responsive (planning pass)
+
+**Completed:**
+- Step 1 planning pass per `commands/execute-feature.md`: read task-queue, system-architecture, design-system, repair-system, project-context, project-decisions; ran 5 parallel codebase research passes (seed/mock audit, route preview UI, caching/feed, notifications/follows, analytics/responsive)
+- Architecture impact identified ? `plan-feature.md` logic run: Prisma schema migration (Post.type/description/quotedPostId + NotificationType extension), new `/api/suggestions` route, new cache services, new UI components (EndlessCarousel, RequestRouteModal)
+- Wrote plan to `checkpoints/in-progress.md`; appended Sprint 7 task table to `planning/task-queue.md` (this entry is the required mutation trace)
+- Self-check vs project-context scope (in-scope: social route platform, notifications, offline/caching) and project-decisions (no conflicts) � passed
+
+**Tasks Added to task-queue.md:**
+- Sprint 7: Route Requests E2E, Live Preview, Caching & Data Hygiene (27 granular steps grouped in 7 workstreams A-G, see in-progress.md)
+
+**Assumptions Made:**
+- "Post modal" for respond CTA = ShareRouteModal in response mode with quoted request; carousel route items deep-link /posts/[id]
+- Seed clear is manual-only (package.json script), always backs up first, scoped to seed markers; SiteConfig seeded keys kept (live config)
+- New NotificationType enum values also fix the existing broken `?filter=rewards` query
+
+**Status:** Paused for explicit go/no-go before implementation (execute-feature contract).
+
+---
+
+## Session 2026-10-07 (resume) � resume-session + directive addendum
+
+**Completed:**
+- resume-session.md Step 1-2: read in-progress.md, session-log last entry, task-queue Sprint 7; ran sync-context focused drift check on checkpoint claims (scripts exist + db:* present; ShareRouteModal previewOpen/locateMe present; feedStream loadInitial(userId) + hidden-tab pause present; no foreign commits since 2026-09-29)
+- Drift classified MINOR: checkpoint status still said "Awaiting go/no-go" and all Sprint 7 rows unchecked despite A1/A2/B1/B2/C1/C2/D1 done � corrected in in-progress.md + task-queue.md in the same pass (checkpoint compliance)
+- Directive addendum logged as H1-H4 (posting E2E, profile tab filtering, redux-observables review, mutation tests + error-boundary hardening) � additive, does not invalidate Sprint plan
+
+**Status:** Resuming at Sprint E (route requests E2E).
+
+---
+
+## Session 2026-10-08 (resume) — resume-session, Sprint E close-out + QA gate
+
+**Completed:**
+- resume-session.md Steps 1–3: read in-progress.md, session-log last entry, task-queue Sprint 7; drift check vs repo (git log: HEAD b6e169e already contains A–E2 work; verified F1 prompt in home/page.tsx:127-179, per-tab profile filtering in profile pages, H3 decision in project-decisions.md, mutations/posts tests present)
+- Drift classified MINOR: in-progress NEXT pointer stale (said "NEXT: F1…" though F1/G/H2/H3 already in code); Sprint E (schema, fan-out, Respond CTA, RequestRouteModal) verified complete in code — no re-implementation needed
+- QA gate run: `npx tsc --noEmit` 0 errors (after removing removed `downlevelIteration` option from tsconfig.json for current TS + `npm install`), `npm test` 122/122 across 11 suites, `npx next lint` warnings-only (removed unused UserPlus import in FollowButton.tsx), `npm run build` clean
+- H1 verified (POST persists type/description/quotedPostId, fan-out non-blocking, feed refresh + cold-start reload); H4 verified (mutations.test.ts + posts.test.ts passing); task-queue H1/H4/QA marked [x]; in-progress status reconciled
+
+**Files Modified:**
+- tsconfig.json — removed `downlevelIteration: true` (TS5102: option removed in current TS; es2015 target handles iteration natively)
+- app/components/features/suggestions/FollowButton.tsx — removed unused `UserPlus` import (lint warning)
+- ai-system/planning/task-queue.md — H1/H4/QA [ ] → [x]
+- ai-system/checkpoints/in-progress.md — status reconciled to post-QA state
+
+**Next Task:**
+- Sprint 7 fully complete; run `update-ai-system.md` deep sync (repo-map, architecture, dev-history) and clear in-progress.md per close-out step 27
+
+**Assumptions Made:**
+- tsc/lint/test/build run in CI-like runner without preinstalled node_modules; `npm install` was required and is environment-only (not a code change)
+- No code changes needed for Sprint E/F/G/H — all already implemented in HEAD commit; this session was verify + gate + reconcile only
+
+**Notes / Blockers:**
+- None — QA gate fully green
+
+---
+
+## Session 2026-10-08 — update-ai-system deep sync (Sprint 7 close-out)
+
+**Completed:**
+- Read all `ai-system/` files and compared against repo state (git HEAD 98cf69c, PR #42 merged). Fixed accumulated drift:
+  - `index/repo-map.md` — 14→17 models, 8→9 enums, 3→7 migrations, 34→42 UI files, 11→15 services, 25→27 configs; added scripts/, app/lib/cache, app/lib/hooks, suggestions features, /api/suggestions + /api/bookmarks
+  - `index/dependency-graph.md` — added memoryCache/useCachedFetch, suggestions + bookmarks routes, EmailService, OtpStore/ResetTokenStore (durable DB tokens), welcome + fan-out flows
+  - `system-architecture.md` — added Route Requests / Suggestions / Client Cache / Seed Tooling modules, CARTO + MapTiler/Mapbox env keys, refreshed Known Constraints (122 tests, durable reset tokens, verified-email fix, downlevelIteration removal)
+  - `memory/architecture-history.md` — added Sept 16 (false-positive mail), Sept 29 (durable DB tokens), Oct 7/8 (Sprint 7) entries
+  - `planning/project-plan.md` — marked analytics content + mutation tests done, added Sprint 7 + auth-hardening to Completed; corrected: full-text search still NOT implemented (no /api/search or SearchService in code)
+  - `summaries/dev-history.md` — added Sept 16, Sept 29, Oct 7/8 sprint entries
+  - `memory/lessons-learned.md` — added 4 lessons (durable tokens, verify email result, seed tooling, self-relation quoting)
+  - `repair-system.md` — added 3 entries (false-positive mail, volatile token store, downlevelIteration)
+  - `testing/test-results.md` — rolled to 122/122 across 11 suites per 2026-10-08 QA gate (11 test files verified present; `npm test` not re-runnable here — no node_modules in runner)
+  - `project-context.md` — refreshed Current Project Phase paragraph + backlog
+  - Freshness metadata → 2026-10-08 on all compared files; `checkpoints/in-progress.md` reset to idle (Sprint 7 archived to dev-history per close-out step 27)
+- Left untouched (flagged still-stale): `design-system.md` (2026-07-08), `testing/test-plan.md` (2026-07-01) — not compared this run; template scaffolding with `(set on first run)` markers (agents/, protocols/, tools/) intentionally unchanged
+
+**Files Modified:**
+- ai-system/index/repo-map.md, index/dependency-graph.md, system-architecture.md
+- ai-system/memory/architecture-history.md, memory/lessons-learned.md, memory/project-decisions.md (header)
+- ai-system/planning/project-plan.md, planning/task-queue.md (header)
+- ai-system/summaries/dev-history.md, repair-system.md, testing/test-results.md
+- ai-system/project-context.md, checkpoints/in-progress.md, checkpoints/session-log.md (this entry)
+
+**Next Task:**
+Next human decision — backlog candidates: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md.
+
+**Assumptions Made:**
+- Session-log QA figures (122/122, 11 suites) trusted as record; verified only to file-presence level here (runner lacks node_modules)
+- `20250929000000_add_password_reset_token` migration name taken from directory listing; not opened for content verification
+- Minor version drift in package.json (^ranges) not audited line-by-line — Tech Stack table versions left as-is
+
+**Notes / Blockers:**
+- `update-ai-system.md` is terminal per its contract — no chained commands. Findings above feed the next human decision.
+
+---
+
+## Session 2026-10-08 — execute-feature: Doc-Staleness Remediation + Real QA Gate (update-ai-system follow-up)
+
+**Completed:**
+- Step 1 planning pass: read task-queue, system-architecture, design-system, repair-system, project-context, project-decisions, test-plan, test-results, project-plan; verified all three stale items against code (zero antd imports, green @theme tokens, 42 UI files, DashboardNav MOBILE_TABS, no /api/search or SearchService, 11 test files / 122 it-test cases)
+- Step 2 self-check vs project-context scope + project-decisions: PASS, no architecture impact, no plan-feature.md needed
+- Step 3 implementation (docs-only, zero app/ code changes):
+  - design-system.md — corrected palette, radius/shadow, Tailwind+Lucide (antd unused), mobile tabs, UI count; freshness → 2026-10-08
+  - testing/test-plan.md — rolled 91/9 → 122/11 with verified per-suite counts, API-boundary done / live-DB open, search NOT IMPLEMENTED; freshness → 2026-10-08
+  - system-architecture.md — Search row → NOT IMPLEMENTED, diagram 34→42 UI + 11→15 services; updater → execute-feature 2026-10-08
+  - testing/test-results.md — replaced file-presence caveat with real-run results
+- Step 4 QA gate (all real runs after npm install): `npx tsc --noEmit` exit 0; `npx jest` 11 suites / 122 tests pass; `npx next lint` exit 0 (pre-existing no-explicit-any in feed route untouched per non-breaking constraint); `npm run build` exit 0. No code fixes needed — all tests already passing.
+- Step 5 close-out: dev-history entry appended; this session-log entry; sync-context mid-work + final (see below); in-progress.md reset to idle; update-ai-system chain run as directed
+
+**Files Modified:**
+- ai-system/design-system.md — staleness remediation (tokens, patterns, nav, counts, freshness)
+- ai-system/testing/test-plan.md — staleness remediation (counts, API-boundary status, search note, freshness)
+- ai-system/system-architecture.md — Search false-claim fix + diagram counts
+- ai-system/testing/test-results.md — real-run results replace file-presence note
+- ai-system/summaries/dev-history.md — appended this session entry
+- ai-system/checkpoints/in-progress.md — reset to idle
+- ai-system/checkpoints/session-log.md — this entry (+ update-ai-system entry follows)
+
+**Next Task:**
+- update-ai-system.md deep sync (mandated by directive + execute-feature Step 5 chain) — run now; then next human decision on backlog (live map tracking, carto key, auth linking, supercluster, rate-limiter Redis migration)
+
+**Assumptions Made:**
+- `antd@^5.23.3` staying in package.json as an unused declared dep is intentional (removal would be a breaking-adjacent dep change) — doc now states it as unused rather than removing it
+- Lint `no-explicit-any` errors in `app/api/posts/feed/route.ts` are pre-existing (present in HEAD, not introduced here) — left untouched per non-breaking directive since lint exit code is 0 and tests/build/tsc are green
+- No task-queue mutation: this remediation had no sprint tasks, so no checkboxes or last-synced marker were touched
+
+**Notes / Blockers:**
+- Sync-context (mid-work after docs edits + final at close): drift re-checked — repo-map/dependency-graph need no changes for docs-only session; design-system/test-plan/system-architecture/test-results now match code; no new drift introduced
+- Chain compliance: execute-feature Step 3 mid-work sync + Step 5 final sync done; deep-sync condition met via explicit directive (run update-ai-system when done) even though architecture impact was none
+
+---
+
+## Session 2026-10-08 — update-ai-system deep sync (execute-feature chain: doc-staleness remediation)
+
+**Completed:**
+- Read all `ai-system/` files and compared against repo state (HEAD + this session's docs edits; docs-only session, no `app/` code changes so module counts unchanged — spot-verified: 17 models / 9 enums / 7 migrations + lock file / 27 configs / 15 services / 42 UI files all match repo-map claims; 122 tests across 11 files match test-plan/test-results).
+- Fixed remaining drift found in this pass:
+  - `planning/project-plan.md` — removed duplicated `- [ ] Component tests for App* components` line (was listed twice in Phase 8)
+  - `memory/lessons-learned.md` — added "Docs Must Be Verified Against Code" lesson from this remediation
+- Confirmed resolved: design-system.md + test-plan.md no longer stale (freshness 2026-10-08 with verification sources); system-architecture.md Search row now agrees with project-plan.md (both NOT IMPLEMENTED); test-results.md reflects real runs from this session
+- Left untouched (verified, no drift): repo-map, dependency-graph, project-context, repair-system, task-queue (no sprint tasks in this remediation — no checkbox or last-synced changes), architecture-history, test-results history
+- `checkpoints/in-progress.md` reset to idle per close-out
+
+**Files Modified:**
+- ai-system/planning/project-plan.md (dedup line)
+- ai-system/memory/lessons-learned.md (new lesson)
+- ai-system/checkpoints/session-log.md (this entry)
+
+**Next Task:**
+Next human decision — backlog candidates: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md.
+
+**Assumptions Made:**
+- No code changes in this session means structural docs (repo-map, dependency-graph) need header bumps only if content changed — they didn't, so headers left at 2026-10-08 from the prior sync
+- `update-ai-system.md` is terminal per its contract — no chained commands
+
+**Notes / Blockers:**
+- None — all three items from the originating stale report are now addressed; QA gate green with real runs
+
+---
+
+## Session 2026-10-08 — execute-feature: Search E2E (+ sync-context checkpoints)
+
+**Completed:**
+- Step 1 planning pass: read task-queue, project-plan (Phase 4 search unchecked), system-architecture (Search NOT IMPLEMENTED), project-context, design-system, repair-system, project-decisions; no architecture impact (no schema/migration/deps) so no plan-feature.md; wrote checkpoints/in-progress.md plan
+- Step 2 self-check vs project-context scope + project-decisions: PASS (search = Daily Commuter key interaction; complies with state-strategy/config-driven/zero-emoji decisions)
+- Step 3 implementation:
+  - `app/lib/services/searchService.ts` [NEW] — unified posts+users+tags; contains/insensitive (no migration); Redis read-through via existing CACHE_KEYS.search/CACHE_TTL.searchResults (never-throw); P2022 avatarConfig fallback per repair-system pattern
+  - `app/api/search/route.ts` [NEW] — GET q/type/region/postType/limit/cursor; checkRateLimit(search); guest-accessible; sanitized errors; 503 on Prisma-known errors
+  - `app/(dashboard)/search/page.tsx` + `SearchPage.tsx` [NEW] — fixes dead /search?q= links from SuggestionsPanel; Suspense + useSearchParams; 300ms debounce + AbortController; All/Routes/People tabs; PostCard/FollowButton reuse; EMPTY_STATES.search
+  - `app/lib/config/apiRegistry.ts` [EDIT] — search entry; `middleware.ts` [EDIT] — /search guest route (non-breaking, /explore precedent)
+- Step 3b tests: `app/__tests__/api/search.test.ts` (9: validation, type filters, region/postType, 503, 429) + `app/__tests__/services/searchService.test.ts` (8: normalization, short-query guard, cache, tags, cursor, P2022)
+- Step 4 QA gate (real runs after `npm install` — runner had no node_modules): `npx tsc --noEmit` 0 errors; `npx jest` 13 suites / 139 tests pass; `npx next lint` — 2 new no-require-imports in search test FIXED (require → typed imports), remaining 7 verified pre-existing via `git stash` baseline; `npm run build` clean with /search route
+- Step 5 close-out: project-plan checkbox; task-queue Sprint 8 + last-synced 2026-10-08; system-architecture Search row live; test-plan/test-results 122/11 → 139/13; repo-map + dependency-graph freshness; dev-history entry; this entry
+
+**Files Modified:**
+- app/lib/services/searchService.ts (new)
+- app/api/search/route.ts (new)
+- app/(dashboard)/search/page.tsx + SearchPage.tsx (new)
+- app/__tests__/api/search.test.ts + app/__tests__/services/searchService.test.ts (new)
+- app/lib/config/apiRegistry.ts, middleware.ts (wiring)
+- ai-system/planning/project-plan.md, planning/task-queue.md, system-architecture.md, testing/test-plan.md, testing/test-results.md, index/repo-map.md, index/dependency-graph.md, summaries/dev-history.md, checkpoints/in-progress.md, checkpoints/session-log.md
+
+**Next Task:**
+- update-ai-system.md deep sync (mandated: originating directive says run update-ai-system when done; Sprint 8 is [M]-only but directive chain applies) — run now; then next human decision on remaining backlog
+
+**Assumptions Made:**
+- `contains`/`mode: insensitive` queries chosen over Postgres full-text/GIN indexes deliberately: zero-migration, non-breaking, sufficient for current scale; GIN/trigram upgrade is a future optimization, not this session
+- Cursor pagination is post-id based (user hits are top-N per query, not paginated) — documented in service; matches "routes drive the feed" product shape
+- Lint baseline: 7 `no-explicit-any` errors in leaderboard/posts/feed/google-callback exist on HEAD (proven via stash) — left untouched per non-breaking constraint
+
+**Notes / Blockers:**
+- Sync-context (mid-work after implementation + final at close): drift re-checked — no drift beyond what this session updated; repo-map/dependency-graph now reflect search module; no new drift introduced
+- All tests passing per directive (139/139); non-breaking fixes applied (lint require-imports in new test only)
+
+---
+
+## Session 2026-10-08 — update-ai-system deep sync (execute-feature chain: search E2E)
+
+**Completed:**
+- Read all `ai-system/` files and compared against repo state (HEAD + Sprint 8 search edits; verified: 17 models / 9 enums / 7 migrations / 27 configs / 16 services (15 + searchService) / 13 test files match claims after fixes below; 139 tests by real jest run)
+- Fixed drift found in this pass:
+  - `system-architecture.md` — diagram 15 → 16 services; Known Constraints 122/11 + no-node_modules caveat → 139/13 with real-run note
+  - `project-context.md` — Phase line + counts → Sprint 8 search, 16 services, /api/search, /search page, 139/13, latest QA gate (updater → execute-feature search E2E)
+  - `planning/project-plan.md` — Phase 8 unit-test line 122/11 → 139/13
+  - `memory/architecture-history.md` — appended Sprint 8 entry (zero-migration rationale, slot reuse, repair-system patterns)
+  - `memory/lessons-learned.md` — added "Prefer Zero-Migration Search First; Prove Lint Baselines With Stash" lesson
+- Left untouched (verified, no drift): repair-system, design-system, protocols, agents, skills, tools/registry, designs, operations, FAQ/blog configs; session-log/dev-history history rows (append-only past record); `checkpoints/in-progress.md` cleared to idle per close-out
+
+**Files Modified:**
+- ai-system/system-architecture.md (service count, test-constraint line)
+- ai-system/project-context.md (phase/counts/gate line + updater)
+- ai-system/planning/project-plan.md (test count line)
+- ai-system/memory/architecture-history.md (Sprint 8 entry)
+- ai-system/memory/lessons-learned.md (new lesson)
+- ai-system/checkpoints/session-log.md (this entry)
+- ai-system/checkpoints/in-progress.md (reset to idle)
+
+**Next Task:**
+Next human decision — remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md. Search live-DB integration test still open.
+
+**Assumptions Made:**
+- Historical session-log/dev-history/test-results-history rows describing past 122/11 states are intentionally left as-is (append-only record, not drift)
+- `update-ai-system.md` is terminal per its contract — no chained commands
+
+**Notes / Blockers:**
+- Discrepancy report: no unresolved inconsistencies — every `NOT IMPLEMENTED` / `no /api/search` / `122/11` / `15 services` claim in current-state docs now matches code; the originating stale report (design-system, test-plan, search claim) is fully closed by implementation rather than documentation

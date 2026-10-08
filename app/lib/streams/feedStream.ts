@@ -1,5 +1,6 @@
 import { BehaviorSubject, Observable, interval, Subject } from "rxjs"
 import { switchMap, share, filter, takeUntil } from "rxjs/operators"
+import { memoryCache } from "@/app/lib/cache/memoryCache"
 
 interface FeedPost {
   id: string
@@ -45,6 +46,13 @@ interface InteractionEvent {
 
 const POLL_INTERVAL = 30000 // 30s
 const LIMIT = 10
+const FEED_FRESH_SEC = 45 // cached feed younger than this is served without a request
+const FEED_RETENTION_SEC = 1800 // how long stale feed stays available for instant paint
+
+interface CachedFeed {
+  state: FeedState
+  fetchedAt: number
+}
 
 export class FeedStream {
   private polling$: Observable<FeedState>
@@ -61,9 +69,16 @@ export class FeedStream {
 
   feedState$ = this.feedStateSubject.asObservable()
 
+  /** Cache key for the current viewer — set on first loadInitial(). */
+  private cacheKey: string | null = null
+
   constructor() {
     this.polling$ = interval(POLL_INTERVAL).pipe(
-      filter(() => !this.feedStateSubject.value.loading),
+      filter(
+        () =>
+          !this.feedStateSubject.value.loading &&
+          (typeof document === "undefined" || !document.hidden) // pause polling on hidden tabs
+      ),
       switchMap(() => this.fetchFeed()),
       share(),
     )
@@ -74,15 +89,26 @@ export class FeedStream {
         const existingIds = new Set(current.posts.map((p) => p.id))
         const newPosts = state.posts.filter((p) => !existingIds.has(p.id))
         if (newPosts.length > 0) {
-          this.feedStateSubject.next({
+          const merged: FeedState = {
             ...current,
             posts: [...newPosts, ...current.posts],
             cursor: state.cursor,
             hasMore: state.hasMore,
-          })
+          }
+          this.feedStateSubject.next(merged)
+          this.persist(merged)
         }
       }
     })
+  }
+
+  private persist(state: FeedState): void {
+    if (!this.cacheKey) return
+    memoryCache.set<CachedFeed>(
+      this.cacheKey,
+      { state: { ...state, loading: false }, fetchedAt: Date.now() },
+      FEED_RETENTION_SEC
+    )
   }
 
     private async fetchFeed(cursorVal?: string): Promise<FeedState> {
@@ -110,10 +136,32 @@ export class FeedStream {
     }
   }
 
-  async loadInitial() {
+  /**
+   * Hydrates from the in-app memory cache when available (instant paint, no
+   * skeleton flash), then revalidates only if the cached feed is stale.
+   */
+  async loadInitial(userId?: string): Promise<FeedState> {
+    this.cacheKey = `feed:stream:${userId ?? "anon"}`
+    const cached = memoryCache.get<CachedFeed>(this.cacheKey)
+
+    if (cached && cached.state.posts.length > 0) {
+      this.feedStateSubject.next({ ...cached.state, loading: false })
+      const ageSec = (Date.now() - cached.fetchedAt) / 1000
+      if (ageSec < FEED_FRESH_SEC) return cached.state
+      // stale → silent background revalidation, keep showing cached feed
+      const state = await this.fetchFeed()
+      if (state.posts.length > 0) {
+        this.feedStateSubject.next(state)
+        this.persist(state)
+        return state
+      }
+      return cached.state
+    }
+
     this.feedStateSubject.next({ ...this.feedStateSubject.value, loading: true })
     const state = await this.fetchFeed()
     this.feedStateSubject.next(state)
+    this.persist(state)
     return state
   }
 
@@ -122,12 +170,14 @@ export class FeedStream {
     if (!current.hasMore || current.loading) return
     this.feedStateSubject.next({ ...current, loading: true })
     const state = await this.fetchFeed(current.cursor ?? undefined)
-    this.feedStateSubject.next({
+    const merged: FeedState = {
       posts: [...current.posts, ...state.posts],
       cursor: state.cursor,
       hasMore: state.hasMore,
       loading: false,
-    })
+    }
+    this.feedStateSubject.next(merged)
+    this.persist(merged)
   }
 
   async refresh() {
@@ -138,6 +188,7 @@ export class FeedStream {
     // Only keep current posts if fetch failed (state has no posts AND hasMore false due to error returns)
     if (state.posts.length > 0) {
       this.feedStateSubject.next({ ...state, loading: false })
+      this.persist(state)
     } else if (state.hasMore === false && state.cursor === null) {
       // fetchFeed returns empty on error — preserve current posts but clear loading
       // Check if error case by seeing if we got network failure vs legit empty feed
@@ -145,6 +196,7 @@ export class FeedStream {
       this.feedStateSubject.next({ ...current, loading: false })
     } else {
       this.feedStateSubject.next({ ...state, loading: false })
+      this.persist(state)
     }
   }
 

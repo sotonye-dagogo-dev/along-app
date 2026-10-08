@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-09-15
-> - last-verified-against-code: 2026-09-15
+> - last-updated-by: update-ai-system 2026-10-08
+> - last-verified-against-code: 2026-10-08
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -248,6 +248,102 @@ Building any file/media upload — verify end-to-end (input → FormData → API
 
 **Apply When:**
 Any route that touches Redis or Resend on the request hot path — always timeout-guard and make side effects (email, feed invalidation) background work.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Security Tokens Must Be Durable, Not Cache-Resident
+
+**Context:**
+Password-reset links reported "expired or invalid" within seconds. Tokens lived in the Redis/in-memory OTP store, which by policy degrades to memory on timeout and loses data across instances/restarts (Sept 29 fix: durable `PasswordResetToken` DB model).
+
+**What We Learned:**
+Cache is best-effort by design (timeout + fallback + eviction). Anything correctness-critical — auth tokens, reset links, OTPs that gate access — belongs in the database with explicit expiry. Cache may mirror such data for speed, but the database is the source of truth and the fallback on cache miss must be a DB read, not a failure.
+
+**Apply When:**
+Storing any token, code, or link whose loss reads as a security failure to the user (reset links, invite tokens, one-time codes).
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Background Email Must Verify the Provider Result
+
+**Context:**
+Forgot-password returned success while Resend never delivered — no mail, no error, only a Redis-timeout warning in logs (Sept 16 fix). The send was fire-and-forget with no result check.
+
+**What We Learned:**
+A false "mail sent" success is worse than an error: the user waits for mail that never arrives and blames their inbox. Every background email must check the provider send result and degrade honestly (log + surfaced error) when delivery fails.
+
+**Apply When:**
+Any flow that sends transactional email (verification, reset, notifications) — especially non-blocking `waitUntil` sends where the response already went out.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Seed Data Needs Backup-First, Markers-Only Tooling
+
+**Context:**
+Production glide-path required removing dev seed rows without touching user data (Sprint 7: `scripts/backup-seed-data.ts`, `clear-seed-data.ts`, `restore-seed-backup.ts`).
+
+**What We Learned:**
+Seed cleanup scripts must: (1) always back up before deleting, (2) target seed markers only (`*@example.com` users, seeded titles — never heuristics like "old rows"), (3) never run automatically (package.json script only), (4) treat seeded live config (`SiteConfig` keys) as untouchable. Idempotent seeds (upsert by title) prevent duplicate-seed drift.
+
+**Apply When:**
+Any environment that mixes seed data with real user data and needs a safe path to production-clean state.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Self-Relation Quoting Beats Duplication for Response Posts
+
+**Context:**
+Route responses needed to reference the original request (Sprint 7: `Post.quotedPostId` self-relation + quote block in `PostCard`).
+
+**What We Learned:**
+A nullable self-FK (`quotedPostId`) with an included quote block keeps one source of truth: the request stays deep-linkable, edits propagate, and no content is duplicated. The same pattern serves reposts/quotes anywhere.
+
+**Apply When:**
+Any "respond to / share with context" feature — prefer a self-relation + rendered quote over copying content.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Docs Must Be Verified Against Code, Not Trusted From Prior Runs
+
+**Context:**
+The 2026-10-08 update-ai-system deep sync honestly flagged design-system.md (2026-07-08) and testing/test-plan.md (2026-07-01) as stale instead of bumping their dates, and this execute-feature session remediated them: design tokens were blue (#1677ff) in docs vs green (#00623B) in `globals.css`, Ant Design was described as the component foundation while code has zero `antd` imports, mobile tabs listed Notifications instead of the Share FAB, and test counts were 91/9 vs actual 122/11.
+
+**What We Learned:**
+Staleness flags are load-bearing — carrying a stale date forward silently converts drift into false claims. When a doc can't be verified in a run, leave the old date with an explicit note (as was done) rather than refreshing metadata. Remediation then means grepping the code (`antd` imports, `@theme` tokens, `MOBILE_TABS`, test-file counts) and correcting each claim with its verification source in the freshness line.
+
+**Apply When:**
+Any sprint-end sync where a file can't be compared — flag it stale honestly; schedule the verification pass as its own execute-feature with a QA gate.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Prefer Zero-Migration Search First; Prove Lint Baselines With Stash
+
+**Context:**
+Sprint 8 (2026-10-08) implemented unified search with Prisma `contains`/`mode: insensitive` instead of Postgres full-text/GIN indexes — no migration, no new deps, non-breaking. The same session's lint run showed 7 errors; `git stash -u` + re-lint proved all 7 pre-exist on HEAD, so only the 2 new `no-require-imports` in the new test file were fixed.
+
+**What We Learned:**
+Full-text indexes are an optimization, not a prerequisite — `contains`/`insensitive` plus the existing Redis search-cache slot ships discovery now and leaves GIN/trigram as a measured follow-up. For lint, never assume pre-existing dirt: a stash-baseline check distinguishes "already broken" (leave per non-breaking rule) from "introduced here" (must fix) in one cheap step.
+
+**Apply When:**
+Any feature where the indexed/optimized path needs a migration — ship the zero-migration query first behind the existing cache/rate-limit slots. Any QA gate with lint errors — run the stash baseline before touching anything.
 
 **Supersedes:** None
 **Superseded by:** None
