@@ -33,6 +33,8 @@ export interface ModerationConfig {
     map: boolean;
     navigationGuide: boolean;
     trustScore: boolean;
+    /** Fares/amounts belong to concrete routes, never to requests for them. */
+    fare: boolean;
   };
   /**
    * Post nature preservation: these fields are set once at creation and are
@@ -66,6 +68,7 @@ export const MODERATION_CONFIG: ModerationConfig = {
     map: true,
     navigationGuide: true,
     trustScore: true,
+    fare: true,
   },
   immutablePostFields: ["type", "quotedPostId"],
 };

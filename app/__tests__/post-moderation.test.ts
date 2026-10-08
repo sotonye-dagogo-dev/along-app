@@ -23,10 +23,11 @@ describe("post moderation config (metadata-driven)", () => {
     expect(MODERATION_CONFIG.adminActions.every((a) => a.label && a.description)).toBe(true);
   });
 
-  it("hides map, navigation and trust for route requests", () => {
+  it("hides map, navigation, trust and fare for route requests", () => {
     expect(MODERATION_CONFIG.routeRequestHides.map).toBe(true);
     expect(MODERATION_CONFIG.routeRequestHides.navigationGuide).toBe(true);
     expect(MODERATION_CONFIG.routeRequestHides.trustScore).toBe(true);
+    expect(MODERATION_CONFIG.routeRequestHides.fare).toBe(true);
   });
 
   it("registers report-lifecycle notification types", () => {

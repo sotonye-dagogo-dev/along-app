@@ -47,14 +47,23 @@ describe("getFallbackAvatarUrl", () => {
 });
 
 describe("AVATAR_STYLES", () => {
-  it("contains 5 style options", () => {
-    expect(AVATAR_STYLES.length).toBe(5);
+  it("contains at least the original 5 style options", () => {
+    expect(AVATAR_STYLES.length).toBeGreaterThanOrEqual(5);
   });
 
-  it("each style has value and label", () => {
+  it("each style has value, label, category and description", () => {
     AVATAR_STYLES.forEach((style) => {
       expect(style).toHaveProperty("value");
       expect(style).toHaveProperty("label");
+      expect(style).toHaveProperty("category");
+      expect(style).toHaveProperty("description");
     });
+  });
+
+  it("keeps the original styles available (non-breaking)", () => {
+    const values = AVATAR_STYLES.map((s) => s.value);
+    for (const legacy of ["avataaars", "bottts", "lorelei", "notionists"]) {
+      expect(values).toContain(legacy);
+    }
   });
 });

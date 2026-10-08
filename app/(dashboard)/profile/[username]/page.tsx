@@ -3,11 +3,12 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { UserMinus, UserPlus, UserCheck, ThumbsUp, MessageCircle } from "lucide-react"
+import { UserMinus, UserPlus, UserCheck } from "lucide-react"
 import { AppAvatar, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 
 interface ProfileData {
   id: string
@@ -29,12 +30,19 @@ interface ProfileData {
 interface PostItem {
   id: string
   title: string
-  likes: number
-  comments: number
+  description?: string | null
+  routes?: unknown
+  images?: string[]
   tags: string[]
+  likes: number
+  dislikes?: number
+  comments: number
+  bookmarks?: number
+  validityScore?: number
+  validityTier?: string | null
   createdAt: string
   type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
-  user: { userName: string; firstName: string; lastName: string }
+  user: { id?: string; userName: string; firstName: string; lastName: string }
 }
 
 interface ProfileApiResponse {
@@ -83,7 +91,7 @@ export default function OtherProfilePage() {
         : activeTab === "requests"
           ? `/api/posts?limit=20&userId=${profileId}&type=ROUTE_REQUEST`
           : `/api/posts?limit=20&userId=${profileId}`
-  const { data: postsData, loading: postsLoading } = useCachedFetch<{ posts: PostItem[] }>(
+  const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
     ready && profileId ? `profile-tab:${profileId}:${activeTab}` : null,
     tabQuery,
     { ttlSec: 120, enabled: ready }
@@ -161,8 +169,6 @@ export default function OtherProfilePage() {
   if (!profile) {
     return <div className="max-w-[680px] mx-auto px-4 py-8"><AppEmptyState {...EMPTY_STATES.error} /></div>
   }
-
-  const initials = profile.firstName[0] + (profile.lastName?.[0] ?? "")
 
   return (
     <div className="max-w-[680px] mx-auto px-4 py-4">
@@ -273,39 +279,40 @@ export default function OtherProfilePage() {
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
           {posts.map((post) => (
-            <Link
+            <ProfilePostCard
               key={post.id}
-              href={`/posts/${post.id}`}
-              className="bg-bg-card border border-border radius-lg p-3.5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-base no-underline block"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Link href={`/profile/${profile.userName}`} onClick={(e) => e.stopPropagation()} className="w-7 h-7 rounded-circle bg-warning flex items-center justify-center text-[10px] font-bold text-warning-text shrink-0 no-underline">
-                  {initials}
-                </Link>
-                <Link href={`/profile/${profile.userName}`} onClick={(e) => e.stopPropagation()} className="text-xs font-semibold text-text-primary no-underline hover:underline flex-1">
-                  {profile.firstName} {profile.lastName}
-                </Link>
-                <Link href={`/profile/${profile.userName}`} onClick={(e) => e.stopPropagation()} className="text-[11px] text-text-muted ml-auto no-underline hover:underline">@{profile.userName}</Link>
-              </div>
-              <div className="text-sm font-semibold text-text-primary mb-1.5">{post.title}</div>
-              <div className="text-[11px] text-text-muted flex items-center gap-2">
-                <span className="inline-flex items-center gap-1"><ThumbsUp size={12} /> {post.likes}</span>
-                <span className="inline-flex items-center gap-1"><MessageCircle size={12} /> {post.comments}</span>
-                {post.type === "ROUTE_REQUEST" && (
-                  <span className="inline-flex px-1.5 py-0.5 radius-pill text-[10px] font-semibold bg-warning text-warning-text border border-warning-border">
-                    Request
-                  </span>
-                )}
-                {post.type === "ROUTE_RESPONSE" && (
-                  <span className="inline-flex px-1.5 py-0.5 radius-pill text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border">
-                    Response
-                  </span>
-                )}
-                {post.tags.slice(0, 2).map((t) => (
-                  <Link key={t} href={`/explore?tag=${encodeURIComponent(t)}`} onClick={(e) => e.stopPropagation()} className="inline-flex px-1.5 py-0.5 radius-pill text-[10px] font-medium bg-bg-elevated text-text-secondary no-underline hover:bg-primary-muted hover:text-primary">#{t}</Link>
-                ))}
-              </div>
-            </Link>
+              post={
+                {
+                  id: post.id,
+                  title: post.title,
+                  description: post.description ?? null,
+                  type: post.type,
+                  routes: post.routes ?? [],
+                  images: post.images ?? [],
+                  tags: post.tags ?? [],
+                  likes: post.likes ?? 0,
+                  dislikes: post.dislikes ?? 0,
+                  comments: post.comments ?? 0,
+                  bookmarks: post.bookmarks ?? 0,
+                  validityScore: post.validityScore ?? 0,
+                  validityTier: post.validityTier ?? null,
+                  createdAt: post.createdAt,
+                  user: {
+                    id: post.user.id ?? profile.id,
+                    userName: profile.userName,
+                    firstName: profile.firstName,
+                    lastName: profile.lastName,
+                    avatar: profile.avatar,
+                    avatarConfig: profile.avatarConfig ?? undefined,
+                  },
+                } as never
+              }
+              onRemoved={(postId) =>
+                mutatePosts((prev) =>
+                  prev ? { posts: prev.posts.filter((p) => p.id !== postId) } : { posts: [] },
+                )
+              }
+            />
           ))}
         </div>
       </div>

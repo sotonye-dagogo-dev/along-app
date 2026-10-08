@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { z } from "zod";
 import type { FieldConfig } from "@/app/lib/types";
 import { AppInput, AppTextarea, AppSelect, AppButton } from "./";
@@ -54,9 +54,31 @@ export function ConfigDrivenForm({
   isLoading = false,
 }: ConfigDrivenFormProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [formValues, setFormValues] = useState<Record<string, string>>(
-    initialValues as Record<string, string> ?? {},
+  // Coerce any non-string initial value (objects, numbers, null) to a
+  // displayable string so inputs never render "[object Object]".
+  const coerceValues = useCallback(
+    (values?: Record<string, unknown>): Record<string, string> => {
+      const out: Record<string, string> = {};
+      for (const f of fields) {
+        const raw = values?.[f.name];
+        if (raw == null) out[f.name] = "";
+        else if (typeof raw === "string") out[f.name] = raw;
+        else if (typeof raw === "number" || typeof raw === "boolean") out[f.name] = String(raw);
+        else out[f.name] = "";
+      }
+      return out;
+    },
+    [fields],
   );
+  const [formValues, setFormValues] = useState<Record<string, string>>(() =>
+    coerceValues(initialValues),
+  );
+
+  // initialValues often arrive async (profile fetch). Re-sync when they
+  // change so the form is prefilled instead of staying empty.
+  useEffect(() => {
+    setFormValues(coerceValues(initialValues));
+  }, [initialValues, coerceValues]);
 
   const schema = z.object(
     Object.fromEntries(fields.map((f) => [f.name, buildFieldSchema(f)])),
@@ -71,6 +93,20 @@ export function ConfigDrivenForm({
       return next;
     });
   }, []);
+
+  // AppInput/AppTextarea/AppSelect forward native change events, not plain
+  // strings. Accept both shapes so the stored value is always a string and
+  // inputs never end up holding an event object ("[object Object]").
+  const fieldChangeHandler = useCallback(
+    (name: string) => (v: string | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+      const value =
+        typeof v === "string"
+          ? v
+          : (v?.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | undefined)?.value ?? "";
+      updateField(name, value);
+    },
+    [updateField],
+  );
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -107,7 +143,7 @@ export function ConfigDrivenForm({
       icon: IconComponent ? <IconComponent size={16} /> : undefined,
       error: fieldErrors[field.name],
       value: formValues[field.name] ?? "",
-      onChange: (v: string) => updateField(field.name, v),
+      onChange: fieldChangeHandler(field.name),
     };
 
     switch (field.type) {
