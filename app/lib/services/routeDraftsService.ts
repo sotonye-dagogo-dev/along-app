@@ -19,20 +19,32 @@ export interface RouteDraftStep {
   lng?: number;
 }
 
+export interface DraftResponseRef {
+  id: string;
+  title: string;
+  user?: { userName: string; firstName: string; lastName: string };
+  tags?: string[];
+}
+
 export interface RouteDraft {
   id: string;
   savedAt: string;
   title: string;
+  description: string;
   steps: RouteDraftStep[];
   tags: string[];
   images: string[];
+  /** Present when the draft was saved as a response to a route request. */
+  responseTo?: DraftResponseRef | null;
 }
 
 export interface SaveDraftInput {
   title: string;
+  description?: string;
   steps: RouteDraftStep[];
   tags: string[];
   images: string[];
+  responseTo?: DraftResponseRef | null;
 }
 
 function canUseStorage(): boolean {
@@ -106,6 +118,29 @@ function sanitizeStrings(raw: unknown): string[] {
   return raw.filter((t): t is string => typeof t === "string" && t.trim().length > 0).slice(0, 30);
 }
 
+function sanitizeResponseRef(raw: unknown): DraftResponseRef | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.id !== "string" || !r.id) return null;
+  const user =
+    typeof r.user === "object" && r.user !== null
+      ? (() => {
+          const u = r.user as Record<string, unknown>;
+          return {
+            userName: typeof u.userName === "string" ? u.userName : "",
+            firstName: typeof u.firstName === "string" ? u.firstName : "",
+            lastName: typeof u.lastName === "string" ? u.lastName : "",
+          };
+        })()
+      : undefined;
+  return {
+    id: r.id,
+    title: typeof r.title === "string" ? r.title.slice(0, 100) : "",
+    ...(user ? { user } : {}),
+    ...(Array.isArray(r.tags) ? { tags: sanitizeStrings(r.tags) } : {}),
+  };
+}
+
 function toDraft(raw: unknown): RouteDraft | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
@@ -115,9 +150,11 @@ function toDraft(raw: unknown): RouteDraft | null {
     savedAt:
       typeof r.savedAt === "string" && r.savedAt ? r.savedAt : new Date().toISOString(),
     title: typeof r.title === "string" ? r.title.slice(0, 100) : "",
+    description: typeof r.description === "string" ? r.description.slice(0, 500) : "",
     steps,
     tags: sanitizeStrings(r.tags),
     images: sanitizeStrings(r.images).slice(0, 10),
+    responseTo: sanitizeResponseRef(r.responseTo),
   };
 }
 
@@ -153,9 +190,11 @@ function persist(drafts: RouteDraft[]): void {
       ROUTE_DRAFTS_CONFIG.legacyKey,
       JSON.stringify({
         title: latest.title,
+        description: latest.description,
         steps: latest.steps,
         tags: latest.tags,
         images: latest.images,
+        responseTo: latest.responseTo ?? null,
       })
     );
   } else {
@@ -200,6 +239,7 @@ export const routeDraftsService = {
   hasUsableContent(input: SaveDraftInput): boolean {
     return (
       input.title.trim().length > 0 ||
+      (input.description ?? "").trim().length > 0 ||
       input.steps.some((s) => s.location.trim().length > 0) ||
       input.images.length > 0 ||
       input.tags.length > 0
@@ -213,9 +253,11 @@ export const routeDraftsService = {
       id: makeId(),
       savedAt: new Date().toISOString(),
       title: input.title.slice(0, 100),
+      description: (input.description ?? "").slice(0, 500),
       steps: sanitizeSteps(input.steps),
       tags: sanitizeStrings(input.tags),
       images: sanitizeStrings(input.images).slice(0, 10),
+      responseTo: sanitizeResponseRef(input.responseTo ?? null),
     };
     const drafts = [draft, ...this.listDrafts()].slice(0, ROUTE_DRAFTS_CONFIG.maxDrafts);
     persist(drafts);

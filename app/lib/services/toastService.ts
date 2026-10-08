@@ -1,3 +1,5 @@
+import { TOAST_CONFIG } from "@/app/lib/config/toast";
+
 type ToastType = "success" | "error" | "info" | "undo";
 
 export type ToastOptions = {
@@ -30,15 +32,15 @@ class ToastService {
   }
 
   success(message: string) {
-    this.show({ message, type: "success", duration: 3000 });
+    this.show({ message, type: "success", duration: TOAST_CONFIG.successMs });
   }
 
   error(message: string) {
-    this.show({ message, type: "error", duration: 5000 });
+    this.show({ message, type: "error", duration: TOAST_CONFIG.errorMs });
   }
 
   info(message: string) {
-    this.show({ message, type: "info", duration: 3000 });
+    this.show({ message, type: "info", duration: TOAST_CONFIG.infoMs });
   }
 
   close() {

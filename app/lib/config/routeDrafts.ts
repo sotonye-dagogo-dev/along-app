@@ -27,6 +27,8 @@ export interface RouteDraftsConfig {
   deletedToast: string;
   resumeChipLabel: (count: number) => string;
   draftsCountLabel: (count: number) => string;
+  /** Badge shown on drafts that were saved as a response to a route request. */
+  responseBadgeLabel: (title: string) => string;
 }
 
 export const ROUTE_DRAFTS_CONFIG: RouteDraftsConfig = {
@@ -49,4 +51,6 @@ export const ROUTE_DRAFTS_CONFIG: RouteDraftsConfig = {
   resumeChipLabel: (count: number) =>
     count === 1 ? "1 saved draft — continue" : `${count} saved drafts — continue`,
   draftsCountLabel: (count: number) => (count === 1 ? "1 draft" : `${count} drafts`),
+  responseBadgeLabel: (title: string) =>
+    title ? `Response to "${title.slice(0, 60)}"` : "Response to a request",
 };

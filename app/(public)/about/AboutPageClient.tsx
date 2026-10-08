@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, ShieldCheck, Route, Activity, Star } from "lucide-react";
-import { TEAM_MEMBERS, SITE_REVIEWS } from "@/app/lib/config";
+import { ShieldCheck, Route, Activity, Star } from "lucide-react";
+import { TEAM_MEMBERS, SITE_REVIEWS, ENDLESS_CAROUSEL_CONFIG } from "@/app/lib/config";
+import type { SiteReview } from "@/app/lib/config";
+import { EndlessCarousel } from "@/app/components/features/suggestions/EndlessCarousel";
 
 const FEATURES = [
   {
@@ -23,19 +24,11 @@ const FEATURES = [
 ];
 
 export default function AboutPageClient() {
-  const [reviewIdx, setReviewIdx] = useState(0);
-  const reviewCount = SITE_REVIEWS.length;
-
-  const goReview = useCallback((idx: number) => {
-    setReviewIdx(Math.max(0, Math.min(reviewCount - 1, idx)));
-  }, [reviewCount]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setReviewIdx((prev) => (prev + 1) % reviewCount);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [reviewCount]);
+  // Reviews ride the same EndlessCarousel tape as the home suggestions rail —
+  // one wrapper, one animation/physics implementation, reused everywhere.
+  const reviewItems = SITE_REVIEWS.map((r: SiteReview) => (
+    <ReviewCard key={r.handle} review={r} />
+  ));
 
   return (
     <div className="flex flex-col gap-12 pb-16">
@@ -148,7 +141,7 @@ export default function AboutPageClient() {
         </div>
       </section>
 
-      {/* Reviews Carousel */}
+      {/* Reviews Carousel — same EndlessCarousel design/animation as home */}
       <section className="bg-primary-muted py-12">
         <div className="max-w-[1100px] mx-auto px-6">
           <div className="text-center mb-8">
@@ -157,67 +150,37 @@ export default function AboutPageClient() {
               Real riders, real routes, real feedback
             </p>
           </div>
-          <div className="relative px-14">
-            <button
-              onClick={() => goReview(reviewIdx - 1)}
-              className="absolute left-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-bg-card border border-border shadow-sm flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-elevated hover:shadow-md transition-all z-10"
-              aria-label="Previous review"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <div className="overflow-hidden">
-              <div
-                className="flex gap-5 transition-transform duration-300 ease-out"
-                style={{ transform: `translateX(-${reviewIdx * (100 / reviewCount)}%)` }}
-              >
-                {SITE_REVIEWS.map((r) => (
-                  <div
-                    key={r.handle}
-                    className="min-w-[calc((100%-40px)/3)] max-lg:min-w-[calc(100%-0px)] glass rounded-2xl p-7 shrink-0"
-                  >
-                    <div className="flex gap-0.5 mb-3">
-                      {Array.from({ length: r.stars }).map((_, i) => (
-                        <Star key={i} size={16} className="fill-warning-border text-warning-border" />
-                      ))}
-                    </div>
-                    <div className="text-sm text-text-primary leading-relaxed mb-4 italic">
-                      {r.quote}
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${r.bg} ${r.color}`}>
-                        {r.initials}
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold">{r.name}</div>
-                        <div className="text-[11px] text-text-muted">{r.handle}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={() => goReview(reviewIdx + 1)}
-              className="absolute right-0 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-bg-card border border-border shadow-sm flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-elevated hover:shadow-md transition-all z-10"
-              aria-label="Next review"
-            >
-              <ChevronRight size={18} />
-            </button>
-            <div className="flex justify-center gap-2 mt-5">
-              {SITE_REVIEWS.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goReview(i)}
-                  className={`w-2 h-2 rounded-full border-none cursor-pointer transition-all duration-fast ${
-                    i === reviewIdx ? "bg-primary w-6 rounded-full" : "bg-border"
-                  }`}
-                  aria-label={`Review ${i + 1}`}
-                />
-              ))}
-            </div>
-          </div>
+          <EndlessCarousel
+            items={reviewItems}
+            label="Commuter reviews"
+            durationSec={ENDLESS_CAROUSEL_CONFIG.defaultDurationSec}
+          />
         </div>
       </section>
+    </div>
+  );
+}
+
+function ReviewCard({ review: r }: { review: SiteReview }) {
+  return (
+    <div className="w-[280px] sm:w-[320px] glass rounded-2xl p-7 shrink-0">
+      <div className="flex gap-0.5 mb-3">
+        {Array.from({ length: r.stars }).map((_, i) => (
+          <Star key={i} size={16} className="fill-warning-border text-warning-border" />
+        ))}
+      </div>
+      <div className="text-sm text-text-primary leading-relaxed mb-4 italic">
+        {r.quote}
+      </div>
+      <div className="flex items-center gap-2.5">
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${r.bg} ${r.color}`}>
+          {r.initials}
+        </div>
+        <div>
+          <div className="text-xs font-semibold">{r.name}</div>
+          <div className="text-[11px] text-text-muted">{r.handle}</div>
+        </div>
+      </div>
     </div>
   );
 }

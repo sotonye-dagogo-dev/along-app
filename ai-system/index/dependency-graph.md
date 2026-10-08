@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08 (Sprint 9 deep sync)
-> - last-verified-against-code: 2026-10-08 (31 configs, scroll-based carousel, share-modal footer + drafts library)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 posting/UX tightening close-out)
+> - last-verified-against-code: 2026-10-08 (33 configs, scroll-based carousel reused by About reviews, toast single-timer, post report/copy-link)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -27,7 +27,7 @@ Page Components (app/(auth|dashboard|admin|public|admin)/)
     → UI Components (app/components/ui/App*)
     → Feature Components (app/components/features/*)
         → posts/RequestRouteModal (route-request composer, response-mode ShareRouteModal)
-        → suggestions/EndlessCarousel (scroll-based autoplay, own overflow wrapper, ENDLESS_CAROUSEL_CONFIG) + SuggestionsRail (mobile, xl:hidden, feed-owned) + FollowButton
+        → suggestions/EndlessCarousel (scroll-based autoplay, own overflow wrapper, ENDLESS_CAROUSEL_CONFIG) + SuggestionsRail (mobile, xl:hidden, feed-owned) + FollowButton + About reviews tape (same wrapper, SITE_REVIEWS cards)
         → ui/SuggestionsPanel (live /api/suggestions: who-to-follow, open requests, trending tags)
     → App-level Hooks (app/hooks/useAuth, useFeedInteractions)
     → Client Cache (app/lib/cache/memoryCache + app/lib/hooks/useCachedFetch)
@@ -92,11 +92,13 @@ Service Layer (app/lib/services/*)
     → pushSubscriptionService → Prisma PushSubscription
     → qstashService → QStash Client/Receiver
     → offlineQueue → localStorage (client-side)
-    → undoService, toastService, modalService → (App-level)
+    → undoService, toastService (TOAST_CONFIG durations), modalService → (App-level)
+    → GlobalToastProvider (single-timer owner: GlobalUndoToast auto-close + progress bar share one duration, remount per toast) → GlobalUndoToast
+    → PostCard (POST_ACTIONS_CONFIG) → clipboard copy-link + report dialog → POST /api/bug-reports (optional postId link + reporter attribution)
 
 Config Registries (app/lib/config/*)
     → (no app dependencies — pure config objects)
-    → 31 files incl. reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library), footer layout slot
+    → 33 files incl. reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library), toast/postActions (Sprint 11 toast timing + post actions), footer layout slot
 
 Client Utilities (app/lib/utils/*)
     → pushClient → navigator.serviceWorker, fetch (/api/push/*)

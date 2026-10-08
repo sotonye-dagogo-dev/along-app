@@ -24,8 +24,14 @@ export async function POST(request: NextRequest) {
     const parsed = CREATE_POST_SCHEMA.safeParse(body);
 
     if (!parsed.success) {
+      const flattened = parsed.error.flatten();
+      const firstFieldError = Object.values(flattened.fieldErrors).flat().find(Boolean);
+      const friendly = firstFieldError ?? flattened.formErrors[0];
+      // Observable server log: previously only the client saw "Validation failed"
+      // with no console/server trace, which made real payload bugs invisible.
+      console.warn("[POST /api/posts] validation failed", JSON.stringify(flattened));
       return NextResponse.json(
-        { error: "Validation failed", details: parsed.error.flatten() },
+        { error: "Validation failed", ...(friendly ? { message: friendly } : {}), details: flattened },
         { status: 400 }
       );
     }
