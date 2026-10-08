@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -406,6 +406,54 @@ Put the whole destructive flow (confirm copy from config → API call → undo r
 
 **Apply When:**
 Any user- or admin-initiated delete/archive/remove/hide — no new `useState` confirm booleans, no direct `fetch(DELETE)` in components.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Server Must Enforce What the Client Merely Omits (Immutable Fields)
+
+**Context:**
+Sprint 14 (2026-10-08) — the edit modal never sent `type`, yet PATCH accepted it, so any direct API call could morph a route request into a route. The client was "correct" and the bug still existed.
+
+**What We Learned:**
+Client omission is not a guarantee. Any field that must never change after creation (`type`, `quotedPostId`) gets a config-listed immutable set (`MODERATION_CONFIG.immutablePostFields`) stripped server-side on every update path, plus a test that POSTs the forbidden field and asserts it is ignored. Cheap to add, catches the whole class.
+
+**Apply When:**
+Any create-vs-edit schema split (`CREATE_X_SCHEMA` / `UPDATE_X_SCHEMA = CREATE.partial()`) — audit which fields survive into the partial and strip the identity-defining ones.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Semantic Tokens Pair Up — Never Use a Token Halved
+
+**Context:**
+Sprint 14 (2026-10-08) — `text-warning` (pale yellow #FEF3C7, a *background* token) used as text was invisible on light surfaces; the readable pairing is `bg-warning text-warning-text border-warning-border`, which the dark-mode overrides also honor.
+
+**What We Learned:**
+Design-system semantic colors come as bg/text/border triples. Using one leg alone (especially `text-<semantic>` for warning/error/info) breaks contrast in one mode or both. When touching badge/pill/icon tint classes, always use the full triple and check both `.dark` overrides in `globals.css`.
+
+**Apply When:**
+Any tinted badge, pill, banner, or icon circle using semantic tokens — grep for lone `text-warning|text-error|text-info|text-success` usages.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Route New Notification Types Through the Central Service From Day One
+
+**Context:**
+Sprint 14 (2026-10-08) — LIKE/COMMENT wrote notifications via raw `prisma.notification.create` inside handlers, bypassing `createNotification`'s Redis invalidation, so notification badges went stale until TTL expiry. New types (DISLIKE, NEW_ROUTE, MENTION) were added straight onto the service and inherited invalidation for free.
+
+**What We Learned:**
+Every notification write goes through `createNotification` (now true for like/dislike/comment/comment-edit/post/reports/moderation-outcome paths; FOLLOW is the deliberate exception — its create+delete lives inside the follow/unfollow transactions with lifecycle-coupled cleanup the service has no API for). Central routing makes fan-out shape, self-filtering, and cache invalidation uniform; the tests mock one module.
+
+**Apply When:**
+Any new event that notifies a user — call `createNotification`, extend `NOTIFICATION_REGISTRY` + notifications page `TYPE_ICONS`, and add the enum value via an idempotent guarded migration.
 
 **Supersedes:** None
 **Superseded by:** None

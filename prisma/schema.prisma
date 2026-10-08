@@ -284,6 +284,12 @@ enum NotificationType {
   // never exposed to the reported author (anonymity maintained server-side).
   REPORT
   MODERATION
+  // Engagement coverage (non-breaking additive enum values).
+  // DISLIKE notifies the author when their post is disliked (distinct from
+  // LIKE so the icon/copy can differ); NEW_ROUTE fans out to followers when
+  // someone they follow shares a route (ROUTE / ROUTE_RESPONSE).
+  DISLIKE
+  NEW_ROUTE
 }
 
 // NotificationRecipient Model (Many-to-many between Notification and User)

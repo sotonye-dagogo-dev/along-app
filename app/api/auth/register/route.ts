@@ -3,7 +3,6 @@ import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { REGISTER_SCHEMA } from "@/app/lib/schemas/auth";
 import { hashPassword } from "@/app/lib/utils/security";
-import { qstashService } from "@/app/lib/services/qstashService";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 import { setOtp } from "@/app/lib/services/otpStore";
 
@@ -42,15 +41,14 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password);
 
     const { searchParams } = new URL(request.url);
-    const ref = searchParams.get("ref");
-    let invitedById: string | undefined;
-
-    if (ref) {
-      const inviter = await prisma.user.findUnique({ where: { inviteCode: ref } });
-      if (inviter) {
-        invitedById = inviter.id;
-      }
-    }
+    // Referral linking is unlimited on every auth method — resolveReferral
+    // only validates the code; the cap applies to send-credit points, never
+    // to the ability to invite (see INVITE_CONFIG).
+    const { resolveReferral, linkReferralRewards } = await import(
+      "@/app/lib/services/referralService"
+    );
+    const referral = await resolveReferral(searchParams.get("ref"));
+    const invitedById = referral.invitedById;
 
     const createdUser = await prisma.user.create({
       data: {
@@ -64,17 +62,20 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Welcome notification for the new signup (non-blocking, never fails the request)
+    // Welcome notification for the new signup (non-blocking, never fails the request).
+    // allowSelf: a welcome is addressed to the new user themselves.
     const { createNotification } = await import("@/app/lib/services/notificationService");
     void createNotification({
       type: "WELCOME",
       actorId: createdUser.id,
       message: `Welcome to Along, ${firstName}! Share your first route to get started.`,
       recipientIds: [createdUser.id],
+      allowSelf: true,
     });
 
     if (invitedById) {
-      qstashService.publishRewardsAward({ userId: invitedById, actionKey: "INVITE_ACCEPTED" });
+      // Conversion always pays INVITE_ACCEPTED; send credit only inside cap.
+      linkReferralRewards(invitedById, createdUser.id, referral.inviterInviteeCount ?? 0);
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();

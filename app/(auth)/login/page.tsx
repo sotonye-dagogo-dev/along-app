@@ -14,6 +14,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({})
+  // Invite code (?ref=…): a brand-new user may land on login first — carry
+  // the code into Google OAuth `state` so the callback can link the inviter.
+  const [refCode, setRefCode] = useState<string | null>(null)
+  React.useEffect(() => {
+    setRefCode(new URLSearchParams(window.location.search).get("ref"))
+  }, [])
 
   const validate = () => {
     const errors: { email?: string; password?: string } = {}
@@ -149,7 +155,11 @@ export default function LoginPage() {
         variant="secondary"
         fullWidth
         className="bg-bg-card border-border text-text-primary hover:bg-bg-elevated"
-        onClick={() => { window.location.href = '/api/auth/google' }}
+        onClick={() => {
+          window.location.href = refCode
+            ? `/api/auth/google?state=${encodeURIComponent(`ref:${refCode}`)}`
+            : '/api/auth/google'
+        }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -166,7 +176,7 @@ export default function LoginPage() {
 
       <p className="text-center text-sm text-text-secondary mt-6">
         Don&apos;t have an account?{" "}
-        <Link href="/register" className="text-primary font-medium hover:text-primary-dark transition-colors duration-fast">
+        <Link href={refCode ? `/register?ref=${encodeURIComponent(refCode)}` : "/register"} className="text-primary font-medium hover:text-primary-dark transition-colors duration-fast">
           Create one
         </Link>
       </p>

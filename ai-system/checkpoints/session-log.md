@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: append-only — never modify past entries
 
@@ -1192,3 +1192,35 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 - `MODERATOR` role accepted alongside `ADMIN` in new checks (forward-compat; schema enum still USER/ADMIN only).
 
 **Notes / Blockers:** Production DB needs `prisma migrate deploy` (runs in `vercel-build`) for `isArchived` + new enum values; pre-migration reads degrade gracefully via P2022 fallbacks. In-progress reset to idle below.
+
+## Session 2026-10-08 — Sprint 14: Notification/Referral/Profile Tightening (execute-feature)
+
+**Directive:** preserve post/route-request/comment nature through editing/archiving; profile Archived tab + fix Routes tab showing only the request; notification coverage (mentions, likes, dislikes, comments, request responses, followed-user uploads/requests); max-invites as points cap (not invite limit); referrals across email+password and Google OAuth; leaderboard with zero-point users; route-request flag contrast in both modes.
+
+**Root causes / gaps found:**
+- PATCH accepted `type`/`quotedPostId` via `UPDATE_POST_SCHEMA` (client never sent them, but any direct API call could morph a ROUTE into a ROUTE_REQUEST — the reported "editing rendered like a route" class).
+- Routes tab filtered `type=ROUTE` only: ROUTE_RESPONSEs (actual routes) were invisible there; requests had no home; archived posts leaked into the owner's main tabs.
+- MENTION existed in enum/registry/UI but had zero server writes; DISLIKE had no type at all; ROUTE uploads had no follower fan-out; LIKE/COMMENT wrote via raw `prisma.notification.create` (no cache invalidation); WELCOME was a silent no-op (self-filter dropped actor==recipient).
+- Register page dropped `?ref=` (POSTed to bare `/api/auth/register`); Google callback ignored referrals entirely and sent no welcome; INVITE_SENT points unwired; `maxInvites` displayed as a hard "Max Invites" limit.
+- Leaderboard API/page already zero-point-inclusive — verified + locked with a test.
+- `text-warning` is the pale-yellow token (#FEF3C7) — used as *text* it was invisible on light backgrounds; correct pairing is `bg-warning text-warning-text border-warning-border`.
+
+**Changes (8 new, ~25 edited — see dev-history Sprint 14 entry for the file list):**
+- Migration `20261008000001_notification_coverage` (DISLIKE + NEW_ROUTE, idempotent guards); `prisma generate` re-run for the new enum values.
+- `mentionService` + `referralService`; `createNotification allowSelf`; PATCH immutable-strip; GET multi-type + archived; NEW_ROUTE fan-out with request-author dedup; like/dislike + comment/motion notifications via service; register + Google callback referral parity (`state=ref:`); invite copy; profile tabs; warning pairing sweep.
+- Tests: 21 suites / 188 tests (new: post-nature 4, mention 8, referral 6, leaderboard 2; extended posts + mutations). Two interim self-failures fixed (leaderboard assertion targeted select instead of where; stale owner-view where expectation).
+
+**QA gate (this runner, node_modules via `npm ci`):**
+- `npx tsc --noEmit` — 0 errors
+- `npm test` — 21 suites / 188 tests, all pass
+- `npm run build` — clean
+- `npx next lint` — 11 pre-existing errors, 0 new (verified via stash baseline)
+
+**Assumptions Made:**
+- Routes tab = ROUTE + ROUTE_RESPONSE (actual routes); requests get their own tab; archived tab is owner-only (other profiles have no archived tab).
+- Owner's main tabs now exclude archived (previously included); direct link + tombstone behavior unchanged.
+- Switch like↔dislike notifies only on net-new engagement (no switch spam); mentioned post-author gets COMMENT only (no double MENTION).
+- Referral `ref:` state and `link` state are mutually exclusive; existing `invitedById` is never overwritten.
+- INVITE_SENT credit is awarded on conversion inside the cap window (sends are not server-observable; documented in INVITE_CONFIG).
+
+**Notes / Blockers:** Production DB needs `prisma migrate deploy` (runs in `vercel-build`) for the new enum values; pre-migration DISLIKE/NEW_ROUTE writes fail safe (service returns null, request succeeds). In-progress reset to idle below.

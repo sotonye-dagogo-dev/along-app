@@ -348,3 +348,65 @@ Double-clicks are already stopped at two client layers (disabled submit button +
 **Implications:**
 - `POST_SUBMIT_CONFIG.idempotencyHeader` is the contract between composer, `submitPost`, and the route — renaming needs all three.
 - If duplicate posts are ever reported again, check server logs for 409s/deduplicated-200s before touching the client; escalate to a DB column and reference this decision.
+
+---
+
+## Sprint 14: Post Nature Is Immutable After Creation
+
+**Decision:** `type` and `quotedPostId` are set once at creation and stripped from every PATCH payload server-side (`MODERATION_CONFIG.immutablePostFields`), for owners and admins alike. Archive/unarchive never touches content or type.
+**Date:** 2026-10-08
+**Made by:** AI agent (opencode) — execute-feature Sprint 14
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+A route request edited through the route composer rendered as a route — the edit schema (`UPDATE_POST_SCHEMA = CREATE_POST_SCHEMA.partial()`) accepted `type`, so any client or direct API call could morph a post's nature. Client omission is not a guarantee; the server must enforce it.
+
+**Alternatives Considered:**
+- **Separate edit schemas per type**: Rejected — triples schema surface for a two-field constraint; the strip list is one config line.
+- **Client-only fix (don't send type)**: Rejected — already true and still insufficient against direct API calls.
+
+**Implications:**
+- Changing a post's nature requires delete + recreate (undo-restore already replays via POST, so it keeps working).
+- Adding a mutable field needs no change; making a new field immutable means one config entry + test.
+
+---
+
+## Sprint 14: Profile Routes Tab Shows Actual Routes (ROUTE + ROUTE_RESPONSE)
+
+**Decision:** The profile Routes tab queries `type=ROUTE,ROUTE_RESPONSE`; route requests live on a dedicated Requests tab; archived posts live on an owner-only Archived tab (`?archived=true`), and the owner's main tabs now exclude archived posts.
+**Date:** 2026-10-08
+**Made by:** AI agent (opencode) — execute-feature Sprint 14
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Users asked whether requests belong on the Routes tab — they don't (requests are not routes and render no map/score). Responses are real routes and were invisible on the tab. Owner main tabs including archived posts made feeds confusing once a dedicated library exists.
+
+**Alternatives Considered:**
+- **Routes = ROUTE only + requests stay in Posts**: Rejected — leaves responses undiscoverable and the original confusion intact.
+
+**Implications:**
+- `GET /api/posts` accepts comma-separated `type`; `?archived=true` is owner-only (non-owners silently get unarchived).
+- Other-user profiles have no Archived tab (privacy); direct-link + tombstone rules unchanged.
+
+---
+
+## Sprint 14: Invite Cap Applies to Send-Credit Points, Never to Inviting
+
+**Decision:** `INVITE_CONFIG.maxInvitesPerUser` caps only `INVITE_SENT` send-credit points (first N converted invites); linking (`invitedById`) is unlimited on every auth method and `INVITE_ACCEPTED` conversion points always pay.
+**Date:** 2026-10-08
+**Made by:** AI agent (opencode) — execute-feature Sprint 14
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Capping the ability to invite throttles the growth loop the program exists to create; the cheap-to-farm part is send points for invites that never convert. Sends are not server-observable (links are shared client-side), so send credit is awarded on conversion inside the cap window.
+
+**Alternatives Considered:**
+- **Hard invite limit**: Rejected — directly contradicts growth intent.
+- **Track sends via a send-endpoint**: Rejected — adds a gameable endpoint for points already covered at conversion.
+
+**Implications:**
+- Invite page shows "Bonus Invites Left" instead of "Max Invites"; referral linking code must never count-check before linking.
+- If send tracking ever becomes real (e.g. in-app share sheet with receipts), revisit and reference this decision.

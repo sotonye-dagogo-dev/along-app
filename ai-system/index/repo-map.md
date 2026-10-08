@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 13 moderation close-out)
+> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 notification/referral close-out)
 > - last-verified-against-code: 2026-10-08 (35 config files incl. moderation.ts, 8 migrations incl. 20261008000000_post_moderation, 17 test suites / 160 tests, new moderation/ components + /api/reports)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
@@ -88,10 +88,10 @@ along-app/
 │   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
 │   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel/ShareRouteModal edit mode, moderation [PostMenu, ReportDialog], profile, explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
-│   │   ├── services/        → 18 OOP services (feed, search, routeDrafts, postModeration, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
+│   │   ├── services/        → 21 service modules (feed, search, routeDrafts, postModeration, mention, referral, notification, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
 │   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth
-│   │   ├── config/          → 34 config registries + index.ts (incl. reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation, footer layout)
+│   │   ├── config/          → 35 config files incl. index.ts (reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation incl. immutablePostFields, notifications incl. DISLIKE/NEW_ROUTE, inviteConfig points-cap policy, footer layout)
 │   │   ├── db/              → Database layer (prisma.ts, redis.ts)
 │   │   ├── hooks/           → Server-compatible custom React hooks
 │   │   ├── schemas/         → Zod validation schemas

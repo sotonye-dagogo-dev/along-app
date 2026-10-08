@@ -6,12 +6,22 @@ import { Mail, Lock, User, Eye, EyeOff, AlertCircle } from "lucide-react"
 import { AppButton, AppInput, AppCard, AppDivider, AppAlert } from "@/app/components/ui"
 import { toastService } from "@/app/lib/services/toastService"
 
+/** Invite code from the URL (?ref=…), if the user arrived via an invite link. */
+function useInviteRef(): string | null {
+  const [refCode, setRefCode] = useState<string | null>(null)
+  React.useEffect(() => {
+    setRefCode(new URLSearchParams(window.location.search).get("ref"))
+  }, [])
+  return refCode
+}
+
 export default function RegisterPage() {
   const [form, setForm] = useState({ firstName: "", lastName: "", userName: "", email: "", password: "" })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const refCode = useInviteRef()
 
   const updateField = (name: string, value: string) => {
     setForm((prev) => ({ ...prev, [name]: value }))
@@ -37,7 +47,13 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      const res = await fetch("/api/auth/register", {
+      // Referral codes arrive as ?ref= on the invite link (/register?ref=…).
+      // Forward them to the API so email+password signups link the inviter —
+      // Google signups carry the same code via OAuth `state` (see below).
+      const registerUrl = refCode
+        ? `/api/auth/register?ref=${encodeURIComponent(refCode)}`
+        : "/api/auth/register"
+      const res = await fetch(registerUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -162,7 +178,11 @@ export default function RegisterPage() {
         variant="secondary"
         fullWidth
         className="bg-bg-card border-border text-text-primary hover:bg-bg-elevated"
-        onClick={() => { window.location.href = '/api/auth/google' }}
+        onClick={() => {
+          window.location.href = refCode
+            ? `/api/auth/google?state=${encodeURIComponent(`ref:${refCode}`)}`
+            : '/api/auth/google'
+        }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -179,7 +199,7 @@ export default function RegisterPage() {
 
       <p className="text-center text-sm text-text-secondary mt-6">
         Already have an account?{" "}
-        <Link href="/login" className="text-primary font-medium hover:text-primary-dark transition-colors duration-fast">
+        <Link href={refCode ? `/login?ref=${encodeURIComponent(refCode)}` : "/login"} className="text-primary font-medium hover:text-primary-dark transition-colors duration-fast">
           Sign in
         </Link>
       </p>

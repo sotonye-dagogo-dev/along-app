@@ -61,6 +61,12 @@ export async function GET(request: NextRequest) {
     const firstName = userInfo.given_name || "";
     const lastName = userInfo.family_name || "";
     const state = request.nextUrl.searchParams.get("state");
+    // Referral code travels in `state` as `ref:<code>` (set by the
+    // login/register pages when the URL carries ?ref=). Exact "link" keeps
+    // the account-linking flow; anything else is treated as a referral.
+    const referralCode = state && state !== "link" && state.startsWith("ref:")
+      ? state.slice("ref:".length)
+      : null;
 
     // Handle "link" flow: if state=link and user already authenticated, link Google to existing account
     if (state === "link") {
@@ -105,10 +111,27 @@ export async function GET(request: NextRequest) {
       if (user.googleId && user.googleId !== googleId) {
         return NextResponse.redirect(`${appUrl}/login?error=account_exists`, { status: 307 });
       }
+      // Auth-type-agnostic referrals: an email user signing in with Google
+      // for the first time still honours a pending invite (link-only when
+      // they have no inviter yet — never overwrites an existing link).
+      let referralUpdate: { invitedById?: string } = {};
+      let referralInviteeCount = 0;
+      if (referralCode && !user.invitedById) {
+        const { resolveReferral } = await import("@/app/lib/services/referralService");
+        const referral = await resolveReferral(referralCode);
+        if (referral.invitedById && referral.invitedById !== user.id) {
+          referralUpdate = { invitedById: referral.invitedById };
+          referralInviteeCount = referral.inviterInviteeCount ?? 0;
+        }
+      }
       user = await prisma.user.update({
         where: { id: user.id },
-        data: { googleId },
+        data: { googleId, ...referralUpdate },
       });
+      if (referralUpdate.invitedById) {
+        const { linkReferralRewards } = await import("@/app/lib/services/referralService");
+        linkReferralRewards(referralUpdate.invitedById, user.id, referralInviteeCount);
+      }
 
       const accessToken = signAccessToken({ userId: user.id, role: user.role });
       const refreshToken = signRefreshToken({ userId: user.id, role: user.role });
@@ -127,6 +150,17 @@ export async function GET(request: NextRequest) {
       suffix++;
     }
 
+    // New Google signup honours referrals exactly like email register:
+    // linking is unlimited; the send-credit cap lives in linkReferralRewards.
+    let invitedById: string | undefined;
+    let inviterInviteeCount = 0;
+    if (referralCode) {
+      const { resolveReferral } = await import("@/app/lib/services/referralService");
+      const referral = await resolveReferral(referralCode);
+      invitedById = referral.invitedById;
+      inviterInviteeCount = referral.inviterInviteeCount ?? 0;
+    }
+
     user = await prisma.user.create({
       data: {
         userName,
@@ -137,8 +171,25 @@ export async function GET(request: NextRequest) {
         googleId,
         verified: true,
         inviteCode: crypto.randomUUID(),
+        invitedById,
       },
     });
+
+    // Welcome + referral rewards mirror the email+password signup path.
+    try {
+      const { createNotification } = await import("@/app/lib/services/notificationService");
+      void createNotification({
+        type: "WELCOME",
+        actorId: user.id,
+        message: `Welcome to Along, ${firstName || "traveller"}! Share your first route to get started.`,
+        recipientIds: [user.id],
+        allowSelf: true,
+      });
+    } catch { /* non-critical */ }
+    if (invitedById) {
+      const { linkReferralRewards } = await import("@/app/lib/services/referralService");
+      linkReferralRewards(invitedById, user.id, inviterInviteeCount);
+    }
 
     const accessToken = signAccessToken({ userId: user.id, role: user.role });
     const refreshToken = signRefreshToken({ userId: user.id, role: user.role });

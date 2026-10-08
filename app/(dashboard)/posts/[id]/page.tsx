@@ -420,7 +420,7 @@ export default function PostDetailPage() {
 
       {isRouteRequest && (
         <div className="mb-3">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[11px] font-semibold bg-warning/15 text-warning border border-warning/30">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-[11px] font-semibold bg-warning text-warning-text border border-warning-border">
             <ClipboardList size={11} />
             Route request
           </span>

@@ -689,8 +689,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
         </div>
 
         {isResponse && effectiveResponseTo && !isEditing && (
-          <div className="mx-6 mt-4 flex items-start gap-3 px-4 py-3 bg-warning/10 border border-warning/30 radius-lg">
-            <span className="mt-0.5 text-warning shrink-0" aria-hidden>
+          <div className="mx-6 mt-4 flex items-start gap-3 px-4 py-3 bg-warning border border-warning-border radius-lg">
+            <span className="mt-0.5 text-warning-text shrink-0" aria-hidden>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 17H7A5 5 0 0 1 7 7h2" />
                 <path d="M15 7h2a5 5 0 1 1 0 10h-2" />
