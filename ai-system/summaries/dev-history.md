@@ -979,3 +979,15 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `app/__tests__/config/authVerificationPush.test.ts` (6: registry values, key builders, maskEmail, copy coverage, pushPrompt storage/copy, isLikelyIos).
 **QA:** no node_modules in runner — node strip-types executed both configs clean; locale parity script 250/250 identical. `npx tsc --noEmit` + `npm test` + `next build` deferred to CI/Vercel (must confirm green).
 **Compliance:** no migration, no new deps, no removed APIs; errors sanitized; notifications never-throw; ACID untouched.
+
+## Sprint 29 (2026-10-09) — Tightening-up: auth edge case + email studio + blog + audit + leaderboard
+**Directive:** see session-log Sprint 29 (unverified-login edge case, email-studio hardening, blog admin, audit trail, leaderboard pagination/jump, dynamic email variables).
+**Implemented:**
+- Auth: login 403-on-unverified removed → session + `needsVerification` + deduped VERIFIED prompt (CTA → profile security tab); login page + notification rows + profile pill honor the CTA.
+- Email: SVG allowlist (icons render in preview + sent); unverified-recipient filter default + opt-in + note; per-recipient var resolution (auto platform/user/generated, manual only for gaps) + composer badges; restore-to-default (hardcoded never auto-overwrites).
+- Blog: SiteConfig-backed managed posts merged over MDX seeds; admin CRUD + bulk status + Studio with visual blocks; public feed API + listing (category/pagination) + detail; sanitized like email configs.
+- Audit: AuditLog table (migration `20261009000001_audit_log`) + service + admin API/page/nav + mutation hooks.
+- Leaderboard: paginated API (`page/limit/me/totalPages/total`) + own-rank card + jump-to-rank + pagination UI.
+- Tests: leaderboard test updated; NEW `tightening.test.ts`.
+**QA:** no node_modules in runner — review-verified; full gate (tsc/jest/build) deferred to CI/Vercel.
+**Compliance:** one idempotent table migration; no new deps; no removed APIs; additive-only otherwise.

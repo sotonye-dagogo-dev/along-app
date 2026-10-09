@@ -93,11 +93,14 @@ export default function OwnProfilePage() {
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
-  // Deep link: /profile#reviews (About CTA panel) opens the Reviews tab.
+  // Deep link: /profile#reviews (About CTA panel) opens the Reviews tab;
+  // ?tab=security (unverified-login + notification CTA) opens Email & Security.
   React.useEffect(() => {
     try {
-      if (typeof window !== "undefined" && window.location.hash === "#reviews") {
-        setActiveTab("reviews");
+      if (typeof window !== "undefined") {
+        if (window.location.hash === "#reviews") setActiveTab("reviews");
+        const tab = new URLSearchParams(window.location.search).get("tab");
+        if (tab === "security") setAccountTab("security");
       }
     } catch { /* ignore */ }
   }, [])
@@ -253,6 +256,15 @@ export default function OwnProfilePage() {
             <EarlyAdopterBadgeFromStatus earlyAdopter={profile.earlyAdopter} />
           </h1>
           <p className="text-sm text-text-secondary mb-1.5">@{profile.userName}</p>
+          {!profile.verified && (
+            <button
+              onClick={() => setAccountTab("security")}
+              className="mb-2 inline-flex items-center gap-1.5 px-2.5 py-1 radius-pill bg-warning text-warning-text text-[11px] font-semibold border-none cursor-pointer"
+              title="Verify your email in Email & Security"
+            >
+              <MailCheck size={12} /> Unverified email — verify now
+            </button>
+          )}
         </div>
 
         {profile.bio && (

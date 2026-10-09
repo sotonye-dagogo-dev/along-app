@@ -491,6 +491,24 @@ model PushSubscription {
   @@index([userId])
 }
 
+// AuditLog — unified who/what/when trail for admin-visible mutations
+// (user verify/role changes, template saves/toggles/restores, blog ops,
+// moderation, deletions). Append-only; never updated or deleted by app code.
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt(sort: Desc)])
+}
+
 // AccountDeletionRequest — safe, reversible deletion lifecycle.
 // Request archives the account + posts; a cron finalizes after the grace
 // period by anonymizing PII and clearing personalized rows (likes/bookmarks).

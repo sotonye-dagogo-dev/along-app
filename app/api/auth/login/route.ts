@@ -58,18 +58,46 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
 
-    if (!user.verified) {
-      return NextResponse.json({ error: "Please verify your email first" }, { status: 403 });
-    }
+    // Unverified users are allowed to authenticate (edge case: registered
+    // but never verified). They get full session + a `needsVerification`
+    // flag so the client can prompt them to verify from their profile
+    // (Email & Security tab) instead of blocking login outright.
+    const needsVerification = !user.verified;
 
     const accessToken = signAccessToken({ userId: user.id, role: user.role }, rememberMe);
     const refreshToken = signRefreshToken({ userId: user.id, role: user.role }, rememberMe);
 
     await setAuthCookies(accessToken, refreshToken, rememberMe);
 
+    if (needsVerification) {
+      // Prompt notification with CTA to profile security tab. Dedupe: only
+      // create when no unread verify-prompt exists (avoids spam on every login).
+      try {
+        const existing = await prisma.notification.findFirst({
+          where: {
+            type: "VERIFIED",
+            recipients: { some: { userId: user.id, read: false } },
+            message: { contains: "verify your email" },
+            createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+          },
+          select: { id: true },
+        });
+        if (!existing) {
+          const { createNotification } = await import("@/app/lib/services/notificationService");
+          await createNotification({
+            type: "VERIFIED",
+            actorId: user.id,
+            message: "Please verify your email — open Profile → Email & Security to enter your code.",
+            recipientIds: [user.id],
+            allowSelf: true,
+          });
+        }
+      } catch { /* non-critical */ }
+    }
+
     const { password: _, ...userWithoutPassword } = user;
 
-    return NextResponse.json({ user: userWithoutPassword }, { status: 200 });
+    return NextResponse.json({ user: userWithoutPassword, needsVerification }, { status: 200 });
   } catch (error) {
     console.error("[LOGIN ERROR]", error);
     Sentry.captureException(error);

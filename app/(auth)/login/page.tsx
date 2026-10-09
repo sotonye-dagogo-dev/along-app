@@ -55,8 +55,14 @@ export default function LoginPage() {
         }
         throw new Error(msg)
       }
-      toastService.success("Signed in successfully")
-      setTimeout(() => { window.location.href = "/home" }, 300)
+      const data = await res.json().catch(() => ({})) as { needsVerification?: boolean }
+      if (data?.needsVerification) {
+        toastService.success("Signed in — please verify your email in Profile → Email & Security")
+        setTimeout(() => { window.location.href = "/profile?tab=security" }, 300)
+      } else {
+        toastService.success("Signed in successfully")
+        setTimeout(() => { window.location.href = "/home" }, 300)
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong"
       // Sanitize raw JSON parse errors like "Unexpected token 'A'..."
