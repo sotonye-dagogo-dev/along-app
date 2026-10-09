@@ -991,3 +991,18 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: leaderboard test updated; NEW `tightening.test.ts`.
 **QA:** no node_modules in runner — review-verified; full gate (tsc/jest/build) deferred to CI/Vercel.
 **Compliance:** one idempotent table migration; no new deps; no removed APIs; additive-only otherwise.
+
+## Sprint 30 (2026-10-09) — Profile consistency + audit build fix
+**Directive:** profile posts-tab avatar parity, like/interaction parity (feed vs profile tab), verified-tag token colors in Email & Security, Vercel `audit/page.tsx:89 unknown → ReactNode` type error. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- Audit page: `hasRenderableMetadata` guard + never-throw `formatMetadata` (fixes the exact failing gate).
+- NEW `lib/config/profilePosts.ts` (+ barrel): avatar/interaction field lists, token pill classes, viewer-scoped cache keys, tab TTL.
+- `GET /api/posts`: viewer-scoped `_isLiked`/`_isBookmarked` batch enrichment (Like/Bookmark, never-throw, plain-row fallback).
+- Own + [username] profile pages forward avatar/avatarConfig + interaction flags (header fallback; bookmarks `isBookmarked` alias honored).
+- PostCard: `useEffect` SET_FROM_PROPS re-sync so fresh props update icons.
+- ProfilePostCard: `feedStream.applyInteraction` mirror on like/dislike/bookmark + interaction-cache seed via useMemo.
+- EmailSecurityPanel Verified pill → `bg-success text-success-text border-success-border` (design tokens, both themes).
+- Bookmarks API also returns `_isBookmarked` (`isBookmarked` kept for compat).
+- Tests: NEW `profilePosts.test.ts` (5 cases).
+**QA:** no node_modules in runner — static re-reads only (guard narrowing, Prisma delegate names Like/Bookmark, barrel exports, JSX usage, alias handling). Full gate (tsc/jest/build) deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only.

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from "react"
+import { useCallback, useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import PostCard from "@/app/components/features/posts/PostCard"
@@ -8,6 +8,7 @@ import { AppModal } from "@/app/components/ui/AppModal"
 import { CommentInput, CommentList } from "@/app/components/features/comments"
 import { POST_ACTIONS_CONFIG } from "@/app/lib/config"
 import { toastService } from "@/app/lib/services/toastService"
+import { feedStream } from "@/app/lib/streams/feedStream"
 import { useAuth } from "@/app/hooks/useAuth"
 
 interface ProfilePostCardComment {
@@ -36,9 +37,31 @@ export function ProfilePostCard({ post, onRemoved }: ProfilePostCardProps) {
   const [comments, setComments] = useState<ProfilePostCardComment[]>([])
   const [commentsLoading, setCommentsLoading] = useState(false)
 
+  // Seed from the shared feed interaction cache so a like applied on the
+  // feed is already reflected when the same post renders in a profile tab
+  // (and vice versa) — even before the tab list revalidates.
+  const syncedPost = useMemo(() => {
+    try {
+      const cached = feedStream.interactionCache$.value.get(post.id) as
+        | { _isLiked?: boolean; _isBookmarked?: boolean; likes?: number }
+        | undefined;
+      if (!cached) return post;
+      return {
+        ...post,
+        _isLiked: cached._isLiked ?? (post as { _isLiked?: boolean })._isLiked,
+        _isBookmarked: cached._isBookmarked ?? (post as { _isBookmarked?: boolean })._isBookmarked,
+        likes: cached.likes ?? (post as { likes: number }).likes,
+      };
+    } catch {
+      return post;
+    }
+  }, [post])
+
   const handleLike = useCallback(
     async (postId: string, liked: boolean) => {
       if (liked) toastService.success("Route liked!")
+      // Mirror into the shared cache so the feed shows the same state.
+      try { feedStream.applyInteraction({ postId, type: "like", value: liked }); } catch { /* ignore */ }
       try {
         // The like API toggles on repeat of the same type, so always send
         // LIKE here (un-like is a second LIKE that toggles off).
@@ -56,6 +79,9 @@ export function ProfilePostCard({ post, onRemoved }: ProfilePostCardProps) {
 
   const handleDislike = useCallback(async (postId: string) => {
     try {
+      feedStream.applyInteraction({ postId, type: "dislike", value: true });
+    } catch { /* ignore */ }
+    try {
       await fetch(`/api/posts/${postId}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -69,6 +95,7 @@ export function ProfilePostCard({ post, onRemoved }: ProfilePostCardProps) {
   const handleBookmark = useCallback(async (postId: string, bookmarked: boolean) => {
     if (bookmarked) toastService.success("Route bookmarked!")
     else toastService.success("Bookmark removed")
+    try { feedStream.applyInteraction({ postId, type: "bookmark", value: bookmarked }); } catch { /* ignore */ }
     try {
       await fetch(`/api/posts/${postId}/bookmark`, { method: "POST" })
     } catch {
@@ -145,7 +172,7 @@ export function ProfilePostCard({ post, onRemoved }: ProfilePostCardProps) {
   return (
     <>
       <PostCard
-        post={post}
+        post={syncedPost}
         onLike={handleLike}
         onDislike={handleDislike}
         onBookmark={handleBookmark}

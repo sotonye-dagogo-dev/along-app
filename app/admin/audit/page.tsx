@@ -15,6 +15,21 @@ interface AuditEntry {
   actor?: { id: string; userName: string; email: string } | null;
 }
 
+/** Type guard: AuditLog metadata is JSON — only plain objects render. */
+function hasRenderableMetadata(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    && Object.keys(value).length > 0;
+}
+
+/** Safe metadata preview — never throws on exotic JSON shapes. */
+function formatMetadata(value: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(value, null, 1);
+  } catch {
+    return "{}";
+  }
+}
+
 /** Admin audit trail — who/what/when across platform mutations. */
 export default function AdminAuditPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
@@ -86,8 +101,8 @@ export default function AdminAuditPage() {
             <div className="mt-1 text-text-secondary">
               Actor: {e.actor ? `@${e.actor.userName} (${e.actor.email})` : e.actorId ?? "system"}
             </div>
-            {e.metadata && Object.keys(e.metadata as object).length > 0 && (
-              <pre className="mt-1 p-2 rounded bg-bg-elevated font-mono text-[11px] whitespace-pre-wrap">{JSON.stringify(e.metadata, null, 1)}</pre>
+            {hasRenderableMetadata(e.metadata) && (
+              <pre className="mt-1 p-2 rounded bg-bg-elevated font-mono text-[11px] whitespace-pre-wrap">{formatMetadata(e.metadata)}</pre>
             )}
           </div>
         ))}

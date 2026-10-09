@@ -33,7 +33,9 @@ export async function GET(request: NextRequest) {
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
     const nextCursor = hasMore ? page[page.length - 1].id : null;
-    const posts = page.map((row) => ({ ...row.post, isBookmarked: true }));
+    // `isBookmarked` kept for backward compat; `_isBookmarked` is the
+    // canonical key PostCard reads (PROFILE_POSTS_CONFIG.interactionFields).
+    const posts = page.map((row) => ({ ...row.post, isBookmarked: true, _isBookmarked: true }));
 
     return NextResponse.json({ posts, nextCursor }, { status: 200 });
   } catch (error) {
