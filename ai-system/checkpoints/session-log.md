@@ -1593,3 +1593,10 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 
 **Notes / Blockers:**
 - Single-file fix → chain check: repair-system.md pattern added, but fix is one file and docs-only otherwise; no sync-context shape change needed beyond this log.
+
+## Session 2026-10-09 — PWA fulfillment + i18n Pidgin (execute-feature, Sprint 24)
+**Directive:** full PWA (manifest, offline, toasts, fallback with cached routes, session preservation, push mirroring incl. emailed types, no core/perf interference) + comprehensive Pidgin + docs/FAQ cached-data notices + tests + update-ai-system chain.
+**Plan ref:** checkpoints/in-progress.md skipped as file (single-session, plan tracked in-runner todo list); architecture impact = PWA core (SW/manifest/providers) → update-ai-system chain executed here.
+**Implemented:** pwa.ts registry; sw.js v3 rewrite; manifest/offline.html; OnlineStatus heartbeat+toasts; offlineGuard; AuthProvider session preservation; useCachedFetch stale-on-offline; pushSender fan-out + /api/push/status + PushManager; OfflineBanner/CachedDataNotice/ServiceWorkerRegistrar; /api/health; +44 en/pcm keys; FAQ Offline & App category; README note; 3 new test files (18 cases).
+**QA:** runner has no node_modules (tsc/jest unavailable) — verified: `node --check public/sw.js`, JSON parse + key/interpolation parity via python (142/142, 0 mismatches), targeted static type review of new/edited TS. Full gate deferred to CI/Vercel build.
+**Compliance:** config/metadata-driven (pwa.ts single source), modular (components/pwa, services/pushSender, utils/offlineGuard), non-breaking (SW scope/strategy additive, providers additive, no API shape changes), ACID untouched (no mutation-path changes), sanitized copy throughout.

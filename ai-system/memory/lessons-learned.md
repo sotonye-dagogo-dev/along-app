@@ -590,3 +590,8 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** admin-composed mails arrived with raw `{{identifier}}` text (variable values never supplied or keys mismatched); `PROJECT_ENV=production` left insecure cookies + dev logs because only 2 prisma files honored it.
 - **Root causes:** (1) interpolation only replaced supplied keys, leaving the rest verbatim, and preview deliberately filled gaps with the identifier; (2) env reads were scattered `process.env.NODE_ENV` with no central resolver.
 - **Fix pattern (reuse):** interpolate against `{{(\w+)}}` globally with merged defaults and empty-string fallback + HTML-escape values; keep `{{...}}` intact through the sanitizer via placeholder-token protection; resolve env once in `lib/config/env.ts` (PROJECT_ENV wins) and consume `isProduction()/getEffectiveEnv()` everywhere. Verified: builder round-trips + sanitizer + env precedence executed under node strip-types.
+
+## Sprint 24: PWA offline without session invalidation
+- **Symptom:** offline/network blips cleared auth state (AuthProvider set null on any fetch failure); SW precached auth-gated routes (login-redirect caching); push only auto-subscribed with no user control or server fan-out.
+- **Root causes:** (1) auth fetch treated network/5xx/non-JSON as unauthenticated; (2) SW had no never-cache list for /api/auth|push|admin; (3) notificationService wrote in-app rows but never fanned out to Web Push.
+- **Fix pattern (reuse):** only double-401 clears session (transients keep last-known user); centralize PWA policy in `lib/config/pwa.ts` with predicate helpers and mirror in sw.js; fan out push from the single notification write-point (fire-and-forget, never throws, unknown-type fallback).

@@ -1,127 +1,75 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#00623B">
     <title>Offline - Along</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --brand: #00623B;
+            --brand-soft: #e6f4ec;
+            --ink: #1f2937;
+            --muted: #6b7280;
+            --card: #ffffff;
+            --bg: #f3f4f6;
         }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; color: var(--ink); padding: 1rem;
         }
-
         .container {
-            text-align: center;
-            padding: 2rem;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            margin: 1rem;
+            text-align: center; padding: 2rem; background: var(--card);
+            border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,.12);
+            max-width: 560px; width: 100%;
         }
-
-        .icon {
-            font-size: 5rem;
-            margin-bottom: 1rem;
+        .badge {
+            display: inline-block; font-size: .8rem; font-weight: 700;
+            color: var(--brand); background: var(--brand-soft);
+            padding: .3rem .8rem; border-radius: 999px; margin-bottom: 1rem;
         }
-
-        h1 {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            color: #667eea;
-        }
-
-        p {
-            font-size: 1.1rem;
-            margin-bottom: 2rem;
-            color: #666;
-            line-height: 1.6;
-        }
-
+        h1 { font-size: 1.75rem; margin-bottom: .5rem; color: var(--brand); }
+        p { font-size: 1rem; margin-bottom: 1rem; color: var(--muted); line-height: 1.6; }
         .button {
-            display: inline-block;
-            padding: 12px 32px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: background 0.3s ease;
-            border: none;
-            cursor: pointer;
-            font-size: 1rem;
+            display: inline-block; padding: 12px 32px; background: var(--brand);
+            color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600;
+            border: none; cursor: pointer; font-size: 1rem; margin: .25rem;
         }
-
-        .button:hover {
-            background: #5568d3;
-        }
-
-        .tips {
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 1px solid #eee;
-            text-align: left;
-        }
-
-        .tips h2 {
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
-            color: #333;
-        }
-
-        .tips ul {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        .tips li {
-            margin-bottom: 0.5rem;
-            padding-left: 1.5rem;
-            position: relative;
-            color: #666;
-        }
-
-        .tips li:before {
-            content: '✓';
-            position: absolute;
-            left: 0;
-            color: #667eea;
-            font-weight: bold;
-        }
+        .button.secondary { background: #e5e7eb; color: var(--ink); }
+        .routes { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #eee; text-align: left; }
+        .routes h2 { font-size: 1.05rem; margin-bottom: .75rem; }
+        .routes ul { list-style: none; }
+        .routes li { margin-bottom: .5rem; }
+        .routes a { color: var(--brand); font-weight: 600; text-decoration: none; }
+        .routes span { color: var(--muted); font-size: .9rem; }
+        .note { margin-top: 1rem; font-size: .85rem; color: var(--muted); }
     </style>
 </head>
-
 <body>
     <div class="container">
-        <div class="icon">📡</div>
-        <h1>You're Offline</h1>
+        <div class="badge">OFFLINE MODE</div>
+        <h1>You're offline</h1>
         <p>
-            It looks like you've lost your internet connection. Don't worry, Along works offline too!
-            Some features may be limited until you reconnect.
+            This page isn't in your offline cache yet. Your connection looks down,
+            but Along keeps working — cached pages and content below are still available.
         </p>
-        <button class="button" onclick="window.location.reload()">Try Again</button>
-
-        <div class="tips">
-            <h2>What you can do offline:</h2>
+        <button class="button" onclick="window.location.reload()">Try again</button>
+        <a class="button secondary" href="/home">Go to cached feed</a>
+        <div class="routes">
+            <h2>Cached pages you can visit</h2>
             <ul>
-                <li>View previously loaded routes</li>
-                <li>Browse cached content</li>
-                <li>Access your bookmarks</li>
+                <li><a href="/home">Home feed</a> <span>— recently loaded posts</span></li>
+                <li><a href="/explore">Explore</a> <span>— recently viewed routes</span></li>
+                <li><a href="/search">Search</a> <span>— recent searches</span></li>
+                <li><a href="/faq">FAQ</a> <span>— help &amp; offline tips</span></li>
+                <li><a href="/about">About</a> <span>— about Along</span></li>
+                <li><a href="/blog">Blog</a> <span>— cached articles</span></li>
             </ul>
+            <p class="note">Cached data is shown while offline. Refresh when back online to stay updated.</p>
         </div>
     </div>
 </body>
-
 </html>

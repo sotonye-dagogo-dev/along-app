@@ -1,39 +1,49 @@
 {
+  "id": "/",
   "name": "Along - Share Your Journey",
   "short_name": "Along",
   "description": "Discover, share, and explore travel routes and destinations with the Along community",
-  "start_url": "/home",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/home?utm_source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#ffffff",
   "theme_color": "#00623B",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "categories": ["travel", "social", "navigation"],
+  "launch_handler": { "client_mode": "navigate-existing" },
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/assets/images/screenshot-1.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
+      "purpose": "any"
     },
     {
-      "src": "/assets/images/screenshot-2.png",
-      "sizes": "1280x720",
+      "src": "/icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "form_factor": "wide"
+      "purpose": "maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "shortcuts": [
@@ -41,14 +51,21 @@
       "name": "Explore Routes",
       "short_name": "Explore",
       "description": "Discover new travel routes",
-      "url": "/explore",
+      "url": "/explore?utm_source=pwa",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "My Bookmarks",
-      "short_name": "Bookmarks",
-      "description": "View saved routes",
-      "url": "/bookmarks",
+      "name": "Search",
+      "short_name": "Search",
+      "description": "Search routes and people",
+      "url": "/search?utm_source=pwa",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "FAQ & Help",
+      "short_name": "Help",
+      "description": "Help, offline tips and FAQs",
+      "url": "/faq?utm_source=pwa",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
   ],

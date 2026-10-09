@@ -50,8 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const data = await res.json();
           setUser(data.user ?? data);
         } catch {
-          // Non-JSON response (e.g. gateway timeout HTML) — treat as not authenticated
-          setUser(null);
+          // Non-JSON response (e.g. gateway timeout HTML) — transient, keep session.
+          console.warn("[AuthProvider] /api/auth/me non-JSON — transient, session kept");
         }
       } else if (res.status === 401 && !retried) {
         try {
@@ -60,19 +60,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fetchingRef.current = false;
             return fetchUser(true);
           }
+          // Refresh explicitly rejected (401) — session genuinely invalid.
+          if (refreshRes.status === 401) setUser(null);
+          // Otherwise (5xx / network): transient — keep last-known session so
+          // users are never randomly logged out by a blip or offline restore.
         } catch {
-          // refresh failed due to network / HTML error page
+          // Network failure — keep session, do not log out.
         }
+      } else if (res.status === 401) {
+        // Second 401 (already retried) — genuinely unauthenticated.
         setUser(null);
       } else if (res.status === 504 || res.status === 502 || res.status === 503) {
         // Transient server error — don't clear user aggressively, keep guest state quiet
         // Log but don't treat as auth failure
         console.warn(`[AuthProvider] /api/auth/me ${res.status} — transient`);
+      } else if (res.status >= 500) {
+        console.warn(`[AuthProvider] /api/auth/me ${res.status} — transient, session kept`);
       } else {
         setUser(null);
       }
     } catch {
-      setUser(null);
+      // Network failure (offline / airplane mode) — keep last-known session.
     } finally {
       setIsLoading(false);
       fetchingRef.current = false;
