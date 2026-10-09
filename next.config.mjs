@@ -37,10 +37,15 @@ const nextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   // Turbopack fallback uses webpack for compatibility
+  // NOTE: the '$' suffix is an exact-match alias — a plain 'maplibre-gl' key
+  // prefix-matches and rewrites subpath imports such as
+  // 'maplibre-gl/dist/maplibre-gl.css' (used by explore page + RouteMap for
+  // marker positioning) into an unresolvable path, failing the Vercel build
+  // with "Module not found: Can't resolve 'maplibre-gl/dist/maplibre-gl.css'".
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      'maplibre-gl': 'maplibre-gl/dist/maplibre-gl.js',
+      'maplibre-gl$': 'maplibre-gl/dist/maplibre-gl.js',
     };
     return config;
   },
