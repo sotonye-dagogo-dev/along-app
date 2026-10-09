@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 map + drafts + FAQ tightening)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: historical entries do not go stale
 
@@ -32,6 +32,31 @@
 ---
 
 ## History
+
+## 2026-10-09 — Execute-Feature: Map + Draft + FAQ Tightening (Sprint 20)
+
+**Summary:**
+Directive close-out: same-draft update-in-place with update-vs-new prompt, anchor-stable numbered route pins + token-styled user dot shared across RouteMap/explore, dark mode keeping light visual params verbatim, and FAQ accuracy (report flow correction + new Maps & Navigation category). Non-breaking (no migration, no removed APIs, no new deps).
+
+**Completed:**
+- `MAP_PINS_CONFIG` + `MapRoutePin`/`MapUserDot` shared components; RouteMap stale-closure + waypoint-numbering fix, stable marker keys, token-only visuals; explore cutover with a11y click buttons
+- Dark light-parity (`darkCanvasFilter: "none"`, dark raster mirrors light; renderers skip filter injection)
+- `routeDraftsService.updateDraft` + config labels/prompt + ShareRouteModal update-vs-new prompt bar + per-draft Update in RouteDraftsPanel
+- FAQ: report via in-post Report dialog, Maps & Navigation category (tracings/pins, mobile zoom/move), edit/delete via post menu, drafts mention in share-route answer
+- Tests: `mapTightening.test.ts` (7) + mapStack dark-parity updates
+
+**Key Changes:**
+- New: `app/lib/config/mapPins.ts`, `app/components/features/posts/MapPins.tsx`, `app/__tests__/config/mapTightening.test.ts`
+- Edited: `RouteMap.tsx`, `explore/page.tsx`, `mapStack.ts` (+ test expectations), `routeDraftsService.ts`, `routeDrafts.ts`, `ShareRouteModal.tsx`, `RouteDraftsPanel.tsx`, `faq.ts`, config barrel
+
+**QA gate (this runner, node_modules via `npm install`):**
+- `npx tsc --noEmit` — 0 errors
+- `npx jest` — 28 suites / 241 tests pass (7 new)
+- `npm run build` — clean
+- `npx next lint` (touched files) — no warnings or errors
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration.
 
 ## 2026-06-02 — Project Bootstrap & Initialization
 

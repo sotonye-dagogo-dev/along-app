@@ -20,6 +20,11 @@ export interface RouteDraftsConfig {
   saveLabel: string;
   savedToast: string;
   saveEmptyError: string;
+  /** Update-in-place flow (working on the same draft updates it). */
+  updateLabel: string;
+  updatedToast: string;
+  saveAsNewLabel: string;
+  updatePromptText: string;
   restoreLabel: string;
   continueLabel: string;
   deleteLabel: string;
@@ -43,6 +48,10 @@ export const ROUTE_DRAFTS_CONFIG: RouteDraftsConfig = {
   saveLabel: "Save Draft",
   savedToast: "Draft saved locally",
   saveEmptyError: "Nothing to save yet — add a title or at least one route step.",
+  updateLabel: "Update draft",
+  updatedToast: "Draft updated",
+  saveAsNewLabel: "Save as new",
+  updatePromptText: "You're editing a saved draft — update it in place or save as a new entry.",
   restoreLabel: "Restore",
   continueLabel: "Continue to upload",
   deleteLabel: "Delete draft",

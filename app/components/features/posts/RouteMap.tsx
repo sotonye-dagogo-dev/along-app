@@ -6,6 +6,8 @@ import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import polyline from '@mapbox/polyline'
 import { getMapStyleStack, rasterFallbackDepth, MAP_STACK_CONFIG } from '@/app/lib/config/mapStack'
+import { MAP_PINS_CONFIG } from '@/app/lib/config/mapPins'
+import { MapRoutePin, MapUserDot } from './MapPins'
 
 interface RoutePin {
   lat: number
@@ -164,57 +166,11 @@ function RouteMap({
 
   const renderMarker = useCallback(
     (pin: RoutePin, index: number) => {
-      const isOrigin = pin.type === 'origin'
-      const isDest = pin.type === 'destination'
-      const total = effectivePins.length
-
-      // Origin: A, Destination: B, Waypoints: numbered; single pin: 1
-      let label: string
-      let size = 26
-      if (total === 1) {
-        label = '1'
-      } else if (isOrigin) {
-        label = 'A'
-        size = 28
-      } else if (isDest) {
-        label = 'B'
-        size = 28
-      } else {
-        // For waypoints, offset by 1 (origin is A, so first waypoint is 2, etc.)
-        // Find waypoint index among non-origin/dest
-        const waypointIdx = effectivePins.slice(1, -1).indexOf(pin)
-        label = waypointIdx >= 0 ? String(waypointIdx + 1) : String(index + 1)
-        size = 22
-      }
-
-      const bgColor = isOrigin ? '#00623B' : isDest ? '#004A2C' : '#FFFFFF'
-      const textColor = isOrigin || isDest ? '#FFFFFF' : '#00623B'
-      const borderColor = isOrigin || isDest ? 'transparent' : '#00623B'
-
-      return (
-        <div
-          key={`pin-${index}`}
-          className="relative flex items-center justify-center cursor-pointer select-none"
-          style={{ width: size, height: size }}
-          title={pin.label ?? label}
-        >
-          <div
-            className="flex items-center justify-center rounded-full font-bold text-xs shadow-md"
-            style={{
-              width: size,
-              height: size,
-              backgroundColor: bgColor,
-              color: textColor,
-              border: `2.5px solid ${borderColor}`,
-              boxShadow: '0 2px 6px rgba(0,98,59,0.3)',
-            }}
-          >
-            {label}
-          </div>
-        </div>
-      )
+      // Numbered dot in stop order (1-based) — matches the step list so the
+      // user can visually map dot N to route step N on the polyline.
+      return <MapRoutePin index={index} total={effectivePins.length} label={pin.label} />
     },
-    []
+    [effectivePins.length]
   )
 
   const movePin = (index: number, lat: number, lng: number) => {
@@ -257,7 +213,7 @@ function RouteMap({
       }`}
       style={expanded ? { height: '100vh', width: '100vw' } : { height }}
     >
-      <style>{isDark ? `.dark-map .maplibregl-canvas { filter: ${MAP_STACK_CONFIG.darkCanvasFilter}; }` : ""}</style>
+      <style>{isDark && MAP_STACK_CONFIG.darkCanvasFilter !== "none" ? `.dark-map .maplibregl-canvas { filter: ${MAP_STACK_CONFIG.darkCanvasFilter}; }` : ""}</style>
       <Map
         ref={mapRef}
         mapLib={import('maplibre-gl') as never}
@@ -274,48 +230,26 @@ function RouteMap({
           const origIdx = pins.indexOf(pin)
           return (
             <Marker
-              key={`pin-${i}-${pin.lat}-${pin.lng}`}
+              key={`pin-${i}`}
               latitude={pin.lat}
               longitude={pin.lng}
               draggable={editable}
               onDragEnd={(e) => movePin(origIdx >= 0 ? origIdx : i, e.lngLat.lat, e.lngLat.lng)}
-              anchor="center"
+              anchor={MAP_PINS_CONFIG.markerAnchor}
+              offset={MAP_PINS_CONFIG.markerOffset as unknown as [number, number]}
             >
               {renderMarker(pin, i)}
             </Marker>
           )
         })}
         {userLocation && (
-          <Marker latitude={userLocation.lat} longitude={userLocation.lng} anchor="center">
-            <div className="relative flex items-center justify-center" style={{ width: 32, height: 32 }}>
-              {/* Accuracy circle */}
-              {userLocation.accuracy && userLocation.accuracy < 1000 && (
-                <div
-                  className="absolute rounded-full bg-primary/15 border border-primary/30"
-                  style={{
-                    width: Math.min(64, Math.max(24, userLocation.accuracy / 3)),
-                    height: Math.min(64, Math.max(24, userLocation.accuracy / 3)),
-                  }}
-                />
-              )}
-              {/* Heading arrow */}
-              {userLocation.heading !== null && userLocation.heading !== undefined && (
-                <div
-                  className="absolute w-0 h-0"
-                  style={{
-                    borderLeft: "6px solid transparent",
-                    borderRight: "6px solid transparent",
-                    borderBottom: "10px solid #00623B",
-                    top: -2,
-                    transform: `rotate(${userLocation.heading}deg)`,
-                    transformOrigin: "50% 16px",
-                  }}
-                />
-              )}
-              <div className="relative w-[14px] h-[14px] rounded-full bg-primary border-2 border-white shadow-lg">
-                <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-40" />
-              </div>
-            </div>
+          <Marker
+            latitude={userLocation.lat}
+            longitude={userLocation.lng}
+            anchor={MAP_PINS_CONFIG.markerAnchor}
+            offset={MAP_PINS_CONFIG.markerOffset as unknown as [number, number]}
+          >
+            <MapUserDot accuracy={userLocation.accuracy} heading={userLocation.heading} />
           </Marker>
         )}
         {routeCoords.length >= 2 && (

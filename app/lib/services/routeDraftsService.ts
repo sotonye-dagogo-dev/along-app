@@ -246,9 +246,32 @@ export const routeDraftsService = {
     );
   },
 
-  /** Save a new draft snapshot (newest first, capped). Returns the stored draft or null. */
-  saveDraft(input: SaveDraftInput): RouteDraft | null {
+  /** Update an existing draft in place (same id, refreshed savedAt). Returns updated draft or null. */
+  updateDraft(id: string, input: SaveDraftInput): RouteDraft | null {
     if (!this.hasUsableContent(input)) return null;
+    const drafts = this.listDrafts();
+    const idx = drafts.findIndex((d) => d.id === id);
+    if (idx < 0) return this.saveDraft(input);
+    const updated: RouteDraft = {
+      id,
+      savedAt: new Date().toISOString(),
+      title: input.title.slice(0, 100),
+      description: (input.description ?? "").slice(0, 500),
+      steps: sanitizeSteps(input.steps),
+      tags: sanitizeStrings(input.tags),
+      images: sanitizeStrings(input.images).slice(0, 10),
+      responseTo: sanitizeResponseRef(input.responseTo ?? null),
+    };
+    drafts[idx] = updated;
+    // Most-recent-first: move the touched draft to the top.
+    const [touched] = drafts.splice(idx, 1);
+    persist([touched, ...drafts].slice(0, ROUTE_DRAFTS_CONFIG.maxDrafts));
+    notifyChanged();
+    return touched;
+  },
+
+  /** Save a new draft snapshot (newest first, capped). Returns the stored draft or null. */
+  saveDraft(input: SaveDraftInput): RouteDraft | null {    if (!this.hasUsableContent(input)) return null;
     const draft: RouteDraft = {
       id: makeId(),
       savedAt: new Date().toISOString(),

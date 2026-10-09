@@ -160,3 +160,16 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 - Removing `/api/routes/trace`: rejected — non-breaking delegate keeps existing clients working.
 
 **Implications:** Clients must use config builders + `/api/maps/*`; no upstream URLs or `NEXT_PUBLIC_*` map keys in client code. OSRM demo (~1 req/s, no SLA) is cache-absorbed; self-host or keyed override is the next step if volume outgrows it. All keyed map env vars are optional overrides.
+
+## Sprint 20 — Shared Pins + Dark Parity + Draft Update (2026-10-09)
+
+**Change:** New `MAP_PINS_CONFIG` + `MapPins.tsx` own all marker visuals (center anchor, zero offset, 1-based numbered dots, info-blue user dot with glory ring + radar, token-only classes); RouteMap + explore render exclusively through them. `MAP_STACK_CONFIG` dark keeps light params verbatim (`darkCanvasFilter: "none"`, dark raster mirrors light); renderers skip filter injection. `routeDraftsService.updateDraft` (same id, `savedAt` refresh, move-to-top) + update-vs-new prompt bar + per-draft Update. 39 config files, 28 test suites (241 tests). QA gate green in-runner: tsc 0, jest 241/241, next build clean, lint zero.
+
+**Reason:** Pin drift was Marker-layer anchoring/identity divergence (polyline in map space was already exact); dark tiles verified clearer in light params; draft saves duplicated entries instead of updating the active draft.
+
+**Alternatives Considered:**
+- Per-renderer pin fixes: rejected — leaves the divergence class in place.
+- New dark tile style: rejected — parity with verified-clearer light params is cheaper and provably consistent.
+- Silent auto-update on save: rejected — prompt preserves explicit new-entry intent.
+
+**Implications:** New map surfaces must use `MapPins.tsx` + `MAP_PINS_CONFIG` (no bespoke markers, no hardcoded hex). No dark filter / dark-only raster without revisiting the Sprint 20 decision.

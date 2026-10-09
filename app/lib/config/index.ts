@@ -29,6 +29,8 @@ export { TEAM_MEMBERS } from "./teamConfig";
 export { SITE_REVIEWS } from "./reviews";
 export type { SiteReview } from "./reviews";
 export { TRANSPORT_INTEGRATION_REGISTRY } from "./mapIntegrations";
+export { MAP_PINS_CONFIG, routePinLabel } from "./mapPins";
+export type { MapPinsConfig } from "./mapPins";
 export {
   MAP_STACK_CONFIG,
   vectorStyleUrl,

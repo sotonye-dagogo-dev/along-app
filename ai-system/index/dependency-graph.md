@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack)
-> - last-verified-against-code: 2026-10-09 (mapStack config, mapProxyService, /api/maps/*, renderer + geocode cutover, trace delegate)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 map + drafts + FAQ tightening)
+> - last-verified-against-code: 2026-10-09 (mapPins/MapPins renderers, draft updateDraft, faq maps category)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -105,7 +105,7 @@ Service Layer (app/lib/services/*)
 
 Config Registries (app/lib/config/*)
     → (no app dependencies — pure config objects)
-    → 38 files (incl. index.ts) incl. mapStack.ts (Sprint 19 keyless tiles/routing/geocode/TTLs/attributions/style-stack builders/env gates), earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
+    → 39 files (incl. index.ts) incl. mapPins.ts (Sprint 20 anchor-stable pins/user-dot/labels) + mapStack.ts (Sprint 19 keyless tiles/routing/geocode/TTLs/attributions/style-stack builders/env gates; Sprint 20 dark light-parity), earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library + Sprint 20 update-in-place labels/prompt), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
 
 Client Utilities (app/lib/utils/*)
     → pushClient → navigator.serviceWorker, fetch (/api/push/*)
@@ -177,7 +177,8 @@ Map API Routes (`app/api/maps/route|geocode|reverse`)
     → Consumers (client-only, same-origin): RouteStepInput + ShareRouteModal (debounced, abortable) + geo.ts reverseGeocode
 
 Map Renderers (RouteMap.tsx, explore/page.tsx)
-    → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset)
+    → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset; dark light-parity — filter `"none"`, dark raster mirrors light) + mapPins (`MAP_PINS_CONFIG` center anchor/zero offset, `routePinLabel` 1-based)
+    → Shared visuals: MapPins.tsx (`MapRoutePin` numbered dot, `MapUserDot` info-blue + glory ring + radar) — token classes only, no hardcoded hex
     → MapLibre GL vector tiles (keyless) — zero `NEXT_PUBLIC_*` map keys read
 
 NotificationService
