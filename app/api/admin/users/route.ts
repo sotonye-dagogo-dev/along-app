@@ -163,7 +163,7 @@ export async function PATCH(request: NextRequest) {
         for (const t of targets) {
           void createNotification({
             type: "VERIFIED",
-            actorId: user.id,
+            actorId: user.id as string,
             message: next
               ? "An admin verified your email. You're all set!"
               : "An admin marked your email as unverified. Check your inbox for a fresh code.",
@@ -209,7 +209,7 @@ export async function PATCH(request: NextRequest) {
                 const { createNotification } = await import("@/app/lib/services/notificationService");
                 void createNotification({
                   type: "VERIFIED",
-                  actorId: user.id,
+                  actorId: user.id as string,
                   message: "An admin re-sent your verification code. Use the newest email.",
                   recipientIds: [target.id],
                 });

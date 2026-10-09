@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 27 admin verify + push prompt + OTP feedback)
-> - last-verified-against-code: 2026-10-09 (authVerification/pushPrompt configs execute in-runner, 250/250 locale parity, admin users PATCH action branches + users page verify column/actions review-verified; tsc/jest/build deferred to CI — no node_modules)
-> - last-synced: 2026-10-09 (Sprint 27 — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 28 route accuracy + live-navigation overlay + admin users type fix)
+> - last-verified-against-code: 2026-10-09 (tsc clean, jest 333/333, next build clean, all in-runner with node_modules installed)
+> - last-synced: 2026-10-09 (Sprint 28 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -451,6 +451,22 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [M] | Push prompt — `config/pushPrompt.ts`, `pushClient` env guards + permission-in-gesture + detailed reasons, PushManager local flags + per-outcome guidance, PushProvider granted-only auto-subscribe | [x] |
 | [M] | Admin verify — PATCH `verify`/`unverify`/`resend-verification` (+user notifications, undo snapshots) + users page status column + row/bulk actions | [x] |
 | [S] | Locales +15 en/pcm (250/250 parity) + `authVerificationPush.test.ts` (6) | [x] |
+
+---
+
+## Sprint 28 — Route Accuracy (preview = post view) + Live-Navigation Overlay + Admin Users Type Fix (execute-feature 2026-10-09)
+
+> **Section summary:** Directive close-out, non-breaking additive (no migration — `waypoints` column already exists; no new deps; no removed APIs — NavigationGuide API unchanged). QA gate fully green in-runner with node_modules installed.
+
+| Size | Task | Done |
+|------|------|------|
+| [BUG] | Admin users Vercel type error — `actorId: user.id` (`unknown`) → `user.id as string` (2 sites, same file) | [x] |
+| [M] | Waypoints persistence — POST `/api/posts` accepts + stores `waypoints` (previously destructured away); PATCH already passed them through | [x] |
+| [M] | Canonical pins — NEW `config/routePins.ts` (`buildRoutePinsFromPost` origin + intermediates + destination in step order, (0,0) filtered; `buildTraceInputFromPins`; `ROUTE_PINS_CONFIG`) + barrel; PostCard + post detail consume it | [x] |
+| [M] | Post-detail live trace — NEW `useRouteTrace` hook (estimate + debounced `/api/routes/trace` + memory cache + silent fallback, same pipeline as composer preview); legacy rows backfilled by bounded geocode of missing stops | [x] |
+| [M] | Live-navigation overlay — NEW `LiveNavigationModal` (near-fullscreen floating modal, map + guide hand-in-hand, mobile stack / desktop side panel via `LIVE_NAVIGATION_CONFIG`, Escape/backdrop/body-lock) wired into post detail; inline map no longer follows user | [x] |
+| [S] | RouteMap `height` accepts CSS strings (`"100%"`) for flex parents; posts barrel exports modal | [x] |
+| [S] | Tests — NEW `routePins.test.ts` (5: order, legacy fallback, (0,0) filter, trace input, config) | [x] |
 
 ---
 

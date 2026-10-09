@@ -622,3 +622,22 @@ Changing the OTP hash shape (to bundle expiry/cooldown) would break every existi
 - New push callers should use `subscribeToPushDetailed`; the boolean wrapper stays for compatibility.
 - New user-facing copy must add en+pcm keys together (parity test enforces) or fall back to config copy.
 ---
+
+**Decision:** `waypoints` on a Post stores the INTERMEDIATE stops only (excludes origin + destination, which live in `startLat/startLng` + `endLat/endLng`); every map renderer must compose pins via the canonical `buildRoutePinsFromPost` (origin + intermediates + destination in step order) and never treat `waypoints` as the full route. Post detail fetches a road-snapped trace for the full pin sequence via the shared `useRouteTrace` hook (same pipeline as the composer preview); legacy waypoint-less rows backfill missing stops with a bounded best-effort geocode rather than rendering a start→destination skip.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 28
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+The composer sends `waypoints` as intermediates-only and previews all steps, but POST dropped `waypoints` server-side while post detail read them as the whole route — so both states of the data rendered wrong (skip vs origin-loss). One canonical builder plus one shared trace hook makes preview and post views structurally incapable of diverging again. The bounded geocode backfill rescues rows stored during the drop window without a migration.
+
+**Alternatives Considered:**
+- **Store full pin list (incl. origin/destination) in `waypoints`**: Rejected — duplicates start/end coords, breaks the existing composer contract and every stored row's shape; the builder handles both shapes' composition instead.
+- **Backfill via migration/geocode-all script**: Rejected — heavier than the need and rate-limit-hostile; lazy bounded client backfill fixes views on read with zero schema change.
+- **Auto-start geolocation when the nav modal opens**: Rejected — permission requests must stay inside the user's Start-tap gesture; the modal mounts map + guide together and tracking starts on Start.
+
+**Implications:**
+- Any future renderer (feed maps, suggestions, admin previews) must use `buildRoutePinsFromPost` — never hand-roll start/waypoints/end composition.
+- Any future trace consumer must use `useRouteTrace` (or the same estimate→debounced-trace→cache→fallback discipline) so offline/429 behaviour stays uniform.
+- If `waypoints` semantics ever change, the builder (not each call site) is the single migration point.

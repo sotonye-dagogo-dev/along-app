@@ -616,3 +616,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** never return a bare success/failure for user-initiated device or delivery flows — return `{sent|ok, reason, retryAfter, expiresIn}` and let the UI adopt the SERVER timer; request permissions inside the click gesture; persist device state locally (flags + dismissal timestamps) so prompts behave offline; keep compat wrappers when widening return shapes. Applies to any future device-permission or email/SMS-code flow.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 28: server-dropped fields + dual readers behind "preview right, post wrong"
+- **Symptom:** share-preview traced start → stop → destination perfectly, but the posted view rendered start → destination, skipping the stop.
+- **Root causes:** (1) the API destructured a validated field (`waypoints`) out of the payload and never persisted it — schema acceptance is not storage; (2) TWO readers each wrong in a different state — post detail treated intermediates-only `waypoints` as the full route (origin/destination loss when present), and the start/end fallback skipped stops when absent. Preview-vs-read divergence always means: check what the write path actually stores first, then check every reader's shape assumption.
+- **Fix pattern (reuse):** one canonical builder owned by config (`buildRoutePinsFromPost`) consumed by ALL readers + one shared trace hook (`useRouteTrace`) — preview and post views become structurally incapable of diverging. Writes must round-trip every schema-accepted field (or explicitly reject it); silent destructuring-drops are a defect class to grep for after any schema widening.
+- **Supersedes:** None
+- **Superseded by:** None

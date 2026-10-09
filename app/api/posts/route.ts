@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, routes: rawRoutes, images, tags, region, startLat, startLng, endLat, endLng, totalDistanceKm, estimatedMins, type, description, quotedPostId } = parsed.data;
+    const { title, routes: rawRoutes, images, tags, region, startLat, startLng, endLat, endLng, waypoints, totalDistanceKm, estimatedMins, type, description, quotedPostId } = parsed.data;
     // Destination is the final stop — strip any fare/vehicle it carries so
     // stored rows never imply a leg beyond the destination (clients already
     // hide + strip; this is the server-side backstop for old clients).
@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
           startLng: startLng ?? null,
           endLat: endLat ?? null,
           endLng: endLng ?? null,
+          waypoints: (waypoints ?? []) as never,
           totalDistanceKm: totalDistanceKm ?? null,
           estimatedMins: estimatedMins ?? null,
           validityScore: validityResult.score,

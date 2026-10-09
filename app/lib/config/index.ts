@@ -1,6 +1,6 @@
 export { VEHICLE_REGISTRY } from "./vehicles";
 export { ROUTE_STATUS_REGISTRY } from "./routeStatus";
-export { NAV_REGISTRY, filterNavItems, isAdminRole } from "./navigation";
+export { NAV_REGISTRY, filterNavItems, isAdminRole, LIVE_NAVIGATION_CONFIG } from "./navigation";
 export { ERROR_REPORTING_CONFIG, ERROR_SENSITIVE_PATTERNS } from "./errorReporting";
 export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, USERNAME_RULE, POST_CREATE_FIELDS, BUG_REPORT_FIELDS, CONTACT_FIELDS } from "./forms";
 export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
@@ -21,6 +21,8 @@ export { SHARE_ROUTE_MODAL_CONFIG } from "./shareRoute";
 export type { ShareRouteModalConfig } from "./shareRoute";
 export { ROUTE_STEPS_CONFIG, isDestinationStep, showStepFare, showStepVehicle, normalizeRouteSteps } from "./routeSteps";
 export type { RouteStepsConfig, RouteStepLike } from "./routeSteps";
+export { buildRoutePinsFromPost, buildTraceInputFromPins, ROUTE_PINS_CONFIG } from "./routePins";
+export type { RoutePinLike, BuildRoutePinsInput, StoredRouteStepLike, StoredWaypointLike } from "./routePins";
 export { ROUTE_DRAFTS_CONFIG } from "./routeDrafts";
 export type { RouteDraftsConfig } from "./routeDrafts";
 export { REQUEST_ROUTE_TRIGGER_CONFIG } from "./routeRequest";

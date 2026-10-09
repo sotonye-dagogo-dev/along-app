@@ -9,6 +9,7 @@ import { PostMenu, type PostMenuPost } from "@/app/components/features/moderatio
 import { AuthContext } from "@/app/providers/AuthProvider"
 import { useTranslation } from "@/app/providers/I18nProvider"
 import { MODERATION_CONFIG } from "@/app/lib/config"
+import { buildRoutePinsFromPost } from "@/app/lib/config/routePins"
 import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import type { VehicleType } from "@/app/lib/types"
 
@@ -434,21 +435,14 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
       {showMap && post.startLat != null && post.startLng != null && (
         <div className="px-4 pb-2">
           <MiniRouteMap
-            pins={(() => {
-              const pins: { lat: number; lng: number; label: string; type: "origin" | "destination" | "waypoint" }[] = []
-              pins.push({ lat: post.startLat!, lng: post.startLng!, label: routes[0]?.location ?? "Start", type: "origin" })
-              if (post.waypoints) {
-                post.waypoints.forEach((wp, i) => {
-                  if (Number.isFinite(wp.lat) && Number.isFinite(wp.lng)) {
-                    pins.push({ lat: wp.lat, lng: wp.lng, label: routes[i + 1]?.location ?? "", type: "waypoint" })
-                  }
-                })
-              }
-              if (post.endLat != null && post.endLng != null) {
-                pins.push({ lat: post.endLat, lng: post.endLng, label: routes[routes.length - 1]?.location ?? "End", type: "destination" })
-              }
-              return pins.filter((p) => !(p.lat === 0 && p.lng === 0))
-            })()}
+            pins={buildRoutePinsFromPost({
+              routes: post.routes,
+              startLat: post.startLat,
+              startLng: post.startLng,
+              endLat: post.endLat,
+              endLng: post.endLng,
+              waypoints: post.waypoints,
+            })}
             height={100}
             showOverlay={false}
           />

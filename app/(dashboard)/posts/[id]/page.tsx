@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
@@ -9,7 +9,7 @@ import { AppCard, TrustBadge, VehicleChip, AppEmptyState, ImageLightbox } from "
 import { VEHICLE_REGISTRY, EMPTY_STATES, MODERATION_CONFIG, POST_ACTIONS_CONFIG } from "@/app/lib/config"
 import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import { CommentInput, CommentList } from "@/app/components/features/comments"
-import { NavigationGuide } from "@/app/components/features/posts"
+import { LiveNavigationModal } from "@/app/components/features/posts"
 import ShareRouteModal, { type EditPost } from "@/app/components/features/posts/ShareRouteModal"
 import { PostMenu, type PostMenuPost } from "@/app/components/features/moderation"
 import { undoService } from "@/app/lib/services/undoService"
@@ -17,6 +17,8 @@ import { toastService } from "@/app/lib/services/toastService"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
+import { useRouteTrace } from "@/app/lib/hooks/useRouteTrace"
+import { buildRoutePinsFromPost } from "@/app/lib/config/routePins"
 import type { VehicleType } from "@/app/lib/types"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
 
@@ -288,37 +290,76 @@ export default function PostDetailPage() {
   const trustLevel = (post?.validityTier as "low" | "developing" | "verified" | "trusted") ?? "developing"
   const initials = post ? `${post.user.firstName[0]}${post.user.lastName[0]}`.toUpperCase() : ""
 
-  const waypoints = useMemo(() => {
-    const wps = (post as unknown as { waypoints?: unknown } | null)?.waypoints
-    return Array.isArray(wps) ? (wps as { lat: number; lng: number }[]) : []
+  const baseRoutePins: RoutePin[] = useMemo(() => {
+    // Canonical builder: origin + intermediate waypoints + destination in
+    // step order — identical sequencing to the share-preview, so the post
+    // view traces start → stop(s) → destination instead of skipping stops.
+    if (!post) return []
+    return buildRoutePinsFromPost({
+      routes: post.routes,
+      startLat: post.startLat,
+      startLng: post.startLng,
+      endLat: post.endLat,
+      endLng: post.endLng,
+      waypoints: post.waypoints,
+    }) as RoutePin[]
   }, [post])
-
-  const routePins: RoutePin[] = useMemo(() => {
-    // Use actual waypoints if stored, otherwise fall back to start/end
-    if (waypoints.length > 0) {
-      return waypoints.map((w, i) => ({
-        lat: w.lat,
-        lng: w.lng,
-        label: routes[i]?.location ?? `Stop ${i + 1}`,
-        type: i === 0 ? "origin" as const : i === waypoints.length - 1 ? "destination" as const : "waypoint" as const,
-      })).filter((p) => p.lat !== 0 || p.lng !== 0)
-    }
-    if (post?.startLat && post?.startLng) {
-      const pins: RoutePin[] = [
-        { lat: post.startLat, lng: post.startLng, label: routes[0]?.location ?? "Start", type: "origin" as const },
-      ]
-      if (post.endLat && post.endLng && routes.length > 1) {
-        pins.push({ lat: post.endLat, lng: post.endLng, label: routes[routes.length - 1]?.location ?? "End", type: "destination" as const })
+  // Legacy backfill: rows stored before waypoints were persisted carry only
+  // start/end coords even though `routes` lists intermediate stops. Geocode
+  // the missing stop labels (bounded, best-effort, cached by the geocode
+  // proxy) so those posts render every stop instead of skipping to the
+  // destination. New posts already carry waypoints, so this stays idle.
+  const [backfilledPins, setBackfilledPins] = useState<RoutePin[] | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    setBackfilledPins(null)
+    if (!post || baseRoutePins.length !== 2 || routes.length <= 2) return
+    const missing = routes.slice(1, -1).filter((s) => s.location?.trim())
+    if (missing.length === 0 || missing.length > 5) return
+    ;(async () => {
+      try {
+        const results: { lat: number; lng: number }[] = []
+        for (const step of missing) {
+          try {
+            const res = await fetch(`/api/maps/geocode?q=${encodeURIComponent(step.location!)}&limit=1`)
+            if (!res.ok) return // abort backfill — keep start/end rather than partial
+            const data = (await res.json()) as { results?: { lat: string; lon: string }[] }
+            const first = Array.isArray(data.results) ? data.results[0] : undefined
+            if (!first) return
+            const lat = parseFloat(first.lat)
+            const lng = parseFloat(first.lon)
+            if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) return
+            results.push({ lat, lng })
+          } catch {
+            return
+          }
+        }
+        if (cancelled || results.length !== missing.length) return
+        const origin = baseRoutePins[0]
+        const dest = baseRoutePins[baseRoutePins.length - 1]
+        setBackfilledPins([
+          origin,
+          ...results.map((c, i) => ({
+            lat: c.lat,
+            lng: c.lng,
+            label: missing[i].location ?? "",
+            type: "waypoint" as const,
+          })),
+          dest,
+        ])
+      } catch {
+        // silent — start/end remain on screen
       }
-      // If we have more than 2 steps but only start/end coords, interpolate intermediate for navigation
-      if (routes.length > 2 && pins.length === 2) {
-        // Keep only start/end; navigation will still step through descriptions
-      }
-      return pins.filter((p) => !(p.lat === 0 && p.lng === 0))
+    })()
+    return () => {
+      cancelled = true
     }
-    // No coords: return empty to avoid 0,0 markers in ocean
-    return []
-  }, [routes, waypoints, post?.startLat, post?.startLng, post?.endLat, post?.endLng])
+  }, [post, baseRoutePins, routes])
+  const routePins = backfilledPins ?? baseRoutePins
+  // Road-snapped trace for the full stop sequence (same pipeline as the
+  // composer preview). Silent straight-line fallback when offline/tracing
+  // fails — RouteMap draws through all pins either way.
+  const { liveTrace } = useRouteTrace(routePins)
 
   if (loading) {
     return (
@@ -497,12 +538,13 @@ export default function PostDetailPage() {
       <div className="w-full h-[280px] radius-md overflow-hidden mb-4">
         <RouteMap
           pins={routePins}
+          encodedPolyline={liveTrace?.polyline}
           height={280}
           showOverlay={true}
           distance={post.totalDistanceKm ?? undefined}
           duration={post.estimatedMins ?? undefined}
           userLocation={mapUserLocation}
-          followUser={showNavigation && !!userLocation}
+          followUser={false}
         />
       </div>
       )}
@@ -588,18 +630,7 @@ export default function PostDetailPage() {
         </button>
       </div>
 
-      {showNav && (showNavigation ? (
-        <div className="mb-5">
-          <NavigationGuide
-            steps={routes}
-            totalDistanceKm={post.totalDistanceKm}
-            estimatedMins={post.estimatedMins}
-            pins={routePins.map((p) => ({ lat: p.lat, lng: p.lng }))}
-            onUserLocationChange={setUserLocation}
-            onClose={() => { setShowNavigation(false); setUserLocation(null) }}
-          />
-        </div>
-      ) : (
+      {showNav && (
         <AppCard variant="elevated" className="p-5 mb-5">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-3 flex-1 min-w-[200px]">
@@ -620,7 +651,23 @@ export default function PostDetailPage() {
             </button>
           </div>
         </AppCard>
-      ))}
+      )}
+
+      {/* Floating live-navigation overlay: map + guide hand-in-hand. */}
+      {showNav && (
+        <LiveNavigationModal
+          open={showNavigation}
+          title={post.title}
+          steps={routes}
+          pins={routePins}
+          encodedPolyline={liveTrace?.polyline}
+          totalDistanceKm={post.totalDistanceKm}
+          estimatedMins={post.estimatedMins}
+          userLocation={userLocation}
+          onUserLocationChange={setUserLocation}
+          onClose={() => { setShowNavigation(false); setUserLocation(null) }}
+        />
+      )}
 
       {isRouteRequest && (
         <div className="mb-6">
