@@ -11,17 +11,18 @@ import AppLogo from "@/app/components/ui/AppLogo"
 import {
   LayoutDashboard, Users, FileText, Settings, Bug, Shield,
   Home, Compass, Bell, Bookmark, BarChart3, Mail,
-  ChevronsLeft, ChevronsRight, Menu, X,
+  ChevronsLeft, ChevronsRight, Menu, X, UserX,
 } from "lucide-react"
 
 const adminNavItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/deletions", label: "Deletions", icon: UserX },
   { href: "/admin/posts", label: "Posts", icon: FileText },
   { href: "/admin/config", label: "Config", icon: Settings },
   { href: "/admin/bugs", label: "Bugs", icon: Bug },
   { href: "/admin/reviews", label: "Reviews", icon: Shield },
-  { href: "/admin/email-preview", label: "Email Preview", icon: Mail },
+  { href: "/admin/email", label: "Email", icon: Mail },
 ]
 
 const topNavItems = [

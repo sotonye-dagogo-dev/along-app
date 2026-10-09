@@ -547,3 +547,19 @@ Any map marker looks "almost right" but won't hold its coordinate, or theme-spec
 
 **Supersedes:** None
 **Superseded by:** None
+
+---
+
+## Deletion Safety Is a Lifecycle, Not a Row Delete — Archive First, Anonymize Later
+
+**Context:**
+Sprint 21: policy promised account deletion but no flow existed. Deleting a User row outright would cascade-delete posts (violating the "anonymised post data retained" clause), orphan counters, and leave no grace or recovery path.
+
+**What We Learned:**
+Model deletion as request → archived grace → finalize: archive posts immediately (feeds go quiet), snapshot the contact address on the request row (final email must survive PII wipe), capture interacted post ids before wiping likes/bookmarks (denormalized counters go stale otherwise), and anonymize the user row in place (stable id keeps posts linked). Guard the last admin, keep reversals in-app-only (no email abuse vector), and cap cron finalization per run. Off-platform backup recovery (30d) needs only a documented note, not platform code.
+
+**Apply When:**
+Any destructive user-data operation with retention grace, anonymization requirements, or denormalized counters — snapshot contacts first, capture affected ids before wiping, finalize idempotently.
+
+**Supersedes:** None
+**Superseded by:** None

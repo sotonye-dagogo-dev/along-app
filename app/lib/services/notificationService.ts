@@ -22,7 +22,10 @@ export interface CreateNotificationInput {
     | "BADGE"
     | "VERIFIED"
     | "REPORT"
-    | "MODERATION";
+    | "MODERATION"
+    | "ACCOUNT_DELETION_REQUESTED"
+    | "ACCOUNT_DELETION_CANCELLED"
+    | "ACCOUNT_DELETION_COMPLETED";
   actorId: string;
   message: string;
   postId?: string;

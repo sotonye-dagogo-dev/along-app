@@ -236,7 +236,30 @@ export async function GET(request: NextRequest) {
       viewerId = (viewer?.id as string | undefined) ?? null;
     } catch { viewerId = null; }
     const ownerView = !!userId && !!viewerId && userId === viewerId;
-    if (ownerView && archivedOnly) where.isArchived = true;
+    // Deleted users: personalized tabs are always empty (likes/bookmarks
+    // wiped on finalize); their retained anonymised posts stay visible on
+    // the generic deleted profile regardless of archived flag.
+    if ((likedBy || bookmarkedBy) && (likedBy ?? bookmarkedBy)) {
+      try {
+        const targetId = (likedBy ?? bookmarkedBy) as string;
+        const target = await prisma.user.findUnique({ where: { id: targetId }, select: { isDeleted: true } });
+        if (target?.isDeleted) {
+          return NextResponse.json({ posts: [], nextCursor: null }, { status: 200 });
+        }
+      } catch { /* fall through to normal query */ }
+    }
+    let targetIsDeleted = false;
+    if (userId) {
+      try {
+        const target = await prisma.user.findUnique({ where: { id: userId }, select: { isDeleted: true } });
+        targetIsDeleted = !!target?.isDeleted;
+      } catch { targetIsDeleted = false; }
+    }
+    if (targetIsDeleted) {
+      // Generic deleted profile: show retained posts (archived or not).
+      if (archivedOnly) where.isArchived = true;
+      // else: no isArchived constraint — all posts visible, attributed anonymously.
+    } else if (ownerView && archivedOnly) where.isArchived = true;
     else where.isArchived = false;
 
     const fetchArgs = {

@@ -15,7 +15,10 @@ type NotificationType =
   | "ROUTE_RESPONSE"
   | "NEW_ROUTE"
   | "REPORT"
-  | "MODERATION";
+  | "MODERATION"
+  | "ACCOUNT_DELETION_REQUESTED"
+  | "ACCOUNT_DELETION_CANCELLED"
+  | "ACCOUNT_DELETION_COMPLETED";
 
 export const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationTypeConfig> = {
   LIKE: {
@@ -101,6 +104,24 @@ export const NOTIFICATION_REGISTRY: Record<NotificationType, NotificationTypeCon
     icon: ShieldCheck,
     color: "#1677FF",
     messageTemplate: "Update on a post you reported",
+  },
+  ACCOUNT_DELETION_REQUESTED: {
+    label: "Deletion requested",
+    icon: ShieldCheck,
+    color: "#F59E0B",
+    messageTemplate: "Account deletion requested — archived for 7 days",
+  },
+  ACCOUNT_DELETION_CANCELLED: {
+    label: "Deletion cancelled",
+    icon: ShieldCheck,
+    color: "#10B981",
+    messageTemplate: "Account deletion request was reversed",
+  },
+  ACCOUNT_DELETION_COMPLETED: {
+    label: "Deletion completed",
+    icon: ShieldCheck,
+    color: "#64748B",
+    messageTemplate: "Account deletion completed",
   },
 };
 

@@ -499,3 +499,25 @@ Pin drift was an anchoring/identity divergence between renderers, not a tile fau
 **Implications:**
 - New map surfaces must use `MapPins.tsx` + `MAP_PINS_CONFIG` — no bespoke marker divs or hardcoded hex.
 - Do not reintroduce a dark canvas filter or dark-only raster without revisiting this decision.
+
+---
+
+## Sprint 21: Safe Deletion Lifecycle + Email Studio on SiteConfig
+
+**Decision:** Ship deletion as `AccountDeletionRequest` (PENDING→CANCELLED/COMPLETED) with 7-day archive grace and in-place anonymization; keep email templates in `SiteConfig` (no new EmailTemplate table) with enable toggles + custom rows; first-N bulk presets resolve earliest signups via `?order=oldest`.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 21
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+A SiteConfig-backed template store reuses the existing admin-override pattern (no migration, backfill-merge for new system templates) and matches the crellab-described builder shape without copying unavailable code. In-place anonymization preserves post integrity where row deletion would cascade. Earliest-signup selection matches the badge/reward semantics the presets were built for.
+
+**Alternatives Considered:**
+- **New EmailTemplate table**: Rejected — heavier migration for no behavioral gain; SiteConfig JSON already supports the builder.
+- **Hard row delete + cascade**: Rejected — violates anonymised-retention policy and destroys counters/links.
+- **On-screen first-N selection**: Rejected — list order is newest-first; presets must mean earliest signups.
+
+**Implications:**
+- New notification/email types must be added to both Prisma enum (migration) and TS registries together.
+- Template toggles audit to EmailLog (`template_toggle`); paused templates skip sends without throwing.

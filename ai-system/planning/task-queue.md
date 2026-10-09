@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 map + drafts + FAQ tightening)
-> - last-verified-against-code: 2026-10-09 (mapPins/MapPins/RouteMap/explore/drafts/faq verified in code; QA full green in-runner: tsc 0, jest 241/241, build clean)
-> - last-synced: 2026-10-09 (Sprint 20 map + drafts + FAQ tightening — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 safe deletion + Email Studio)
+> - last-verified-against-code: 2026-10-09 (schema/migration, accountDeletion/emailManagement configs, accountDeletionService, account/cron/admin-deletion/admin-email APIs, AccountDeletionPanel, deletions + email admin pages, profile/admin grids verified in code; QA static-only — no node_modules in runner)
+> - last-synced: 2026-10-09 (Sprint 21 safe deletion + Email Studio — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -354,6 +354,22 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [M] | Drafts update-in-place — `routeDraftsService.updateDraft` (same id, savedAt refresh, move-to-top) + `ROUTE_DRAFTS_CONFIG` update labels/prompt + ShareRouteModal update-vs-new prompt bar + per-draft Update in RouteDraftsPanel | [x] |
 | [S] | FAQ accuracy — report answer via in-post Report dialog (anonymity + admin triage), new Maps & Navigation category (tracings/pins + mobile zoom/move), edit/delete via post menu, share-route mentions drafts | [x] |
 | [S] | Tests — `mapTightening.test.ts` (7: anchor/offset, labels, token-only visuals, dark parity, updateDraft, report + map FAQs) + mapStack dark-parity expectation updates | [x] |
+
+---
+
+## Sprint 21 — Safe Account Deletion + Email Studio + Admin/Profile Grids (execute-feature 2026-10-09)
+
+> **Section summary:** Directive close-out, non-breaking additive (new Prisma model/enum/columns + idempotent migration, no removed APIs, no new deps). QA static-only in-runner (no node_modules — tsc/jest/build must confirm green in CI/Vercel, which runs `prisma generate` + `migrate deploy` first).
+
+| Size | Task | Status |
+|------|------|--------|
+| [XL] | Safe deletion lifecycle — request (archive + schedule + user/admin email + in-app fan-out) → 7-day reversible grace → finalize (anonymize, wipe likes/bookmarks/follows/push, recompute counters, final email); `AccountDeletionRequest` + service + cron + admin queue | [x] |
+| [L] | Generic deleted profile — by-username anon payload, banner + no-follow UI, posts visible incl. archived, likedBy/bookmarkedBy empty | [x] |
+| [M] | Profile UX — sign-out button, quick-links 2-col mobile / 3-col larger grid, `AccountDeletionPanel` danger zone + pending banner | [x] |
+| [M] | Admin users — `?deletion=` filter + badges, first-N-by-signup quick presets (`?order=oldest` + `selectIds`), bulk Delete (safe) via grace pipeline | [x] |
+| [S] | Admin dashboard — KPI grid `grid-cols-2 lg:grid-cols-4`; AdminShell Deletions/Email nav | [x] |
+| [XL] | Email Studio — visual/HTML builder, enable toggles (audited transitions), custom create/delete (system protected), preview, composer with dynamic recipients (admins/all/role/firstN/search/manual, capped), `sendTemplatedEmail` + `resolveEmailRecipients` | [x] |
+| [S] | Tests — `accountDeletion.test.ts` (9: grace/retention, scheduling, anon identity, overdue, system templates, recipient modes, manual parse, bulk signup-order) | [x] |
 
 ---
 
