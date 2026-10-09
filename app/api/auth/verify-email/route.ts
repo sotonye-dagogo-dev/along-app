@@ -17,6 +17,9 @@ import { getAppUrl } from "@/app/lib/config/env";
 import { AUTH_VERIFICATION_CONFIG, cooldownKeyFor, attemptsKeyFor } from "@/app/lib/config/authVerification";
 import { z } from "zod";
 
+export const maxDuration = 30;
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/auth/verify-email — triggerable verification.
  * Body: { email? } — for authed users defaults to their own address.
@@ -66,21 +69,29 @@ export async function POST(request: NextRequest) {
 
     // Same per-email cooldown as OTP resend — both write `otp:{email}`, so
     // both honour the same timer and the client never sees "wasn't sent any".
+    // Fail-fast budget: cooldown check + bcrypt hash run concurrently so a
+    // slow/deprovisioned Upstash host costs ~800ms (otpStore timeout), not
+    // 2.5s+ sequential per op. Writes below are parallel for the same reason
+    // — total Redis worst-case ~1.6s, well inside maxDuration=30.
     const cooldownKey = cooldownKeyFor(email);
-    const remaining = await getSendCooldownRemaining(cooldownKey);
-    if (remaining > 0) {
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const [remainingAfter, otpHash] = await Promise.all([
+      getSendCooldownRemaining(cooldownKey),
+      hashPassword(otp),
+    ]);
+    if (remainingAfter > 0) {
       return NextResponse.json(
         {
-          error: AUTH_VERIFICATION_CONFIG.copy.resendCooldown(remaining),
-          retryAfter: remaining,
+          error: AUTH_VERIFICATION_CONFIG.copy.resendCooldown(remainingAfter),
+          retryAfter: remainingAfter,
         },
-        { status: 429, headers: { "Retry-After": String(remaining) } }
+        { status: 429, headers: { "Retry-After": String(remainingAfter) } }
       );
     }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    await setOtp(`otp:${email}`, await hashPassword(otp), AUTH_VERIFICATION_CONFIG.otpTtlSeconds);
-    await setSendCooldown(cooldownKey, AUTH_VERIFICATION_CONFIG.resendCooldownSeconds);
+    await Promise.all([
+      setOtp(`otp:${email}`, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds),
+      setSendCooldown(cooldownKey, AUTH_VERIFICATION_CONFIG.resendCooldownSeconds),
+    ]);
     const appUrl = getAppUrl();
     let delivered = false;
     let sendReason: string | undefined;
