@@ -1572,3 +1572,24 @@ CI/Vercel must confirm: tsc + jest (17 new) + build green; prod-verify welcome m
 - New modules: `lib/config/env` (imported by prisma, emailTemplates, emailService), `lib/utils/emailSanitize` (emailTemplates, emailService, admin templates route), `lib/utils/emailBuilder` (admin email page only), `api/auth/{verify-email,change-email,change-password}` (otpStore, emailService, notificationService), `components/features/profile/EmailSecurityPanel` (profile page)
 - No removed modules, no new third-party deps, no schema change.
 ---
+---
+
+## Session — 2026-10-09 (fix-build: maplibre-gl CSS Module not found)
+
+**Completed:**
+- Diagnosed `Module not found: Can't resolve 'maplibre-gl/dist/maplibre-gl.css'` (explore page + RouteMap): root cause is `next.config.mjs` webpack alias `'maplibre-gl' → 'maplibre-gl/dist/maplibre-gl.js'` prefix-matching and rewriting the CSS subpath to `.../maplibre-gl.js/dist/maplibre-gl.css`. CSS file exists in maplibre-gl@4.7.1; imports were correct.
+- Minimal fix: alias key → `'maplibre-gl$'` (exact-match). Bare `import("maplibre-gl")` mapLib calls still hit the dist bundle; CSS subpath resolves normally.
+- Verified: `node --check next.config.mjs` OK + alias-resolution simulation proving old=broken / new=fixed. Full `tsc`/`jest`/`next build` deferred (runner has no node_modules); no TS-affecting change (config-only, comment + `$` suffix).
+
+**Files Modified:**
+- Edited: `next.config.mjs` — exact-match alias + explanatory comment
+- Docs: `ai-system/repair-system.md` (new active entry), `ai-system/checkpoints/session-log.md` (this entry), `ai-system/checkpoints/in-progress.md` (reset)
+
+**Next Task:**
+Vercel deploy must confirm `next build` green (webpack CSS resolution + type-check).
+
+**Assumptions Made:**
+- `dist/maplibre-gl.js` remains the intended bare-import target (unchanged behavior, only match scope narrowed).
+
+**Notes / Blockers:**
+- Single-file fix → chain check: repair-system.md pattern added, but fix is one file and docs-only otherwise; no sync-context shape change needed beyond this log.

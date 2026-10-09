@@ -543,6 +543,29 @@ When writing a Prisma enum field from a request-body string, always cast after a
 
 ---
 
+### Build Failure — Webpack Alias Breaks `maplibre-gl/dist/maplibre-gl.css` Resolution
+
+**Symptom:**
+Vercel build failed with webpack errors:
+`Module not found: Can't resolve 'maplibre-gl/dist/maplibre-gl.css'` in `app/(dashboard)/explore/page.tsx:8` and `app/components/features/posts/RouteMap.tsx:7`. `Build failed because of webpack errors`. Import trace via `app/(dashboard)/posts/[id]/page.tsx` (RouteMap).
+
+**Root Cause:**
+`next.config.mjs` declared `config.resolve.alias['maplibre-gl'] = 'maplibre-gl/dist/maplibre-gl.js'`. Webpack alias keys prefix-match, so the subpath import `maplibre-gl/dist/maplibre-gl.css` was rewritten to `maplibre-gl/dist/maplibre-gl.js/dist/maplibre-gl.css` — unresolvable. Verified by simulating webpack alias resolution (old mapping produces the doubled `dist` path; exact-match mapping leaves the CSS path untouched). The CSS file itself exists in the published package (`dist/maplibre-gl.css`, 65.5kB in maplibre-gl@4.7.1); nothing was wrong with the imports or the dependency.
+
+**Fix Applied:**
+Single-character-class fix in `next.config.mjs`: alias key `'maplibre-gl'` → `'maplibre-gl$'` (webpack exact-match suffix). Bare `import("maplibre-gl")` calls (explore page + RouteMap `mapLib`) still resolve to the dist bundle; subpath CSS imports now resolve normally.
+
+**Prevention:**
+Never alias a bare package name without the `$` exact-match suffix when subpath imports (`package/dist/...`) exist. Any future webpack alias must be exact-match unless prefix rewriting is explicitly intended.
+
+**Files Affected:**
+- `next.config.mjs`
+
+**Date:** 2026-10-09
+**Status:** Active
+
+---
+
 ## Resolved Errors Archive
 
 > **Section summary:** Errors that have been fully resolved and are unlikely to recur. Kept for reference.
