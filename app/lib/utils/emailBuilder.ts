@@ -63,7 +63,16 @@ function esc(s: string): string {
 }
 
 function unesc(s: string): string {
-  return s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&");
+  return s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&gt;/g, ">").replace(/&lt;/g, "<").replace(/&amp;/g, "&").replace(/&nbsp;/gi, " ");
+}
+
+/** Strip ALL tags + decode entities; collapses whitespace. Never throws. */
+function toPlainText(html: string): string {
+  try {
+    return unesc(String(html ?? "").replace(/<[^>]+>/g, " ")).replace(/[ \t\u00a0]+/g, " ").replace(/\s*\n\s*/g, " ").trim();
+  } catch {
+    return "";
+  }
 }
 
 /** Render blocks to an email-safe HTML fragment (wrapper applied separately). */
@@ -81,10 +90,14 @@ export function blocksToHtml(blocks: EmailBlock[]): string {
           return `<div style="text-align:center;margin:16px 0"><a href="${href}" style="display:inline-block;background:#00A862;color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600">${b.text ?? "Open"}</a></div>`;
         }
         case "image": {
-          const src = esc(b.src ?? b.url ?? "");
-          const alt = esc(b.text ?? "");
-          if (!src) return "";
-          return `<div style="text-align:center;margin:16px 0"><img src="${src}" alt="${alt}" style="max-width:100%;border-radius:8px" /></div>`;
+          const rawSrc = (b.src ?? b.url ?? "").trim();
+          const src = esc(rawSrc);
+          // Alt falls back to the app-name var so logo blocks stay
+          // meaningful even when the admin leaves alt empty.
+          const altRaw = (b.text ?? "").trim() || "{{appName}}";
+          const alt = esc(altRaw);
+          if (!rawSrc) return "";
+          return `<div style="text-align:center;margin:16px 0"><img src="${src}" alt="${alt}" width="120" style="max-width:100%;height:auto;border:0;outline:none;border-radius:8px;display:inline-block" /></div>`;
         }
         case "list": {
           const items = (b.items ?? []).map((i) => `<li style="font-size:14px;color:#444;line-height:1.7">${i}</li>`).join("");
@@ -172,55 +185,130 @@ export function textToBlocks(text: string): EmailBlock[] {
 
 /**
  * Parse stored HTML back to blocks. Unknown/complex markup degrades to
- * paragraph blocks carrying the inner text — content is never dropped.
+ * paragraph blocks carrying PLAIN TEXT (tags stripped) — content is never
+ * dropped and paragraphs never display raw HTML. Handles headings,
+ * paragraphs, divs, table cells, lists, images, links/CTAs, dividers.
  */
 export function htmlToBlocks(html: string): EmailBlock[] {
   try {
     const blocks: EmailBlock[] = [];
     const src = String(html ?? "");
-    // Strip wrapper tables but keep inner content markers.
-    const re = /<(h1|h2|h3|p|ul|ol|hr|img|a)[^>]*>([\s\S]*?)<\/\1\s*>|<(img|hr)[^>]*\/?>/gi;
+    // Order matters: lists + images + hrs first, then headings, then
+    // link/CTA and text containers (p/div/td/li/blockquote/center/span).
+    const re = /<(ul|ol)[^>]*>([\s\S]*?)<\/\1\s*>|<(img|hr)[^>]*\/?>|<(h1|h2|h3|p|div|td|th|blockquote|center|li|span)[^>]*>([\s\S]*?)<\/\4\s*>|<a[^>]*>([\s\S]*?)<\/a\s*>/gi;
     let m: RegExpExecArray | null;
     let matched = false;
     while ((m = re.exec(src)) !== null) {
-      matched = true;
-      const tag = (m[1] ?? m[3] ?? "").toLowerCase();
-      const full = m[0];
-      const inner = (m[2] ?? "").trim();
-      if (tag === "h1" || tag === "h2" || tag === "h3") {
-        blocks.push({ id: newBlockId(), type: "heading", level: tag === "h1" ? 1 : tag === "h2" ? 2 : 3, text: inner });
-      } else if (tag === "ul" || tag === "ol") {
-        const items = [...inner.matchAll(/<li[^>]*>([\s\S]*?)<\/li\s*>/gi)].map((x) => x[1].trim()).filter(Boolean);
-        blocks.push({ id: newBlockId(), type: "list", items: items.length ? items : [inner.replace(/<[^>]+>/g, " ").trim()] });
-      } else if (tag === "img" || (tag === "" && /<img/i.test(full))) {
-        const srcM = full.match(/src\s*=\s*"([^"]*)"/i) ?? full.match(/src\s*=\s*'([^']*)'/i);
-        const altM = full.match(/alt\s*=\s*"([^"]*)"/i) ?? full.match(/alt\s*=\s*'([^']*)'/i);
-        blocks.push({ id: newBlockId(), type: "image", src: srcM?.[1] ?? "", url: srcM?.[1] ?? "", text: altM?.[1] ? unesc(altM[1]) : "" });
-      } else if (tag === "hr") {
+      const listTag = (m[1] ?? "").toLowerCase();
+      const listInner = m[2] ?? "";
+      const soloTag = (m[3] ?? "").toLowerCase();
+      const soloFull = m[0];
+      const boxTag = (m[4] ?? "").toLowerCase();
+      const boxInner = (m[5] ?? "").trim();
+      const anchorInner = (m[6] ?? "").trim();
+      if (listTag === "ul" || listTag === "ol") {
+        matched = true;
+        const items = [...listInner.matchAll(/<li[^>]*>([\s\S]*?)<\/li\s*>/gi)]
+          .map((x) => toPlainText(x[1]))
+          .filter(Boolean);
+        const fallback = toPlainText(listInner);
+        blocks.push({ id: newBlockId(), type: "list", items: items.length ? items : (fallback ? [fallback] : []) });
+        continue;
+      }
+      if (soloTag === "img" || (!soloTag && !boxTag && anchorInner === "" && /<img/i.test(soloFull))) {
+        matched = true;
+        const srcM = soloFull.match(/src\s*=\s*"([^"]*)"/i) ?? soloFull.match(/src\s*=\s*'([^']*)'/i);
+        const altM = soloFull.match(/alt\s*=\s*"([^"]*)"/i) ?? soloFull.match(/alt\s*=\s*'([^']*)'/i);
+        const s = (srcM?.[1] ?? "").trim();
+        if (!s) continue;
+        blocks.push({ id: newBlockId(), type: "image", src: s, url: s, text: altM?.[1] ? unesc(altM[1]) : "" });
+        continue;
+      }
+      if (soloTag === "hr") {
+        matched = true;
         blocks.push({ id: newBlockId(), type: "divider" });
-      } else if (tag === "a" && !/<(p|div|table)/i.test(inner)) {
-        const hrefM = full.match(/href\s*=\s*"([^"]*)"/i) ?? full.match(/href\s*=\s*'([^']*)'/i);
-        const label = inner.replace(/<[^>]+>/g, "").trim() || hrefM?.[1] || "Open";
-        if (/padding|background:#00A862/i.test(full)) blocks.push({ id: newBlockId(), type: "button", text: label, url: hrefM?.[1] ?? "#" });
-        else blocks.push({ id: newBlockId(), type: "link", text: label, url: hrefM?.[1] ?? "#" });
-      } else if (tag === "p") {
-        if (!inner.replace(/<[^>]+>/g, "").trim() && !/\{\{/.test(inner)) continue;
-        // CTA paragraphs containing a single prominent link become buttons.
-        const linkM = inner.match(/<a[^>]*href\s*=\s*"([^"]*)"[^>]*>([\s\S]*?)<\/a\s*>/i);
-        const textOnly = inner.replace(/<[^>]+>/g, "").trim();
-        if (linkM && /padding|background/i.test(inner) && textOnly.length < 80) {
-          blocks.push({ id: newBlockId(), type: "button", text: linkM[2].replace(/<[^>]+>/g, "").trim(), url: linkM[1] });
-        } else {
-          blocks.push({ id: newBlockId(), type: "paragraph", text: inner });
+        continue;
+      }
+      if (boxTag === "h1" || boxTag === "h2" || boxTag === "h3") {
+        matched = true;
+        const text = toPlainText(boxInner);
+        if (!text && !/\{\{/.test(boxInner)) continue;
+        blocks.push({ id: newBlockId(), type: "heading", level: boxTag === "h1" ? 1 : boxTag === "h2" ? 2 : 3, text });
+        continue;
+      }
+      if (boxTag) {
+        matched = true;
+        // Images nested inside containers (e.g. the logo <img> in a header
+        // <td>) become their own image blocks so the logo is never lost
+        // when parsing stored templates back into the visual builder.
+        const nestedImgs = [...boxInner.matchAll(/<img[^>]*>/gi)];
+        for (const ni of nestedImgs) {
+          const tag = ni[0];
+          const sM = tag.match(/src\s*=\s*"([^"]*)"/i) ?? tag.match(/src\s*=\s*'([^']*)'/i);
+          const aM = tag.match(/alt\s*=\s*"([^"]*)"/i) ?? tag.match(/alt\s*=\s*'([^']*)'/i);
+          const s = (sM?.[1] ?? "").trim();
+          if (s) blocks.push({ id: newBlockId(), type: "image", src: s, url: s, text: aM?.[1] ? unesc(aM[1]) : "" });
         }
+        const boxRest = boxInner.replace(/<img[^>]*>/gi, " ");
+        // Skip pure layout wrappers with no readable text (empty spacers vanish).
+        const textOnly = toPlainText(boxRest);
+        if (!textOnly && !/\{\{/.test(boxRest)) continue;
+        // Standalone CTA link inside a container becomes a button block.
+        const linkM = boxRest.match(/<a[^>]*href\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)[^>]*>([\s\S]*?)<\/a\s*>/i);
+        if (linkM) {
+          const rawHref = (linkM[1] ?? "").replace(/^["']|["']$/g, "");
+          const label = toPlainText(linkM[2]);
+          const rest = toPlainText(boxRest.replace(linkM[0], " "));
+          if ((/padding|background/i.test(boxRest) || /verify|reset|confirm|open|start|explore/i.test(`${label} ${rawHref}`)) && label && rest.length < 40) {
+            blocks.push({ id: newBlockId(), type: "button", text: label, url: rawHref || "#" });
+            if (rest) blocks.push({ id: newBlockId(), type: "paragraph", text: rest });
+            continue;
+          }
+          if (!rest && label) {
+            const isCta = /padding|background/i.test(boxRest);
+            blocks.push({ id: newBlockId(), type: isCta ? "button" : "link", text: label, url: rawHref || "#" });
+            continue;
+          }
+        }
+        // Nested list inside a container: split out as its own block.
+        if (/<li[\s>]/i.test(boxRest)) {
+          const items = [...boxRest.matchAll(/<li[^>]*>([\s\S]*?)<\/li\s*>/gi)]
+            .map((x) => toPlainText(x[1]))
+            .filter(Boolean);
+          const before = toPlainText(boxRest.replace(/<ul[\s\S]*<\/ul\s*>/gi, " ").replace(/<ol[\s\S]*<\/ol\s*>/gi, " "));
+          if (before) blocks.push({ id: newBlockId(), type: "paragraph", text: before });
+          if (items.length) blocks.push({ id: newBlockId(), type: "list", items });
+          continue;
+        }
+        // Skip containers that only wrap other blocks already captured
+        // (prevents duplicate wrapper paragraphs around tables).
+        if (/<(h1|h2|h3|p|ul|ol|img|hr|a)[\s>]/i.test(boxRest) && textOnly.length > 300) continue;
+        blocks.push({ id: newBlockId(), type: boxTag === "li" ? "paragraph" : "paragraph", text: textOnly });
+        continue;
+      }
+      // Bare <a> outside any container.
+      if (anchorInner !== "" || /<a/i.test(soloFull)) {
+        matched = true;
+        const hrefM = soloFull.match(/href\s*=\s*"([^"]*)"/i) ?? soloFull.match(/href\s*=\s*'([^']*)'/i);
+        const label = toPlainText(anchorInner) || (hrefM?.[1] ?? "Open");
+        if (/padding|background:#00A862/i.test(soloFull)) blocks.push({ id: newBlockId(), type: "button", text: label, url: hrefM?.[1] ?? "#" });
+        else blocks.push({ id: newBlockId(), type: "link", text: label, url: hrefM?.[1] ?? "#" });
+        continue;
       }
     }
     if (!matched) {
-      const text = src.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      const text = toPlainText(src);
       if (text) return [{ id: newBlockId(), type: "paragraph", text }];
       return [{ id: newBlockId(), type: "paragraph", text: "" }];
     }
-    return blocks.length ? blocks : [{ id: newBlockId(), type: "paragraph", text: "" }];
+    // Merge consecutive spacers/empties; drop empty non-spacer blocks.
+    const cleaned = blocks.filter((b) => {
+      if (b.type === "list") return (b.items ?? []).length > 0;
+      if (b.type === "image") return Boolean((b.src ?? b.url ?? "").trim());
+      if (b.type === "divider") return true;
+      return Boolean((b.text ?? b.url ?? "").trim());
+    });
+    return cleaned.length ? cleaned : [{ id: newBlockId(), type: "paragraph", text: "" }];
   } catch {
     return [{ id: newBlockId(), type: "paragraph", text: "" }];
   }

@@ -76,7 +76,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const { getAppUrl } = await import("@/app/lib/config/env");
+    const appUrl = getAppUrl();
     const resetLink = `${appUrl}/reset-password/${token}?email=${encodeURIComponent(canonicalEmail)}`;
 
     // Tightened: await email with timeout. Never return success if mail didn't actually send.

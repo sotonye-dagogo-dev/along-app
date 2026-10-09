@@ -930,3 +930,12 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `reviews.test.ts` (8), pwa.test +4, locales REQUIRED_KEYS +32.
 **QA (this runner, node_modules installed):** `tsc --noEmit` 0 errors (2 session errors fixed: test helper typing, `useState<number>`); `jest --ci` 36/36 suites, 309/309 tests pass; `next build` clean; `next lint` 0 new (1 pre-existing `Medal` unused-var warning); `node --check sw.js` OK; locale parity via python 235/235, 0 interpolation mismatches.
 **Compliance:** no migration, no removed APIs/shapes, no new deps; SW scope/strategy additive (v4 invalidates v3 cleanly); providers additive; all errors sanitized/offline-aware; ACID upsert for reviews.
+
+## Sprint 26 (2026-10-09) — Email Studio tightening: live preview, logo universality, parsing, save-styling, vars/fallbacks, origins
+- Live unsaved preview: Studio debounced client render (canonical draft → wrap → interpolate w/ samples + composer overrides) + Live/Saved badge + whitespace-insensitive dirty tracking; `POST /api/email/preview` draft endpoint (sanitize + fill + same pipeline).
+- Logo/images universal: all 11 defaults head with logo img (`alt={{appName}}`) + shared wrapper/footer; image blocks email-safe with alt fallback + Studio thumbnails; legacy header SVG gone.
+- Builder parsing: `htmlToBlocks` strips inline tags (no raw HTML in paragraphs), handles div/td wrappers, CTA + nested-list splits, dedupe; backreference fix (`\5`→`\4`).
+- Save styling: `ensureEmailDocument` fragment auto-wrap at render (preview + sends); PUT regenerates text twin from new html.
+- Vars/fallbacks/origins: `{{name||fallback}}` everywhere (render/extract/sanitize); catalog 12→25; every link builder via `getAppUrl()` (google, forgot-password, verify/change-email, deletion, welcome, preview samples) — no localhost in prod paths.
+- Tests: +13 emailStudio cases (fallbacks, wrap, parsing, image, logo universality).
+- QA: runner has no node_modules → full gate (tsc/jest/build) deferred to CI/Vercel; change-set verified by review (14 files, additive-only, no migration/deps).

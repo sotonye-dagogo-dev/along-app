@@ -1,7 +1,7 @@
 import { getSiteConfig } from "@/app/lib/utils/siteConfig";
-import { DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TEMPLATES } from "@/app/lib/config/email";
+import { DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TEMPLATES, composeEmailDocument } from "@/app/lib/config/email";
 import type { EmailConfig, EmailTemplate } from "@/app/lib/config/email";
-import { escapeHtmlValue, sanitizeEmailHtml, stripTags } from "@/app/lib/utils/emailSanitize";
+import { escapeHtmlValue, sanitizeEmailHtml, stripTags, parseVarToken } from "@/app/lib/utils/emailSanitize";
 import { getAppUrl, isProduction } from "@/app/lib/config/env";
 import { LOGO_CONFIG } from "@/app/lib/config/logo";
 
@@ -47,18 +47,36 @@ export function defaultEmailVars(): Record<string, string> {
 
 /**
  * Interpolate {{vars}} with HTML-escaping for html/subject and raw for
- * text. CRITICAL FIX: missing variables render as "" (never the literal
+ * text. Supports fallback syntax `{{name||fallback}}` / `{{name|fallback}}`
+ * (quotes optional): the fallback is used when the var is missing/empty.
+ * Missing variables with no fallback render as "" (never the literal
  * `{{identifier}}`), so mails never leak placeholder syntax.
  */
 function renderTemplate(template: string, variables: Record<string, string>, escape: boolean): string {
   const merged: Record<string, string> = { ...defaultEmailVars(), ...variables };
-  const result = template.replace(/\{\{(\w+)\}\}/g, (_m, key: string) => {
-    const v = merged[key];
-    if (v == null) return "";
-    const s = String(v);
+  const result = template.replace(/\{\{\s*([\s\S]*?)\s*\}\}/g, (m, inner: string) => {
+    const parsed = parseVarToken(inner);
+    if (!parsed) return "";
+    const v = merged[parsed.name];
+    let s = v == null ? "" : String(v);
+    if (!s.trim() && parsed.fallback) s = parsed.fallback;
+    if (!s) return "";
     return escape ? escapeHtmlValue(s) : s;
   });
   return result;
+}
+
+/**
+ * Wrap a builder fragment (no <table>/<html> document shell) in the shared
+ * branded document so builder-saved templates keep their card styling
+ * (logo/header/body/CTA/footer) in preview AND in sent mail. Full-document
+ * bodies pass through untouched — non-breaking for legacy templates.
+ */
+export function ensureEmailDocument(bodyHtml: string, subject: string): string {
+  const raw = String(bodyHtml ?? "");
+  if (/<table[\s>]/i.test(raw) || /<html[\s>]/i.test(raw)) return raw;
+  const title = stripTags(subject || "Along update").slice(0, 120) || "Along update";
+  return composeEmailDocument({ title, bodyHtml: raw });
 }
 
 export async function findTemplate(name: string): Promise<EmailTemplate | undefined> {
@@ -67,7 +85,7 @@ export async function findTemplate(name: string): Promise<EmailTemplate | undefi
 }
 
 export function renderEmailHtml(template: EmailTemplate, vars: Record<string, string>): string {
-  return renderTemplate(template.bodyHtml, vars, true);
+  return renderTemplate(ensureEmailDocument(template.bodyHtml, template.subject), vars, true);
 }
 
 export function renderEmailText(template: EmailTemplate, vars: Record<string, string>): string {
@@ -78,15 +96,16 @@ export function renderEmailSubject(subject: string, vars: Record<string, string>
   return renderTemplate(subject, vars, false);
 }
 
-/** Sanitize a stored body before persist (keeps {{vars}} intact). */
+/** Sanitize a stored body before persist (keeps {{vars}} incl. fallbacks intact). */
 export function sanitizeStoredBody(dirty: string): string {
   // Protect placeholders from the sanitizer, restore after. The token is a
   // `#`-fragment so href/src values carrying a {{var}} still pass the
   // sanitizer's isSafeUrl allowlist (a bare `__VARn__` token was dropped as
   // an unsafe URL, silently deleting e.g. `<a href="{{appUrl}}/home">`).
+  // Fallback syntax (`{{name||fallback}}`) is protected as one unit.
   const token = (i: number) => `#__ALONG_VAR${i}__`;
   const vars: string[] = [];
-  const protectedHtml = dirty.replace(/\{\{\w+\}\}/g, (m) => {
+  const protectedHtml = dirty.replace(/\{\{\s*\w+(?:\s*\|\|?\s*[^}]*)?\s*\}\}/g, (m) => {
     vars.push(m);
     return token(vars.length - 1);
   });
@@ -100,14 +119,12 @@ export function deriveBodyText(bodyText: string, bodyHtml: string): string {
   return stripTags(bodyHtml).slice(0, 50000);
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-
 export function buildOtpVars(otp: string): Record<string, string> {
   return { otp };
 }
 
 export function buildWelcomeVars(firstName: string): Record<string, string> {
-  return { firstName, appUrl: APP_URL };
+  return { firstName, appUrl: getAppUrl() };
 }
 
 export function buildPasswordResetVars(resetLink: string): Record<string, string> {

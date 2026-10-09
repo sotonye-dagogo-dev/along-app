@@ -20,7 +20,7 @@ jest.mock("@/app/lib/db/redis", () => ({
   },
 }));
 
-import { renderEmailHtml, renderEmailText, renderEmailSubject, defaultEmailVars, sanitizeStoredBody } from "@/app/lib/utils/emailTemplates";import { escapeHtmlValue, sanitizeEmailHtml, stripTags, extractVariables } from "@/app/lib/utils/emailSanitize";
+import { renderEmailHtml, renderEmailText, renderEmailSubject, defaultEmailVars, sanitizeStoredBody, ensureEmailDocument } from "@/app/lib/utils/emailTemplates";import { escapeHtmlValue, sanitizeEmailHtml, stripTags, extractVariables, parseVarToken } from "@/app/lib/utils/emailSanitize";
 import { blocksToHtml, blocksToText, textToBlocks, htmlToBlocks } from "@/app/lib/utils/emailBuilder";
 import { EMAIL_BUILDER_CONFIG, EMAIL_MANAGEMENT_CONFIG } from "@/app/lib/config/emailManagement";
 import { EMAIL_DEFAULT_VARIABLES, EMAIL_ICONS, composeEmailDocument, DEFAULT_EMAIL_TEMPLATES } from "@/app/lib/config/email";
@@ -106,7 +106,85 @@ describe("email builder lossless conversions", () => {
   });
 });
 
-describe("email wrapper + catalog config", () => {
+describe("email variable fallbacks", () => {
+  const tpl = { name: "t", subject: "Hi {{firstName||traveller}}", bodyHtml: "<p>Hi {{firstName||traveller}}, code {{otp}}</p>", bodyText: "Hi {{firstName||traveller}} {{otp}}", variables: ["firstName", "otp"] };
+  it("uses fallback when var missing", () => {
+    expect(renderEmailHtml(tpl, {})).toContain("traveller");
+    expect(renderEmailSubject(tpl.subject, {})).toContain("traveller");
+  });
+  it("provided value wins over fallback", () => {
+    expect(renderEmailHtml(tpl, { firstName: "Ada" })).toContain("Ada");
+    expect(renderEmailHtml(tpl, { firstName: "Ada" })).not.toContain("traveller");
+  });
+  it("quoted fallbacks unquote", () => {
+    const q = { ...tpl, bodyHtml: `<p>{{nick||"Guest"}}</p>` };
+    expect(renderEmailHtml(q, {})).toContain("Guest");
+    expect(renderEmailHtml(q, {})).not.toContain("&quot;");
+  });
+  it("parseVarToken + extractVariables understand fallback syntax", () => {
+    expect(parseVarToken("firstName||traveller")).toEqual({ name: "firstName", fallback: "traveller" });
+    expect(extractVariables("<p>{{firstName||traveller}} {{otp}}</p>")).toEqual(expect.arrayContaining(["firstName", "otp"]));
+  });
+  it("sanitizeStoredBody keeps fallback placeholders in href/src", () => {
+    const clean = sanitizeStoredBody(`<p>Hello {{firstName||traveller}}</p><a href="{{appUrl||https://www.alongng.com}}/home">Go</a>`);
+    expect(clean).toContain("{{firstName||traveller}}");
+    expect(clean).toContain("{{appUrl||https://www.alongng.com}}");
+  });
+});
+
+describe("fragment auto-wrap (save-styling preservation)", () => {
+  it("wraps builder fragments in the branded document", () => {
+    const doc = ensureEmailDocument("<p>Hello</p>", "Hi");
+    expect(doc).toContain("{{logoUrl}}");
+    expect(doc).toContain("Hello");
+  });
+  it("leaves full-document bodies untouched", () => {
+    const full = `<html><body><table><tr><td>X</td></tr></table></body></html>`;
+    expect(ensureEmailDocument(full, "Hi")).toBe(full);
+  });
+  it("fragment templates render styled (logo + card) after save", () => {
+    const frag = { name: "custom", subject: "Hey", bodyHtml: "<p>Hello {{firstName}}</p>", bodyText: "", variables: ["firstName"] };
+    const out = renderEmailHtml(frag, { firstName: "Ada" });
+    expect(out).toContain("logo.svg");
+    expect(out).toContain("Ada");
+  });
+});
+
+describe("builder html parsing (no raw html in paragraphs)", () => {
+  it("strips inline tags from paragraph text", () => {
+    const back = htmlToBlocks(`<p>Hi <strong>Ada</strong> and <em>all</em></p>`);
+    const para = back.find((b) => b.type === "paragraph");
+    expect(para?.text).toContain("Ada");
+    expect(para?.text ?? "").not.toContain("<strong>");
+    expect(para?.text ?? "").not.toContain("<em>");
+  });
+  it("handles div/td wrappers without leaking markup", () => {
+    const back = htmlToBlocks(`<div><p>Line one</p></div><table><tr><td>Cell kept</td></tr></table>`);
+    const joined = JSON.stringify(back);
+    expect(joined).toContain("Line one");
+    expect(joined).toContain("Cell kept");
+    expect(joined).not.toContain("<div>");
+    expect(joined).not.toContain("<td>");
+  });
+  it("image blocks carry src + alt (logo default resolvable)", () => {
+    const html = blocksToHtml([{ id: "1", type: "image" as const, src: "{{logoUrl}}", text: "{{appName}}" }]);
+    expect(html).toContain("<img");
+    expect(html).toContain("{{logoUrl}}");
+    expect(html).toContain("{{appName}}");
+  });
+  it("nested logo images survive html -> blocks (header td logo kept)", () => {
+    const back = htmlToBlocks(`<table><tr><td><a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" /></a><h1>Hi</h1></td></tr></table>`);
+    expect(back.some((b) => b.type === "image" && /logoUrl/.test(b.src ?? ""))).toBe(true);
+    expect(JSON.stringify(back)).toContain("Hi");
+  });
+});
+describe("email wrapper + catalog config + logo universality", () => {
+  it("every default template heads with the logo image (no legacy svg motif)", () => {
+    for (const t of DEFAULT_EMAIL_TEMPLATES) {
+      expect(t.bodyHtml).toContain("{{logoUrl}}");
+      expect(t.bodyHtml).not.toContain("0 0 28 28");
+    }
+  });
   it("builder catalog covers blocks + variables + text mode", () => {
     expect(EMAIL_BUILDER_CONFIG.blocks.map((b) => b.id)).toEqual(
       expect.arrayContaining(["paragraph", "heading", "button", "image", "list", "link", "divider", "spacer"])

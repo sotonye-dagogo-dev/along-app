@@ -120,19 +120,43 @@ export function sanitizeEmailHtml(dirty: string, maxLen = 100000): string {
   }
 }
 
-/** Extract {{variable}} identifiers from subject + html + text. */
+/** Extract {{variable}} identifiers from subject + html + text.
+ * Supports fallback syntax `{{name||fallback}}` / `{{name|fallback}}` /
+ * `{{ name }}` — only the variable name is returned. */
 export function extractVariables(...sources: string[]): string[] {
   try {
     const found = new Set<string>();
     for (const src of sources) {
       if (!src) continue;
-      for (const m of src.matchAll(/\{\{(\w+)\}\}/g)) found.add(m[1]);
+      for (const m of src.matchAll(/\{\{\s*(\w+)(?:\s*\|\|?\s*[^}]*)?\s*\}\}/g)) found.add(m[1]);
     }
     return [...found].slice(0, 50);
   } catch {
     return [];
   }
 }
+
+/**
+ * Parse the inside of a `{{...}}` token into name + fallback.
+ * Accepts `name`, `name||fallback`, `name|fallback` with optional quotes
+ * and surrounding whitespace. Returns null when no valid name leads.
+ */
+export function parseVarToken(inner: string): { name: string; fallback: string } | null {
+  try {
+    const m = String(inner ?? "").match(/^\s*(\w+)\s*(?:\|\|?\s*([\s\S]*?))?\s*$/);
+    if (!m) return null;
+    let fb = (m[2] ?? "").trim();
+    if ((fb.startsWith('"') && fb.endsWith('"')) || (fb.startsWith("'") && fb.endsWith("'"))) {
+      fb = fb.slice(1, -1);
+    }
+    return { name: m[1], fallback: fb };
+  } catch {
+    return null;
+  }
+}
+
+/** Match any `{{...}}` placeholder including fallback syntax. */
+export const VAR_TOKEN_RE = /\{\{\s*\w+(?:\s*\|\|?\s*[^}]*)?\s*\}\}/g;
 
 /** Sanitize a display-name-ish variable (no tags, capped length). */
 export function sanitizeVarText(raw: unknown, maxLen = 500): string {

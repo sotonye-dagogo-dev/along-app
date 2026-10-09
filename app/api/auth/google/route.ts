@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
+import { getAppUrl } from "@/app/lib/config/env";
 
 export async function GET(request: Request) {
   try {
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = getAppUrl();
 
     if (!googleClientId) {
       return NextResponse.json(
