@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 close-out)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: append-only — never modify past entries
 
@@ -1395,3 +1395,37 @@ Next human decision — remaining backlog: live map tracking navigation, auth pr
 
 **Notes / Blockers:**
 - None — QA gate fully green. update-ai-system.md is terminal per its contract — no chained commands.
+
+---
+
+## 2026-10-09 — Execute-Feature: Map + Draft + FAQ Tightening (Sprint 20)
+
+**Directive:** Same-draft update-in-place (or prompt update-vs-new); anchor-stable route pins + user-location dot (numbered dots, blue/green dot with glory/radar, token-driven); dark keeps light map visuals; FAQ map guides + report-flow correction + accuracy pass; config/metadata-driven, modular, non-breaking; close with update-ai-system.md.
+
+- Step 1 planning: task-queue / system-architecture / design-system (tokens) / repair-system read; decomposed to pins, dark parity, drafts, FAQ, tests. No architecture impact (no migration, no new deps, no removed APIs) — plan-feature pre-read not required.
+- Step 2 scope check: fits project-context (maps + drafts + FAQ all in-scope surfaces); no conflict with project-decisions (extends Sprint 19 keyless-first; new Sprint 20 decision recorded). Proceeded.
+- Step 3 implementation (mid-work sync: this entry):
+  - Pins: `app/lib/config/mapPins.ts` (`MAP_PINS_CONFIG`, `routePinLabel`) + `app/components/features/posts/MapPins.tsx` (`MapRoutePin`, `MapUserDot`); RouteMap cutover (stale-closure fix, 1-based numbering, stable keys, token visuals, filter-skip on `"none"`); explore cutover (anchors, shared pins, a11y buttons, dark-filter CSS removed)
+  - Dark parity: `darkCanvasFilter: "none"`, dark raster mirrors light
+  - Drafts: `updateDraft` service + config labels/prompt + modal update-vs-new bar + per-draft Update in panel
+  - FAQ: report via in-post Report dialog, Maps & Navigation category (2), edit/delete via post menu, drafts in share answer
+  - Tests: `mapTightening.test.ts` (7) + mapStack dark-parity updates
+- Step 4 QA gate (real runs, node_modules via `npm install`): tsc 0 errors, jest 28 suites / 241 tests pass, build clean, lint zero issues on touched files
+- Step 5 close-out: task-queue Sprint 20 rows [x], dev-history Sprint 20 entry, lessons-learned (pin-anchoring lesson), project-decisions (Sprint 20 decision), repo-map / dependency-graph / system-architecture / project-plan / test-results updates, freshness headers; update-ai-system deep sync run per directive (this entry is its trace)
+
+**Files Modified:**
+- New: `app/lib/config/mapPins.ts`, `app/components/features/posts/MapPins.tsx`, `app/__tests__/config/mapTightening.test.ts`
+- Edited: `app/components/features/posts/{RouteMap,ShareRouteModal,RouteDraftsPanel}.tsx`, `app/(dashboard)/explore/page.tsx`, `app/lib/config/{mapStack,routeDrafts,faq,index}.ts`, `app/lib/services/routeDraftsService.ts`, `app/__tests__/config/{mapStack,routeDrafts}.test.ts`
+- Docs: `ai-system/{planning/task-queue,planning/project-plan,index/repo-map,index/dependency-graph,system-architecture,summaries/dev-history,memory/lessons-learned,memory/project-decisions,testing/test-results,checkpoints/in-progress}.md` + this entry
+
+**Next Task:**
+Next human decision — remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+**Assumptions Made:**
+- Info-blue user dot satisfies "blue or green" with white glory ring + radar ping, all token classes
+- Dark light-parity (same liberty vector + light raster, no filter) matches the reported clarity observation
+- Active-draft save prompts update-vs-new; fresh-composer save creates new directly (no prompt)
+
+**Notes / Blockers:**
+- None — QA gate fully green. update-ai-system.md is terminal per its contract — no chained commands.
+---

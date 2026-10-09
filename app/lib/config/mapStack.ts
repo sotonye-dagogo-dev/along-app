@@ -34,8 +34,9 @@ export interface MapStackConfig {
   /** Default vector style for light / dark themes. */
   defaultVectorStyle: { light: MapVectorStyleName; dark: MapVectorStyleName };
   /**
-   * CSS filter applied to the canvas when the dark vector style still
-   * renders light tiles (keeps one code path for both themes).
+   * CSS filter applied to the canvas in dark mode. Kept at `"none"` so dark
+   * mode renders the exact same light-theme tiles (verified clearer) with no
+   * wash-out. Renderers skip injecting the style block when `"none"`.
    */
   darkCanvasFilter: string;
   /** Keyless raster fallback chain (NO apiKey params anywhere). */
@@ -69,7 +70,9 @@ export const MAP_STACK_CONFIG: MapStackConfig = {
     positron: "https://tiles.openfreemap.org/styles/positron",
   },
   defaultVectorStyle: { light: "liberty", dark: "liberty" },
-  darkCanvasFilter: "brightness(1.35) contrast(1.1)",
+  // Dark keeps the light visual params verbatim (clearer tiles in both
+  // themes): no canvas filter, and the dark raster chain mirrors light.
+  darkCanvasFilter: "none",
   rasterFallbacks: {
     light: [
       "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
@@ -77,7 +80,7 @@ export const MAP_STACK_CONFIG: MapStackConfig = {
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
     ],
     dark: [
-      "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+      "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
       "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
     ],

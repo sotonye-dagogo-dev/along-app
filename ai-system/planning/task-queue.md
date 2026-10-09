@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack implemented)
-> - last-verified-against-code: 2026-10-09 (Sprint 19 rows verified present in code; QA full green in-runner: tsc 0, jest 234/234, build 84 pages)
-> - last-synced: 2026-10-09 (Sprint 19 keyless map stack — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 map + drafts + FAQ tightening)
+> - last-verified-against-code: 2026-10-09 (mapPins/MapPins/RouteMap/explore/drafts/faq verified in code; QA full green in-runner: tsc 0, jest 241/241, build clean)
+> - last-synced: 2026-10-09 (Sprint 20 map + drafts + FAQ tightening — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -340,6 +340,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Env/config hygiene — `.env.example` marks CARTO/MAPBOX/MAPTILER/ORS keys optional-override; system-architecture config table updated; rateLimits `maps` bucket entry | [x] |
 | [M] | Tests — mapStack config (fallback order, dark mapping, attribution), proxy cache/fallback unit, trace reorder (keyless-first, no-key no-call) | [x] |
 | [S] | QA gate — tsc + jest + build + lint; verify pins render + polyline draws with ALL map keys unset (the keyless proof) | [x] |
+
+---
+
+## Sprint 20 — Map Pins, Draft Update-in-Place, FAQ Accuracy (execute-feature 2026-10-09)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no removed APIs, no new deps). QA gate green with real runs: tsc 0 errors, jest 241/241 (28 suites, incl. 7 new mapTightening suites), lint zero issues on touched files, build clean.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Anchor-stable pins — `MAP_PINS_CONFIG` (center anchor, zero offset) + shared `MapRoutePin`/`MapUserDot` (numbered 1-based dots, info-blue user dot with glory ring + radar ping, token classes only); RouteMap stale-closure + waypoint-numbering fix, stable marker keys; explore cutover (anchor + shared pins, click-a11y button) | [x] |
+| [S] | Dark light-parity — `darkCanvasFilter: "none"`, dark raster mirrors light, renderers skip filter injection + drop explore dark-filter CSS | [x] |
+| [M] | Drafts update-in-place — `routeDraftsService.updateDraft` (same id, savedAt refresh, move-to-top) + `ROUTE_DRAFTS_CONFIG` update labels/prompt + ShareRouteModal update-vs-new prompt bar + per-draft Update in RouteDraftsPanel | [x] |
+| [S] | FAQ accuracy — report answer via in-post Report dialog (anonymity + admin triage), new Maps & Navigation category (tracings/pins + mobile zoom/move), edit/delete via post menu, share-route mentions drafts | [x] |
+| [S] | Tests — `mapTightening.test.ts` (7: anchor/offset, labels, token-only visuals, dark parity, updateDraft, report + map FAQs) + mapStack dark-parity expectation updates | [x] |
 
 ---
 
