@@ -1,23 +1,10 @@
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { resolveDatabaseUrl, isProduction } from "@/app/lib/config/env";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
-
-function resolveDatabaseUrl(): string {
-  const isDev = process.env.NODE_ENV !== "production" || process.env.PROJECT_ENV === "development";
-  if (isDev) {
-    return (
-      process.env.DIRECT_LOCAL_DB ||
-      process.env.LOCAL_DB ||
-      process.env.DIRECT_URL ||
-      process.env.DATABASE_URL ||
-      ""
-    );
-  }
-  return process.env.DIRECT_URL || process.env.DATABASE_URL || process.env.DIRECT_LOCAL_DB || process.env.LOCAL_DB || "";
-}
 
 function createPrismaClient(): PrismaClient {
   /* eslint-disable @typescript-eslint/no-explicit-any -- runtime constructor options differ per delivery mode (adapter vs accelerateUrl) */
@@ -42,6 +29,6 @@ function createPrismaClient(): PrismaClient {
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") {
+if (!isProduction()) {
   globalForPrisma.prisma = prisma;
 }

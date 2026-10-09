@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Along Logo](public/assets/icons/icon-192x192.png)
+![Along Logo](public/logo.svg)
 
 **Discover, share, and explore travel routes with the Along community**
 
@@ -135,6 +135,35 @@ CLOUDINARY_API_SECRET=replace_me
 UPSTASH_REDIS_REST_URL=replace_me
 UPSTASH_REDIS_REST_TOKEN=replace_me
 ```
+
+### Environment differentiation (PROJECT_ENV vs NODE_ENV)
+
+`app/lib/config/env.ts` is the single source of truth:
+
+| Variable | Purpose | Values |
+|----------|---------|--------|
+| `PROJECT_ENV` | Deployment stage — **wins when set** | `development` / `staging` / `production` |
+| `NODE_ENV` | Node runtime env (set by Next.js) | `development` / `production` / `test` |
+
+Effective env = `PROJECT_ENV` when set, else `NODE_ENV`. `isProduction()`
+is true only for effective `production`, so `PROJECT_ENV=production` with
+`NODE_ENV=development` still hardens cookies, silences dev-only logs
+(OTP/reset codes, email bodies), and enforces strict secrets. DB URL
+precedence follows the effective env (local vars in dev, `DIRECT_URL` /
+`DATABASE_URL` in production). See `.env.example` (Core section).
+
+### Email Studio
+
+Admin → Email: visual block builder (paragraph, heading, CTA, image, list,
+link, divider), variable catalog with custom entries, in-place plain-text
+editing, raw HTML mode — switching modes never drops content. Every template
+renders inside the shared wrapper (app logo from `logoUrl` default variable,
+header, body, CTA, footer) with HTML-escaped interpolation (missing values
+send as empty, never `{{name}}`). Recipient `search` mode is select-search
+against `/api/admin/users?q=`. Wired-in mails: OTP, welcome (all auth
+methods incl. Google OAuth), password reset, verify-email, change-email,
+change-password, account-deletion lifecycle, bug/contact notifications —
+each pausable via toggle.
 
 4. **Run the development server**
 

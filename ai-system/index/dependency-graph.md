@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 safe deletion + Email Studio)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 22 email/auth/profile/explore/env)
 > - last-verified-against-code: 2026-10-09 (accountDeletionService/email fan-out/toggle edges verified in code)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -190,8 +190,9 @@ NotificationService
     → Config: notifications, rateLimits
 
 EmailService
-    → Resend (transactional: verification, password reset)
-    → Non-blocking via waitUntil on hot paths (register, forgot-password)
+    → Resend (transactional: otp, welcome incl. Google OAuth, password reset, verify/change-email/change-password, contact/bug, deletion lifecycle)
+    → Shared wrapper (logo/header/CTA/footer) + escaped interpolation (missing→"") + toggle-pauses-send + EmailLog audit
+    → Non-blocking via waitUntil on hot paths (register, forgot-password, google callback)
 
 OtpStore / ResetTokenStore
     → Redis via shared wrapper (1.5s timeout, in-memory Map fallback)

@@ -188,6 +188,8 @@ export async function GET(request: NextRequest) {
     });
 
     // Welcome + referral rewards mirror the email+password signup path.
+    // Wired-in welcome email fires for Google signups too (toggle-respecting,
+    // fire-and-forget so OAuth latency is unaffected).
     try {
       const { createNotification } = await import("@/app/lib/services/notificationService");
       void createNotification({
@@ -196,6 +198,12 @@ export async function GET(request: NextRequest) {
         message: `Welcome to Along, ${firstName || "traveller"}! Share your first route to get started.`,
         recipientIds: [user.id],
         allowSelf: true,
+      });
+    } catch { /* non-critical */ }
+    try {
+      const { sendWelcomeEmail } = await import("@/app/lib/services/emailService");
+      void sendWelcomeEmail(email, firstName || "traveller").then((r) => {
+        if (!r.sent) console.warn(`[GOOGLE] welcome email not sent for ${email}: ${r.reason}`);
       });
     } catch { /* non-critical */ }
     if (invitedById) {

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Camera, Bell, BarChart3, UserPlus, Shield, LogOut } from "lucide-react"
+import { Camera, Bell, BarChart3, UserPlus, Shield, LogOut, Link2, Trophy, MailCheck, AlertTriangle } from "lucide-react"
 import { isAdminRole } from "@/app/lib/config/navigation"
 import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
@@ -10,6 +10,7 @@ import dynamic from "next/dynamic"
 import { RewardsPanel, EditProfileModal, EarlyAdopterBadgeFromStatus } from "@/app/components/features/profile"
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 import { AuthLinkPanel } from "@/app/components/features/profile/AuthLinkPanel"
+import { EmailSecurityPanel } from "@/app/components/features/profile/EmailSecurityPanel"
 import { AccountDeletionPanel } from "@/app/components/features/profile/AccountDeletionPanel"
 import { toastService } from "@/app/lib/services/toastService"
 
@@ -72,9 +73,20 @@ interface PostItem {
 const PROFILE_TABS = ["posts", "routes", "requests", "liked", "bookmarks", "archived"] as const
 type ProfileTab = (typeof PROFILE_TABS)[number]
 
+// Secondary account tabs — same tab styling as content tabs; keeps the
+// profile unpacked (connected / points / email-security / danger).
+const ACCOUNT_TABS = [
+  { id: "connected", label: "Connected", icon: Link2 },
+  { id: "points", label: "Points", icon: Trophy },
+  { id: "security", label: "Email & Security", icon: MailCheck },
+  { id: "danger", label: "Danger zone", icon: AlertTriangle },
+] as const
+type AccountTab = (typeof ACCOUNT_TABS)[number]["id"]
+
 export default function OwnProfilePage() {
   const { user: authUser, isLoading: authLoading, logout } = useAuth()
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts")
+  const [accountTab, setAccountTab] = useState<AccountTab>("connected")
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
@@ -275,20 +287,67 @@ export default function OwnProfilePage() {
           </AppButton>
         </div>
 
-        <AuthLinkPanel />
+        {/* Secondary account tabs — same tab pattern as content tabs (connected /
+            points / security / danger live here so the profile stays unpacked) */}
+        <div id="account" className="mb-4 scroll-mt-20">
+          <div
+            role="tablist"
+            aria-label="Account settings"
+            className="flex gap-1 sm:gap-2 border-b border-border mb-3 overflow-x-auto overscroll-x-contain pb-px -mx-1 px-1"
+          >
+            {ACCOUNT_TABS.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={accountTab === t.id}
+                onClick={() => setAccountTab(t.id)}
+                className={`flex-1 min-w-[96px] shrink-0 px-3 py-2.5 text-center border-none bg-transparent text-[13px] font-medium cursor-pointer transition-colors relative whitespace-nowrap overflow-hidden text-ellipsis ${
+                  accountTab === t.id ? "text-primary" : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                <span className="inline-flex items-center gap-1 justify-center">
+                  <t.icon size={13} className="shrink-0" />
+                  {t.label}
+                </span>
+                {accountTab === t.id && (
+                  <span className="absolute bottom-0 left-[20%] right-[20%] h-[2.5px] bg-primary radius-pill radius-pill-top" />
+                )}
+              </button>
+            ))}
+          </div>
+          {accountTab === "connected" && <AuthLinkPanel />}
+          {accountTab === "points" && (
+            <RewardsPanel
+              tier={profile.rewardTier}
+              points={profile.rewardPoints}
+              history={rewardHistory}
+            />
+          )}
+          {accountTab === "security" && <EmailSecurityPanel onChanged={refreshProfile} />}
+          {accountTab === "danger" && <AccountDeletionPanel />}
+        </div>
 
-        <RewardsPanel
-          tier={profile.rewardTier}
-          points={profile.rewardPoints}
-          history={rewardHistory}
-        />
-
-        {/* Mobile-only quick links for sidebar items not on bottom tab bar */}
-        <div className="lg:hidden mb-4 py-3 border-t border-border">
+        {/* Quick links between both tabbed sections (content ↔ account) */}
+        <div className="mb-4 py-2.5 border-y border-border">
           <div className="text-[11px] font-medium tracking-wider uppercase text-text-muted px-3 mb-2">
             Quick Links
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 px-1">
+            <a href="#account" onClick={(e) => { e.preventDefault(); setAccountTab("connected"); document.getElementById("account")?.scrollIntoView({ behavior: "smooth" }); }}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0">
+              <Link2 size={18} className="shrink-0" />
+              <span className="truncate">Connected accounts</span>
+            </a>
+            <a href="#account" onClick={(e) => { e.preventDefault(); setAccountTab("points"); document.getElementById("account")?.scrollIntoView({ behavior: "smooth" }); }}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0">
+              <Trophy size={18} className="shrink-0" />
+              <span className="truncate">Profile points</span>
+            </a>
+            <a href="#content" onClick={(e) => { e.preventDefault(); document.getElementById("content")?.scrollIntoView({ behavior: "smooth" }); }}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0">
+              <Bell size={18} className="shrink-0" />
+              <span className="truncate">Jump to posts</span>
+            </a>
             <Link
               href="/notifications"
               className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0"
@@ -322,12 +381,14 @@ export default function OwnProfilePage() {
           </div>
         </div>
 
-        <AccountDeletionPanel />
+        {/* Content tabs (posts / routes / …) — account panels live only in the
+            account tab group above; no duplicates. */}
 
         <div
+          id="content"
           role="tablist"
           aria-label="Profile content"
-          className="flex gap-1 sm:gap-2 border-b border-border mb-4 overflow-x-auto overscroll-x-contain pb-px -mx-1 px-1"
+          className="flex gap-1 sm:gap-2 border-b border-border mb-4 overflow-x-auto overscroll-x-contain pb-px -mx-1 px-1 scroll-mt-20"
         >
           {PROFILE_TABS.map((tab) => (
             <button
