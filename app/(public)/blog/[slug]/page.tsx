@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Clock, User } from "lucide-react";
 import { remark } from "remark";
 import html from "remark-html";
-import { getPostBySlug, getAllPosts } from "@/app/lib/utils/blog";
+import { getPublicBlogPosts, getPublicPostBySlug } from "@/app/lib/utils/blogStore";
 import { buildPublicMetadata } from "@/app/lib/utils/metadata";
 import {
   blogPostingSchema,
@@ -15,12 +15,13 @@ interface Props {
 }
 
 export async function generateStaticParams() {
-  return getAllPosts().map((post) => ({ slug: post.slug }));
+  const posts = await getPublicBlogPosts();
+  return posts.map((post) => ({ slug: post.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPublicPostBySlug(slug);
   if (!post) {
     return buildPublicMetadata(
       "Post Not Found",
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const post = getPostBySlug(slug);
+  const post = await getPublicPostBySlug(slug);
 
   if (!post) {
     return (
@@ -48,8 +49,11 @@ export default async function BlogPostPage({ params }: Props) {
     );
   }
 
-  const result = await remark().use(html).process(post.content);
-  const contentHtml = result.toString();
+  // Managed posts store sanitized HTML fragments (visual-builder output);
+  // filesystem seeds store markdown — render each accordingly.
+  const contentHtml = post.readonly === true || /<\w+/.test(post.content) === false
+    ? String(await remark().use(html).process(post.content))
+    : post.content;
 
   const jsonLd = blogPostingSchema({
     headline: post.title,

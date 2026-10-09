@@ -378,42 +378,100 @@ export async function sendAdminDeletionAlertEmail(to: string, vars: { displayNam
 }
 
 /**
+ * Variable source classification for the composer (config-driven).
+ * - platform: always auto (appUrl/appName/logoUrl/supportEmail/year).
+ * - user: auto from the recipient's user row (firstName/lastName/userName/email/displayName).
+ * - generated: platform-generated per send (otp/verifyLink/resetLink/confirmLink/cancelLink/changedAt/scheduledDate/completedDate) — auto where derivable, else manual.
+ * - manual: everything else (custom template vars, message/title/category/...) — manual entry only when sending to addresses with no user row.
+ */
+export const EMAIL_VAR_SOURCES: Record<string, "platform" | "user" | "generated" | "manual"> = {
+  appUrl: "platform", appName: "platform", logoUrl: "platform", supportEmail: "platform", year: "platform",
+  firstName: "user", lastName: "user", userName: "user", email: "user", displayName: "user", newEmail: "user",
+  otp: "generated", verifyLink: "generated", resetLink: "generated", confirmLink: "generated",
+  cancelLink: "generated", changedAt: "generated", scheduledDate: "generated", completedDate: "generated",
+  reasonLine: "generated",
+};
+
+export function emailVarSource(name: string): "platform" | "user" | "generated" | "manual" {
+  return EMAIL_VAR_SOURCES[name] ?? "manual";
+}
+
+/**
+ * Per-recipient var resolution: merges platform defaults + user-derived
+ * values + admin-supplied base vars. Admin input wins when non-empty; user
+ * row fills gaps (firstName/userName/email/...); platform-generated tokens
+ * (otp/verifyLink/...) are derived per recipient when feasible, otherwise
+ * fall back to admin input or template fallbacks. Manual entry is only
+ * REQUIRED for vars with no derivable value (e.g. firstName when mailing a
+ * manually-entered address with no user row).
+ */
+export async function resolveVarsForRecipient(
+  baseVars: Record<string, string>,
+  recipientEmail: string,
+): Promise<Record<string, string>> {
+  const out: Record<string, string> = { ...(baseVars ?? {}) };
+  try {
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: recipientEmail.trim().toLowerCase(), mode: "insensitive" } },
+      select: { firstName: true, lastName: true, userName: true, email: true },
+    });
+    if (user) {
+      if (!out.firstName?.trim()) out.firstName = user.firstName || user.userName;
+      if (!out.lastName?.trim()) out.lastName = user.lastName || "";
+      if (!out.userName?.trim()) out.userName = user.userName;
+      if (!out.email?.trim()) out.email = user.email;
+      if (!out.displayName?.trim()) out.displayName = `${user.firstName} ${user.lastName}`.trim() || user.userName;
+    }
+    // Platform-generated vars: derive per recipient where feasible.
+    if (!out.verifyLink?.trim() && user) {
+      out.verifyLink = `${getAppUrl()}/verify-email?email=${encodeURIComponent(user.email)}`;
+    }
+    if (!out.cancelLink?.trim()) out.cancelLink = `${getAppUrl()}/profile`;
+    if (!out.changedAt?.trim()) out.changedAt = new Date().toUTCString();
+  } catch { /* non-critical — fall back to base vars */ }
+  return out;
+}
+
+/**
  * Dynamic recipient resolution for the admin composer (config-driven caps).
  * Never includes deleted users; admins mode pulls ADMIN role only.
+ * Unverified emails are filtered OUT by default (resource-wastage guard —
+ * unverified addresses often bounce); pass includeUnverified:true to opt in.
  */
 export async function resolveEmailRecipients(sel: {
-  mode: string; role?: string; count?: number; query?: string; emails?: string[];
+  mode: string; role?: string; count?: number; query?: string; emails?: string[]; includeUnverified?: boolean;
 }): Promise<string[]> {
   const { EMAIL_MANAGEMENT_CONFIG } = await import("@/app/lib/config/emailManagement");
   const cap = EMAIL_MANAGEMENT_CONFIG.maxRecipientsPerSend;
+  const verifiedFilter = sel.includeUnverified ? {} : { verified: true };
   try {
     if (sel.mode === "manual") {
       return [...new Set((sel.emails ?? []).map((e) => e.trim().toLowerCase()).filter((e) => e.includes("@")))].slice(0, cap);
     }
     if (sel.mode === "admins") {
-      const admins = await prisma.user.findMany({ where: { role: "ADMIN", isDeleted: false }, select: { email: true }, take: cap });
+      const admins = await prisma.user.findMany({ where: { role: "ADMIN", isDeleted: false, ...verifiedFilter }, select: { email: true }, take: cap });
       return admins.map((a) => a.email);
     }
     if (sel.mode === "role") {
       const role = sel.role === "ADMIN" ? "ADMIN" : "USER";
-      const users = await prisma.user.findMany({ where: { role: role as never, isDeleted: false }, select: { email: true }, take: cap });
+      const users = await prisma.user.findMany({ where: { role: role as never, isDeleted: false, ...verifiedFilter }, select: { email: true }, take: cap });
       return users.map((u) => u.email);
     }
     if (sel.mode === "firstN") {
       const n = Math.min(Math.max(1, Math.floor(sel.count ?? 100)), EMAIL_MANAGEMENT_CONFIG.maxFirstN, cap);
-      const users = await prisma.user.findMany({ where: { isDeleted: false }, select: { email: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: n });
+      const users = await prisma.user.findMany({ where: { isDeleted: false, ...verifiedFilter }, select: { email: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: n });
       return users.map((u) => u.email);
     }
     if (sel.mode === "search") {
       const q = (sel.query ?? "").trim();
       if (!q) return [];
       const users = await prisma.user.findMany({
-        where: { isDeleted: false, OR: [{ userName: { contains: q, mode: "insensitive" } }, { firstName: { contains: q, mode: "insensitive" } }, { lastName: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }] } as never,
+        where: { isDeleted: false, ...verifiedFilter, OR: [{ userName: { contains: q, mode: "insensitive" } }, { firstName: { contains: q, mode: "insensitive" } }, { lastName: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }] } as never,
         select: { email: true }, take: cap,
       });
       return users.map((u) => u.email);
     }
-    const users = await prisma.user.findMany({ where: { isDeleted: false }, select: { email: true }, take: cap });
+    const users = await prisma.user.findMany({ where: { isDeleted: false, ...verifiedFilter }, select: { email: true }, take: cap });
     return users.map((u) => u.email);
   } catch (e) {
     console.error("[emailService] resolveEmailRecipients failed:", e);

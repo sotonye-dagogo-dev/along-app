@@ -10,14 +10,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // Global ranking — safe to share across viewers, 10 min TTL
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get("page")) || 1);
+    const limit = Math.min(50, Math.max(5, Number(searchParams.get("limit")) || 20));
+    const wantMe = searchParams.get("me") === "1";
+
+    // Global ranking — safe to share across viewers, 10 min TTL.
+    // Paginated slices are derived from the cached full board when present.
     try {
       const { redis } = await import("@/app/lib/db/redis");
-      const cached = await redis.get<Record<string, unknown>>(CACHE_KEYS.leaderboard());
-      if (cached) return NextResponse.json(cached, { status: 200 });
+      const cached = await redis.get<{ leaderboard: Array<Record<string, unknown>> }>(CACHE_KEYS.leaderboard());
+      if (cached?.leaderboard) {
+        const total = cached.leaderboard.length;
+        const slice = cached.leaderboard.slice((page - 1) * limit, page * limit);
+        const me = wantMe || true ? cached.leaderboard.find((e) => (e as { id?: string }).id === (user as { id: string }).id) ?? null : null;
+        return NextResponse.json({ leaderboard: slice, page, totalPages: Math.max(1, Math.ceil(total / limit)), total, me }, { status: 200 });
+      }
     } catch { /* fall through to DB */ }
 
     const users = await prisma.user.findMany({
+      where: { isDeleted: false },
       select: {
         id: true,
         firstName: true,
@@ -28,8 +40,8 @@ export async function GET(request: NextRequest) {
         rewardTier: true,
         _count: { select: { posts: true, followers: true } },
       },
-      orderBy: { rewardPoints: "desc" },
-      take: 100,
+      orderBy: [{ rewardPoints: "desc" }, { createdAt: "asc" }],
+      take: 500,
     });
 
     const leaderboard = users.map((u, i) => ({
@@ -50,7 +62,12 @@ export async function GET(request: NextRequest) {
       await redis.set(CACHE_KEYS.leaderboard(), { leaderboard }, { ex: CACHE_TTL.leaderboard });
     } catch { /* non-critical */ }
 
-    return NextResponse.json({ leaderboard }, { status: 200 });
+    const total = leaderboard.length;
+    const me = leaderboard.find((e) => e.id === (user as { id: string }).id) ?? null;
+    return NextResponse.json({
+      leaderboard: leaderboard.slice((page - 1) * limit, page * limit),
+      page, totalPages: Math.max(1, Math.ceil(total / limit)), total, me,
+    }, { status: 200 });
   } catch (error) {
     console.error("Leaderboard error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

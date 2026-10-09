@@ -96,6 +96,21 @@ export async function PUT(request: NextRequest) {
       }
       return NextResponse.json({ success: true, toggles: next }, { status: 200 });
     }
+    // Restore-to-default: removes the DB-saved override for one template so
+    // the hardcoded config fallback shines through again. Hardcoded updates
+    // NEVER overwrite DB-saved versions automatically (stored wins per-name
+    // in getEmailTemplates); restore is the explicit opt-in path back.
+    const restoreName = typeof body?.restore === "string" ? body.restore.trim() : "";
+    if (restoreName) {
+      const def = DEFAULT_EMAIL_TEMPLATES.find((t) => t.name === restoreName);
+      if (!def) return NextResponse.json({ error: "No default for that template" }, { status: 404 });
+      const templates = (await readStored()).filter((t) => t.name !== restoreName);
+      await writeStored(templates);
+      try {
+        await prisma.emailLog.create({ data: { to: "-", subject: `restore:${restoreName}`, type: "template_restore", status: "sent", metadata: { templateName: restoreName } as never } });
+      } catch { /* ignore */ }
+      return NextResponse.json({ success: true, restored: restoreName, template: def }, { status: 200 });
+    }
     const incoming = body?.template as Partial<EmailTemplate> | undefined;
     if (!incoming) return NextResponse.json({ error: "template required" }, { status: 400 });
     const idx = templates.findIndex((t) => t.name === incoming.name);
@@ -104,6 +119,10 @@ export async function PUT(request: NextRequest) {
     if (idx >= 0) templates[idx] = clean;
     else templates.push(clean);
     await writeStored(templates);
+    try {
+      const { logAudit } = await import("@/app/lib/services/auditService");
+      await logAudit({ actorId: (user as { id: string }).id, action: "email.template.save", entity: "email-template", entityId: clean.name, metadata: { subject: clean.subject } });
+    } catch { /* ignore */ }
     return NextResponse.json({ success: true, template: clean }, { status: 200 });
   } catch (e) {
     console.error("admin email templates PUT error:", e);

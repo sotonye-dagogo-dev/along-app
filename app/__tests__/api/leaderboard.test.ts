@@ -28,7 +28,7 @@ beforeEach(() => {
 
 describe("GET /api/leaderboard", () => {
   it("queries without a rewardPoints floor and keeps zero-point users", async () => {
-    mockAuth.mockResolvedValue({ id: "viewer-1" })
+    mockAuth.mockResolvedValue({ id: "u1" })
     mockFindMany.mockResolvedValue([
       {
         id: "u1", firstName: "Ama", lastName: "Boat", userName: "ama",
@@ -47,12 +47,17 @@ describe("GET /api/leaderboard", () => {
 
     const args = mockFindMany.mock.calls[0][0]
     // No `where` points floor — every user is ranked, including zero-point.
-    expect(args.where).toBeUndefined()
-    expect(args.take).toBe(100)
+    // (isDeleted:false only excludes anonymized accounts, never earners.)
+    expect(args.where?.rewardPoints).toBeUndefined()
+    expect(args.take).toBe(500)
 
     const body = await res.json()
     expect(body.leaderboard).toHaveLength(2)
     expect(body.leaderboard[1]).toMatchObject({ id: "u2", rank: 2, rewardPoints: 0 })
+    // Paginated shape + own-rank payload (non-breaking additive).
+    expect(body.page).toBe(1)
+    expect(body.total).toBe(2)
+    expect(body.me).toMatchObject({ id: "u1", rank: 1 })
   })
 
   it("returns 401 when unauthenticated", async () => {

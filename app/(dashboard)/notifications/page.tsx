@@ -270,6 +270,10 @@ function NotificationRow({
     }
     if (notification.post?.id) {
       router.push(`/posts/${notification.post.id}`)
+    } else if (notification.type === "VERIFIED") {
+      // Email-verification prompts CTA to the profile security tab where
+      // the verify allocation lives (edge-case unverified logins).
+      router.push(`/profile?tab=security`)
     } else {
       router.push(`/profile/${notification.actor.userName}`)
     }

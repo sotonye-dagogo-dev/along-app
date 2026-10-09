@@ -53,7 +53,9 @@ interface PostItem {
   validityTier?: string | null
   createdAt: string
   type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
-  user: { id?: string; userName: string; firstName: string; lastName: string }
+  _isLiked?: boolean
+  _isBookmarked?: boolean
+  user: { id?: string; userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null }
 }
 
 interface ProfileApiResponse {
@@ -337,13 +339,17 @@ export default function OtherProfilePage() {
                   validityScore: post.validityScore ?? 0,
                   validityTier: post.validityTier ?? null,
                   createdAt: post.createdAt,
+                  _isLiked: post._isLiked ?? false,
+                  _isBookmarked: post._isBookmarked ?? false,
                   user: {
                     id: post.user.id ?? profile.id,
                     userName: profile.userName,
                     firstName: profile.firstName,
                     lastName: profile.lastName,
-                    avatar: profile.avatar,
-                    avatarConfig: profile.avatarConfig ?? undefined,
+                    // Prefer the row avatar (same source as feed); header is
+                    // the fallback so the tab never shows a stale image.
+                    avatar: post.user.avatar ?? profile.avatar,
+                    avatarConfig: post.user.avatarConfig ?? profile.avatarConfig ?? undefined,
                   },
                 } as never
               }

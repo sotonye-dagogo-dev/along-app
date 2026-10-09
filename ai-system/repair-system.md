@@ -564,6 +564,26 @@ Never alias a bare package name without the `$` exact-match suffix when subpath 
 **Date:** 2026-10-09
 **Status:** Active
 
+### Build Failure — `unknown` Metadata Not Assignable to ReactNode (Admin Audit Page)
+
+**Symptom:**
+Vercel build failed at type-check: `./app/admin/audit/page.tsx:89:13 Type error: Type 'unknown' is not assignable to type 'ReactNode'` on `{e.metadata && Object.keys(e.metadata as object).length > 0 && (...)}`.
+
+**Root Cause:**
+`AuditEntry.metadata` is typed `unknown` (Prisma `Json?`). `e.metadata && ...` does not narrow `unknown`, so the `&&` chain's left operand stays `unknown` — not assignable to `ReactNode` for rendering. The `as object` cast inside `Object.keys` doesn't narrow the outer expression.
+
+**Fix Applied:**
+Explicit type-guard helper `hasRenderableMetadata(value: unknown): value is Record<string, unknown>` (object + non-null + non-array + non-empty) plus never-throw `formatMetadata` (try/catch JSON.stringify). JSX uses `{hasRenderableMetadata(e.metadata) && (<pre>...)}`.
+
+**Prevention:**
+Never render `unknown` behind a truthiness check. Always narrow with a `value is` guard before using it in JSX. Same class as the earlier enum-string errors (ReviewStatus, UserRole): runtime checks don't narrow TS types — narrow at the expression the compiler checks.
+
+**Files Affected:**
+- `app/admin/audit/page.tsx`
+
+**Date:** 2026-10-09
+**Status:** Active
+
 ---
 
 ## Resolved Errors Archive

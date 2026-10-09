@@ -5,6 +5,7 @@ import { AppButton, AppAlert } from "@/app/components/ui";
 import { toastService } from "@/app/lib/services/toastService";
 import { useOtpResend, formatCooldown } from "@/app/lib/hooks/useOtpResend";
 import { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES } from "@/app/lib/config/authVerification";
+import { PROFILE_POSTS_CONFIG } from "@/app/lib/config/profilePosts";
 import { MailCheck, MailPlus, KeyRound } from "lucide-react";
 
 interface Props {
@@ -99,8 +100,8 @@ export function EmailSecurityPanel({ onChanged }: Props) {
       <div className="flex items-center gap-2 mb-3">
         <MailCheck size={18} className="text-primary" />
         <h3 className="text-sm font-semibold text-text-primary">Email &amp; Security</h3>
-        {verified === true && <span className="text-[11px] px-2 py-0.5 rounded-full bg-success text-white font-semibold">Verified</span>}
-        {verified === false && <span className="text-[11px] px-2 py-0.5 rounded-full bg-warning text-warning-text font-semibold">Unverified</span>}
+        {verified === true && <span className={PROFILE_POSTS_CONFIG.verifiedPillClass}>Verified</span>}
+        {verified === false && <span className={PROFILE_POSTS_CONFIG.unverifiedPillClass}>Unverified</span>}
       </div>
       {error && <AppAlert variant="error" className="mb-3" dismissible onDismiss={() => setError(null)}>{error}</AppAlert>}
       {email && <p className="text-xs text-text-muted mb-3 font-mono truncate">{email}</p>}

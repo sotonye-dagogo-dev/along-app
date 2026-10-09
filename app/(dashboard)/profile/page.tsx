@@ -66,7 +66,9 @@ interface PostItem {
   createdAt: string
   type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
   isArchived?: boolean
-  user: { id?: string; userName: string; firstName: string; lastName: string }
+  _isLiked?: boolean
+  _isBookmarked?: boolean
+  user: { id?: string; userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null }
 }
 
 // Profile content tabs: "routes" lists actual routes (ROUTE + ROUTE_RESPONSE),
@@ -93,11 +95,14 @@ export default function OwnProfilePage() {
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
 
-  // Deep link: /profile#reviews (About CTA panel) opens the Reviews tab.
+  // Deep link: /profile#reviews (About CTA panel) opens the Reviews tab;
+  // ?tab=security (unverified-login + notification CTA) opens Email & Security.
   React.useEffect(() => {
     try {
-      if (typeof window !== "undefined" && window.location.hash === "#reviews") {
-        setActiveTab("reviews");
+      if (typeof window !== "undefined") {
+        if (window.location.hash === "#reviews") setActiveTab("reviews");
+        const tab = new URLSearchParams(window.location.search).get("tab");
+        if (tab === "security") setAccountTab("security");
       }
     } catch { /* ignore */ }
   }, [])
@@ -253,6 +258,15 @@ export default function OwnProfilePage() {
             <EarlyAdopterBadgeFromStatus earlyAdopter={profile.earlyAdopter} />
           </h1>
           <p className="text-sm text-text-secondary mb-1.5">@{profile.userName}</p>
+          {!profile.verified && (
+            <button
+              onClick={() => setAccountTab("security")}
+              className="mb-2 inline-flex items-center gap-1.5 px-2.5 py-1 radius-pill bg-warning text-warning-text text-[11px] font-semibold border-none cursor-pointer"
+              title="Verify your email in Email & Security"
+            >
+              <MailCheck size={12} /> Unverified email — verify now
+            </button>
+          )}
         </div>
 
         {profile.bio && (
@@ -450,11 +464,19 @@ export default function OwnProfilePage() {
                   validityTier: post.validityTier ?? null,
                   isArchived: post.isArchived,
                   createdAt: post.createdAt,
+                  _isLiked: post._isLiked ?? false,
+                  // Bookmarks API also sends legacy `isBookmarked`.
+                  _isBookmarked: post._isBookmarked ?? (post as unknown as { isBookmarked?: boolean }).isBookmarked ?? false,
                   user: {
                     id: post.user.id ?? userId,
                     userName: post.user.userName,
                     firstName: post.user.firstName,
                     lastName: post.user.lastName,
+                    // Forward the row avatar (API selects avatar+avatarConfig);
+                    // fall back to the profile header so the posts tab never
+                    // shows a stale/initial avatar (PROFILE_POSTS_CONFIG).
+                    avatar: post.user.avatar ?? profile.avatar ?? null,
+                    avatarConfig: post.user.avatarConfig ?? profile.avatarConfig ?? null,
                   },
                 } as never
               }
