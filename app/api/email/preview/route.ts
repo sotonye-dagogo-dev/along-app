@@ -18,7 +18,7 @@ function sampleVarsFor(templateName: string): Record<string, string> {
     otp: { otp: "482937" },
     welcome: { firstName: "Adaobi" },
     passwordReset: { resetLink: `${appUrl}/reset?token=sample-token-123` },
-    verifyEmail: { firstName: "Adaobi", otp: "482937", verifyLink: `${appUrl}/verify-email?token=sample` },
+    verifyEmail: { firstName: "Adaobi", otp: "482937", verifyLink: `${appUrl}/verify-email?email=${encodeURIComponent("adaobi@example.com")}` },
     changeEmail: { firstName: "Adaobi", newEmail: "ada@newmail.com", otp: "482937", confirmLink: `${appUrl}/profile?emailConfirmed=1` },
     changePassword: { firstName: "Adaobi", changedAt: new Date().toUTCString() },
     contactNotification: { senderName: "Chidi Okonkwo", senderEmail: "chidi@example.com", message: "I love the app! Would love to see more routes in Lagos mainland." },
