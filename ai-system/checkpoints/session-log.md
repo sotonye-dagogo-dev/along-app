@@ -1429,3 +1429,35 @@ Next human decision — remaining backlog: live map tracking navigation, auth pr
 **Notes / Blockers:**
 - None — QA gate fully green. update-ai-system.md is terminal per its contract — no chained commands.
 ---
+
+## 2026-10-09 — Execute-Feature: Safe Account Deletion + Email Studio (Sprint 21)
+
+**Directive:** Account deletion request → email + in-app notice → 7-day archived grace (reversible) → finalize with anonymized posts + final email; admin email + in-app alerts (reversal in-app only); admin bulk safe deletion with first-N-by-signup selection + deletion filters; generic deleted-user profile (likes/bookmarks empty); off-platform 30d backup recovery note; profile sign-out + quick-links 2→3-col grid; admin KPI 2→4-col grid; admin email service overhaul (visual/HTML builder, toggle posting, custom templates, dynamic recipients, config-driven, crellab-mirrored); config/metadata-driven, modular, non-breaking; close with update-ai-system.md.
+
+- Step 1 planning: task-queue / system-architecture / design-system / repair-system read via explore subagent inventory (profile inline quick-links, AdminShell, emailService 5-template shape, notificationService fan-out, SiteConfig KV, no AccountDeletion/EmailTemplate models). Architecture impact found (new Prisma model/enum/fields + migration) → full pipeline, no separate plan-feature (directive is the plan; additive-only).
+- Step 2 scope check: fits project-context (account lifecycle, admin, email all in-scope); no conflict with project-decisions (extends soft-suspend precedent; Sprint 21 decision recorded). Proceeded.
+- Step 3 implementation (mid-work sync: this entry):
+  - Schema/migration: User deletion columns + AccountDeletionRequest + AccountDeletionStatus + 3 NotificationTypes; `20261009000000_account_deletion` idempotent SQL
+  - Config: accountDeletion (7d/30d/anon/caps), emailManagement (modes/caps/parser), +3 email templates, +3 notification registry entries, bulk First-100 + signup-order flag, apiRegistry +9
+  - Services: accountDeletionService (tx request/cancel/finalize, last-admin guard, counter recompute, best-effort fan-out); sendTemplatedEmail + deletion sends + resolveEmailRecipients; toggle-aware findTemplate backfill
+  - APIs/UI as listed in dev-history Sprint 21 entry
+  - Tests: accountDeletion.test.ts (9)
+- Step 4 QA gate: NOT runnable in this runner (no node_modules — same constraint as prior session-log note); static verification only (excess-property, null-clear, import paths, cron guard). Residual risk noted in dev-history; CI/Vercel is the gate.
+- Step 5 close-out: task-queue Sprint 21 rows, dev-history Sprint 21 entry, lessons-learned (deletion-safety lesson), project-decisions (Sprint 21 decision), repo-map / dependency-graph / system-architecture / project-plan / test-results freshness + rows, in-progress reset; update-ai-system deep sync run per directive (this entry is its trace)
+
+**Files Modified:**
+- New: accountDeletion.ts, emailManagement.ts, accountDeletionService.ts, 3 account APIs, cron route, 2 admin deletion APIs, 2 admin email APIs, deletions + email admin pages, AccountDeletionPanel, migration SQL, accountDeletion.test.ts
+- Edited: schema.prisma, email.ts, notifications.ts, admin.ts, apiRegistry.ts, config index, emailTemplates.ts, emailService.ts, notificationService.ts, modalService.ts, useBulkSelection.ts, posts route, by-username route, admin users route, email preview route, own + [username] profile pages, AdminShell, admin dashboard, admin users page, GlobalConfirmModal, profile barrel, GlobalModalProvider, vercel.json, .env.example
+- Docs: task-queue, project-plan, repo-map, dependency-graph, system-architecture, dev-history, lessons-learned, project-decisions, test-results, in-progress + this entry
+
+**Next Task:**
+Next human decision — CI/Vercel QA confirmation for Sprint 21; remaining backlog unchanged (live tracking nav, provider linking, clustering, rate-limiter Redis).
+
+**Assumptions Made:**
+- Crellab repo is public-readme only (no email internals fetchable) — mirrored the described shape (builder + toggles + customs + dynamic recipients) on Along's SiteConfig pattern instead of copying code
+- Reversal notices in-app only (no email) per directive anti-abuse rule; final email goes to snapshotted original address
+- Deleted-profile posts visible (all, archived or not) while feeds keep excluding archived — balances retention policy with quiet feeds
+
+**Notes / Blockers:**
+- No node_modules in runner → tsc/jest/build unverified locally; must confirm green in CI. update-ai-system.md is terminal — no chained commands.
+---

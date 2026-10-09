@@ -1,8 +1,8 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 map + drafts + FAQ tightening)
-> - last-verified-against-code: 2026-10-09 (mapPins/MapPins/RouteMap/explore/draft-update/faq verified in code; QA full green in-runner: tsc 0, jest 241/241, build clean)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 safe deletion + Email Studio)
+> - last-verified-against-code: 2026-10-09 (deletion lifecycle, Email Studio, admin grids verified in code; QA static-only, no node_modules)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.

@@ -1,7 +1,7 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 tightening QA gate)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 static-only QA)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: overwritten on every test run — always current
 
@@ -68,3 +68,14 @@
 | 2026-06-09 | 91 | 0 | Sprint 5: feed crash, guest auth, styling, login fixes |
 | 2026-06-09 | 91 | 0 | Sprint 4: Production audit fixes |
 | 2026-06-03 | 91 | 0 | OC-8: Production readiness audit |
+
+## Run (Sprint 21 — static-only, 2026-10-09)
+
+**Date:** 2026-10-09
+**Run by:** AI agent (opencode — execute-feature Sprint 21)
+
+- `npx tsc --noEmit` — NOT RUN (no node_modules in runner)
+- `npx jest` — NOT RUN (no node_modules in runner); new suite `app/__tests__/config/accountDeletion.test.ts` (9 assertions) awaits CI
+- `npm run build` — NOT RUN locally; Vercel runs `prisma generate` + `migrate deploy` before build so new models/enums resolve
+- Static verification: import paths, ConfirmOptions excess-property fix, Json-null clear, cron guard, recipient caps manually reviewed
+- Test figures from prior runs (241/241 Sprint 20) are historical, not re-verified this run

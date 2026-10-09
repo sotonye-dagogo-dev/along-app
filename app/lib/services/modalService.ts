@@ -3,6 +3,8 @@ export type ConfirmOptions = {
   description: string;
   variant: "destructive" | "sensitive";
   onConfirm: () => void;
+  /** Optional override for the confirm button label (defaults per variant). */
+  confirmLabel?: string;
 };
 
 type ModalListener = (options: ConfirmOptions | null) => void;

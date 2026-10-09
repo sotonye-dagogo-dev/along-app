@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 map + drafts + FAQ tightening)
-> - last-verified-against-code: 2026-10-09 (39 config files incl. mapPins.ts, MapPins.tsx, mapTightening.test.ts; QA full green in-runner: tsc 0, jest 241/241)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 safe deletion + Email Studio)
+> - last-verified-against-code: 2026-10-09 (41 config files incl. accountDeletion/emailManagement; account/cron/deletion/email APIs, deletions+email admin pages, AccountDeletionPanel verified in code; QA static-only, no node_modules)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -35,8 +35,8 @@ along-app/
 │   └── summaries/           → Previous development phase summaries
 │
 ├── prisma/                  → Database layer
-│   ├── schema.prisma        → 17 models, 9 enums, indexes
-│   ├── migrations/          → 8 migrations (incl. 20261008000000_post_moderation: Post.isArchived/archivedAt + NotificationType REPORT/MODERATION)
+│   ├── schema.prisma        → 18 models (+AccountDeletionRequest), 10 enums (+AccountDeletionStatus; NotificationType +ACCOUNT_DELETION_*)
+│   ├── migrations/          → 9 migrations (incl. 20261009000000_account_deletion: User deletion columns + AccountDeletionRequest + ACCOUNT_DELETION_* notifications)
 │   └── seed.ts              → Development seed data (idempotent, upsert by title)
 │
 ├── public/                  → Static assets

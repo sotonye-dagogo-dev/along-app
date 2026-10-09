@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
-import { getEmailConfig, findTemplate, renderEmailHtml, renderEmailText } from "@/app/lib/utils/emailTemplates";
+import { getEmailConfig, findTemplate, renderEmailHtml, renderEmailText, isTemplateEnabled } from "@/app/lib/utils/emailTemplates";
 
 const EMAIL_SEND_TIMEOUT_MS = 5000;
 
@@ -222,4 +222,98 @@ export async function sendBugReportNotification(title: string, category: string,
     type: "bugReportNotification",
     metadata: { title, category },
   });
+}
+
+/**
+ * Generic config-driven send for any template (system or admin-created
+ * custom). Respects the enabled toggle: disabled templates skip with an
+ * EmailLog entry recording the toggle transition (posting from one state
+ * to another) without throwing — wired-in callers treat skip as non-fatal.
+ */
+export async function sendTemplatedEmail(templateName: string, to: string, vars: Record<string, string>, type?: string) {
+  const enabled = await isTemplateEnabled(templateName);
+  if (!enabled) {
+    await logEmail({ to, subject: `[disabled] ${templateName}`, type: type ?? templateName, status: "skipped", error: "template disabled by admin toggle", metadata: { templateName, vars } });
+    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] ${templateName} to ${to}: disabled by toggle`);
+    return { sent: false, reason: "template disabled" };
+  }
+  const template = await findTemplate(templateName);
+  if (!template) {
+    const reason = `Email template not found: ${templateName}`;
+    console.error(`[EMAIL FAILED] ${reason}`);
+    Sentry.captureMessage(reason, "error");
+    return { sent: false, reason };
+  }
+  return sendEmail({
+    to,
+    subject: renderTemplateSubject(template.subject, vars),
+    html: renderEmailHtml(template, vars),
+    text: renderEmailText(template, vars),
+    type: type ?? templateName,
+    metadata: { templateName },
+  });
+}
+
+function renderTemplateSubject(subject: string, vars: Record<string, string>): string {
+  let out = subject;
+  for (const [k, v] of Object.entries(vars)) out = out.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), v);
+  return out;
+}
+
+const APP_URL_FALLBACK = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+export async function sendAccountDeletionRequestedEmail(to: string, vars: { firstName: string; scheduledDate: string; cancelLink: string }) {
+  return sendTemplatedEmail("accountDeletionRequested", to, { ...vars, appUrl: APP_URL_FALLBACK });
+}
+
+export async function sendAccountDeletionCompletedEmail(to: string, vars: { firstName: string; completedDate: string; supportEmail: string }) {
+  return sendTemplatedEmail("accountDeletionCompleted", to, { ...vars, appUrl: APP_URL_FALLBACK });
+}
+
+export async function sendAdminDeletionAlertEmail(to: string, vars: { displayName: string; userName: string; email: string; scheduledDate: string; reasonLine: string }) {
+  return sendTemplatedEmail("adminDeletionAlert", to, { ...vars, appUrl: APP_URL_FALLBACK }, "adminDeletionAlert");
+}
+
+/**
+ * Dynamic recipient resolution for the admin composer (config-driven caps).
+ * Never includes deleted users; admins mode pulls ADMIN role only.
+ */
+export async function resolveEmailRecipients(sel: {
+  mode: string; role?: string; count?: number; query?: string; emails?: string[];
+}): Promise<string[]> {
+  const { EMAIL_MANAGEMENT_CONFIG } = await import("@/app/lib/config/emailManagement");
+  const cap = EMAIL_MANAGEMENT_CONFIG.maxRecipientsPerSend;
+  try {
+    if (sel.mode === "manual") {
+      return [...new Set((sel.emails ?? []).map((e) => e.trim().toLowerCase()).filter((e) => e.includes("@")))].slice(0, cap);
+    }
+    if (sel.mode === "admins") {
+      const admins = await prisma.user.findMany({ where: { role: "ADMIN", isDeleted: false }, select: { email: true }, take: cap });
+      return admins.map((a) => a.email);
+    }
+    if (sel.mode === "role") {
+      const role = sel.role === "ADMIN" ? "ADMIN" : "USER";
+      const users = await prisma.user.findMany({ where: { role: role as never, isDeleted: false }, select: { email: true }, take: cap });
+      return users.map((u) => u.email);
+    }
+    if (sel.mode === "firstN") {
+      const n = Math.min(Math.max(1, Math.floor(sel.count ?? 100)), EMAIL_MANAGEMENT_CONFIG.maxFirstN, cap);
+      const users = await prisma.user.findMany({ where: { isDeleted: false }, select: { email: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: n });
+      return users.map((u) => u.email);
+    }
+    if (sel.mode === "search") {
+      const q = (sel.query ?? "").trim();
+      if (!q) return [];
+      const users = await prisma.user.findMany({
+        where: { isDeleted: false, OR: [{ userName: { contains: q, mode: "insensitive" } }, { firstName: { contains: q, mode: "insensitive" } }, { lastName: { contains: q, mode: "insensitive" } }, { email: { contains: q, mode: "insensitive" } }] } as never,
+        select: { email: true }, take: cap,
+      });
+      return users.map((u) => u.email);
+    }
+    const users = await prisma.user.findMany({ where: { isDeleted: false }, select: { email: true }, take: cap });
+    return users.map((u) => u.email);
+  } catch (e) {
+    console.error("[emailService] resolveEmailRecipients failed:", e);
+    return [];
+  }
 }

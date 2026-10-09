@@ -62,6 +62,17 @@ export function useBulkSelection<T>(items: T[], getId: (item: T, index: number) 
     [items, pushHistory]
   );
 
+  /** Select an explicit id set (e.g. earliest-N signups fetched from the API). */
+  const selectIds = useCallback(
+    (nextIds: string[]) => {
+      setSelected((prev) => {
+        pushHistory(prev);
+        return new Set(nextIds);
+      });
+    },
+    [pushHistory]
+  );
+
   const toggle = useCallback(
     (id: string) => {
       setSelected((prev) => {
@@ -77,5 +88,5 @@ export function useBulkSelection<T>(items: T[], getId: (item: T, index: number) 
 
   const canUndo = historyDepth > 0;
 
-  return { selected, setSelected, selectAll, clear, invert, undo, selectFirstN, toggle, canUndo, count: selected.size };
+  return { selected, setSelected, selectAll, clear, invert, undo, selectFirstN, selectIds, toggle, canUndo, count: selected.size };
 }

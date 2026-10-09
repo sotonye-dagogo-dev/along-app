@@ -780,3 +780,28 @@ Ended recurring map API-key failures by making the whole map pipeline work with 
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration. (Carto basemap key wiring is closed by this sprint — keyless Carto is the default.) OSRM demo has no SLA (~1 req/s, Redis cache absorbs repeats); self-host path stays open if routing volume outgrows it.
+
+## 2026-10-09 — Execute-Feature: Safe Account Deletion + Email Studio + Admin/Profile Grids (Sprint 21)
+
+**Summary:**
+Self-service safe deletion (request → 7-day archived grace → anonymized finalize, reversible, policy-aligned) with user/admin email + in-app fan-out, generic Deleted-User profile (posts retained, likes/bookmarks empty), admin deletions queue + first-N-by-signup bulk safe deletion, full Email Studio (visual/HTML builder, enable toggles with audited transitions, custom templates, dynamic recipients), plus profile sign-out, quick-links 2→3-col grid, and admin KPI 2→4-col grid. Non-breaking (additive schema + migration, no removed APIs).
+
+**Completed:**
+- Prisma: User `isDeleted/deletedAt/deletionRequestedAt/deletionScheduledFor/deletionReason`, `AccountDeletionRequest` model, `AccountDeletionStatus` enum, `NotificationType` +3 values; idempotent migration `20261009000000_account_deletion`
+- Config: `accountDeletion.ts` (grace 7d, retention 30d, anon identity, caps), `emailManagement.ts` (system names, recipient modes, caps, manual parser), email.ts +3 templates, notifications registry +3, admin bulk presets incl. First 100 + signup-order flag, apiRegistry +9 endpoints
+- Service: `accountDeletionService.ts` (ACID tx request/cancel/finalize, counter recompute, last-admin guard, best-effort side-effects); emailService `sendTemplatedEmail` + deletion sends + `resolveEmailRecipients`; `isTemplateEnabled`/toggle + merge-backfill in emailTemplates utils
+- APIs: `/api/account/{delete-request,cancel-deletion,deletion-status}`, `/api/cron/process-deletions` (CRON_SECRET, daily 02:00 vercel cron), `/api/admin/deletions` + `/finalize`, `/api/admin/email/{templates,send}`; posts route honors deleted profiles (all posts visible, likedBy/bookmarkedBy empty); by-username returns generic deleted profile; admin users `?deletion=` + `?order=oldest`
+- UI: `AccountDeletionPanel` (profile danger zone + pending banner), own-profile sign-out + 2/3-col quick links, deleted-profile banner + no follow, admin Deletions queue page, Email Studio page (`/admin/email`), users page deletion filter + first-N-by-signup + Delete (safe) bulk, KPI `grid-cols-2 lg:grid-cols-4`, AdminShell Deletions/Email nav, GlobalConfirmModal `confirmLabel`
+- Tests: `app/__tests__/config/accountDeletion.test.ts` (9 assertions: grace/retention, scheduling, anon identity, overdue, system templates, recipient modes, manual parse, bulk signup-order)
+
+**Key Changes:**
+- New: `app/lib/{config/accountDeletion.ts,config/emailManagement.ts,services/accountDeletionService.ts}`, `app/api/{account/delete-request,cancel-deletion,deletion-status}/route.ts`, `app/api/cron/process-deletions/route.ts`, `app/api/admin/deletions/{route.ts,finalize/route.ts}`, `app/api/admin/email/{templates/send}/route.ts`, `app/{admin/deletions,admin/email}/page.tsx`, `app/components/features/profile/AccountDeletionPanel.tsx`, `prisma/migrations/20261009000000_account_deletion/migration.sql`, `app/__tests__/config/accountDeletion.test.ts`
+- Edited: `prisma/schema.prisma`, `app/lib/config/{email,notifications,admin,apiRegistry,index}.ts`, `app/lib/{utils/emailTemplates.ts,services/emailService.ts,services/notificationService.ts,services/modalService.ts,hooks/useBulkSelection.ts}`, `app/api/{posts,users/by-username/[username],admin/users,admin/email/preview}/route.ts`, `app/{(dashboard)/profile/page.tsx,(dashboard)/profile/[username]/page.tsx,admin/{AdminShell,page}.tsx,admin/users/page.tsx}`, `app/components/{ui/GlobalConfirmModal.tsx,features/profile/index.ts}`, `app/providers/GlobalModalProvider.tsx`, `vercel.json`, `.env.example`
+
+**QA gate (this runner: NO node_modules — static verification only):**
+- `npx tsc` / `npx jest` / `npm run build` NOT runnable here (no node_modules, consistent with prior session-log note); Vercel build runs `prisma generate` + `migrate deploy` before `next build` so new Prisma models/enums resolve at build time
+- Static checks: modalService `confirmLabel` wired through provider+modal; `avatarConfig: null` clear; counter recompute captures post ids pre-wipe; manual review of all route/service/UI edits for excess-property and import-path correctness
+- Residual risk: full tsc/jest/build must be confirmed in CI/Vercel; generated client (`app/generated/prisma`) is stale until regenerated
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration; confirm Sprint 21 QA green in CI and exercise the deletion cron + Email Studio sends in staging.

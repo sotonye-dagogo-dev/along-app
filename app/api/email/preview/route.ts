@@ -9,6 +9,9 @@ const SAMPLE_VARS: Record<string, Record<string, string>> = {
   passwordReset: { resetLink: "http://localhost:3000/reset?token=sample-token-123" },
   contactNotification: { senderName: "Chidi Okonkwo", senderEmail: "chidi@example.com", message: "I love the app! Would love to see more routes in Lagos mainland." },
   bugReportNotification: { title: "Route map not loading", category: "UI", description: "When I open the route map on the post page, the map stays blank. Using Chrome 120 on Windows 11." },
+  accountDeletionRequested: { firstName: "Adaobi", scheduledDate: "October 16, 2026", cancelLink: "http://localhost:3000/profile", appUrl: "http://localhost:3000" },
+  accountDeletionCompleted: { firstName: "Adaobi", completedDate: "October 16, 2026", supportEmail: "alongtoanywhere@gmail.com", appUrl: "http://localhost:3000" },
+  adminDeletionAlert: { displayName: "Adaobi Eze", userName: "adaobi", email: "adaobi@example.com", scheduledDate: "October 16, 2026", reasonLine: "Reason: leaving for now", appUrl: "http://localhost:3000" },
 };
 
 export async function GET(request: NextRequest) {

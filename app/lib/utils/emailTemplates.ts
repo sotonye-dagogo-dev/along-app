@@ -7,7 +7,26 @@ export async function getEmailConfig(): Promise<EmailConfig> {
 }
 
 export async function getEmailTemplates(): Promise<EmailTemplate[]> {
-  return getSiteConfig<EmailTemplate[]>("emailTemplates", DEFAULT_EMAIL_TEMPLATES);
+  const stored = await getSiteConfig<EmailTemplate[]>("emailTemplates", DEFAULT_EMAIL_TEMPLATES);
+  // Merge defaults with stored customs: stored wins per-name, new system
+  // templates backfill automatically (non-breaking forward-compat).
+  const byName = new Map(stored.map((t) => [t.name, t]));
+  for (const d of DEFAULT_EMAIL_TEMPLATES) {
+    if (!byName.has(d.name)) byName.set(d.name, d);
+  }
+  return [...byName.values()];
+}
+
+export async function getTemplateToggles(): Promise<Record<string, boolean>> {
+  return getSiteConfig<Record<string, boolean>>("emailTemplateToggles", {});
+}
+
+export async function isTemplateEnabled(name: string): Promise<boolean> {
+  const [templates, toggles] = await Promise.all([getEmailTemplates(), getTemplateToggles()]);
+  if (toggles[name] === false) return false;
+  const t = templates.find((x) => x.name === name);
+  if (t && t.enabled === false) return false;
+  return true;
 }
 
 function renderTemplate(template: string, variables: Record<string, string>): string {

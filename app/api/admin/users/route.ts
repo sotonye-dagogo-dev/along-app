@@ -16,6 +16,10 @@ export async function GET(request: NextRequest) {
     // Future-proof filter: ?earlyAdopter=true lists the earliest-joined users
     // first (badge qualification order) for rewards/audience tooling.
     const earlyAdopterOnly = searchParams.get("earlyAdopter") === "true";
+    // Deletion lifecycle filters: ?deletion=pending|deleted, ?order=oldest for
+    // first-N-by-signup quick selection (earliest createdAt first).
+    const deletionFilter = searchParams.get("deletion");
+    const oldestFirst = searchParams.get("order") === "oldest";
 
     const where: Record<string, unknown> = {};
     if (search) {
@@ -25,6 +29,12 @@ export async function GET(request: NextRequest) {
         { userName: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
       ];
+    }
+    if (deletionFilter === "pending") {
+      where.deletionScheduledFor = { not: null };
+      (where as Record<string, unknown>).isDeleted = false;
+    } else if (deletionFilter === "deleted") {
+      (where as Record<string, unknown>).isDeleted = true;
     }
 
     if (earlyAdopterOnly && !cursor) {
@@ -95,10 +105,12 @@ export async function GET(request: NextRequest) {
         rewardTier: true,
         rewardPoints: true,
         verified: true,
+        isDeleted: true,
+        deletionScheduledFor: true,
         _count: { select: { posts: true } },
         createdAt: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: oldestFirst ? [{ createdAt: "asc" }, { id: "asc" }] : { createdAt: "desc" },
     });
 
     const hasMore = users.length > limit;

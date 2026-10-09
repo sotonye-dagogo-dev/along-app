@@ -2,7 +2,7 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Camera, Bell, BarChart3, UserPlus, Shield } from "lucide-react"
+import { Camera, Bell, BarChart3, UserPlus, Shield, LogOut } from "lucide-react"
 import { isAdminRole } from "@/app/lib/config/navigation"
 import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
@@ -10,6 +10,7 @@ import dynamic from "next/dynamic"
 import { RewardsPanel, EditProfileModal, EarlyAdopterBadgeFromStatus } from "@/app/components/features/profile"
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 import { AuthLinkPanel } from "@/app/components/features/profile/AuthLinkPanel"
+import { AccountDeletionPanel } from "@/app/components/features/profile/AccountDeletionPanel"
 import { toastService } from "@/app/lib/services/toastService"
 
 const AvatarEditor = dynamic(() => import("@/app/components/features/profile/AvatarEditor").then((m) => m.AvatarEditor), { ssr: false })
@@ -72,10 +73,22 @@ const PROFILE_TABS = ["posts", "routes", "requests", "liked", "bookmarks", "arch
 type ProfileTab = (typeof PROFILE_TABS)[number]
 
 export default function OwnProfilePage() {
-  const { user: authUser, isLoading: authLoading } = useAuth()
+  const { user: authUser, isLoading: authLoading, logout } = useAuth()
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts")
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
+
+  const handleSignOut = async () => {
+    if (signingOut) return
+    setSigningOut(true)
+    try {
+      await logout()
+    } catch {
+      toastService.error("Sign out failed — please try again")
+      setSigningOut(false)
+    }
+  }
 
   const ready = !authLoading && Boolean(authUser?.id)
   const userId = (authUser?.id as string) ?? ""
@@ -250,6 +263,16 @@ export default function OwnProfilePage() {
           <AppButton variant="secondary" onClick={() => setShowEditModal(true)} className="flex-1">
             Edit Profile
           </AppButton>
+          <AppButton
+            variant="secondary"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="shrink-0 inline-flex items-center gap-1.5"
+            aria-label="Sign out"
+          >
+            <LogOut size={15} />
+            {signingOut ? "Signing out…" : "Sign out"}
+          </AppButton>
         </div>
 
         <AuthLinkPanel />
@@ -261,41 +284,45 @@ export default function OwnProfilePage() {
         />
 
         {/* Mobile-only quick links for sidebar items not on bottom tab bar */}
-        <div className="lg:hidden flex flex-col gap-0.5 mb-4 py-3 border-t border-border">
-          <div className="text-[11px] font-medium tracking-wider uppercase text-text-muted px-3 mb-1">
+        <div className="lg:hidden mb-4 py-3 border-t border-border">
+          <div className="text-[11px] font-medium tracking-wider uppercase text-text-muted px-3 mb-2">
             Quick Links
           </div>
-          <Link
-            href="/notifications"
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline"
-          >
-            <Bell size={18} className="shrink-0" />
-            Notifications
-          </Link>
-          <Link
-            href="/analytics"
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline"
-          >
-            <BarChart3 size={18} className="shrink-0" />
-            Analytics
-          </Link>
-          <Link
-            href="/invite"
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline"
-          >
-            <UserPlus size={18} className="shrink-0" />
-            Invite Friends
-          </Link>
-          {isAdminRole(authUser?.role) && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 px-1">
             <Link
-              href="/admin"
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline"
+              href="/notifications"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0"
             >
-              <Shield size={18} className="shrink-0" />
-              Admin Dashboard
+              <Bell size={18} className="shrink-0" />
+              <span className="truncate">Notifications</span>
             </Link>
-          )}
+            <Link
+              href="/analytics"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0"
+            >
+              <BarChart3 size={18} className="shrink-0" />
+              <span className="truncate">Analytics</span>
+            </Link>
+            <Link
+              href="/invite"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0"
+            >
+              <UserPlus size={18} className="shrink-0" />
+              <span className="truncate">Invite Friends</span>
+            </Link>
+            {isAdminRole(authUser?.role) && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0"
+              >
+                <Shield size={18} className="shrink-0" />
+                <span className="truncate">Admin Dashboard</span>
+              </Link>
+            )}
+          </div>
         </div>
+
+        <AccountDeletionPanel />
 
         <div
           role="tablist"
