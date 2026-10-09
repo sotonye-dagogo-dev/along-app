@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, Maximize2, MapPin, Navigation, ClipboardList, Reply, Archive } from "lucide-react"
 import { AppCard, TrustBadge, VehicleChip, AppEmptyState, ImageLightbox } from "@/app/components/ui"
 import { VEHICLE_REGISTRY, EMPTY_STATES, MODERATION_CONFIG, POST_ACTIONS_CONFIG } from "@/app/lib/config"
+import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import { CommentInput, CommentList } from "@/app/components/features/comments"
 import { NavigationGuide } from "@/app/components/features/posts"
 import ShareRouteModal, { type EditPost } from "@/app/components/features/posts/ShareRouteModal"
@@ -15,6 +16,7 @@ import { undoService } from "@/app/lib/services/undoService"
 import { toastService } from "@/app/lib/services/toastService"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
 import type { VehicleType } from "@/app/lib/types"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
 
@@ -130,6 +132,10 @@ export default function PostDetailPage() {
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const [showNavigation, setShowNavigation] = useState(false)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number; heading: number | null } | null>(null)
+  // Passive fix so the user dot is always on the map once granted (live
+  // navigation's high-accuracy fix takes precedence while navigating).
+  const passiveLocation = useUserLocation()
+  const mapUserLocation = userLocation ?? passiveLocation
   const [editOpen, setEditOpen] = useState(false)
 
   const postId = params.id as string
@@ -495,7 +501,7 @@ export default function PostDetailPage() {
           showOverlay={true}
           distance={post.totalDistanceKm ?? undefined}
           duration={post.estimatedMins ?? undefined}
-          userLocation={userLocation}
+          userLocation={mapUserLocation}
           followUser={showNavigation && !!userLocation}
         />
       </div>
@@ -521,12 +527,14 @@ export default function PostDetailPage() {
                 <div className="text-sm text-text-muted italic mb-1.5">Stop {index + 1}</div>
               )}
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                {showFare && step.fare !== undefined && step.fare !== null && (
+                {/* Destination is the final stop — no fare/vehicle there
+                    (also stripped server-side; this hides legacy rows too). */}
+                {showFare && showStepFare(index, routes.length) && step.fare !== undefined && step.fare !== null && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-xs font-medium bg-bg-elevated text-text-secondary">
                     <BadgeDollarSign size={12} />₦{step.fare}
                   </span>
                 )}
-                {step.vehicle && VEHICLE_REGISTRY[step.vehicle as VehicleType] && (
+                {showStepVehicle(index, routes.length) && step.vehicle && VEHICLE_REGISTRY[step.vehicle as VehicleType] && (
                   <VehicleChip type={step.vehicle as VehicleType} size="sm" />
                 )}
               </div>

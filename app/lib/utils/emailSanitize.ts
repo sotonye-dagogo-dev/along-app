@@ -102,7 +102,7 @@ export function sanitizeEmailHtml(dirty: string, maxLen = 100000): string {
       let am: RegExpExecArray | null;
       while ((am = attrRe.exec(tag)) !== null) {
         const key = am[1].toLowerCase();
-        let val = am[2];
+        const val = am[2];
         if (!allowed.has(key) && key !== "style") continue;
         if ((key === "href" || key === "src") && !isSafeUrl(val.replace(/^["']|["']$/g, ""))) continue;
         if (key === "style") {

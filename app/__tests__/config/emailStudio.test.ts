@@ -1,5 +1,26 @@
-import { renderEmailHtml, renderEmailText, renderEmailSubject, defaultEmailVars, sanitizeStoredBody } from "@/app/lib/utils/emailTemplates";
-import { escapeHtmlValue, sanitizeEmailHtml, stripTags, extractVariables } from "@/app/lib/utils/emailSanitize";
+/**
+ * NOTE: `@/app/lib/db/redis` is stubbed here (hoisted `jest.mock`) because
+ * its `@upstash/redis → uncrypto` ESM chain cannot be parsed by the jest
+ * transform in this repo ("Unexpected token 'export'"). The stub mirrors
+ * the safe-wrapper's no-op-when-unconfigured behaviour (get → null,
+ * set/del → no-op), which is exactly what these pure-helper tests need —
+ * production code is untouched.
+ */
+jest.mock("@/app/lib/db/redis", () => ({
+  getRedisClient: () => null,
+  __resetRedisForTests: () => {},
+  withTimeout: async <T>(p: Promise<T>) => p,
+  REDIS_OP_TIMEOUT_MS: 1200,
+  redis: {
+    get: async <T>() => null as T | null,
+    set: async () => {},
+    del: async () => 0,
+    _getClient: () => null,
+    _withTimeout: async <T>(p: Promise<T>) => p,
+  },
+}));
+
+import { renderEmailHtml, renderEmailText, renderEmailSubject, defaultEmailVars, sanitizeStoredBody } from "@/app/lib/utils/emailTemplates";import { escapeHtmlValue, sanitizeEmailHtml, stripTags, extractVariables } from "@/app/lib/utils/emailSanitize";
 import { blocksToHtml, blocksToText, textToBlocks, htmlToBlocks } from "@/app/lib/utils/emailBuilder";
 import { EMAIL_BUILDER_CONFIG, EMAIL_MANAGEMENT_CONFIG } from "@/app/lib/config/emailManagement";
 import { EMAIL_DEFAULT_VARIABLES, EMAIL_ICONS, composeEmailDocument, DEFAULT_EMAIL_TEMPLATES } from "@/app/lib/config/email";
@@ -50,7 +71,9 @@ describe("email sanitization", () => {
     expect(escapeHtmlValue(`a"b'c`)).toBe("a&quot;b&#39;c");
   });
   it("stripTags produces plain text", () => {
-    expect(stripTags("<h1>Hi</h1><p>there</p>")).toMatch(/Hi.*there/s);
+    // `[\s\S]` instead of the `s` (dotAll) flag: identical semantics, but
+    // the flag needs target es2018+ and breaks `tsc --noEmit` on this repo.
+    expect(stripTags("<h1>Hi</h1><p>there</p>")).toMatch(/Hi[\s\S]*there/);
   });
 });
 
@@ -115,13 +138,15 @@ describe("env differentiation", () => {
   afterEach(() => { process.env = { ...OLD }; });
   it("PROJECT_ENV wins over NODE_ENV", () => {
     process.env.PROJECT_ENV = "production";
-    process.env.NODE_ENV = "development";
+    // `NODE_ENV` is typed readonly in recent @types/node — write through a
+    // mutable view instead (test-only, same runtime behaviour).
+    (process.env as Record<string, string | undefined>).NODE_ENV = "development";
     expect(getEffectiveEnv()).toBe("production");
     expect(isProduction()).toBe(true);
   });
   it("falls back to NODE_ENV when PROJECT_ENV unset", () => {
     delete process.env.PROJECT_ENV;
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     expect(getEffectiveEnv()).toBe("production");
   });
   it("getAppUrl never empty", () => {

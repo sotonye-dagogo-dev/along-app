@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 map + drafts + FAQ tightening)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination rule + pin accuracy + deploy type fix)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: historical entries do not go stale
 
@@ -32,6 +32,30 @@
 ---
 
 ## History
+
+## 2026-10-09 — Execute-Feature: Destination Fare/Vehicle Rule + Pin Accuracy + Deploy Type Fix (Sprint 23)
+
+**Summary:**
+The final route step IS the destination, so fare/vehicle are now hidden there end-to-end (composer, PostCard, post detail, NavigationGuide) via `ROUTE_STEPS_CONFIG` and stripped from payloads client- and server-side; map pins were hardened to the same accuracy pipeline as polylines (CSS import, endpoint snapping, stable mapLib, memoized bounds, shared `useUserLocation` hook, controlled explore map, passive post-detail dot); the Vercel `EmailSecurityPanel` type error was removed along with two emailStudio tsc blockers; latent emailStudio jest failures were repaired (redis ESM stub + `{{var}}` href preservation) so the full gate runs green in-runner.
+
+**Completed:**
+- Destination rule: `lib/config/routeSteps.ts` (config + helpers + normalize) + barrel exports; composer hides inputs with hint + strips on submit (create/edit) + totals exclude destination; PostCard/post-detail/NavigationGuide hide (legacy rows covered); POST + PATCH normalize server-side
+- Pin accuracy: RouteMap `maplibre-gl.css`, endpoint snap (`snapEndpointsToPolyline`), stable mapLib promise, content-keyed memo pins/coords/bounds; `useUserLocation` hook; explore controlled map + accuracy halo; post-detail passive dot
+- Deploy fix: EmailSecurityPanel dead `if` removed (TS no-overlap `true | null` vs `false`); emailStudio dotAll-flag + readonly-NODE_ENV tsc errors fixed
+- Test repairs: emailStudio redis-mock load fix, `sanitizeStoredBody` `#`-fragment tokens (var hrefs preserved), 2 prefer-const lint fixes
+- Tests: `routeSteps.test.ts` (5) + mapTightening snap/tracking (2)
+
+**Key Changes:**
+- New: `app/lib/config/routeSteps.ts`, `app/lib/hooks/useUserLocation.ts`, `app/__tests__/config/routeSteps.test.ts`
+- Edited: ShareRouteModal, PostCard, NavigationGuide, RouteMap, MapPins, explore + post-detail pages, `api/posts/route.ts`, `api/posts/[id]/route.ts`, `lib/config/{index,mapPins}.ts`, EmailSecurityPanel, `lib/utils/emailTemplates.ts` (sanitize tokens), `lib/utils/emailSanitize.ts` + `lib/utils/emailTemplates.ts` (prefer-const), `__tests__/config/{emailStudio,mapTightening}.test.ts`
+
+**QA gate (this runner, node_modules installed via npm install):**
+- `npx tsc --noEmit` — clean (exit 0), incl. the exact `EmailSecurityPanel.tsx:85` gate that failed Vercel
+- `npx jest` — 32/32 suites, 282/282 tests pass (emailStudio 20/20 after repairs)
+- `npm run lint` — 0 errors in touched files (9 remaining all pre-existing `no-explicit-any` in untouched files; baseline was 11, fixed 2; Vercel build skips lint)
+
+**Next Sprint Focus:**
+Vercel deploy green confirmation; prod-verify destination hiding across composer/feed/detail/nav + pin placement through pan/zoom + persistent user dot; remaining backlog unchanged.
 
 ## 2026-10-09 — Execute-Feature: Map + Draft + FAQ Tightening (Sprint 20)
 

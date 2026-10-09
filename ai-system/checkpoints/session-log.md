@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination rule + pin accuracy + deploy type fix)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: append-only — never modify past entries
 
@@ -34,6 +34,41 @@
 ---
 
 ## Sessions
+
+---
+
+## Session — 2026-10-09 (Sprint 23: destination fare/vehicle rule + pin accuracy + deploy type fix)
+
+**Completed:**
+- Destination rule E2E: new `app/lib/config/routeSteps.ts` (`ROUTE_STEPS_CONFIG`, `isDestinationStep`/`showStepFare`/`showStepVehicle`/`normalizeRouteSteps`) + barrel exports; ShareRouteModal hides destination fare/vehicle inputs (hint instead), strips on create+edit submit, totals exclude destination; PostCard (fare badge + vehicle extraction), post detail, NavigationGuide (live + list) hide destination fare/vehicle incl. legacy rows; POST + PATCH `normalizeRouteSteps` server backstop
+- Pin accuracy: RouteMap imports `maplibre-gl.css`, origin/destination snap to traced endpoints (`snapEndpointsToPolyline`), stable mapLib promise via ref, content-keyed memo pins/coords/bounds (fit effect no longer fights pan/zoom); new `app/lib/hooks/useUserLocation.ts` feeds explore (Near-me override kept, controlled `onMove`, accuracy halo) and post-detail passive dot (live-nav fix wins); MapPins optical-centering tweak
+- Deploy type fix: EmailSecurityPanel empty dead `if` (`verified !== false` no-overlap `true | null` vs `false`) removed; emailStudio tsc blockers fixed (dotAll `/s` → `[\s\S]`, readonly `NODE_ENV` writes via Record cast)
+- Latent test repairs: emailStudio suite loads via hoisted redis stub mock (pre-existing `@upstash/redis → uncrypto` ESM parse failure, fails identically on clean main); `sanitizeStoredBody` tokens changed to `#`-fragments so `{{var}}` hrefs survive the URL allowlist (was silently deleting them — real product bug, test now encodes intent); 2 pre-existing prefer-const lint errors fixed
+- Tests: new `routeSteps.test.ts` (5) + mapTightening snap/tracking (2)
+- QA gate in-runner (npm install run to get deps): `tsc --noEmit` clean (exit 0, incl. the exact gate that failed Vercel), `jest` 32/32 suites 282/282 tests, `lint` 0 errors in touched files (9 remaining all pre-existing no-explicit-any in untouched files; baseline 11)
+
+**Files Modified:**
+- New: `app/lib/config/routeSteps.ts`, `app/lib/hooks/useUserLocation.ts`, `app/__tests__/config/routeSteps.test.ts`
+- Edited: ShareRouteModal, PostCard, NavigationGuide, RouteMap, MapPins, `app/(dashboard)/explore/page.tsx`, `app/(dashboard)/posts/[id]/page.tsx`, `app/api/posts/route.ts`, `app/api/posts/[id]/route.ts`, `app/lib/config/{index,mapPins}.ts`, EmailSecurityPanel, `app/lib/utils/emailTemplates.ts`, `app/lib/utils/emailSanitize.ts`, `app/__tests__/config/{emailStudio,mapTightening}.test.ts`
+- Docs: `checkpoints/session-log.md` (this entry), `summaries/dev-history.md` (Sprint 23), `planning/task-queue.md` (Sprint 23 + last-synced), `system-architecture.md` (Maps/Post/Email/Profile/Config rows + test count), `memory/project-decisions.md` + `memory/lessons-learned.md`, `index/repo-map.md` + `index/dependency-graph.md` freshness, `checkpoints/in-progress.md` (reset)
+
+**Next Task:**
+Vercel deploy green confirmation (tsc gate fixed); prod-verify destination hiding (composer/feed/detail/nav), pin placement through pan/zoom, persistent user dot on explore + post maps.
+
+**Assumptions Made:**
+- No migration: destination strip is payload-level only; zod schemas already optional for fare/vehicle so no schema change
+- Endpoint snapping moves origin/destination dots metres (to road-snapped trace ends) — accepted as the visual contract "line meets dots"; intermediates stay exact
+- `useUserLocation` passive (low-accuracy) by default; NavigationGuide keeps its own high-accuracy watch while navigating and wins on precedence
+- emailStudio redis stub mirrors the wrapper's unconfigured no-op behaviour; suite tests pure helpers only, so no coverage is lost
+
+**Notes / Blockers:**
+- `npm install` was run in-runner ( Resorts to network; 1518 packages, postinstall prisma warning about missing DB URL is benign `|| true`) — node_modules now present locally; harmless for the diff (untracked, git-ignored)
+- Lint still exits 1 repo-wide from pre-existing `no-explicit-any` in 10 untouched files; Vercel build skips lint, tsc gate is clean
+
+**Repo-map / dependency-graph deltas (update-ai-system substance):**
+- New modules: `lib/config/routeSteps` (imported by ShareRouteModal, PostCard, NavigationGuide, post detail page, posts POST/PATCH routes), `lib/hooks/useUserLocation` (explore + post detail pages), `__tests__/config/routeSteps.test.ts`
+- Extended: `lib/config/mapPins` (snap flag + tracking timeouts), `lib/utils/emailTemplates` (sanitize token format — internal only)
+- No removed modules, no new third-party deps, no schema change
 
 ---
 
