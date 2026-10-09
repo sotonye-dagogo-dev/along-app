@@ -1733,3 +1733,15 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** runner has no node_modules — targeted `tsc --ignoreConfig --noResolve` zero attributable errors (missing-module/implicit-any noise identical on untouched files); new suite awaits CI. Full gate deferred to CI/Vercel.
 **Compliance:** minimal fix per fix-build contract; repair-system entry + test-results history row added; sync-context chain (system-architecture Post Actions row) + in-progress cleared; update-ai-system deep sync executed.
 **Chain:** fix-build → repair-system + test-results + session-log (here) + sync-context + update-ai-system; in-progress.md cleared.
+
+## Session 2026-10-09 — Sidebar share-route vanish fix-build (no-op submit + void-as-success + FAQ validation)
+**Directive:** share-route Share button enabled (client-valid) but post never published and vanished; nothing in admin post management either. Plus update FAQs to capture share-route modal validation.
+**Root causes:** (1) `DashboardNav.handleShareSubmit` was a no-op `() => setShowShareModal(false)` returning void — sidebar composer never POSTed (home composer was correct). (2) `ShareRouteModal` success check was `if (result === false)` so void/undefined fell into the success branch: draft cleared, key rotated, modal closed — the vanish. `RequestRouteModal` carried the same latent trap.
+**Implemented:**
+- `DashboardNav`: real POST submit mirroring home (idempotency header, in-flight dedup, safe parse, sanitized toasts, console.error, feedStream.refresh + router.refresh, explicit boolean).
+- `ShareRouteModal` create + edit: only explicit `true` succeeds (`!== true` guards); void keeps modal open, preserves input + draft, no key rotation. Prop docs state the contract.
+- `RequestRouteModal`: same `!== true` guard (pattern sweep).
+- FAQ: `share-route-validation` + `share-route-drafts-failure` entries (EN + pidgin) — Share gating, per-stop locations, single-amount fares, title/description minima, destination rule, failure-preserves-draft.
+**QA:** no node_modules — targeted `tsc --noResolve` zero attributable errors (missing-module noise only; faq.ts clean); usage grep confirms all mounts POST-backed. Full jest/tsc/build deferred to CI/Vercel.
+**Compliance:** minimal fix per fix-build contract; repair-system entry + test-results row added; sync-context chain (system-architecture Post Actions row) below; in-progress cleared.
+**Chain:** fix-build → repair-system + test-results + session-log (here) + sync-context; in-progress.md cleared.
