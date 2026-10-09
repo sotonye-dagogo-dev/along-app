@@ -20,7 +20,8 @@ interface RoutePin {
 interface RouteMapProps {
   pins: RoutePin[]
   encodedPolyline?: string
-  height?: number
+  /** Fixed px height, or a CSS height (e.g. "100%") to fill a flex parent. */
+  height?: number | string
   editable?: boolean
   showOverlay?: boolean
   distance?: number

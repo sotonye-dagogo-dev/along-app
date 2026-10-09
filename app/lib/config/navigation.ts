@@ -54,3 +54,19 @@ export const NOTIFICATION_BADGE_CONFIG = {
 
 /** Hrefs whose nav entries render the unread badge. */
 export const BADGED_NAV_HREFS: readonly string[] = ["/notifications"] as const;
+
+/**
+ * Live-navigation overlay policy (config-driven, zero app deps).
+ * When the user starts navigation, the map + step guide open together in
+ * a floating modal that takes up most of the screen over a dimmed page —
+ * so the moving user dot and the turn-by-turn instructions stay in view
+ * hand-in-hand on any screen size.
+ */
+export const LIVE_NAVIGATION_CONFIG = {
+  title: "Live Navigation",
+  subtitle: "Follow the map and the step guide together",
+  closeLabel: "Close navigation",
+  dialogLabel: "Live navigation",
+  /** Guide panel width on desktop (map takes the rest). */
+  sidePanelWidthPx: 360,
+} as const;

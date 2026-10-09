@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination rule + pin accuracy + deploy type fix)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 28 route accuracy + live-navigation overlay + admin users type fix)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: historical entries do not go stale
 
@@ -33,6 +33,32 @@
 ---
 
 ## History
+
+## 2026-10-09 — Execute-Feature: Route Accuracy (preview = post view) + Live-Navigation Overlay + Admin Users Type Fix (Sprint 28)
+
+**Summary:**
+Posted route maps skipped intermediate stops (start → destination) while the composer preview traced them correctly. Root cause was server-side: POST `/api/posts` destructured `waypoints` away and never persisted them, and the post-detail pin builder mapped `waypoints` as the full route instead of origin + intermediates + destination. Both are fixed behind one canonical builder, post detail now fetches a road-snapped trace like the preview (with a bounded geocode backfill for legacy rows), live navigation opens as a near-fullscreen floating overlay with map + guide side-by-side, and the Vercel `admin/users` `actorId` type error is resolved with the established `as string` pattern.
+
+**Completed:**
+- Deploy fix: `app/api/admin/users/route.ts` `actorId: user.id` → `user.id as string` (2 sites — verify/unverify + resend-verification notifications)
+- Persistence: POST `/api/posts` accepts + stores `waypoints` (schema already allowed them; PATCH already passed them through)
+- Canonical pins: NEW `lib/config/routePins.ts` + barrel (`buildRoutePinsFromPost`, `buildTraceInputFromPins`, `ROUTE_PINS_CONFIG`); PostCard mini-map + post detail consume it
+- Detail trace: NEW `lib/hooks/useRouteTrace.ts` (instant estimate + debounced trace + 10-min memory cache + silent fallback); legacy waypoint-less rows backfill via bounded (≤5) geocode of missing stop labels
+- Navigation overlay: NEW `LiveNavigationModal` (fixed overlay, 92dvh panel, mobile map-over-guide stack, desktop 360px side panel from `LIVE_NAVIGATION_CONFIG`, Escape/backdrop/body-lock, unmount stops tracking); post detail renders CTA card + modal; inline map no longer follows user
+- RouteMap `height` widened to `number | string` so the modal can fill its flex parent with `"100%"`
+
+**Key Changes:**
+- New: `app/lib/config/routePins.ts`, `app/lib/hooks/useRouteTrace.ts`, `app/components/features/posts/LiveNavigationModal.tsx`, `app/__tests__/config/routePins.test.ts`
+- Edited: `app/api/{admin/users,posts}/route.ts`, `app/components/features/posts/{PostCard,RouteMap,index}.tsx`, `app/(dashboard)/posts/[id]/page.tsx`, `lib/config/{index,navigation}.ts`
+
+**QA gate (this runner, node_modules installed via npm install):**
+- `npx tsc --noEmit` — clean (exit 0), incl. the exact `admin/users/route.ts:166` gate that failed Vercel
+- `npx jest` — 38/38 suites, 333/333 tests pass (incl. new routePins 5/5)
+- `npx next lint` on touched files — zero warnings/errors
+- `npm run vercel-build` (`next build`) — clean
+
+**Next Sprint Focus:**
+Vercel deploy green confirmation; prod-verify a 3-stop post traces start → stop → destination in feed + detail, legacy posts backfill stops, navigation modal map follows the user dot beside the guide; remaining backlog unchanged.
 
 ## 2026-10-09 — Execute-Feature: Destination Fare/Vehicle Rule + Pin Accuracy + Deploy Type Fix (Sprint 23)
 
