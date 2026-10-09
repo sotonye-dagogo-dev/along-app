@@ -108,29 +108,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: MODERATION_CONFIG.duplicateError, deduplicated: true }, { status: 409 });
     }
 
-    // Fan-out notifications (non-critical, never fail the request).
+    // Single-admin assignment (non-critical, never fails the request):
+    // exactly one admin owns the report and gets the ping + mail.
+    // Resolved once and reused for the reviewer update, the in-app ping,
+    // and the email so all three agree on the same assignee.
+    let assignee: { id: string; email: string } | null = null;
     try {
-      const admins = await prisma.user.findMany({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        where: { role: "ADMIN" } as any,
-        select: { id: true },
-        take: 50,
-      });
-      const adminIds = admins.map((a) => a.id);
+      const { assignAdminForIssue } = await import(
+        "@/app/lib/services/adminAssignmentService"
+      );
+      assignee = await assignAdminForIssue();
+    } catch (e) {
+      console.error("[reports] admin assignment failed (non-critical):", e);
+    }
+    try {
+      if (assignee && result.reportId) {
+        await prisma.bugReport.update({
+          where: { id: result.reportId },
+          data: { reviewerId: assignee.id },
+        });
+      }
       // Actor must be a real user id for the FK; prefer the reporter, else the
       // post author (message text itself carries no identities — anonymity).
       const actorId = reporterId ?? post.userId;
-      if (adminIds.length > 0) {
+      if (assignee) {
         await createNotification({
           type: "REPORT",
           actorId,
           postId,
           message: `A post was reported (${reasonLabel}) and needs review`,
-          recipientIds: adminIds,
+          recipientIds: [assignee.id],
+          allowSelf: true,
         });
       }
       if (reporterId) {
-        const receiptActor = adminIds[0] ?? post.userId;
+        const receiptActor = assignee?.id ?? post.userId;
         if (receiptActor !== reporterId) {
           await createNotification({
             type: "REPORT",
@@ -149,7 +161,8 @@ export async function POST(request: NextRequest) {
       const emailResult = await sendBugReportNotification(
         `Report post ${postId}: ${reasonLabel}`,
         POST_ACTIONS_CONFIG.reportCategory,
-        trimmedDetails || reasonLabel
+        trimmedDetails || reasonLabel,
+        assignee?.email
       );
       if (!emailResult.sent) {
         console.warn(`[reports] email notification failed: ${emailResult.reason}`);

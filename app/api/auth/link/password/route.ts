@@ -18,7 +18,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = Schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 400 });
+      const flat = parsed.error.flatten();
+      const firstMessage =
+        Object.values(flat.fieldErrors).flat()[0] ??
+        flat.formErrors[0] ??
+        "Password must be at least 8 characters.";
+      return NextResponse.json({ error: firstMessage, details: flat }, { status: 400 });
     }
     const { password, currentPassword } = parsed.data;
 

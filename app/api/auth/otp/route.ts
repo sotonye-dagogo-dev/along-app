@@ -12,12 +12,33 @@ export async function POST(request: NextRequest) {
   try {
     const rateCheck = checkRateLimit(request, "auth");
     if (!rateCheck.allowed) return rateCheck.response;
-    const body = await request.json();
-    const parsed = OTP_SCHEMA.safeParse(body);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        return NextResponse.json({ error: "Invalid request format. Please check your input." }, { status: 400 });
+      }
+      throw e;
+    }
+    // Same normalization as register/login/reset: the OTP key is derived
+    // from the email, so any case/whitespace drift between issuance and
+    // verification would read a different key and report "expired".
+    const raw = (body ?? {}) as Record<string, unknown>;
+    const parsed = OTP_SCHEMA.safeParse({
+      email: typeof raw.email === "string" ? raw.email.trim().toLowerCase() : raw.email,
+      otp: typeof raw.otp === "string" ? raw.otp.trim() : raw.otp,
+      rememberMe: raw.rememberMe,
+    });
 
     if (!parsed.success) {
+      const flat = parsed.error.flatten();
+      const firstMessage =
+        Object.values(flat.fieldErrors).flat()[0] ??
+        flat.formErrors[0] ??
+        "Please check the code and try again.";
       return NextResponse.json(
-        { error: "Validation failed", details: parsed.error.flatten() },
+        { error: firstMessage, details: flat },
         { status: 400 }
       );
     }
@@ -37,8 +58,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid OTP" }, { status: 400 });
     }
 
+    // Case-insensitive lookup for legacy mixed-case rows; update by id.
+    const existing = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Account not found. Please register again." }, { status: 404 });
+    }
     const user = await prisma.user.update({
-      where: { email },
+      where: { id: existing.id },
       data: { verified: true },
     });
 

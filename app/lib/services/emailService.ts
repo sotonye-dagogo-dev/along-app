@@ -202,8 +202,11 @@ export async function sendContactNotification(senderName: string, senderEmail: s
   });
 }
 
-export async function sendBugReportNotification(title: string, category: string, description: string) {
-  const recipient = process.env.PLATFORM_USER_EMAIL ?? "alongtoanywhere@gmail.com";
+export async function sendBugReportNotification(title: string, category: string, description: string, recipientOverride?: string) {
+  // Single-assignee policy: callers pass the assigned admin's email so only
+  // one admin gets the mail. Falls back to the platform inbox when no
+  // assignee resolved (e.g. zero admins seeded).
+  const recipient = (recipientOverride ?? "").trim() || process.env.PLATFORM_USER_EMAIL || "alongtoanywhere@gmail.com";
   const template = await findTemplate("bugReportNotification");
   if (!template) {
     const reason = "Email template not found: bugReportNotification";

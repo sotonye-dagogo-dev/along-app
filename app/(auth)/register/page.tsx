@@ -56,13 +56,18 @@ export default function RegisterPage() {
       const res = await fetch(registerUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        // Mirror the referral code in the body as well as the query string so
+        // the link survives clients/proxies that strip URL params.
+        body: JSON.stringify(refCode ? { ...form, ref: refCode } : form),
       })
       if (!res.ok) {
         let msg = "Registration failed"
         try {
           const text = await res.text()
-          const data = text ? JSON.parse(text) as { error?: string } : null
+          const data = text ? JSON.parse(text) as { error?: string; fieldErrors?: Record<string, string> } : null
+          if (data?.fieldErrors && typeof data.fieldErrors === "object") {
+            setFieldErrors((prev) => ({ ...prev, ...data.fieldErrors }))
+          }
           if (data?.error) msg = data.error
           else if (res.status === 504 || res.status === 503) msg = "Server is busy. Please try again in a moment."
           else if (res.status === 429) msg = "Too many attempts. Please wait and try again."

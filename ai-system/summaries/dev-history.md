@@ -805,3 +805,28 @@ Self-service safe deletion (request → 7-day archived grace → anonymized fina
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration; confirm Sprint 21 QA green in CI and exercise the deletion cron + Email Studio sends in staging.
+
+## 2026-10-09 — Execute-Feature: Auth Hardening + Single-Admin Assignment + avatarConfig Build Fix
+
+**Summary:**
+Referral/normal registration "validation failed" resolved via pre-Zod normalization (trim + lowercase email), body-fallback referral codes, case-insensitive email checks, and field-specific error messages surfaced in the UI; all auth paths (register/login/OTP/resend/Google/link-password, plus prior reset normalization) audited for the same drift class; issue notifications switched from notify-every-admin to exactly-one load-balanced assignee (open-bug load + shared deletion backlog, random tie-break); Vercel `avatarConfig: null` type error fixed with `Prisma.DbNull` and a regenerated Prisma client.
+
+**Completed:**
+- Build: `accountDeletionService.ts` finalize `avatarConfig: Prisma.DbNull`; regenerated `app/generated/prisma` (stale client lacked isDeleted/AccountDeletionRequest/new NotificationTypes → 33 local tsc errors, 0 after)
+- Auth: register/login/OTP/resend normalize-then-validate + specific first-field error + `fieldErrors`; register reads ref from query OR body and stores lowercase email; login/OTP/resend/Google use case-insensitive email lookup; Google email lowercased + derived username sanitized to app rules; register page mirrors ref in body + renders server fieldErrors
+- Assignment: `adminAssignmentService.assignAdminForIssue()`; wired into `POST /api/bug-reports` (reviewerId + assignee-only mail/in-app + reporter receipt), `POST /api/reports` (same, single resolve reused), accountDeletionService request (assignee-only alert mail)/cancel+complete (assignee-only in-app, fan-out fallback only on resolver failure); `sendBugReportNotification(title, category, description, recipientOverride?)`
+- Tests: `app/__tests__/services/adminAssignmentService.test.ts` (6)
+
+**Key Changes:**
+- New: `app/lib/services/adminAssignmentService.ts`, `app/__tests__/services/adminAssignmentService.test.ts`
+- Edited: `app/lib/services/{accountDeletionService,emailService}.ts`, `app/api/auth/{register,login,otp,otp/resend,google/callback,link/password}/route.ts`, `app/(auth)/register/page.tsx`, `app/api/{bug-reports,reports}/route.ts`
+- Regenerated: `app/generated/prisma/**`
+
+**QA gate (this runner, node_modules installed via npm install):**
+- `npx tsc --noEmit` — 0 errors
+- `npm test` — 30 suites / 255 tests pass (6 new)
+- `npm run lint` — zero new issues in touched files (pre-existing repo-wide warnings unchanged; Vercel build skips lint)
+- `npm run build` — not run locally (requires prod env/network); Vercel runs generate + migrate deploy + build
+
+**Next Sprint Focus:**
+Prod-verify referral + normal registration, single-admin mail ownership, reviewerId on bug/error reports; remaining backlog unchanged (live tracking nav, provider linking, clustering, rate-limiter Redis).
