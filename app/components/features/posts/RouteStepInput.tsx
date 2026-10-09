@@ -51,11 +51,16 @@ function RouteStepInput({
 
     setLoading(true)
     try {
+      // Keyless stack: geocode via the internal server proxy (Nominatim +
+      // Photon fallback, cached). Browser-direct Nominatim calls violate
+      // usage policy and are banned — never call upstream from the client.
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=en`,
-        { headers: { "User-Agent": "AlongApp/1.0" }, signal: controller.signal }
+        `/api/maps/geocode?q=${encodeURIComponent(q)}&limit=5`,
+        { signal: controller.signal }
       )
-      const results: GeoResult[] = await res.json()
+      if (!res.ok) throw new Error(`geocode ${res.status}`)
+      const data = (await res.json()) as { results?: GeoResult[] }
+      const results = Array.isArray(data.results) ? data.results : []
       setSuggestions(results)
       setShowSuggestions(results.length > 0)
     } catch {

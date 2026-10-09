@@ -1,8 +1,8 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08
-> - last-verified-against-code: 2026-10-08
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless-first decision)
+> - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -454,3 +454,26 @@ Two silent-failure classes shared one shape: code that *looked* correct but neve
 - Any new admin entry point must use `isAdminRole()` — never a raw string comparison (see lessons-learned "Enum-Literal Case Drift").
 - Any new error surface must use `ERROR_REPORTING_CONFIG.copy` states — never a static "notified" string.
 - Auto-filed reports carry `metadata.source: "error-boundary"`; admin bugs triage can filter on it.
+
+---
+
+## Sprint 19: Keyless-First Map Stack (OpenFreeMap + OSRM-via-Proxy + Straight-Line Guarantee)
+
+**Decision:** The map pipeline works with zero keys configured. Tiles: OpenFreeMap keyless vector primary with keyless raster step-down (plain Carto → OSM → Esri), shared via `MAP_STACK_CONFIG` style-stack builders. Routing: OSRM demo via cached server proxy first, then env-gated ORS/Mapbox, then straight-line — never throwing. Geocoding: internal `/api/maps/*` proxy only (Nominatim server-side + Photon fallback); browser-direct upstream calls are banned. All keyed map env vars are optional overrides, skipped (not failed) when unset.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 19
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Recurring API-key failures (Carto `?apiKey=` demands, Mapbox/ORS key dependence) and a Nominatim browser-direct policy violation shared one root: the client owned provider relationships it couldn't guarantee. Server proxy ownership restores policy compliance (identity headers, referer), absorbs OSRM's ~1 req/s demo policy via Redis caching, and keeps every keyed provider as a strictly-optional upgrade.
+
+**Alternatives Considered:**
+- **Stadia/Geoapify/MapTiler keyed primaries**: Rejected — replaces one key dependency with another; evaluated in plan-feature and demoted to optional overrides.
+- **Self-hosted tiles/routing now**: Rejected — operational cost unjustified at current volume; OpenFreeMap documents a self-host path if volume outgrows the free tier.
+- **Removing `/api/routes/trace` in favour of `/api/maps/route`**: Rejected — non-breaking contract; trace stays as a delegate so existing clients (ShareRouteModal live preview) keep working.
+
+**Implications:**
+- New map clients must consume `MAP_STACK_CONFIG` builders and `/api/maps/*` — never add upstream URLs or `NEXT_PUBLIC_*` map keys to client code.
+- If routing volume approaches OSRM demo limits, the next step is self-hosted OSRM or a keyed override — reference this decision.
+- `.env.example` documents all keyed map vars as optional; do not reintroduce required map keys without revisiting this decision.

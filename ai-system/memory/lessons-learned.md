@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 16 early-adopter badge + reset unhook)
-> - last-verified-against-code: 2026-10-08
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 proxy-ownership lesson)
+> - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -512,6 +512,22 @@ String-literal role checks drift in case across layers (DB enum vs UI strings) a
 
 **Apply When:**
 Any role/permission/enum-string comparison — centralise in config, compare case-insensitively, and cover both cases in tests.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Browser-Direct Third-Party Calls Are a Policy + Reliability Liability — Proxy Ownership
+
+**Context:**
+Sprint 19: location inputs called Nominatim browser-direct (usage-policy violation — Nominatim requires server-side identification), tiles depended on Carto `?apiKey=` params that broke when keys rotated, and routing preferred keyed Mapbox/ORS so maps degraded whenever keys were missing.
+
+**What We Learned:**
+Any third-party call the browser makes directly inherits that provider's browser policy (User-Agent bans, referrer rules, CORS, key exposure) and fails hard on key rotation. The durable shape is: a single server-owned proxy service per domain (`mapProxyService`: Redis read-through + per-IP bucket + server identity headers + ordered provider chain with a local-compute final fallback) and clients that only ever call the internal proxy. Keyed providers become env-gated overrides that are skipped — not failed — when unset, so the keyless path is continuously exercised and provable with all keys removed.
+
+**Apply When:**
+Any integration where the provider has a browser-use policy (geocoding, routing, tiles) or where key rotation has ever caused an outage — default the client to the internal proxy and keep the keyed path as an override, never the primary.
 
 **Supersedes:** None
 **Superseded by:** None

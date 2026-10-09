@@ -5,6 +5,7 @@ import { Navigation, Clock, DollarSign, Crosshair, Maximize2, Minimize2 } from '
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import polyline from '@mapbox/polyline'
+import { getMapStyleStack, rasterFallbackDepth, MAP_STACK_CONFIG } from '@/app/lib/config/mapStack'
 
 interface RoutePin {
   lat: number
@@ -84,36 +85,24 @@ function RouteMap({
     return () => observer.disconnect()
   }, [])
 
-  // Build Carto tile URL with optional API key (Carto now requires ?apiKey=... for some accounts)
-  const cartoKey =
-    process.env.NEXT_PUBLIC_CARTO_API_KEY ??
-    process.env.NEXT_PUBLIC_MAPTILER_API_KEY ??
-    process.env.NEXT_PUBLIC_CARTO_KEY ??
-    ""
-  const cartoParam = cartoKey ? `?apiKey=${encodeURIComponent(cartoKey)}` : ""
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ?? ""
-  const useMapboxStyle = !!mapboxToken
-
-  const mapStyle = useMapboxStyle
-    ? (`mapbox://styles/mapbox/${isDark ? "dark-v11" : "streets-v12"}` as unknown as never)
-    : ({
-        version: 8 as const,
-        sources: {
-          basemap: {
-            type: 'raster' as const,
-            tiles: [
-              isDark
-                ? `https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png${cartoParam}`
-                : `https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png${cartoParam}`,
-            ] as string[],
-            tileSize: 256,
-            attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; OpenStreetMap',
-          },
-        },
-        layers: [
-          { id: 'basemap-layer', type: 'raster' as const, source: 'basemap', minzoom: 0, maxzoom: 20 },
-        ],
-      } as unknown as never)
+  // Keyless map stack (Sprint 19): OpenFreeMap vector primary, keyless
+  // raster fallbacks on error step-down. No API keys consulted — keyed
+  // providers (Mapbox/Carto-keyed/MapTiler) are server-side overrides only.
+  const [styleIdx, setStyleIdx] = useState(0)
+  useEffect(() => {
+    // Reset to the keyless vector style when the theme flips.
+    setStyleIdx(0)
+  }, [isDark])
+  const mapStyle = getMapStyleStack(isDark)[Math.min(styleIdx, rasterFallbackDepth())] as unknown as never
+  const handleStyleError = useCallback(() => {
+    setStyleIdx((i) => {
+      // Walk the keyless fallback stack; only give up (skeleton) when the
+      // last raster fallback also fails (e.g. WebGL unavailable/offline).
+      if (i < rasterFallbackDepth()) return i + 1
+      setMapError(true)
+      return i
+    })
+  }, [])
 
   // Filter out invalid pins (0,0 placeholders that were previously rendered incorrectly)
   const validPins = pins.filter(
@@ -268,7 +257,7 @@ function RouteMap({
       }`}
       style={expanded ? { height: '100vh', width: '100vw' } : { height }}
     >
-      <style>{isDark ? `.dark-map .maplibregl-canvas { filter: brightness(1.35) contrast(1.1); }` : ""}</style>
+      <style>{isDark ? `.dark-map .maplibregl-canvas { filter: ${MAP_STACK_CONFIG.darkCanvasFilter}; }` : ""}</style>
       <Map
         ref={mapRef}
         mapLib={import('maplibre-gl') as never}
@@ -276,7 +265,7 @@ function RouteMap({
         mapStyle={mapStyle}
         style={{ width: '100%', height: '100%' }}
         onLoad={handleMapLoad}
-        onError={() => setMapError(true)}
+        onError={handleStyleError}
         attributionControl={false}
         reuseMaps
       >

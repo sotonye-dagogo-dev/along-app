@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 16 early-adopter badge + reset unhook)
-> - last-verified-against-code: 2026-10-08
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack)
+> - last-verified-against-code: 2026-10-09
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -727,3 +727,31 @@ Made the admin area responsive and honest: collapsible desktop sidebar (persiste
 - Edited: `app/admin/{AdminShell,page.tsx,users/page.tsx,posts/page.tsx,bugs/page.tsx,reviews/page.tsx,config/page.tsx}`, `app/api/admin/{stats,users,posts,bugs,reviews}/route.ts`, `app/(dashboard)/profile/{page.tsx,[username]/page.tsx}`, `app/lib/config/index.ts`
 
 **QA gate:** not runnable in this runner (no node_modules — pre-existing env limit); new suite follows existing patterns; diff reviewed.
+
+## 2026-10-09 — Execute-Feature: Keyless Map Stack — OpenFreeMap + OSRM + Proxied Geocoding (Sprint 19)
+
+**Summary:**
+Ended recurring map API-key failures by making the whole map pipeline work with zero keys: tiles render from OpenFreeMap keyless vector styles (MapLibre-native) with a keyless raster step-down chain (plain Carto → OSM → Esri); routing resolves OSRM-first via a cached server proxy with env-gated ORS/Mapbox overrides and a straight-line guarantee; all geocoding flows through `/api/maps/*` server proxy (Nominatim with policy-compliant identity headers + Photon fallback), fixing the browser-direct Nominatim policy violation and the Carto `?apiKey=` dependency (removed — plain keyless Carto is the default). Renderers (RouteMap + explore) walk a shared config-driven style stack with onError step-down; `routeTracingService` is now a thin delegate over `mapProxyService`; `.env.example` marks every keyed map var optional-override. All non-breaking (no migration, no removed APIs, no new deps), config/metadata-driven.
+
+**Completed:**
+- Config: `app/lib/config/mapStack.ts` (vector styles, dark mapping, raster chain, routing/geocode orders, upstreams, identity, TTLs, attributions, preconnect hosts, style-stack builders, env-gate helpers) + barrel export
+- Service: `app/lib/services/mapProxyService.ts` (traceRoute/geocodeForward/geocodeReverse, Redis read-through, never-throw, keyed-only-with-env)
+- APIs: `POST /api/maps/route`, `GET /api/maps/geocode`, `GET /api/maps/reverse` (maps-bucket rate limit, sanitized errors, guest-accessible); `/api/routes/trace` delegates to proxy (contract unchanged)
+- Renderer: RouteMap + explore consume `getMapStyleStack` (vector primary, raster step-down, no `mapbox://`/apiKey branches); root layout preconnects keyless hosts from config
+- Clients: RouteStepInput, ShareRouteModal (both geocode paths), `geo.ts reverseGeocode` → internal proxy; zero Nominatim URLs left in client code
+- Tracing: `routeTracingService.trace` validates then delegates (existing imports keep working)
+- Hygiene: `RATE_LIMITS.maps` (60/min), `CACHE_TTL`/`CACHE_KEYS` maps entries, `API_REGISTRY` maps entries, `.env.example` optional-override notes
+- Tests: `app/__tests__/config/mapStack.test.ts` (10: keyless URLs, fallback order, dark mapping, attribution, preconnect hosts, stack shape, cache-key determinism, straight-line proof, offline degradation, Nominatim-shape normalization; redis mocked per established service-test pattern)
+
+**Key Changes:**
+- New: `app/lib/config/mapStack.ts`, `app/lib/services/mapProxyService.ts`, `app/api/maps/{route,geocode,reverse}/route.ts`, `app/__tests__/config/mapStack.test.ts`
+- Edited: `app/lib/config/{index,rateLimits,cache,apiRegistry}.ts`, `app/lib/services/routeTracingService.ts`, `app/api/routes/trace/route.ts`, `app/components/features/posts/{RouteMap,RouteStepInput,ShareRouteModal}.tsx`, `app/(dashboard)/explore/page.tsx`, `app/layout.tsx`, `app/lib/utils/geo.ts`, `.env.example`, `ai-system/planning/task-queue.md`
+
+**QA gate (this runner, node_modules via `npm install`):**
+- `npx tsc --noEmit` — 0 errors
+- `npx jest` — 27 suites / 234 tests pass (10 new)
+- `npm run build` — clean (84 static pages; `/api/maps/{route,geocode,reverse}` + `/api/routes/trace` present)
+- `npx next lint` — zero new issues (pre-existing `any` errors + RouteMap exhaustive-deps warning unchanged vs baseline stash-compare)
+
+**Next Sprint Focus:**
+Remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration. (Carto basemap key wiring is closed by this sprint — keyless Carto is the default.) OSRM demo has no SLA (~1 req/s, Redis cache absorbs repeats); self-host path stays open if routing volume outgrows it.

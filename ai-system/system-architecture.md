@@ -1,8 +1,8 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 16 early-adopter badge + reset unhook)
-> - last-verified-against-code: 2026-10-08 (Sprint 16 badge + unhook verified in code; QA to static-review level — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack)
+> - last-verified-against-code: 2026-10-09 (mapStack config + mapProxyService + /api/maps/* + renderer/geocode cutover verified in code; QA full green in-runner: tsc 0, jest 234/234, build 84 pages)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
@@ -71,7 +71,7 @@ Client (Browser / PWA)
 |--------|----------------|-----------|--------------|
 | Auth | JWT-based authentication, registration, login, OTP, rate limiting, edge JWT verification via jose; referrals honored on email register (`?ref=`) and Google OAuth (`state=ref:`, new + first-time-OAuth signups) via shared `referralService` (unlimited linking, send-credit cap); register isolates referral resolution + reward fan-out so a bad/stale `?ref=` can never fail signup (P2003 FK race retries once without the link); `/api/invite` backfills missing `inviteCode` for legacy rows so links never render `?ref=null` | `app/(auth)/`, `app/lib/services/auth*`, `referralService`, `middleware.ts`, `app/lib/utils/rateLimit.ts` | Prisma, jsonwebtoken, jose (edge), bcrypt, Redis, in-memory rate limit Map |
 | Feed | Social feed with posts, comments, likes, bookmarks | `app/(dashboard)/`, `app/lib/services/feed*` | Prisma, Redis (cache) |
-| Maps | Route visualization with MapLibre GL, clustering | `app/components/features/map*` | MapLibre GL, supercluster, polyline |
+| Maps | Keyless-first visualization: MapLibre GL renderer (OpenFreeMap vector primary, keyless raster step-down via shared `MAP_STACK_CONFIG` style stack, onError fallback walk); routing OSRM-first via cached server proxy (`mapProxyService`: OSRM → env-gated ORS/Mapbox → straight-line guarantee); geocoding ONLY via `/api/maps/*` proxy (Nominatim server-side + Photon fallback) — browser-direct upstream calls banned; `routeTracingService` is a thin validating delegate over the proxy | `app/components/features/map*` (RouteMap, RouteStepInput, ShareRouteModal, NavigationGuide), `app/(dashboard)/explore/page.tsx`, `app/api/maps/{route,geocode,reverse}`, `app/api/routes/trace` (delegate), `app/lib/services/mapProxyService.ts`, `app/lib/config/mapStack.ts` | MapLibre GL, supercluster, polyline, Redis (proxy caches) |
 | Notifications | LIKE/DISLIKE/COMMENT (author), MENTION (@usernames in comments, create + edit-diff), FOLLOW, WELCOME (allowSelf), ROUTE_REQUEST/NEW_ROUTE fan-out to followers, ROUTE_RESPONSE to request author, REFERRAL conversion to inviter (`@user signed up through your referral`), REWARD points + BADGE tier-up to earner (via rewards worker); nav badges via `useUnreadNotifications` (60s poll, `NOTIFICATION_BADGE_CONFIG`, mobile tab + desktop sidebar); real-time + push via Web Push API | `app/lib/services/notificationService.ts`, `mentionService.ts`, `app/lib/hooks/useUnreadNotifications.ts` | Prisma, web-push, QStash |
 | Admin | Dashboard, user management, site config, bug reports; stats API returns `recentUsers` preview in the same batched read (dashboard page null-tolerates older payloads); admin entry points (desktop sidebar section, profile Quick Links) gated by canonical `isAdminRole()` (case-insensitive — DB enum is `USER`/`ADMIN`) | `app/(admin)/`, `app/api/admin/stats`, `app/components/ui/DashboardNav.tsx`, `app/(dashboard)/profile/page.tsx`, `app/lib/config/navigation.ts` | Prisma, Sentry |
 | Search | Unified posts + users + tags search: `GET /api/search` (q/type/region/postType/cursor), `searchService.ts`, guest-accessible `/search` page (fixes SuggestionsPanel dead links) | `app/api/search/`, `app/lib/services/searchService.ts`, `app/(dashboard)/search/` | Prisma (contains/insensitive, P2022 fallback), Redis (unified cache 120s), rate-limit `search` bucket |
@@ -156,12 +156,13 @@ Write operation → API route
 | VAPID_PUBLIC_KEY | Web Push public key | .env | — |
 | VAPID_PRIVATE_KEY | Web Push private key | .env | — |
 | QSTASH_TOKEN | QStash worker token | .env | — |
-| NEXT_PUBLIC_MAPBOX_TOKEN | MapLibre tile access | .env | — |
-| NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN | Mapbox alias (same purpose) | .env | — |
-| NEXT_PUBLIC_MAPTILER_API_KEY / NEXT_PUBLIC_MAPTILER_STYLE_URL | MapTiler tiles/style | .env | — |
-| NEXT_PUBLIC_CARTO_API_KEY (alias NEXT_PUBLIC_CARTO_KEY) | Carto basemap API key (requested by carto.com/basemaps endpoint) | .env | — |
+| NEXT_PUBLIC_MAPBOX_TOKEN | Map routing override (OPTIONAL — keyless OSRM/straight-line is the default; only consulted server-side when set) | .env | — |
+| NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN | Mapbox alias (same optional-override purpose) | .env | — |
+| NEXT_PUBLIC_MAPTILER_API_KEY / NEXT_PUBLIC_MAPTILER_STYLE_URL | MapTiler tiles/style (OPTIONAL override only — keyless OpenFreeMap is the default) | .env | — |
+| NEXT_PUBLIC_CARTO_API_KEY (alias NEXT_PUBLIC_CARTO_KEY) | Carto basemap key (OPTIONAL — plain keyless Carto is the default; no `?apiKey=` is ever sent) | .env | — |
 | RATE_LIMIT_WINDOW | API rate limit window (ms) | `app/lib/config/rateLimits` | 60000 |
 | RATE_LIMIT_MAX | Max requests per window | `app/lib/config/rateLimits` | 100 |
+| RATE_LIMITS.maps | Map proxy bucket (60 req/min per IP; covers /api/maps/*) | `app/lib/config/rateLimits` | 60/min |
 | CACHE_TTL | Default Redis TTL (s) | `app/lib/config/cache` | 300 |
 | ENABLE_DESIGN_VIEWER | Mounts the dev-only design-asset viewer at `/__design/*`; must be false in production builds | .env | false |
 
@@ -223,7 +224,7 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - Tailwind CSS v4 uses the new `@tailwindcss/postcss` plugin — v3-style `@tailwind` directives will not work
 - Dual PostCSS config files exist (`postcss.config.js` CJS + `postcss.config.mjs` ESM) — may cause confusion
 - Sentry DSN and all secrets are populated in `.env` — must not commit or expose
-- 188 Jest tests across 21 suites incl. mutation E2E + posts API (multi-type/archived/nature) + search API/service + mention/referral/leaderboard + uxTightening config + routeDrafts config/service + postSubmit config/idempotency (per 2026-10-08 Sprint 14; full gate green in-runner)
+- 234 Jest tests across 27 suites incl. mutation E2E + posts API (multi-type/archived/nature) + search API/service + mention/referral/leaderboard + uxTightening config + routeDrafts config/service + postSubmit config/idempotency + mapStack config/proxy (per 2026-10-09 Sprint 19; full gate green in-runner)
 - `tsconfig.json` no longer sets `downlevelIteration` (removed 2026-10-08: option deleted in current TS; ES2015 target handles iteration natively)
 - Password reset uses durable `PasswordResetToken` DB rows (not Redis OTP) — survives cache loss; fixed Sept 29 "link expired/invalid" false negatives
 - Forgot-password email is double-guarded: non-blocking `waitUntil` + Resend send-result check (fixed Sept 16 false-positive "mail sent" with no delivery)

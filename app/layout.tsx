@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/app/providers/ThemeProvider";
 import { I18nProvider } from "@/app/providers/I18nProvider";
 import ThemeToggle from "@/app/components/ui/ThemeToggle";
 import BackToTop from "@/app/components/ui/BackToTop";
+import { MAP_STACK_CONFIG } from "@/app/lib/config/mapStack";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -111,8 +112,9 @@ export default function RootLayout({
             const hints = [
               { rel: "preconnect", href: "https://fonts.googleapis.com" },
               { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-              { rel: "preconnect", href: "https://api.mapbox.com" },
-              { rel: "dns-prefetch", href: "https://api.mapbox.com" },
+              ${MAP_STACK_CONFIG.preconnectHosts
+                .map((h) => `{ rel: "preconnect", href: ${JSON.stringify(h)} },`)
+                .join("\n              ")}
             ];
             hints.forEach(h => {
               const link = document.createElement("link");

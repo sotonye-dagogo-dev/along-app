@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (early-adopter badge + vercel-build reset removal)
-> - last-verified-against-code: 2026-10-08 (36 config files incl. earlyAdopter, earlyAdopterService, per-user + list badge endpoints, badge on both profiles)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack)
+> - last-verified-against-code: 2026-10-09 (mapStack config, mapProxyService, /api/maps/*, renderer + geocode cutover, trace delegate)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -105,13 +105,14 @@ Service Layer (app/lib/services/*)
 
 Config Registries (app/lib/config/*)
     → (no app dependencies — pure config objects)
-    → 37 files (incl. index.ts) incl. earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
+    → 38 files (incl. index.ts) incl. mapStack.ts (Sprint 19 keyless tiles/routing/geocode/TTLs/attributions/style-stack builders/env gates), earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
 
 Client Utilities (app/lib/utils/*)
     → pushClient → navigator.serviceWorker, fetch (/api/push/*)
     → sendPushNotification → fetch (QStash URL)
     → siteConfig → Prisma, Redis (cached config lookups)
     → blog → fs (MDX file reading at build time)
+    → geo → fetch (/api/maps/reverse; Sprint 19 — no browser-direct upstream calls)
 
 PWA (public/sw.js)
     → (standalone service worker — no app imports)
@@ -161,9 +162,23 @@ EarlyAdopterService (`app/lib/services/earlyAdopterService.ts` — badge rank/st
     → Config: earlyAdopter (key/defaults/normalize/label builders)
 
 RouteTracingService
-    → PostModel (Prisma)
-    → MapLibre GL utils (polyline)
-    → Config: mapIntegrations
+    → mapProxyService.traceRoute (thin validating delegate — no direct upstream calls)
+    → Config: mapStack (env-gate helpers only)
+
+MapProxyService (`app/lib/services/mapProxyService.ts` — Sprint 19 keyless stack, owns ALL upstream map calls)
+    → OSRM demo (keyless, GeoJSON → polyline5) → env-gated ORS → env-gated Mapbox → straight-line guarantee (never throws)
+    → Nominatim server-side (identity UA/Referer) → Photon fallback (forward + reverse)
+    → Redis (route/geocode/reverse read-through caches; never-throw wrapper)
+    → Config: mapStack (orders, upstreams, identity, TTLs), cache (CACHE_TTL maps*), rateLimits (maps bucket via API routes)
+
+Map API Routes (`app/api/maps/route|geocode|reverse`)
+    → mapProxyService (traceRoute / geocodeForward / geocodeReverse)
+    → checkRateLimit(request, "maps") → sanitized JSON errors (never leak upstream details)
+    → Consumers (client-only, same-origin): RouteStepInput + ShareRouteModal (debounced, abortable) + geo.ts reverseGeocode
+
+Map Renderers (RouteMap.tsx, explore/page.tsx)
+    → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset)
+    → MapLibre GL vector tiles (keyless) — zero `NEXT_PUBLIC_*` map keys read
 
 NotificationService
     → NotificationModel, PushSubscriptionModel (Prisma)
@@ -211,8 +226,8 @@ siteConfig Utility
 | antd / @ant-design/icons | UI component library | App* wrappers in `app/components/ui/` |
 | @ant-design/charts | Analytics charts | Admin dashboard |
 | @ant-design/nextjs-registry | Ant Design SSR registry | Root layout |
-| maplibre-gl / react-map-gl | Map rendering | Explore page, route visualization |
-| @mapbox/polyline | Route polyline encoding | RouteTracingService, maps |
+| maplibre-gl / react-map-gl | Map rendering (keyless OpenFreeMap vector + keyless raster fallbacks since Sprint 19) | Explore page, route visualization |
+| @mapbox/polyline | Route polyline encoding | mapProxyService (GeoJSON→polyline5), straight-line fallback |
 | supercluster | Map marker clustering | Explore map |
 | @prisma/client | Database ORM | All services, BaseRepository |
 | @prisma/adapter-pg | Postgres adapter | Prisma client initialization |
