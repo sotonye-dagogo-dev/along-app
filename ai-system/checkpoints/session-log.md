@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination rule + pin accuracy + deploy type fix)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: append-only — never modify past entries
 
@@ -34,6 +34,41 @@
 ---
 
 ## Sessions
+
+---
+
+## Session — 2026-10-09 (Sprint 23: destination fare/vehicle rule + pin accuracy + deploy type fix)
+
+**Completed:**
+- Destination rule E2E: new `app/lib/config/routeSteps.ts` (`ROUTE_STEPS_CONFIG`, `isDestinationStep`/`showStepFare`/`showStepVehicle`/`normalizeRouteSteps`) + barrel exports; ShareRouteModal hides destination fare/vehicle inputs (hint instead), strips on create+edit submit, totals exclude destination; PostCard (fare badge + vehicle extraction), post detail, NavigationGuide (live + list) hide destination fare/vehicle incl. legacy rows; POST + PATCH `normalizeRouteSteps` server backstop
+- Pin accuracy: RouteMap imports `maplibre-gl.css`, origin/destination snap to traced endpoints (`snapEndpointsToPolyline`), stable mapLib promise via ref, content-keyed memo pins/coords/bounds (fit effect no longer fights pan/zoom); new `app/lib/hooks/useUserLocation.ts` feeds explore (Near-me override kept, controlled `onMove`, accuracy halo) and post-detail passive dot (live-nav fix wins); MapPins optical-centering tweak
+- Deploy type fix: EmailSecurityPanel empty dead `if` (`verified !== false` no-overlap `true | null` vs `false`) removed; emailStudio tsc blockers fixed (dotAll `/s` → `[\s\S]`, readonly `NODE_ENV` writes via Record cast)
+- Latent test repairs: emailStudio suite loads via hoisted redis stub mock (pre-existing `@upstash/redis → uncrypto` ESM parse failure, fails identically on clean main); `sanitizeStoredBody` tokens changed to `#`-fragments so `{{var}}` hrefs survive the URL allowlist (was silently deleting them — real product bug, test now encodes intent); 2 pre-existing prefer-const lint errors fixed
+- Tests: new `routeSteps.test.ts` (5) + mapTightening snap/tracking (2)
+- QA gate in-runner (npm install run to get deps): `tsc --noEmit` clean (exit 0, incl. the exact gate that failed Vercel), `jest` 32/32 suites 282/282 tests, `lint` 0 errors in touched files (9 remaining all pre-existing no-explicit-any in untouched files; baseline 11)
+
+**Files Modified:**
+- New: `app/lib/config/routeSteps.ts`, `app/lib/hooks/useUserLocation.ts`, `app/__tests__/config/routeSteps.test.ts`
+- Edited: ShareRouteModal, PostCard, NavigationGuide, RouteMap, MapPins, `app/(dashboard)/explore/page.tsx`, `app/(dashboard)/posts/[id]/page.tsx`, `app/api/posts/route.ts`, `app/api/posts/[id]/route.ts`, `app/lib/config/{index,mapPins}.ts`, EmailSecurityPanel, `app/lib/utils/emailTemplates.ts`, `app/lib/utils/emailSanitize.ts`, `app/__tests__/config/{emailStudio,mapTightening}.test.ts`
+- Docs: `checkpoints/session-log.md` (this entry), `summaries/dev-history.md` (Sprint 23), `planning/task-queue.md` (Sprint 23 + last-synced), `system-architecture.md` (Maps/Post/Email/Profile/Config rows + test count), `memory/project-decisions.md` + `memory/lessons-learned.md`, `index/repo-map.md` + `index/dependency-graph.md` freshness, `checkpoints/in-progress.md` (reset)
+
+**Next Task:**
+Vercel deploy green confirmation (tsc gate fixed); prod-verify destination hiding (composer/feed/detail/nav), pin placement through pan/zoom, persistent user dot on explore + post maps.
+
+**Assumptions Made:**
+- No migration: destination strip is payload-level only; zod schemas already optional for fare/vehicle so no schema change
+- Endpoint snapping moves origin/destination dots metres (to road-snapped trace ends) — accepted as the visual contract "line meets dots"; intermediates stay exact
+- `useUserLocation` passive (low-accuracy) by default; NavigationGuide keeps its own high-accuracy watch while navigating and wins on precedence
+- emailStudio redis stub mirrors the wrapper's unconfigured no-op behaviour; suite tests pure helpers only, so no coverage is lost
+
+**Notes / Blockers:**
+- `npm install` was run in-runner ( Resorts to network; 1518 packages, postinstall prisma warning about missing DB URL is benign `|| true`) — node_modules now present locally; harmless for the diff (untracked, git-ignored)
+- Lint still exits 1 repo-wide from pre-existing `no-explicit-any` in 10 untouched files; Vercel build skips lint, tsc gate is clean
+
+**Repo-map / dependency-graph deltas (update-ai-system substance):**
+- New modules: `lib/config/routeSteps` (imported by ShareRouteModal, PostCard, NavigationGuide, post detail page, posts POST/PATCH routes), `lib/hooks/useUserLocation` (explore + post detail pages), `__tests__/config/routeSteps.test.ts`
+- Extended: `lib/config/mapPins` (snap flag + tracking timeouts), `lib/utils/emailTemplates` (sanitize token format — internal only)
+- No removed modules, no new third-party deps, no schema change
 
 ---
 
@@ -1493,3 +1528,68 @@ Next human decision — verify on prod: referral + normal registration, deletion
 **Notes / Blockers:**
 - `npm run build` not executed locally (needs network/env; Vercel runs it with fresh generate + migrate deploy) — tsc (0 errors) + jest (255 pass) are the local gate. update-ai-system.md terminal substance folded into this entry per above.
 ---
+
+## 2026-10-09 — Sprint 22: Email Studio tightening + auth-email wiring + profile tabs + explore share/location + env centralization (execute-feature)
+**Directive:** Studio plain-text in-place editing + visual blocks/variables with selects+custom entries + lossless HTML/visual switching; shared wrapper (real logo via default variable, header/body/CTA/footer) with icons>SVG>emoji; sanitization all round; user search as select-search; fix literal-{{var}} sends; welcome mail on Google OAuth + verify flow (email+password, referral/plan links) + profile-triggerable verify/change-email/change-password gated by status/auth/linkage; profile secondary tabbed section (connected/points/invite/danger → connected/points/security/danger) with quick links between tab groups; functional explore share + persistent user-location pin; README logo + env docs; PROJECT_ENV/NODE_ENV that actually differentiate; update-ai-system on close.
+
+- Step 1 planning: read execute-feature/update-ai-system contracts + task-queue + system-architecture + in-progress; mapped via subagents (email E2E: config/email+emailManagement+emailTemplates-siteConfig/emailService+admin templates+send+preview+Studio page; auth/profile/explore/env: register/google-callback/otp/link routes, profile tabs, explore share/location, PROJECT_ENV only in 2 prisma files, README stale icon pointer). Architecture impact: additive only (no migration — change-email/verify reuse otpStore; no new deps) → full pipeline, no separate plan-feature.
+- Step 2 scope check: fits project-context (email, auth, profile, maps, docs in-scope); extends prior decisions (referral-unlimited, single-admin assignment, toggle-pauses-send, deletion grace) without conflict. Proceeded.
+- Step 3 implementation:
+  - Env: new `app/lib/config/env.ts` (getEffectiveEnv PROJECT_ENV-wins, isProduction/isDevelopment/getAppUrl/resolveDatabaseUrl/missingEnvKeys); `prisma.ts` now uses it (DB precedence + global-cache guard follow effective env); `.env.example` Core documented; barrel exports.
+  - Sanitization: new `app/lib/utils/emailSanitize.ts` (escapeHtmlValue, stripTags, allowlist sanitizeEmailHtml keeping {{vars}}, extractVariables, sanitizeVarText); admin templates PUT now strips scripts/handlers/javascript: URLs, strips tags from subject/description; all sends sanitize vars; recipient email validated.
+  - Interpolation fix: `emailTemplates.ts` render merges `defaultEmailVars()` (appUrl/appName/logoUrl absolute from LOGO_CONFIG/supportEmail/year), escapes HTML values, missing vars → "" (never literal {{ident}}); new `renderEmailSubject`, `sanitizeStoredBody`, `deriveBodyText`, verify/change builders; preview route fills readable samples (never {{ident}}).
+  - Wrapper/icons: `composeEmailDocument/composeEmailText` + `EMAIL_DEFAULT_VARIABLES` (logoUrl incl.) + `EMAIL_ICONS` (inline SVG) + emoji fallback map in `config/email.ts`; welcome template emojis → inline SVGs; 3 new system templates (verifyEmail/changeEmail/changePassword) with shared logo/header/CTA/footer shape; `emailManagement.ts` system list + `EMAIL_BUILDER_CONFIG` (8 blocks, presets, 12-var catalog) + editorModes +text.
+  - Builder utils: new `app/lib/utils/emailBuilder.ts` (EmailBlock model, blocksToHtml/blocksToText/textToBlocks/htmlToBlocks/defaultBlocks — unknown markup degrades to paragraphs, content never dropped; verified by node execution: 4-block round-trips exact).
+  - Studio page rewrite: blocks editor (add/move/delete, per-block value inputs incl. image URL + alt, list one-per-line), variables catalog select + custom-name entry + subject-target insert, text tab fully in-place editable with format hints, HTML raw tab, lossless switchMode conversions, composer per-variable value inputs (+JSON fallback), search mode is debounced select-search against `/api/admin/users?q=` with picked chips (falls back to manual parse when none picked).
+  - Sends: OTP/welcome/reset/contact/bug now toggle-respecting + sanitized + subject-rendered; new `sendVerifyEmail/sendChangeEmailConfirmation/sendChangePasswordNotice`; `sendTemplatedEmail` sanitizes untrusted composer vars + drops non-\w keys; welcome no longer gated on OTP success (register) + fires on Google signup (callback, fire-and-forget).
+  - Auth APIs: new `POST+PUT /api/auth/verify-email` (trigger gated on unverified; confirm flips verified + VERIFIED notification), `POST+PUT /api/auth/change-email` (authed, uniqueness-checked, OTP binds `newEmail::otp`, flips email+verified + notification), `POST /api/auth/change-password` (hasPassword-only; link/password keeps add-flow + now sends security notice on change); registry entries added.
+  - Profile: `EmailSecurityPanel` (verify resend+confirm only when unverified; change-email always; change-password only when hasPassword with Google-linked hint); account tab group (Connected/Points/Email & Security/Danger zone, same tab pattern) + quick-links grid (2-col mobile/3-col up, anchor jumps between #account/#content + Notifications/Analytics/Invite/Admin); removed standalone panel duplicates.
+  - Explore: share via Web Share sheet → clipboard → execCommand fallback with toasts + disabled state; mobile share tracks sheet height; passive mount-time geolocation + watchPosition (no view jump) so the user dot persists; Near-me re-centres with denied/timeout/error toasts + locating state.
+  - Docs: README logo → `public/logo.svg` + env-differentiation table + Email Studio section; `.env.example` Core comment points to env.ts.
+  - Tests: `app/__tests__/config/emailStudio.test.ts` (17: interpolation/escaping/defaults, sanitizer, builder round-trips, wrapper/catalog, env precedence).
+- Step 4 QA gate (this runner, NO node_modules): `tsc --ignoreConfig --noResolve` on new+edited files — zero attributable errors (only missing-module/node-types/JSX-runtime environment noise); node strip-types execution proved builder round-trips (4/4 block types), sanitizer (script/handler/js-url stripped), env precedence (PROJECT_ENV wins); jest/lint/build deferred to CI/Vercel (deps absent). Honest partial gate, same class as Sprints 9/10/16/21.
+- Step 5 close-out: task-queue Sprint 22 rows; system-architecture deltas (env row, email wrapper/builder, auth email routes, profile tabs, explore share/location); dev-history entry; this entry; in-progress reset. update-ai-system deep sync folded here (repo-map/dependency-graph deltas listed below; no shape change beyond additive files).
+
+**Files Modified:**
+- New: `app/lib/config/env.ts`, `app/lib/utils/emailSanitize.ts`, `app/lib/utils/emailBuilder.ts`, `app/api/auth/{verify-email,change-email,change-password}/route.ts`, `app/components/features/profile/EmailSecurityPanel.tsx`, `app/__tests__/config/emailStudio.test.ts`
+- Edited: `app/lib/config/{email,emailManagement,index,apiRegistry}.ts`, `app/lib/utils/emailTemplates.ts`, `app/lib/services/emailService.ts`, `app/api/admin/email/templates/route.ts`, `app/api/email/preview/route.ts`, `app/admin/email/page.tsx`, `app/api/auth/{register,google/callback,link/password}/route.ts`, `app/lib/db/prisma.ts`, `app/components/features/profile/index.ts`, `app/(dashboard)/{profile,explore}/page.tsx`, `README.md`, `.env.example`
+- Docs: `checkpoints/session-log.md` (this entry), `summaries/dev-history.md`, `planning/task-queue.md` (Sprint 22), `system-architecture.md` (deltas), `checkpoints/in-progress.md` (reset)
+
+**Next Task:**
+CI/Vercel must confirm: tsc + jest (17 new) + build green; prod-verify welcome mail on Google OAuth signup, verify/change-email/change-password E2E, Studio block→save→preview→send with missing-var template (no {{ident}} in inbox), select-search send, explore share sheet + persistent dot.
+
+**Assumptions Made:**
+- No Prisma migration: change-email/verify reuse otpStore (`change-email:{userId}` binds address into the hash) — per-instance memory fallback caveat already documented for OTP applies equally
+- `change-password` is hasPassword-only; Google-only first credential stays in link/password (add-flow), avoiding two writers for first-secret creation
+- Preview samples use readable placeholders, not literal {{ident}} — admins previewing unfilled vars see `sample-*`, matching new send behavior (empty) closely enough for layout review
+- Second `AuthLinkPanel` import in profile kept (used inside tabs); standalone duplicates removed, not hidden — no dead renders
+
+**Notes / Blockers:**
+- Runner has no node_modules (npm install not run — offline-safe choice); full gate deferred to CI. Static + execution proofs above are the local evidence.
+- `npm run build` not executed locally (needs network/env); Vercel runs generate + migrate deploy + build. No schema change in this sprint, so no migration risk.
+
+**Repo-map / dependency-graph deltas (update-ai-system substance):**
+- New modules: `lib/config/env` (imported by prisma, emailTemplates, emailService), `lib/utils/emailSanitize` (emailTemplates, emailService, admin templates route), `lib/utils/emailBuilder` (admin email page only), `api/auth/{verify-email,change-email,change-password}` (otpStore, emailService, notificationService), `components/features/profile/EmailSecurityPanel` (profile page)
+- No removed modules, no new third-party deps, no schema change.
+---
+---
+
+## Session — 2026-10-09 (fix-build: maplibre-gl CSS Module not found)
+
+**Completed:**
+- Diagnosed `Module not found: Can't resolve 'maplibre-gl/dist/maplibre-gl.css'` (explore page + RouteMap): root cause is `next.config.mjs` webpack alias `'maplibre-gl' → 'maplibre-gl/dist/maplibre-gl.js'` prefix-matching and rewriting the CSS subpath to `.../maplibre-gl.js/dist/maplibre-gl.css`. CSS file exists in maplibre-gl@4.7.1; imports were correct.
+- Minimal fix: alias key → `'maplibre-gl$'` (exact-match). Bare `import("maplibre-gl")` mapLib calls still hit the dist bundle; CSS subpath resolves normally.
+- Verified: `node --check next.config.mjs` OK + alias-resolution simulation proving old=broken / new=fixed. Full `tsc`/`jest`/`next build` deferred (runner has no node_modules); no TS-affecting change (config-only, comment + `$` suffix).
+
+**Files Modified:**
+- Edited: `next.config.mjs` — exact-match alias + explanatory comment
+- Docs: `ai-system/repair-system.md` (new active entry), `ai-system/checkpoints/session-log.md` (this entry), `ai-system/checkpoints/in-progress.md` (reset)
+
+**Next Task:**
+Vercel deploy must confirm `next build` green (webpack CSS resolution + type-check).
+
+**Assumptions Made:**
+- `dist/maplibre-gl.js` remains the intended bare-import target (unchanged behavior, only match scope narrowed).
+
+**Notes / Blockers:**
+- Single-file fix → chain check: repair-system.md pattern added, but fix is one file and docs-only otherwise; no sync-context shape change needed beyond this log.

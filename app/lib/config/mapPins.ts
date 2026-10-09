@@ -26,6 +26,22 @@ export interface MapPinsConfig {
     radarClass: string;
     accuracyClass: string;
   };
+  /**
+   * Pin-to-polyline snapping: when a road-snapped trace is on screen, the
+   * origin/destination dots render at the trace endpoints (the snapped
+   * versions of their geocoded coords, metres apart) so the line visibly
+   * meets the dots instead of stopping beside them. Intermediate stops
+   * always stay at their exact geocoded coords. Falls back to raw coords
+   * when no trace is available.
+   */
+  snapEndpointsToPolyline: boolean;
+  /** Passive user-location tracking defaults (explore + post maps). */
+  tracking: {
+    enableHighAccuracy: boolean;
+    timeoutMs: number;
+    maximumAgeMs: number;
+    watchMaximumAgeMs: number;
+  };
 }
 
 export const MAP_PINS_CONFIG: MapPinsConfig = {
@@ -43,6 +59,13 @@ export const MAP_PINS_CONFIG: MapPinsConfig = {
     ringClass: "border-white shadow-md",
     radarClass: "bg-info-text",
     accuracyClass: "bg-info/20 border-info-border/40",
+  },
+  snapEndpointsToPolyline: true,
+  tracking: {
+    enableHighAccuracy: false,
+    timeoutMs: 8000,
+    maximumAgeMs: 60000,
+    watchMaximumAgeMs: 30000,
   },
 };
 

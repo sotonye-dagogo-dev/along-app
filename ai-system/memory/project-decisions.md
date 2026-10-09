@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 pin/draft/faq decisions)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination-rule + pin-accuracy decisions)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -33,6 +33,42 @@
 ---
 
 ## Decisions
+
+## Destination Step Carries No Fare/Vehicle (Sprint 23)
+
+**Decision:** The final route step IS the destination: fare/vehicle inputs are hidden there in the composer (hint shown), hidden in PostCard/post-detail/NavigationGuide, excluded from totals, and stripped from payloads client-side (composer) and server-side (POST + PATCH `normalizeRouteSteps` backstop). Readers hide the last step's fare/vehicle even when legacy rows carry them.
+**Date:** 2026-10-09
+**Made by:** AI agent (execute-feature)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Fare/vehicle describe the leg STARTING at a stop; the destination has no onward leg, so showing them is logically wrong and confused users.
+
+**Alternatives Considered:**
+- Making fare/vehicle nullable in the DB with a migration — rejected: zod fields are already optional and JSON drops `undefined`, so payload-level stripping needs no schema change (non-breaking).
+- Keeping stored values and hiding only in UI — rejected as half-measure; strip at write time AND hide at read time (defense in depth, legacy rows still render correctly).
+
+**Implications:**
+All future route-step renderers must consult `showStepFare`/`showStepVehicle`; all write paths must pass through `normalizeRouteSteps`.
+
+## Road-Trace Endpoint Snapping for Pins (Sprint 23)
+
+**Decision:** When a road-snapped trace is on screen, origin/destination dots render at the trace endpoints (snapped versions of their own coords); intermediate stops stay at exact geocoded coords; raw coords are the fallback. Flagged by `MAP_PINS_CONFIG.snapEndpointsToPolyline`.
+**Date:** 2026-10-09
+**Made by:** AI agent (execute-feature)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+The trace (OSRM via server proxy) is authoritative for where the line runs; snapping endpoints is the cheapest way to use "the same pipeline as the polyline" so the line visibly meets the dots.
+
+**Alternatives Considered:**
+- Per-pin server-side snap (nearest-road lookup per stop) — rejected: extra requests/rate-limit cost for metre-level gains already covered by endpoint snapping.
+- Moving pins off-road is "less accurate" — accepted trade-off: displacement is metres, and visual line-meets-dot coherence is what users read as accuracy.
+
+**Implications:**
+`displayPins` in RouteMap is the render source; editing maps back to original indices (1:1 correspondence preserved).
 
 ## Tailwind v4 CSS-First @theme Migration
 
@@ -521,3 +557,26 @@ A SiteConfig-backed template store reuses the existing admin-override pattern (n
 **Implications:**
 - New notification/email types must be added to both Prisma enum (migration) and TS registries together.
 - Template toggles audit to EmailLog (`template_toggle`); paused templates skip sends without throwing.
+
+---
+
+## Sprint 22: Email hardening + verify/change flows without migration + env single source
+
+**Decision:** Missing email vars render as "" (never literal `{{ident}}`); no Prisma migration for verify/change-email (otpStore keys, address bound into hash); `change-password` is hasPassword-only (first credential stays in link/password); env decisions go through `lib/config/env.ts` (PROJECT_ENV wins); Studio keeps blocks as single source with lossless mode conversions.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 22
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Literal `{{var}}` in inboxes was caused by preview/send filling gaps with the identifier itself; empty-string fallback plus readable preview samples fixes the class. otpStore reuse avoids a migration for flows with identical durability needs (same caveat as OTP already documented). Splitting first-credential creation from password change avoids two writers racing on Google-only accounts. PROJECT_ENV-wins fixes the observed split (prisma honored it, cookies/logs/secrets did not).
+
+**Alternatives Considered:**
+- **EmailVerificationToken table**: Rejected — same durability as OTP store, extra migration for no gain.
+- **Keep literal placeholders in sends**: Rejected — the reported bug; empty fallback is the safe default.
+- **Direct NODE_ENV reads kept**: Rejected — preserves the differentiation gap the directive called out.
+
+**Implications:**
+- New email vars must be added to template `variables` + `EMAIL_BUILDER_CONFIG.variableCatalog` together so Studio/composer/preview agree.
+- New env-dependent behavior must use `getEffectiveEnv()/isProduction()`, never raw `process.env.NODE_ENV`.
+---

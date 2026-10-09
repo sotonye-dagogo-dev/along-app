@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 map + drafts + FAQ tightening)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination rule + pin accuracy + deploy type fix)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: historical entries do not go stale
 
@@ -32,6 +32,30 @@
 ---
 
 ## History
+
+## 2026-10-09 — Execute-Feature: Destination Fare/Vehicle Rule + Pin Accuracy + Deploy Type Fix (Sprint 23)
+
+**Summary:**
+The final route step IS the destination, so fare/vehicle are now hidden there end-to-end (composer, PostCard, post detail, NavigationGuide) via `ROUTE_STEPS_CONFIG` and stripped from payloads client- and server-side; map pins were hardened to the same accuracy pipeline as polylines (CSS import, endpoint snapping, stable mapLib, memoized bounds, shared `useUserLocation` hook, controlled explore map, passive post-detail dot); the Vercel `EmailSecurityPanel` type error was removed along with two emailStudio tsc blockers; latent emailStudio jest failures were repaired (redis ESM stub + `{{var}}` href preservation) so the full gate runs green in-runner.
+
+**Completed:**
+- Destination rule: `lib/config/routeSteps.ts` (config + helpers + normalize) + barrel exports; composer hides inputs with hint + strips on submit (create/edit) + totals exclude destination; PostCard/post-detail/NavigationGuide hide (legacy rows covered); POST + PATCH normalize server-side
+- Pin accuracy: RouteMap `maplibre-gl.css`, endpoint snap (`snapEndpointsToPolyline`), stable mapLib promise, content-keyed memo pins/coords/bounds; `useUserLocation` hook; explore controlled map + accuracy halo; post-detail passive dot
+- Deploy fix: EmailSecurityPanel dead `if` removed (TS no-overlap `true | null` vs `false`); emailStudio dotAll-flag + readonly-NODE_ENV tsc errors fixed
+- Test repairs: emailStudio redis-mock load fix, `sanitizeStoredBody` `#`-fragment tokens (var hrefs preserved), 2 prefer-const lint fixes
+- Tests: `routeSteps.test.ts` (5) + mapTightening snap/tracking (2)
+
+**Key Changes:**
+- New: `app/lib/config/routeSteps.ts`, `app/lib/hooks/useUserLocation.ts`, `app/__tests__/config/routeSteps.test.ts`
+- Edited: ShareRouteModal, PostCard, NavigationGuide, RouteMap, MapPins, explore + post-detail pages, `api/posts/route.ts`, `api/posts/[id]/route.ts`, `lib/config/{index,mapPins}.ts`, EmailSecurityPanel, `lib/utils/emailTemplates.ts` (sanitize tokens), `lib/utils/emailSanitize.ts` + `lib/utils/emailTemplates.ts` (prefer-const), `__tests__/config/{emailStudio,mapTightening}.test.ts`
+
+**QA gate (this runner, node_modules installed via npm install):**
+- `npx tsc --noEmit` — clean (exit 0), incl. the exact `EmailSecurityPanel.tsx:85` gate that failed Vercel
+- `npx jest` — 32/32 suites, 282/282 tests pass (emailStudio 20/20 after repairs)
+- `npm run lint` — 0 errors in touched files (9 remaining all pre-existing `no-explicit-any` in untouched files; baseline was 11, fixed 2; Vercel build skips lint)
+
+**Next Sprint Focus:**
+Vercel deploy green confirmation; prod-verify destination hiding across composer/feed/detail/nav + pin placement through pan/zoom + persistent user dot; remaining backlog unchanged.
 
 ## 2026-10-09 — Execute-Feature: Map + Draft + FAQ Tightening (Sprint 20)
 
@@ -830,3 +854,27 @@ Referral/normal registration "validation failed" resolved via pre-Zod normalizat
 
 **Next Sprint Focus:**
 Prod-verify referral + normal registration, single-admin mail ownership, reviewerId on bug/error reports; remaining backlog unchanged (live tracking nav, provider linking, clustering, rate-limiter Redis).
+
+## Sprint 22 — Email Studio tightening + auth-email wiring + profile tabs + explore share/location + env centralization (2026-10-09, execute-feature)
+
+**Completed:**
+- Env: `lib/config/env.ts` (PROJECT_ENV-wins effective env); prisma.ts uses it; README + .env.example document differentiation
+- Sanitization: `lib/utils/emailSanitize.ts` (allowlist HTML, escaping, var extraction); admin templates PUT + all sends hardened
+- Interpolation fix: missing vars → "" (never literal `{{ident}}`); HTML-escaped values; shared defaults (logoUrl absolute/appUrl/appName/supportEmail/year); preview readable samples
+- Wrapper/icons: `composeEmailDocument/Text`, `EMAIL_DEFAULT_VARIABLES`, `EMAIL_ICONS` SVG (welcome emojis replaced); 3 new system templates (verifyEmail/changeEmail/changePassword)
+- Builder: `lib/utils/emailBuilder.ts` blocks↔HTML↔text lossless (execution-verified round-trips); Studio rewritten (blocks editor, catalog select + custom vars, in-place text, raw HTML, per-var composer inputs, select-search recipients via `/api/admin/users?q=`)
+- Sends: toggle-respecting OTP/welcome/reset/contact/bug + 3 new senders; welcome unconditional (register) + Google signup
+- Auth APIs: verify-email (trigger+confirm), change-email (request+confirm, uniqueness, OTP binds address), change-password (hasPassword-only + security notice); link/password change also notifies
+- Profile: EmailSecurityPanel (gated verify/change-email/change-password) + account tab group + quick-links grid; explore: functional share (sheet→clipboard→fallback) + persistent watched user dot
+
+**Key Changes:**
+- New: `app/lib/{config/env.ts,utils/emailSanitize.ts,utils/emailBuilder.ts}`, `app/api/auth/{verify-email,change-email,change-password}/route.ts`, `app/components/features/profile/EmailSecurityPanel.tsx`, `app/__tests__/config/emailStudio.test.ts`
+- Edited: `app/lib/config/{email,emailManagement,index,apiRegistry}.ts`, `app/lib/{utils/emailTemplates.ts,services/emailService.ts,db/prisma.ts}`, `app/api/admin/email/templates/route.ts`, `app/api/email/preview/route.ts`, `app/admin/email/page.tsx`, `app/api/auth/{register,google/callback,link/password}/route.ts`, `app/(dashboard)/{profile,explore}/page.tsx`, `README.md`, `.env.example`
+
+**QA gate (this runner, no node_modules):**
+- `tsc --ignoreConfig --noResolve` new+edited files — zero attributable errors (environment-only noise)
+- node strip-types execution: builder 4/4 round-trips, sanitizer strips script/handlers/js-urls, env precedence correct
+- jest (17 new) / lint / build — deferred to CI/Vercel (deps absent)
+
+**Next Sprint Focus:**
+CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studio send with missing vars, select-search send, explore share + dot.

@@ -1,6 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
-import { getEmailConfig, findTemplate, renderEmailHtml, renderEmailText, isTemplateEnabled } from "@/app/lib/utils/emailTemplates";
+import { getEmailConfig, findTemplate, renderEmailHtml, renderEmailText, renderEmailSubject, isTemplateEnabled, defaultEmailVars } from "@/app/lib/utils/emailTemplates";
+import { sanitizeVarText } from "@/app/lib/utils/emailSanitize";
+import { isProduction, getAppUrl } from "@/app/lib/config/env";
 
 const EMAIL_SEND_TIMEOUT_MS = 5000;
 
@@ -16,7 +18,7 @@ async function getResend() {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     const msg = "RESEND_API_KEY not configured";
-    if (process.env.NODE_ENV === "production") {
+    if (isProduction()) {
       console.error(`[EMAIL CONFIG] ${msg} — email delivery will fail`);
       Sentry.captureMessage(msg, "error");
     }
@@ -74,10 +76,17 @@ export async function sendEmail(options: {
   const resend = await getResend();
 
   if (!resend) {
-    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] ${type} to ${to}: ${subject}`);
-    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL BODY]\n${text}`);
+    if (!isProduction()) console.log(`[EMAIL SKIPPED] ${type} to ${to}: ${subject}`);
+    if (!isProduction()) console.log(`[EMAIL BODY]\n${text}`);
     await logEmail({ to, subject, type, status: "failed", error: "RESEND_API_KEY not configured", metadata });
     return { sent: false, reason: "Email service not configured — RESEND_API_KEY missing" };
+  }
+
+  // Recipient guard — never attempt clearly-invalid addresses.
+  const cleanTo = to.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanTo) || cleanTo.length > 254) {
+    await logEmail({ to, subject, type, status: "failed", error: "invalid recipient", metadata });
+    return { sent: false, reason: "invalid recipient" };
   }
 
   try {
@@ -117,88 +126,170 @@ export async function sendEmail(options: {
 }
 
 export async function sendOtpEmail(to: string, otp: string) {
+  if (!(await isTemplateEnabled("otp"))) {
+    await logEmail({ to, subject: "[disabled] otp", type: "otp", status: "skipped", error: "template disabled" });
+    return { sent: false, reason: "template disabled" };
+  }
   const template = await findTemplate("otp");
   if (!template) {
     const reason = "Email template not found: otp";
     console.error(`[EMAIL FAILED] ${reason}`);
     Sentry.captureMessage(reason, "error");
-    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] otp to ${to}: template not found`);
+    if (!isProduction()) console.log(`[EMAIL SKIPPED] otp to ${to}: template not found`);
     return { sent: false, reason };
   }
 
-  const vars = { otp };
+  const vars = { otp: sanitizeVarText(otp, 12) };
   return sendEmail({
     to,
-    subject: template.subject,
+    subject: renderEmailSubject(template.subject, vars),
     html: renderEmailHtml(template, vars),
     text: renderEmailText(template, vars),
     type: "otp",
-    metadata: { otp },
+    metadata: {},
   });
 }
 
 export async function sendWelcomeEmail(to: string, firstName: string) {
+  if (!(await isTemplateEnabled("welcome"))) {
+    await logEmail({ to, subject: "[disabled] welcome", type: "welcome", status: "skipped", error: "template disabled" });
+    return { sent: false, reason: "template disabled" };
+  }
   const template = await findTemplate("welcome");
   if (!template) {
     const reason = "Email template not found: welcome";
     console.error(`[EMAIL FAILED] ${reason}`);
     Sentry.captureMessage(reason, "error");
-    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] welcome to ${to}: template not found`);
+    if (!isProduction()) console.log(`[EMAIL SKIPPED] welcome to ${to}: template not found`);
     return { sent: false, reason };
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const vars = { firstName, appUrl };
+  const appUrl = getAppUrl();
+  const vars = { firstName: sanitizeVarText(firstName, 80) || "traveller", appUrl };
   return sendEmail({
     to,
-    subject: template.subject,
+    subject: renderEmailSubject(template.subject, vars),
     html: renderEmailHtml(template, vars),
     text: renderEmailText(template, vars),
     type: "welcome",
-    metadata: { firstName },
+    metadata: { firstName: vars.firstName },
+  });
+}
+
+export async function sendVerifyEmail(to: string, firstName: string, otp: string, verifyLink: string) {
+  if (!(await isTemplateEnabled("verifyEmail"))) {
+    await logEmail({ to, subject: "[disabled] verifyEmail", type: "verifyEmail", status: "skipped", error: "template disabled" });
+    return { sent: false, reason: "template disabled" };
+  }
+  const template = await findTemplate("verifyEmail");
+  if (!template) return sendOtpEmail(to, otp);
+  const vars = {
+    firstName: sanitizeVarText(firstName, 80) || "traveller",
+    otp: sanitizeVarText(otp, 12),
+    verifyLink: String(verifyLink ?? "").slice(0, 2000),
+    ...defaultEmailVars(),
+  };
+  return sendEmail({
+    to,
+    subject: renderEmailSubject(template.subject, vars),
+    html: renderEmailHtml(template, vars),
+    text: renderEmailText(template, vars),
+    type: "verifyEmail",
+  });
+}
+
+export async function sendChangeEmailConfirmation(to: string, firstName: string, newEmail: string, otp: string, confirmLink: string) {
+  if (!(await isTemplateEnabled("changeEmail"))) {
+    await logEmail({ to, subject: "[disabled] changeEmail", type: "changeEmail", status: "skipped", error: "template disabled" });
+    return { sent: false, reason: "template disabled" };
+  }
+  const template = await findTemplate("changeEmail");
+  if (!template) return sendOtpEmail(to, otp);
+  const vars = {
+    firstName: sanitizeVarText(firstName, 80) || "traveller",
+    newEmail: sanitizeVarText(newEmail, 254),
+    otp: sanitizeVarText(otp, 12),
+    confirmLink: String(confirmLink ?? "").slice(0, 2000),
+    ...defaultEmailVars(),
+  };
+  return sendEmail({
+    to,
+    subject: renderEmailSubject(template.subject, vars),
+    html: renderEmailHtml(template, vars),
+    text: renderEmailText(template, vars),
+    type: "changeEmail",
+  });
+}
+
+export async function sendChangePasswordNotice(to: string, firstName: string) {
+  if (!(await isTemplateEnabled("changePassword"))) {
+    await logEmail({ to, subject: "[disabled] changePassword", type: "changePassword", status: "skipped", error: "template disabled" });
+    return { sent: true, reason: "template disabled (notice suppressed)" };
+  }
+  const template = await findTemplate("changePassword");
+  if (!template) return { sent: true };
+  const vars = {
+    firstName: sanitizeVarText(firstName, 80) || "traveller",
+    changedAt: new Date().toUTCString(),
+    ...defaultEmailVars(),
+  };
+  return sendEmail({
+    to,
+    subject: renderEmailSubject(template.subject, vars),
+    html: renderEmailHtml(template, vars),
+    text: renderEmailText(template, vars),
+    type: "changePassword",
   });
 }
 
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
+  if (!(await isTemplateEnabled("passwordReset"))) {
+    await logEmail({ to, subject: "[disabled] passwordReset", type: "passwordReset", status: "skipped", error: "template disabled" });
+    return { sent: false, reason: "template disabled" };
+  }
   const template = await findTemplate("passwordReset");
   if (!template) {
     const reason = "Email template not found: passwordReset";
     console.error(`[EMAIL FAILED] ${reason}`);
     Sentry.captureMessage(reason, "error");
-    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] passwordReset to ${to}: template not found`);
+    if (!isProduction()) console.log(`[EMAIL SKIPPED] passwordReset to ${to}: template not found`);
     return { sent: false, reason };
   }
 
-  const vars = { resetLink };
+  const vars = { resetLink: String(resetLink ?? "").slice(0, 2000) };
   return sendEmail({
     to,
-    subject: template.subject,
+    subject: renderEmailSubject(template.subject, vars),
     html: renderEmailHtml(template, vars),
     text: renderEmailText(template, vars),
     type: "passwordReset",
-    metadata: { resetLink },
+    metadata: {},
   });
 }
 
 export async function sendContactNotification(senderName: string, senderEmail: string, message: string) {
   const recipient = process.env.PLATFORM_USER_EMAIL ?? "alongtoanywhere@gmail.com";
+  if (!(await isTemplateEnabled("contactNotification"))) {
+    await logEmail({ to: recipient, subject: "[disabled] contact", type: "contactNotification", status: "skipped", error: "template disabled" });
+    return { sent: false, reason: "template disabled" };
+  }
   const template = await findTemplate("contactNotification");
   if (!template) {
     const reason = "Email template not found: contactNotification";
     console.error(`[EMAIL FAILED] ${reason}`);
     Sentry.captureMessage(reason, "error");
-    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] contactNotification: template not found`);
+    if (!isProduction()) console.log(`[EMAIL SKIPPED] contactNotification: template not found`);
     return { sent: false, reason };
   }
 
-  const vars = { senderName, senderEmail, message };
+  const vars = { senderName: sanitizeVarText(senderName, 120), senderEmail: sanitizeVarText(senderEmail, 254), message: sanitizeVarText(message, 5000) };
   return sendEmail({
     to: recipient,
-    subject: template.subject,
+    subject: renderEmailSubject(template.subject, vars),
     html: renderEmailHtml(template, vars),
     text: renderEmailText(template, vars),
     type: "contactNotification",
-    metadata: { senderName, senderEmail },
+    metadata: { senderName: vars.senderName },
   });
 }
 
@@ -207,23 +298,27 @@ export async function sendBugReportNotification(title: string, category: string,
   // one admin gets the mail. Falls back to the platform inbox when no
   // assignee resolved (e.g. zero admins seeded).
   const recipient = (recipientOverride ?? "").trim() || process.env.PLATFORM_USER_EMAIL || "alongtoanywhere@gmail.com";
+  if (!(await isTemplateEnabled("bugReportNotification"))) {
+    await logEmail({ to: recipient, subject: "[disabled] bug", type: "bugReportNotification", status: "skipped", error: "template disabled" });
+    return { sent: false, reason: "template disabled" };
+  }
   const template = await findTemplate("bugReportNotification");
   if (!template) {
     const reason = "Email template not found: bugReportNotification";
     console.error(`[EMAIL FAILED] ${reason}`);
     Sentry.captureMessage(reason, "error");
-    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] bugReportNotification: template not found`);
+    if (!isProduction()) console.log(`[EMAIL SKIPPED] bugReportNotification: template not found`);
     return { sent: false, reason };
   }
 
-  const vars = { title, category, description };
+  const vars = { title: sanitizeVarText(title, 200), category: sanitizeVarText(category, 80), description: sanitizeVarText(description, 5000) };
   return sendEmail({
     to: recipient,
-    subject: template.subject,
+    subject: renderEmailSubject(template.subject, vars),
     html: renderEmailHtml(template, vars),
     text: renderEmailText(template, vars),
     type: "bugReportNotification",
-    metadata: { title, category },
+    metadata: { title: vars.title },
   });
 }
 
@@ -236,8 +331,8 @@ export async function sendBugReportNotification(title: string, category: string,
 export async function sendTemplatedEmail(templateName: string, to: string, vars: Record<string, string>, type?: string) {
   const enabled = await isTemplateEnabled(templateName);
   if (!enabled) {
-    await logEmail({ to, subject: `[disabled] ${templateName}`, type: type ?? templateName, status: "skipped", error: "template disabled by admin toggle", metadata: { templateName, vars } });
-    if (process.env.NODE_ENV !== "production") console.log(`[EMAIL SKIPPED] ${templateName} to ${to}: disabled by toggle`);
+    await logEmail({ to, subject: `[disabled] ${templateName}`, type: type ?? templateName, status: "skipped", error: "template disabled by admin toggle", metadata: { templateName } });
+    if (!isProduction()) console.log(`[EMAIL SKIPPED] ${templateName} to ${to}: disabled by toggle`);
     return { sent: false, reason: "template disabled" };
   }
   const template = await findTemplate(templateName);
@@ -247,23 +342,28 @@ export async function sendTemplatedEmail(templateName: string, to: string, vars:
     Sentry.captureMessage(reason, "error");
     return { sent: false, reason };
   }
+  // Sanitize every inbound var (admin composer JSON is untrusted) so stored
+  // HTML structure survives and values can't inject markup/scripts.
+  const cleanVars: Record<string, string> = {};
+  for (const [k, v] of Object.entries(vars ?? {})) {
+    if (!/^\w+$/.test(k)) continue;
+    cleanVars[k] = sanitizeVarText(v, 5000);
+  }
   return sendEmail({
     to,
-    subject: renderTemplateSubject(template.subject, vars),
-    html: renderEmailHtml(template, vars),
-    text: renderEmailText(template, vars),
+    subject: renderEmailSubject(template.subject, cleanVars),
+    html: renderEmailHtml(template, cleanVars),
+    text: renderEmailText(template, cleanVars),
     type: type ?? templateName,
     metadata: { templateName },
   });
 }
 
 function renderTemplateSubject(subject: string, vars: Record<string, string>): string {
-  let out = subject;
-  for (const [k, v] of Object.entries(vars)) out = out.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), v);
-  return out;
+  return renderEmailSubject(subject, vars);
 }
 
-const APP_URL_FALLBACK = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const APP_URL_FALLBACK = getAppUrl();
 
 export async function sendAccountDeletionRequestedEmail(to: string, vars: { firstName: string; scheduledDate: string; cancelLink: string }) {
   return sendTemplatedEmail("accountDeletionRequested", to, { ...vars, appUrl: APP_URL_FALLBACK });

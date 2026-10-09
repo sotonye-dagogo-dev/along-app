@@ -7,6 +7,9 @@ const SAMPLE_VARS: Record<string, Record<string, string>> = {
   otp: { otp: "482937" },
   welcome: { firstName: "Adaobi", appUrl: "http://localhost:3000" },
   passwordReset: { resetLink: "http://localhost:3000/reset?token=sample-token-123" },
+  verifyEmail: { firstName: "Adaobi", otp: "482937", verifyLink: "http://localhost:3000/verify-email?token=sample", appUrl: "http://localhost:3000" },
+  changeEmail: { firstName: "Adaobi", newEmail: "ada@newmail.com", otp: "482937", confirmLink: "http://localhost:3000/profile?emailConfirmed=1", appUrl: "http://localhost:3000" },
+  changePassword: { firstName: "Adaobi", changedAt: new Date().toUTCString(), appUrl: "http://localhost:3000" },
   contactNotification: { senderName: "Chidi Okonkwo", senderEmail: "chidi@example.com", message: "I love the app! Would love to see more routes in Lagos mainland." },
   bugReportNotification: { title: "Route map not loading", category: "UI", description: "When I open the route map on the post page, the map stays blank. Using Chrome 120 on Windows 11." },
   accountDeletionRequested: { firstName: "Adaobi", scheduledDate: "October 16, 2026", cancelLink: "http://localhost:3000/profile", appUrl: "http://localhost:3000" },
@@ -42,11 +45,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Template not found" }, { status: 404 });
     }
 
-    const vars = SAMPLE_VARS[templateName] ?? {};
+    const vars = { ...(SAMPLE_VARS[templateName] ?? {}) };
+    // Fill unlisted vars with readable samples (never literal {{identifiers}}).
     const missingVars = template.variables.filter((v) => !(v in vars));
     if (missingVars.length > 0) {
       for (const v of missingVars) {
-        vars[v] = `{{${v}}}`;
+        if (/link|url/i.test(v)) vars[v] = "http://localhost:3000";
+        else if (/email/i.test(v)) vars[v] = "sample@example.com";
+        else if (/name/i.test(v)) vars[v] = "Sample";
+        else if (/date|at/i.test(v)) vars[v] = new Date().toDateString();
+        else vars[v] = `sample-${v}`;
       }
     }
 

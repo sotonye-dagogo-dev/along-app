@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useCallback, useState, useEffect, useRef } from 'react'
+import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react'
 import { Navigation, Clock, DollarSign, Crosshair, Maximize2, Minimize2 } from 'lucide-react'
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
+import 'maplibre-gl/dist/maplibre-gl.css'
 import polyline from '@mapbox/polyline'
 import { getMapStyleStack, rasterFallbackDepth, MAP_STACK_CONFIG } from '@/app/lib/config/mapStack'
 import { MAP_PINS_CONFIG } from '@/app/lib/config/mapPins'
@@ -73,6 +74,14 @@ function RouteMap({
   const [mapError, setMapError] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const mapRef = useRef<MapRef>(null)
+  // Stable mapLib promise: `import()` inline creates a fresh promise every
+  // render, which react-map-gl can treat as a new library and re-init the
+  // map mid-interaction (camera jumps, markers lose place). One promise for
+  // the component lifetime keeps the canvas and its markers glued together.
+  const mapLibRef = useRef<Promise<unknown> | null>(null)
+  if (mapLibRef.current === null && typeof window !== "undefined") {
+    mapLibRef.current = import("maplibre-gl")
+  }
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'))
@@ -106,36 +115,70 @@ function RouteMap({
     })
   }, [])
 
-  // Filter out invalid pins (0,0 placeholders that were previously rendered incorrectly)
-  const validPins = pins.filter(
-    (p) => typeof p.lat === "number" && typeof p.lng === "number" && !(p.lat === 0 && p.lng === 0) && !isNaN(p.lat) && !isNaN(p.lng)
-  )
-  // Fallback: if all pins filtered but original has data, keep original (avoid empty map)
-  const displayPins = validPins.length > 0 ? validPins : pins.filter((p) => p.lat !== 0 || p.lng !== 0)
-  const effectivePins = displayPins.length > 0 ? displayPins : pins
+  // Filter out invalid pins (0,0 placeholders that were previously rendered incorrectly).
+  // Content-keyed memo: `pins` is a fresh array most renders, and a new
+  // identity here would cascade (snapped pins → bounds → fit effect) and
+  // re-fit the camera every render, fighting the user's pan/zoom.
+  const pinsKey = pins.map((p) => `${p.lat},${p.lng},${p.label ?? ""},${p.type}`).join(">")
+  const effectivePins = useMemo(() => {
+    const valid = pins.filter(
+      (p) => typeof p.lat === "number" && typeof p.lng === "number" && !(p.lat === 0 && p.lng === 0) && !isNaN(p.lat) && !isNaN(p.lng)
+    )
+    // Fallback: if all pins filtered but original has data, keep original (avoid empty map)
+    const filtered = valid.length > 0 ? valid : pins.filter((p) => p.lat !== 0 || p.lng !== 0)
+    return filtered.length > 0 ? filtered : pins
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinsKey])
 
-  const routeCoords = encodedPolyline
-    ? decodeEncodedPolyline(encodedPolyline)
-    : effectivePins.length >= 2
+  const routeCoords = useMemo(() => {
+    if (encodedPolyline) return decodeEncodedPolyline(encodedPolyline)
+    return effectivePins.length >= 2
       ? effectivePins.map((p) => ({ lat: p.lat, lng: p.lng }))
       : []
+  }, [encodedPolyline, effectivePins])
 
-  // Bounds should include BOTH polyline and pins for accurate fit (polyline can extend beyond pins)
-  const boundsSource = routeCoords.length >= 2 ? routeCoords : effectivePins
-  const bounds = boundsSource.length >= 2
-    ? boundsSource.reduce(
-        (acc, p) => ({
-          minLat: Math.min(acc.minLat, p.lat),
-          maxLat: Math.max(acc.maxLat, p.lat),
-          minLng: Math.min(acc.minLng, p.lng),
-          maxLng: Math.max(acc.maxLng, p.lng),
-        }),
-        { minLat: Infinity, maxLat: -Infinity, minLng: Infinity, maxLng: -Infinity }
-      )
-    : null
+  // Pin-to-polyline snapping (same library, same data): the road-snapped
+  // trace is authoritative for where the line runs, so origin/destination
+  // dots render at the trace endpoints — the snapped versions of their own
+  // coords, metres apart — and the line visibly meets the dots through
+  // pan/zoom. Intermediate stops stay at exact geocoded coords. Raw coords
+  // are the fallback when no trace is on screen.
+  const displayPins = useMemo(() => {
+    if (!MAP_PINS_CONFIG.snapEndpointsToPolyline) return effectivePins
+    if (routeCoords.length < 2 || effectivePins.length === 0) return effectivePins
+    if (effectivePins.length === 1) return effectivePins
+    const first = routeCoords[0]
+    const last = routeCoords[routeCoords.length - 1]
+    return effectivePins.map((p, i) => {
+      if (i === 0) return { ...p, lat: first.lat, lng: first.lng }
+      if (i === effectivePins.length - 1) return { ...p, lat: last.lat, lng: last.lng }
+      return p
+    })
+  }, [effectivePins, routeCoords])
 
-  const centerLat = bounds ? (bounds.minLat + bounds.maxLat) / 2 : effectivePins[0]?.lat ?? 6.5244
-  const centerLng = bounds ? (bounds.minLng + bounds.maxLng) / 2 : effectivePins[0]?.lng ?? 3.3792
+  // Bounds should include BOTH polyline and pins for accurate fit (polyline can extend beyond pins).
+  // Memoized: a fresh bounds object every render would re-fire the fit
+  // effect and yank the camera on each render, fighting the user's pan/zoom.
+  const boundsSource = routeCoords.length >= 2 ? routeCoords : displayPins
+  const boundsKey = boundsSource.length >= 2
+    ? boundsSource.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join(">")
+    : ""
+  const bounds = useMemo(() => {
+    if (boundsSource.length < 2) return null
+    return boundsSource.reduce(
+      (acc, p) => ({
+        minLat: Math.min(acc.minLat, p.lat),
+        maxLat: Math.max(acc.maxLat, p.lat),
+        minLng: Math.min(acc.minLng, p.lng),
+        maxLng: Math.max(acc.maxLng, p.lng),
+      }),
+      { minLat: Infinity, maxLat: -Infinity, minLng: Infinity, maxLng: -Infinity }
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boundsKey])
+
+  const centerLat = bounds ? (bounds.minLat + bounds.maxLat) / 2 : displayPins[0]?.lat ?? 6.5244
+  const centerLng = bounds ? (bounds.minLng + bounds.maxLng) / 2 : displayPins[0]?.lng ?? 3.3792
 
   const fitMapToBounds = useCallback(() => {
     if (!mapRef.current || !bounds) return
@@ -152,10 +195,10 @@ function RouteMap({
       // Don't auto-fit when following user in live nav — keep user centered
       if (followUser && userLocation) return
       fitMapToBounds()
-    } else if (mapLoaded && !bounds && effectivePins.length === 1) {
-      mapRef.current?.flyTo({ center: [effectivePins[0].lng, effectivePins[0].lat], zoom: 14, duration: 400 })
+    } else if (mapLoaded && !bounds && displayPins.length === 1) {
+      mapRef.current?.flyTo({ center: [displayPins[0].lng, displayPins[0].lat], zoom: 14, duration: 400 })
     }
-  }, [mapLoaded, effectivePins, encodedPolyline, bounds, fitMapToBounds, followUser, userLocation])
+  }, [mapLoaded, displayPins, encodedPolyline, bounds, fitMapToBounds, followUser, userLocation])
 
   // Follow user location when in live mode
   useEffect(() => {
@@ -168,9 +211,9 @@ function RouteMap({
     (pin: RoutePin, index: number) => {
       // Numbered dot in stop order (1-based) — matches the step list so the
       // user can visually map dot N to route step N on the polyline.
-      return <MapRoutePin index={index} total={effectivePins.length} label={pin.label} />
+      return <MapRoutePin index={index} total={displayPins.length} label={pin.label} />
     },
-    [effectivePins.length]
+    [displayPins.length]
   )
 
   const movePin = (index: number, lat: number, lng: number) => {
@@ -216,7 +259,7 @@ function RouteMap({
       <style>{isDark && MAP_STACK_CONFIG.darkCanvasFilter !== "none" ? `.dark-map .maplibregl-canvas { filter: ${MAP_STACK_CONFIG.darkCanvasFilter}; }` : ""}</style>
       <Map
         ref={mapRef}
-        mapLib={import('maplibre-gl') as never}
+        mapLib={(mapLibRef.current ?? import('maplibre-gl')) as never}
         initialViewState={{ latitude: centerLat, longitude: centerLng, zoom: 12 }}
         mapStyle={mapStyle}
         style={{ width: '100%', height: '100%' }}
@@ -225,9 +268,10 @@ function RouteMap({
         attributionControl={false}
         reuseMaps
       >
-        {effectivePins.map((pin, i) => {
-          // Map back to original index for draggable edits
-          const origIdx = pins.indexOf(pin)
+        {displayPins.map((pin, i) => {
+          // displayPins[i] ↔ effectivePins[i] 1:1 (snapping only moves the
+          // coords); map back to the original index for draggable edits.
+          const origIdx = pins.indexOf(effectivePins[i] ?? pin)
           return (
             <Marker
               key={`pin-${i}`}
@@ -244,6 +288,7 @@ function RouteMap({
         })}
         {userLocation && (
           <Marker
+            key="user-location"
             latitude={userLocation.lat}
             longitude={userLocation.lng}
             anchor={MAP_PINS_CONFIG.markerAnchor}

@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 safe deletion + Email Studio)
-> - last-verified-against-code: 2026-10-09 (schema/migration, accountDeletion/emailManagement configs, accountDeletionService, account/cron/admin-deletion/admin-email APIs, AccountDeletionPanel, deletions + email admin pages, profile/admin grids verified in code; QA static-only — no node_modules in runner)
-> - last-synced: 2026-10-09 (Sprint 21 safe deletion + Email Studio — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination fare/vehicle + pin accuracy + EmailSecurityPanel type fix)
+> - last-verified-against-code: 2026-10-09 (routeSteps rule E2E, RouteMap snap/CSS/memoization, useUserLocation hook, explore/post-detail wiring, EmailSecurityPanel fix verified in code; tsc clean + 282/282 jest green with node_modules installed)
+> - last-synced: 2026-10-09 (Sprint 23 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -370,6 +370,38 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Admin dashboard — KPI grid `grid-cols-2 lg:grid-cols-4`; AdminShell Deletions/Email nav | [x] |
 | [XL] | Email Studio — visual/HTML builder, enable toggles (audited transitions), custom create/delete (system protected), preview, composer with dynamic recipients (admins/all/role/firstN/search/manual, capped), `sendTemplatedEmail` + `resolveEmailRecipients` | [x] |
 | [S] | Tests — `accountDeletion.test.ts` (9: grace/retention, scheduling, anon identity, overdue, system templates, recipient modes, manual parse, bulk signup-order) | [x] |
+
+---
+
+## Sprint 22 — Email Studio Tightening + Auth-Email Wiring + Profile Tabs + Explore Share/Location + Env Centralization (execute-feature 2026-10-09)
+
+> **Section summary:** Directive close-out, non-breaking additive (no migration — verify/change-email reuse otpStore; no new deps; no removed APIs). QA static+execution in-runner (no node_modules — tsc --noResolve zero attributable errors; node strip-types proved builder round-trips/sanitizer/env; jest 17 new + lint + build deferred to CI/Vercel).
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Env centralization — `lib/config/env.ts` (PROJECT_ENV-wins) + prisma.ts cutover + README table + .env.example docs + barrel exports | [x] |
+| [M] | Sanitization all round — `lib/utils/emailSanitize.ts` (allowlist/escape/extract) + admin templates PUT + all send paths + recipient guard | [x] |
+| [M] | Interpolation fix — missing vars → "" (never literal {{ident}}), HTML-escaped values, shared defaults incl. absolute logoUrl, preview readable samples | [x] |
+| [M] | Shared wrapper + icons — composeEmailDocument/Text, EMAIL_DEFAULT_VARIABLES, EMAIL_ICONS SVG (welcome emojis replaced), 3 new system templates | [x] |
+| [XL] | Studio rebuild — blocks editor + variable catalog/custom + in-place text + raw HTML + lossless switching + per-var composer + select-search recipients | [x] |
+| [L] | Auth-email wiring — welcome on Google signup + unconditional on register; verify-email/change-email/change-password APIs + link/password notice | [x] |
+| [M] | Profile — EmailSecurityPanel (gated) + account tab group + quick-links grid between tab sections | [x] |
+| [M] | Explore — functional share (sheet→clipboard→fallback + toasts) + persistent watched user dot + locating states + sheet-tracking share position | [x] |
+| [S] | README logo → public/logo.svg + Email Studio/env sections; tests `emailStudio.test.ts` (17) | [x] |
+
+## Sprint 23 — Destination Fare/Vehicle Rule + Map-Pin Accuracy + Deploy Type Fix (execute-feature 2026-10-09)
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | `ROUTE_STEPS_CONFIG` — destination hides fare/vehicle + `isDestinationStep`/`showStepFare`/`showStepVehicle`/`normalizeRouteSteps` helpers + barrel exports | [x] |
+| [M] | ShareRouteModal — hide fare/vehicle inputs on destination (hint instead), strip on create+edit submit, totals exclude destination | [x] |
+| [M] | Post views — PostCard (fare badge + vehicle extraction), post detail, NavigationGuide (live + list) hide destination fare/vehicle (legacy rows covered) | [x] |
+| [S] | API backstop — POST + PATCH `normalizeRouteSteps` so stored rows never imply a leg past the destination | [x] |
+| [M] | RouteMap accuracy — `maplibre-gl.css` import, origin/destination snap to traced endpoints, stable mapLib promise, content-keyed memoized pins/coords/bounds (fit effect never fights pan/zoom) | [x] |
+| [M] | User-location everywhere — shared `useUserLocation` hook (config tracking timeouts); explore uses it (Near-me override kept, controlled `onMove`, accuracy halo) + post-detail passive dot (live-nav fix wins) | [x] |
+| [S] | Deploy type fix — EmailSecurityPanel dead `if` (`verified !== false` no-overlap) removed; emailStudio tsc blockers fixed (dotAll flag → `[\s\S]`, readonly NODE_ENV writes) | [x] |
+| [S] | Latent test repairs — emailStudio suite loads in-runner (redis ESM stub mock), `sanitizeStoredBody` `#`-fragment tokens preserve `{{var}}` hrefs; 2 pre-existing prefer-const lint errors fixed | [x] |
+| [S] | Tests — `routeSteps.test.ts` (5) + mapTightening snap/tracking (2); full gate in-runner: tsc clean, 32/32 suites 282/282 tests, 0 lint errors in touched files | [x] |
 
 ---
 

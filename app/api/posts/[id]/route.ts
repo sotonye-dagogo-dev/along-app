@@ -3,6 +3,7 @@ import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { UPDATE_POST_SCHEMA } from "@/app/lib/schemas/post";
 import { MODERATION_CONFIG } from "@/app/lib/config";
+import { normalizeRouteSteps } from "@/app/lib/config/routeSteps";
 import { z } from "zod";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- P2022-tolerant casts: isArchived may be absent on DBs where the moderation migration has not applied yet */
@@ -181,6 +182,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const { ...editable } = parsed.data as Record<string, unknown>;
     for (const field of MODERATION_CONFIG.immutablePostFields) {
       delete editable[field];
+    }
+    // Destination is the final stop — strip any fare/vehicle it carries so
+    // an edit can never attach a leg beyond the destination.
+    if (Array.isArray(editable.routes)) {
+      editable.routes = normalizeRouteSteps(
+        editable.routes as { location: string; description?: string; vehicle?: string; fare?: number }[]
+      );
     }
 
     const updated = await prisma.post.update({
