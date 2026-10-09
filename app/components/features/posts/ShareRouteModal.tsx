@@ -164,11 +164,14 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       return next
     })
     try {
+      // Keyless stack: geocode via the internal server proxy (cached,
+      // policy-compliant). Never call Nominatim browser-direct.
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=en`,
-        { headers: { "User-Agent": "AlongApp/1.0" } }
+        `/api/maps/geocode?q=${encodeURIComponent(query)}&limit=5`,
       )
-      const results: GeoResult[] = await res.json()
+      if (!res.ok) throw new Error(`geocode ${res.status}`)
+      const data = (await res.json()) as { results?: GeoResult[] }
+      const results = Array.isArray(data.results) ? data.results : []
       setSteps((prev) => {
         const next = [...prev]
         next[stepIndex] = { ...next[stepIndex], _geoResults: results, _geoLoading: false }
@@ -579,8 +582,10 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       try {
         await Promise.all(missingGeo.map(async (s) => {
           try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(s.location)}&limit=1&accept-language=en`, { headers: { "User-Agent": "AlongApp/1.0" } })
-            const results: GeoResult[] = await res.json()
+            const res = await fetch(`/api/maps/geocode?q=${encodeURIComponent(s.location)}&limit=1`)
+            if (!res.ok) return
+            const data = (await res.json()) as { results?: GeoResult[] }
+            const results = Array.isArray(data.results) ? data.results : []
             if (results[0]) {
               s.lat = parseFloat(results[0].lat)
               s.lng = parseFloat(results[0].lon)

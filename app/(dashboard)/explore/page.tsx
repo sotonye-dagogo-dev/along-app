@@ -8,6 +8,7 @@ import type { MapRef } from "react-map-gl/maplibre"
 import { Search, LocateFixed, SlidersHorizontal, Link2, X, ChevronLeft } from "lucide-react"
 import { ExplorePinCard, FilterChipsBar } from "@/app/components/features/explore"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { getMapStyleStack, rasterFallbackDepth } from "@/app/lib/config/mapStack"
 
 const MapView = dynamic(() => import("react-map-gl/maplibre"), { ssr: false })
 const Marker = dynamic(() => import("react-map-gl/maplibre").then((m) => ({ default: m.Marker })), { ssr: false })
@@ -67,6 +68,11 @@ export default function ExplorePage() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
   const [sortBy, setSortBy] = useState("validity")
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  // Keyless map stack (Sprint 19): vector primary, raster step-down on error.
+  const [styleIdx, setStyleIdx] = useState(0)
+  useEffect(() => {
+    setStyleIdx(0)
+  }, [isDark])
   const [filters, setFilters] = useState([
     { label: "Bus", active: false },
     { label: "Keke", active: false },
@@ -225,24 +231,9 @@ export default function ExplorePage() {
     navigator.clipboard.writeText(url)
   }
 
-  const mapStyle = {
-    version: 8 as const,
-    sources: {
-      basemap: {
-        type: "raster" as const,
-        tiles: [
-          isDark
-            ? "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            : "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-        ] as string[],
-        tileSize: 256,
-        attribution: "&copy; CARTO",
-      },
-    },
-    layers: [
-      { id: "basemap-layer", type: "raster" as const, source: "basemap", minzoom: 0, maxzoom: 20 },
-    ],
-  }
+  // Shared keyless style stack (OpenFreeMap vector → keyless raster
+  // fallbacks; no apiKey params, no mapbox:// branch).
+  const mapStyle = getMapStyleStack(isDark)[Math.min(styleIdx, rasterFallbackDepth())]
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-bg-elevated">
@@ -258,6 +249,7 @@ export default function ExplorePage() {
           onMoveEnd={(e: { viewState: { latitude: number; longitude: number; zoom: number } }) =>
             handleViewportChange(e.viewState)
           }
+          onError={() => setStyleIdx((i) => (i < rasterFallbackDepth() ? i + 1 : i))}
           reuseMaps
         >
           {userLocation && (

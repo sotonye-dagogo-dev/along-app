@@ -73,13 +73,15 @@ export function getCurrentPosition(timeoutMs = 8000): Promise<GeoPoint & { accur
 /** Reverse geocodes a fix to a human-readable address (null on failure). */
 export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&accept-language=en`,
-      { headers: { "User-Agent": "AlongApp/1.0" } }
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as { display_name?: string };
-    return data.display_name ?? null;
+    // Keyless stack: resolve via the internal server proxy (cached,
+    // policy-compliant). No browser-direct upstream calls.
+    if (typeof window !== "undefined") {
+      const res = await fetch(`/api/maps/reverse?lat=${lat}&lng=${lng}`);
+      if (!res.ok) return null;
+      const data = (await res.json()) as { label?: string | null };
+      return typeof data.label === "string" && data.label.length > 0 ? data.label : null;
+    }
+    return null;
   } catch {
     return null;
   }

@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 15 close-out)
-> - last-verified-against-code: 2026-10-08
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 close-out)
+> - last-verified-against-code: 2026-10-09
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -1360,3 +1360,38 @@ Remaining backlog: live map tracking navigation, carto basemap key wiring, auth 
 **QA gate:** planning-only — no tsc/jest/build applicable; web-verified OpenFreeMap (keyless, MapLibre-native, self-hostable) + OSRM demo policy (1 req/s, no SLA) 2026-10-08.
 **Assumptions:** Carto legacy raster endpoints remain keyless-compatible as fallback; West-Africa OSRM extract is small enough for cheap self-host if needed.
 **Notes / Blockers:** Remaining backlog unchanged (live map tracking navigation now rides on this stack; carto-key wiring superseded by this plan — key no longer needed; auth linking, supercluster, rate-limiter Redis migration still open).
+
+---
+
+## Session 2026-10-09 — execute-feature: Sprint 19 Keyless Map Stack (OpenFreeMap + OSRM + Proxied Geocoding)
+
+**Completed:**
+- Step 1 planning pass: read task-queue (Sprint 19 plan rows), system-architecture, design-system, repair-system, project-context, project-decisions; codebase research (map renderer, tracing service, geocode call sites, rate-limit/cache/registry patterns); wrote plan to `checkpoints/in-progress.md`
+- Step 2 self-check vs project-context scope + project-decisions: PASS — maps/discovery is core product surface, additive proxy routes, MapLibre renderer kept, no schema change (no plan-feature sign-off needed; plan already existed)
+- Implementation (non-breaking, config/metadata-driven, no new deps):
+  - `app/lib/config/mapStack.ts` (new) + barrel export — vector styles, dark mapping, raster chain, provider orders, upstreams, identity, TTLs, attributions, preconnect hosts, stack builders, env gates
+  - `app/lib/services/mapProxyService.ts` (new) — traceRoute/geocodeForward/geocodeReverse, Redis read-through, never-throw, keyed-only-with-env
+  - `app/api/maps/{route,geocode,reverse}/route.ts` (new) — maps-bucket limit, sanitized errors, guest-accessible
+  - Renderer: RouteMap + explore via `getMapStyleStack` (vector primary, onError step-down; `mapbox://` + `cartoParam` branches removed); layout preconnects keyless hosts from config
+  - Clients: RouteStepInput, ShareRouteModal (2 paths), `geo.ts` → internal proxy; zero Nominatim URLs left in client code
+  - `routeTracingService` → thin delegate; `/api/routes/trace` → delegates (contract unchanged)
+  - Hygiene: `RATE_LIMITS.maps`, `CACHE_TTL`/`CACHE_KEYS` maps entries, `API_REGISTRY` maps entries, `.env.example` optional-override notes
+  - Tests: `app/__tests__/config/mapStack.test.ts` (10 suites; redis mocked per established service-test pattern after hitting the @upstash/redis ESM-jest issue)
+- Step 4 QA gate (real runs, node_modules via `npm install`): tsc 0 errors, jest 27 suites / 234 tests pass, build clean (84 pages, `/api/maps/*` present), lint zero-new (stash-compared baseline)
+- Step 5 close-out: task-queue Sprint 19 rows [x], dev-history Sprint 19 entry, lessons-learned (proxy-ownership lesson), project-decisions (keyless-first decision), architecture-history Sprint 19 entry, repo-map / dependency-graph / system-architecture / project-plan / test-results updates, freshness headers; update-ai-system deep sync run per directive (this entry is its trace)
+
+**Files Modified:**
+- New: `app/lib/config/mapStack.ts`, `app/lib/services/mapProxyService.ts`, `app/api/maps/route/route.ts`, `app/api/maps/geocode/route.ts`, `app/api/maps/reverse/route.ts`, `app/__tests__/config/mapStack.test.ts`
+- Edited: `app/lib/config/{index,rateLimits,cache,apiRegistry}.ts`, `app/lib/services/routeTracingService.ts`, `app/api/routes/trace/route.ts`, `app/components/features/posts/{RouteMap,RouteStepInput,ShareRouteModal}.tsx`, `app/(dashboard)/explore/page.tsx`, `app/layout.tsx`, `app/lib/utils/geo.ts`, `.env.example`
+- Docs: `ai-system/{planning/task-queue,planning/project-plan,index/repo-map,index/dependency-graph,system-architecture,testing/test-results,summaries/dev-history,memory/lessons-learned,memory/project-decisions,memory/architecture-history,checkpoints/in-progress}.md` + this entry
+
+**Next Task:**
+Next human decision — remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration. (Carto key wiring closed by this sprint.) If routing volume nears OSRM demo limits, consider self-hosted OSRM or a keyed override per the Sprint 19 decision.
+
+**Assumptions Made:**
+- OSRM demo availability (~1 req/s, no SLA) is acceptable behind Redis caching at current volume; straight-line fallback covers outages
+- `?ref=`/OAuth referral, notification, and other subsystems untouched — Sprint 19 is maps-scoped
+- `hasOrsKey`/`hasMapboxKey` read server env at request time; `NEXT_PUBLIC_*` reads in mapStack are build-inlined and only *called* server-side
+
+**Notes / Blockers:**
+- None — QA gate fully green. update-ai-system.md is terminal per its contract — no chained commands.

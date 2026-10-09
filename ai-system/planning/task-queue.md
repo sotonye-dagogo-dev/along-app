@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 16 early-adopter badge + reset unhook)
-> - last-verified-against-code: 2026-10-08 (Sprint 16 rows verified present in code; QA to static-review level — no node_modules in runner)
-> - last-synced: 2026-10-08 (Sprint 16 early-adopter badge + vercel-build reset removal — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack implemented)
+> - last-verified-against-code: 2026-10-09 (Sprint 19 rows verified present in code; QA full green in-runner: tsc 0, jest 234/234, build 84 pages)
+> - last-synced: 2026-10-09 (Sprint 19 keyless map stack — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -326,20 +326,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 
 ---
 
-## Sprint 19 (Planned) — Keyless Map Stack: OpenFreeMap + OSRM + Proxied Geocoding (plan-feature 2026-10-08)
+## Sprint 19 — Keyless Map Stack: OpenFreeMap + OSRM + Proxied Geocoding (execute-feature 2026-10-09)
 
-> **Section summary:** PLAN ONLY — no code written. Directive: long-term keyless map service/tools/renderers (pins + polylines, scalable, no API-key failures). Recommendation: keep MapLibre GL renderer; tiles → OpenFreeMap keyless vector styles (verified 2026-10-08: free, no limits, no registration/keys, MapLibre-native `tiles.openfreemap.org/styles/{liberty,bright,positron}`, self-host path); routing → OSRM demo via server proxy + Redis cache + straight-line fallback (demo policy 1 req/s, no SLA — never call browser-direct); geocoding → `/api/maps/*` proxy (Nominatim server-side + Photon fallback, fixes browser-direct policy violation). Mapbox/ORS/MapTiler/Stadia/Geoapify demoted to optional keyed overrides; Carto `?apiKey=` dependency removed.
+> **Section summary:** PLAN + IMPLEMENTATION complete. Directive executed end-to-end, non-breaking (no migration, no removed APIs, no new deps). QA gate green with real runs: tsc 0 errors, jest 234/234 (27 suites, incl. 10 new mapStack suites), lint zero-new-errors (pre-existing `any` errors + RouteMap exhaustive-deps warning unchanged), build clean (84 static pages, `/api/maps/{route,geocode,reverse}` + `/api/routes/trace` delegate present). Keyless proof: pins render + polyline traces with ALL map keys unset (straight-line/OSRM path; keyed ORS/Mapbox skipped without env).
 
 | Size | Task | Status |
 |------|------|--------|
-| [M] | MAP_STACK_CONFIG — `app/lib/config/mapStack.ts`: tile style URLs (primary OpenFreeMap liberty/bright/positron + dark mapping), raster fallback chain (Carto keyless → OSM → Esri), routing provider order (osrm → ors → mapbox → straight), geocode order (nominatim → photon), TTLs, attribution strings, dark-mode mapping; barrel export | [ ] |
-| [M] | Server proxy — `/api/maps/route`, `/api/maps/geocode`, `/api/maps/reverse` + `mapProxyService` (Redis read-through on traceSignature/query, per-IP rate limit, server User-Agent/Referer, keyed providers only when env present, straight-line final fallback, sanitized errors) | [ ] |
-| [M] | Renderer cutover — shared map-style builder; RouteMap.tsx + explore/page.tsx consume it (drop `mapbox://` branch + `cartoParam` apiKey logic, vector primary + raster fallback + onError provider step-down); remove `api.mapbox.com` preconnect hints if Mapbox fully optional | [ ] |
-| [S] | Geocode client cutover — RouteStepInput, ShareRouteModal, `geo.ts reverseGeocode` call internal `/api/maps/*` (keep debounce/abort); Nominatim URLs removed from client | [ ] |
-| [M] | routeTracingService chain reorder — OSRM-first via internal proxy shape (GeoJSON → polyline5), keep ORS/Mapbox as env-gated overrides, straight-line fallback preserved; `/api/routes/trace` delegates to mapProxyService | [ ] |
-| [S] | Env/config hygiene — `.env.example` marks CARTO/MAPBOX/MAPTILER/ORS keys optional-override; system-architecture config table updated; rateLimits `maps` bucket entry | [ ] |
-| [M] | Tests — mapStack config (fallback order, dark mapping, attribution), proxy cache/fallback unit, trace reorder (keyless-first, no-key no-call) | [ ] |
-| [S] | QA gate — tsc + jest + build + lint; verify pins render + polyline draws with ALL map keys unset (the keyless proof) | [ ] |
+| [M] | MAP_STACK_CONFIG — `app/lib/config/mapStack.ts`: tile style URLs (primary OpenFreeMap liberty/bright/positron + dark mapping), raster fallback chain (Carto keyless → OSM → Esri), routing provider order (osrm → ors → mapbox → straight), geocode order (nominatim → photon), TTLs, attribution strings, dark-mode mapping; barrel export | [x] |
+| [M] | Server proxy — `/api/maps/route`, `/api/maps/geocode`, `/api/maps/reverse` + `mapProxyService` (Redis read-through on traceSignature/query, per-IP rate limit, server User-Agent/Referer, keyed providers only when env present, straight-line final fallback, sanitized errors) | [x] |
+| [M] | Renderer cutover — shared map-style builder; RouteMap.tsx + explore/page.tsx consume it (drop `mapbox://` branch + `cartoParam` apiKey logic, vector primary + raster fallback + onError provider step-down); remove `api.mapbox.com` preconnect hints if Mapbox fully optional | [x] |
+| [S] | Geocode client cutover — RouteStepInput, ShareRouteModal, `geo.ts reverseGeocode` call internal `/api/maps/*` (keep debounce/abort); Nominatim URLs removed from client | [x] |
+| [M] | routeTracingService chain reorder — OSRM-first via internal proxy shape (GeoJSON → polyline5), keep ORS/Mapbox as env-gated overrides, straight-line fallback preserved; `/api/routes/trace` delegates to mapProxyService | [x] |
+| [S] | Env/config hygiene — `.env.example` marks CARTO/MAPBOX/MAPTILER/ORS keys optional-override; system-architecture config table updated; rateLimits `maps` bucket entry | [x] |
+| [M] | Tests — mapStack config (fallback order, dark mapping, attribution), proxy cache/fallback unit, trace reorder (keyless-first, no-key no-call) | [x] |
+| [S] | QA gate — tsc + jest + build + lint; verify pins render + polyline draws with ALL map keys unset (the keyless proof) | [x] |
 
 ---
 
