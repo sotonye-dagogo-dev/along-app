@@ -241,7 +241,7 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - `app/lib/streams/feedStream.ts` now implements RxJS reactive feed with 30s polling
 - Image upload is now Cloudinary-backed via `app/api/upload` (multipart, 5MB/file, 10 files max) — requires CLOUDINARY_* env vars; `next.config.mjs` now allowlists only known image hosts (was wildcard `**`)
 - QStash workers now use cloned request body to avoid double-consume `request.text()` / `request.json()` race (fixed 500 on every worker invocation)
-- Redis layer is now timeout-hardened: `app/lib/db/redis.ts` lazy singleton + `withTimeout(1200ms)`, `otpStore.ts` 1500ms fallback to in-memory; forgot-password email is non-blocking via `waitUntil`
+- Redis layer is now timeout-hardened: `app/lib/db/redis.ts` lazy singleton + `withTimeout(1200ms)`, `otpStore.ts` 800ms fallback to in-memory (cut from 1500ms 2026-10-09 verify-email 504 fix); auth code-send routes (verify-email, otp/resend, register) issue Redis writes in parallel and declare explicit `maxDuration` (30s sends / 15s verifies) instead of the Vercel 10s default; forgot-password email is non-blocking via `waitUntil`
 
 ---
 

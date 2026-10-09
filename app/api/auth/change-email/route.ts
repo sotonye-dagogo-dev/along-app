@@ -8,6 +8,9 @@ import { getOtp, setOtp, delOtp } from "@/app/lib/services/otpStore";
 import { getAppUrl } from "@/app/lib/config/env";
 import { z } from "zod";
 
+export const maxDuration = 30;
+export const dynamic = "force-dynamic";
+
 /**
  * Change-email flow (authed only):
  * POST — { newEmail } → validates uniqueness, stores OTP under

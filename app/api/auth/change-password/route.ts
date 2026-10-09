@@ -6,6 +6,9 @@ import { hashPassword, verifyPassword } from "@/app/lib/utils/security";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 import { z } from "zod";
 
+export const maxDuration = 15;
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/auth/change-password — authed password change.
  * Availability: only when the account HAS a password (hasPassword).
