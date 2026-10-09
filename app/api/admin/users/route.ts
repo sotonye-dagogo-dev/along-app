@@ -198,7 +198,22 @@ export async function PATCH(request: NextRequest) {
           }
           if (target.verified) continue; // already verified — nothing to send
           const otp = Math.floor(100000 + Math.random() * 900000).toString();
-          await setOtp(`otp:${target.email.trim().toLowerCase()}`, await hashPassword(otp), AUTH_VERIFICATION_CONFIG.otpTtlSeconds);
+          const normalizedTargetEmail = target.email.trim().toLowerCase();
+          const otpHash = await hashPassword(otp);
+          await setOtp(`otp:${normalizedTargetEmail}`, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds);
+          // Durable Postgres mirror (see verify-email): without it the code
+          // can read as "expired" on another serverless instance.
+          try {
+            const { storeEmailOtpDb, EMAIL_OTP_PURPOSES } = await import(
+              "@/app/lib/services/emailOtpStore"
+            );
+            await storeEmailOtpDb(
+              normalizedTargetEmail,
+              otpHash,
+              EMAIL_OTP_PURPOSES.verify,
+              AUTH_VERIFICATION_CONFIG.otpTtlSeconds
+            );
+          } catch { /* Redis/memory path still covers */ }
           try {
             const { sendVerifyEmail } = await import("@/app/lib/services/emailService");
             const r = await sendVerifyEmail(

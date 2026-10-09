@@ -476,6 +476,27 @@ model PasswordResetToken {
   @@index([expiresAt])
 }
 
+// EmailOtpToken — durable DB store for email-verification OTPs (register /
+// resend / verify-email trigger) and change-email confirmations.
+// Same class as PasswordResetToken: Redis/memory-only `otp:{email}` is
+// non-durable across serverless instances (code set on instance A invisible
+// on instance B => immediate "code expired or was replaced" seconds after
+// issuance). Single-active per (email, purpose[, userId]): each issuance
+// replaces prior rows, so the "newest email" copy stays honest.
+model EmailOtpToken {
+  id        String   @id @default(cuid())
+  email     String
+  purpose   String
+  userId    String?
+  otpHash   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email, purpose])
+  @@index([userId, purpose])
+  @@index([expiresAt])
+}
+
 // PushSubscription — stores Web Push API subscriptions per user/device
 model PushSubscription {
   id        String   @id @default(cuid())

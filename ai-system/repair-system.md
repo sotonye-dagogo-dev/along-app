@@ -629,6 +629,42 @@ Three interlocking issues (same class as the 2026-09-15 forgot-password 504, reg
 
 ---
 
+### Verify-Email 404 + Fresh OTP "Expired or Replaced" — Missing Page + Volatile OTP Store
+
+**Symptom:**
+(1) The "Verify email" button in verification mails links to `/verify-email?email=…`, which renders "Page not found" — no such route exists. (2) Entering a just-received 6-digit code returns "That code expired or was replaced by a newer one. Request a new code and use the newest email." even when no newer code was requested.
+
+**Root Cause:**
+(1) Every verify-email link builder (`verify-email` POST, `otp/resend` fallback, admin resend-verification, `resolveVarsForRecipient`, email template) points at `/verify-email`, but no `app/**/verify-email/page.tsx` was ever created, and middleware had no guest entry. (2) Same class as "Reset Link Expired Within Seconds" (fixed via `PasswordResetToken`): OTP hashes live ONLY in Redis with a per-instance memory fallback (`otp:{email}` single key). On serverless, a code issued on instance A is invisible on instance B whenever Upstash is slow/misconfigured — `getOtp` misses and the shared copy blames expiry/replacement. `change-email` confirm (`change-email:{userId}`) had the identical hole, plus no resend cooldown, no attempt cap, and no rate limit on PUT.
+
+**Fix Applied:**
+- NEW `app/(public)/verify-email/page.tsx`: guest-accessible code-entry page reading `?email=` (prefill) + `?otp/?code/?token` (box prefill); verifies via PUT (no login, works on any device), resends via POST with the shared server-driven cooldown hook; verified/already-verified success states link to `/login`. Middleware `guestRoutes` += `/verify-email`.
+- NEW durable `EmailOtpToken` model + migration `20261009000002_email_otp_token` + `app/lib/services/emailOtpStore.ts` (store/verify/consume, single-active per email+purpose, bcrypt-bound candidates, P2021/P2022 missing-table swallow → legacy path when the migration is rolling out).
+- Issuance writes the DB mirror best-effort in parallel: register, `otp/resend`, verify-email POST, change-email POST, admin resend-verification.
+- Verification consults the DB whenever Redis holds no hash: `otp` POST + verify-email PUT (consume on success/revoke), change-email PUT (userId + `newEmail::otp` binding, consume on success/revoke).
+- change-email audit hardening: per-user 60s resend cooldown (429 + `retryAfter`, client-adopted), 5-attempt cap with revoke, PUT rate-limited on the auth bucket, honest `sent/reason/expiresIn/cooldown` payloads, OTP whitespace trim on confirm.
+- Preview/admin Studio samples + `emailManagement` verifyLink example corrected to the real `/verify-email?email=` form (were `?token=sample` / `/verify?token=…`, routes that never existed).
+- Single-active semantics preserved everywhere, so the "use the newest email" copy stays honest; no previously-valid code becomes invalid (strictly more lenient).
+
+**Prevention:**
+- Every emailed link must resolve to a real route: grep link builders against `app/**/page.tsx` before shipping a template.
+- Security tokens must be durable, not cache-resident (extends the existing `PasswordResetToken` precedent to OTPs).
+- Any future code-send flow reusing `otp:{email}` must also write the `EmailOtpToken` mirror or document why not.
+
+**Files Affected:**
+- app/(public)/verify-email/page.tsx (new)
+- middleware.ts
+- prisma/schema.prisma (`EmailOtpToken`), prisma/migrations/20261009000002_email_otp_token/
+- app/lib/services/emailOtpStore.ts (new)
+- app/api/auth/register/route.ts, app/api/auth/otp/route.ts, app/api/auth/otp/resend/route.ts, app/api/auth/verify-email/route.ts, app/api/auth/change-email/route.ts, app/api/admin/users/route.ts
+- app/api/email/preview/route.ts, app/admin/email/page.tsx, app/lib/config/emailManagement.ts
+- app/__tests__/services/emailOtpStore.test.ts (new), app/__tests__/config/verifyEmailFlow.test.ts (new)
+
+**Date:** 2026-10-09
+**Status:** Active
+
+---
+
 ## Resolved Errors Archive
 
 > **Section summary:** Errors that have been fully resolved and are unlikely to recur. Kept for reference.

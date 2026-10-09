@@ -34,6 +34,26 @@
 
 ## Decisions
 
+## Email OTP Durability via Postgres Mirror, Single-Active Preserved (fix-build 2026-10-09)
+
+**Decision:** Email-verification OTPs (register/resend/verify-email trigger) and change-email confirmations are mirrored into a durable `EmailOtpToken` Postgres table (single-active per email+purpose[+userId], bcrypt-bound candidates); verification falls back to the DB only when Redis/memory holds no hash. Resend/invalidation semantics stay single-active — older codes are replaced, never multi-valid.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode — fix-build verify-email 404 + fresh-OTP)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Fresh codes read as "expired or replaced" because `otp:{email}` is Redis with a per-instance memory fallback — non-durable across serverless instances (same class as reset links, fixed via `PasswordResetToken`). A DB mirror consulted only on Redis miss fixes the false-expired without changing any success path; single-active keeps the "use the newest email" copy honest.
+
+**Alternatives Considered:**
+- **Multi-valid concurrent codes (keep last N)**: Rejected — contradicts the documented/shipped copy (`invalidatesPrevious`, locale `otp.newestOnly`) and weakens brute-force bounding; the observed false-expired came from durability, not from invalidation.
+- **Replace Redis with DB entirely**: Rejected — Redis stays the fast primary; DB is a best-effort fallback that also swallows pending-migration (P2021/P2022) so deploys never fail auth mid-rollout.
+- **SHA-256 OTP hashes like reset tokens**: Rejected — 6-digit numeric OTPs are brute-forceable unsalted; bcrypt (already the OTP hash) is kept.
+
+**Implications:**
+- Any future code-send flow reusing `otp:{email}` must also write the `EmailOtpToken` mirror or document why not (same rule already logged for the cooldown key).
+- Every emailed link must resolve to a real route — grep link builders against `app/**/page.tsx` before shipping a template.
+
 ## Destination Step Carries No Fare/Vehicle (Sprint 23)
 
 **Decision:** The final route step IS the destination: fare/vehicle inputs are hidden there in the composer (hint shown), hidden in PostCard/post-detail/NavigationGuide, excluded from totals, and stripped from payloads client-side (composer) and server-side (POST + PATCH `normalizeRouteSteps` backstop). Readers hide the last step's fare/vehicle even when legacy rows carry them.

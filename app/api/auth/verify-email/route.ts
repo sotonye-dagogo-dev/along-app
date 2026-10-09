@@ -91,6 +91,22 @@ export async function POST(request: NextRequest) {
     await Promise.all([
       setOtp(`otp:${email}`, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds),
       setSendCooldown(cooldownKey, AUTH_VERIFICATION_CONFIG.resendCooldownSeconds),
+      // Durable Postgres mirror (see register/otp-resend): without it a
+      // just-issued code can read as "expired" on another serverless
+      // instance. Best-effort — never fails the trigger.
+      (async () => {
+        try {
+          const { storeEmailOtpDb, EMAIL_OTP_PURPOSES } = await import(
+            "@/app/lib/services/emailOtpStore"
+          );
+          await storeEmailOtpDb(
+            email,
+            otpHash,
+            EMAIL_OTP_PURPOSES.verify,
+            AUTH_VERIFICATION_CONFIG.otpTtlSeconds
+          );
+        } catch { /* fallback path covers */ }
+      })(),
     ]);
     const appUrl = getAppUrl();
     let delivered = false;
@@ -146,14 +162,27 @@ export async function PUT(request: NextRequest) {
     if (!parsed.success) return NextResponse.json({ error: "Email and code are required." }, { status: 400 });
     const { email, otp } = parsed.data;
     const storedHash = await getOtp(`otp:${email}`);
+    // Durable fallback: Redis/memory is per-instance — when it has no hash
+    // (instance hop, slow Upstash) the Postgres mirror decides, so a fresh
+    // code never reads as "expired". A present-but-mismatched hash is still
+    // a wrong code (attempt counting below, unchanged).
+    let validViaDb = false;
     if (!storedHash) {
+      try {
+        const { verifyEmailOtpDb, EMAIL_OTP_PURPOSES } = await import(
+          "@/app/lib/services/emailOtpStore"
+        );
+        validViaDb = await verifyEmailOtpDb(email, otp, EMAIL_OTP_PURPOSES.verify);
+      } catch { validViaDb = false; }
+    }
+    if (!storedHash && !validViaDb) {
       await clearVerifyAttempts(attemptsKeyFor(email));
       return NextResponse.json(
         { error: AUTH_VERIFICATION_CONFIG.copy.expired, expired: true },
         { status: 400 }
       );
     }
-    const ok = await verifyPassword(otp, storedHash);
+    const ok = storedHash ? await verifyPassword(otp, storedHash) : validViaDb;
     if (!ok) {
       const attempts = await recordVerifyAttempt(
         attemptsKeyFor(email),
@@ -163,6 +192,12 @@ export async function PUT(request: NextRequest) {
       if (attempts >= AUTH_VERIFICATION_CONFIG.maxVerifyAttempts) {
         await delOtp(`otp:${email}`);
         await clearVerifyAttempts(attemptsKeyFor(email));
+        try {
+          const { consumeEmailOtpsDb, EMAIL_OTP_PURPOSES } = await import(
+            "@/app/lib/services/emailOtpStore"
+          );
+          await consumeEmailOtpsDb(email, EMAIL_OTP_PURPOSES.verify);
+        } catch { /* non-critical */ }
         return NextResponse.json(
           { error: AUTH_VERIFICATION_CONFIG.copy.attemptsExhausted, expired: true },
           { status: 400 }
@@ -178,6 +213,12 @@ export async function PUT(request: NextRequest) {
     }
     await delOtp(`otp:${email}`);
     await clearVerifyAttempts(attemptsKeyFor(email));
+    try {
+      const { consumeEmailOtpsDb, EMAIL_OTP_PURPOSES } = await import(
+        "@/app/lib/services/emailOtpStore"
+      );
+      await consumeEmailOtpsDb(email, EMAIL_OTP_PURPOSES.verify);
+    } catch { /* non-critical */ }
     const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
     if (!user) return NextResponse.json({ error: "No account found for this email." }, { status: 404 });
     await prisma.user.update({ where: { id: user.id }, data: { verified: true } });

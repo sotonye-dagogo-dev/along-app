@@ -65,9 +65,21 @@ export async function POST(request: NextRequest) {
     const otpKey = `otp:${email}`;
     // Cooldown starts at issuance (not at delivery) so rapid taps can't stack
     // overlapping codes — and each resend invalidates the previous code.
+    // The Postgres row mirrors the Redis write: without it a just-issued
+    // code can read as "expired" on a different serverless instance.
+    // Best-effort — a pending migration never fails the resend.
+    const { storeEmailOtpDb, EMAIL_OTP_PURPOSES } = await import(
+      "@/app/lib/services/emailOtpStore"
+    );
     await Promise.all([
       setOtp(otpKey, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds),
       setSendCooldown(cooldownKey, AUTH_VERIFICATION_CONFIG.resendCooldownSeconds),
+      storeEmailOtpDb(
+        email,
+        otpHash,
+        EMAIL_OTP_PURPOSES.verify,
+        AUTH_VERIFICATION_CONFIG.otpTtlSeconds
+      ).catch(() => {}),
     ]);
 
     // Non-blocking send — tightly observed, never a false-positive:
