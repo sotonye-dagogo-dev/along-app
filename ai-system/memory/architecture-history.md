@@ -1,7 +1,7 @@
 # Architecture History
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 14 close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale — only the current architecture (in system-architecture.md) needs re-verification
 
@@ -145,3 +145,18 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 - New notification tables/endpoints: rejected — additive enum values + central service cover all six triggers.
 
 **Implications:** Nature changes require delete + recreate; `?archived=true` is owner-only by viewer check; pre-migration DISLIKE/NEW_ROUTE writes fail safe (null, request succeeds); production needs `prisma migrate deploy` for the enum values.
+
+---
+
+## Sprint 19 — Keyless Map Stack (2026-10-09)
+
+**Change:** Map pipeline no longer depends on any API key. `MAP_STACK_CONFIG` owns tile styles (OpenFreeMap vector primary, keyless raster step-down), provider orders (OSRM → ORS → Mapbox → straight; Nominatim → Photon), TTLs, attributions, and style-stack builders; `mapProxyService` owns all upstream calls (Redis read-through, server identity headers, env-gated keyed overrides, never-throw with straight-line guarantee); three `/api/maps/*` proxy routes (maps-bucket rate limit, sanitized errors); RouteMap + explore render from the shared style stack with onError step-down; all clients geocode via the proxy; `routeTracingService` delegates; `/api/routes/trace` delegates (contract unchanged). 38 config files, 24 service modules, 27 test suites (234 tests). QA gate green in-runner: tsc 0, jest 234/234, next build clean (84 pages), lint zero-new.
+
+**Reason:** Recurring key failures (Carto `?apiKey=` demands, Mapbox/ORS dependence) + Nominatim browser-direct policy violation + directive for a long-term keyless, scalable stack.
+
+**Alternatives Considered:**
+- Keyed primaries (Stadia/Geoapify/MapTiler): rejected — swaps one key dependency for another.
+- Self-hosted tiles/routing now: rejected — unjustified ops cost at current volume; OpenFreeMap documents a self-host path.
+- Removing `/api/routes/trace`: rejected — non-breaking delegate keeps existing clients working.
+
+**Implications:** Clients must use config builders + `/api/maps/*`; no upstream URLs or `NEXT_PUBLIC_*` map keys in client code. OSRM demo (~1 req/s, no SLA) is cache-absorbed; self-host or keyed override is the next step if volume outgrows it. All keyed map env vars are optional overrides.

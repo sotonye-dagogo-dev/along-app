@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-08 (admin dashboard + referral hardening + error-report actualisation)
-> - last-verified-against-code: 2026-10-08 (37 config files incl. errorReporting.ts, 23 services incl. errorReportService, admin stats recentUsers, isAdminRole gate, profile admin Quick Link, 2 new/updated test suites)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack)
+> - last-verified-against-code: 2026-10-09 (38 config files incl. mapStack.ts, 24 services incl. mapProxyService, /api/maps/{route,geocode,reverse}, mapStack.test.ts)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -64,6 +64,8 @@ along-app/
 │   ├── api/                 → REST API routes
 │   │   ├── upload/          → Image upload (Cloudinary multipart)
 │   │   ├── search/          → GET unified search (posts + users + tags; q/type/region/postType/cursor, search-bucket rate limit, Redis cache)
+│   │   ├── maps/            → Keyless map proxy (Sprint 19): route/ (POST OSRM-first trace) + geocode/ (GET Nominatim→Photon) + reverse/ (GET label), maps-bucket rate limit, Redis read-through, sanitized errors
+│   │   ├── routes/trace/    → POST route trace (delegates to mapProxyService; contract unchanged)
 │   │   ├── suggestions/     → GET ordered suggestions (route requests → routes → accounts, 1800s cache)
 │   │   ├── bookmarks/       → GET/POST bookmark list + toggle (per-tab profile filtering)
 │   │   ├── push/            → Push notification API
@@ -90,10 +92,10 @@ along-app/
 │   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
 │   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel/ShareRouteModal edit mode, moderation [PostMenu, ReportDialog], profile [RewardsPanel, EarlyAdopterBadge], explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
-│   │   ├── services/        → 23 service modules (earlyAdopter rank/status/list, errorReport sanitized bug filing, feed, search, routeDrafts, postModeration, mention, referral, notification, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
+│   │   ├── services/        → 24 service modules (mapProxy keyless trace/geocode/reverse, earlyAdopter rank/status/list, errorReport sanitized bug filing, feed, search, routeDrafts, postModeration, mention, referral, notification, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
 │   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth
-│   │   ├── config/          → 37 config files incl. index.ts (earlyAdopter badge key/defaults/validation/labels, reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation incl. immutablePostFields, notifications incl. DISLIKE/NEW_ROUTE, inviteConfig points-cap policy, navigation incl. isAdminRole, errorReporting category/endpoint/caps/copy, footer layout)
+│   │   ├── config/          → 38 config files incl. index.ts (mapStack keyless tiles/routing/geocode/TTLs/attributions [Sprint 19], earlyAdopter badge key/defaults/validation/labels, reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation incl. immutablePostFields, notifications incl. DISLIKE/NEW_ROUTE, inviteConfig points-cap policy, navigation incl. isAdminRole, errorReporting category/endpoint/caps/copy, footer layout)
 │   │   ├── db/              → Database layer (prisma.ts, redis.ts)
 │   │   ├── hooks/           → Server-compatible custom React hooks
 │   │   ├── schemas/         → Zod validation schemas

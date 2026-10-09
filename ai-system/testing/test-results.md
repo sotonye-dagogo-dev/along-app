@@ -1,25 +1,25 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08
-> - last-verified-against-code: 2026-10-08
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack QA gate)
+> - last-verified-against-code: 2026-10-09
 > - staleness-policy: overwritten on every test run — always current
 
-> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 139 tests currently exist across 13 suites (verified by a real `npx jest` run in this session 2026-10-08: 13 passed, 139 passed — search feature session).
+> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 234 tests currently exist across 27 suites (verified by a real `npx jest` run in this session 2026-10-09: 27 passed, 234 passed — Sprint 19 keyless map stack session).
 
 ---
 
 ## Last Run (Build)
 
-**Date:** 2026-10-08
-**Run by:** AI agent (opencode — execute-feature doc-staleness remediation + QA gate)
+**Date:** 2026-10-09
+**Run by:** AI agent (opencode — execute-feature Sprint 19 keyless map stack)
 
 **Build Result:**
 - `npx tsc --noEmit` — ✓ zero errors (real run this session, after `npm install`)
-- `npx jest` — 139/139 passing (13 suites, real run this session: +17 new search tests)
-- `npm run build` — ✓ Compiled successfully (real run this session, exit 0; `/search` route present)
-- `npx next lint` — 7 pre-existing `no-explicit-any` errors in leaderboard/posts/feed/google-callback routes (verified identical on stashed baseline via `git stash`; zero introduced by this session — 2 initial `no-require-imports` in the new search test were fixed before close)
-- Zero test failures; non-breaking lint fix applied to new test file only
+- `npx jest` — 234/234 passing (27 suites, real run this session: +10 new mapStack suites)
+- `npm run build` — ✓ Compiled successfully, 84 static pages (real run this session; `/api/maps/{route,geocode,reverse}` + `/api/routes/trace` present)
+- `npx next lint` — zero new issues (pre-existing `no-explicit-any` errors + RouteMap exhaustive-deps warning verified identical on stashed baseline via `git stash`)
+- Zero test failures; keyless proof: straight-line/OSRM path resolves with all map keys unset
 
 ---
 
@@ -40,6 +40,7 @@
 | posts API | 11 | POST persistence (type/description/quotedPostId), fan-out, validation (`posts.test.ts`, Sprint 7, Prisma mocked) |
 | search API | 9 | validation, type/region/postType filters, pagination, 503, 429 (`search.test.ts`, search session, Prisma mocked) |
 | searchService | 8 | normalization, short-query guard, cache read-through, tag aggregation, cursor, P2022 retry (`searchService.test.ts`, search session, Prisma mocked) |
+| mapStack config + proxy | 10 | keyless vector/raster URLs, fallback order, dark mapping, attribution, preconnect hosts, style-stack shape, cache-key determinism, straight-line proof, offline degradation, Nominatim-shape normalization (`mapStack.test.ts`, Sprint 19, redis mocked) |
 
 ---
 
@@ -55,6 +56,7 @@
 
 | Date | Passed | Failed | Notes |
 |------|--------|--------|-------|
+| 2026-10-09 | 234 | 0 | Execute-feature Sprint 19 keyless map stack QA gate: real jest/tsc/build/lint runs (27 suites, +1 mapStack suite) |
 | 2026-10-08 | — | — | Fix-build Sentry hardening: no node_modules in runner, full jest/tsc/build not runnable; verified via `node --check` (next.config.mjs OK), JSON parse (package.json OK), grep (no `--no-engine` remains, all Sentry keys present) — Vercel build to confirm |
 | 2026-10-08 | — | — | Fix-build `bugId` duplicate: no node_modules in runner, full jest/tsc/build not runnable; verified via grep (single `targetBugId` declaration, no redeclaration) — Vercel build to confirm |
 | 2026-10-08 | 139 | 0 | Execute-feature search E2E QA gate: real jest/tsc/build/lint runs (13 suites, +2 search suites) |
