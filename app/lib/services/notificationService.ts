@@ -63,6 +63,20 @@ export async function createNotification(input: CreateNotificationInput): Promis
       select: { id: true },
     });
     await invalidateNotificationCaches(recipientIds);
+    // Push mirror: every in-app notification also fans out to Web Push
+    // (same copy family as emailed notifications). Fire-and-forget, never
+    // throws, never delays the response — runs after the write commits.
+    void import("@/app/lib/services/pushSender")
+      .then(({ fanOutPush }) =>
+        fanOutPush({
+          type: input.type,
+          message: input.message,
+          postId: input.postId,
+          commentId: input.commentId,
+          recipientIds,
+        }),
+      )
+      .catch(() => {});
     return notification.id;
   } catch (error) {
     console.error("[notificationService] createNotification failed:", error);

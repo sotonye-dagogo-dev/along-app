@@ -12,6 +12,8 @@ import { ThemeProvider } from "@/app/providers/ThemeProvider";
 import { I18nProvider } from "@/app/providers/I18nProvider";
 import ThemeToggle from "@/app/components/ui/ThemeToggle";
 import BackToTop from "@/app/components/ui/BackToTop";
+import { OfflineBanner } from "@/app/components/pwa/OfflineBanner";
+import { ServiceWorkerRegistrar } from "@/app/components/pwa/ServiceWorkerRegistrar";
 import { MAP_STACK_CONFIG } from "@/app/lib/config/mapStack";
 
 const inter = Inter({
@@ -136,6 +138,8 @@ export default function RootLayout({
                         {children}
                         <ThemeToggle />
                         <BackToTop />
+                        <OfflineBanner />
+                        <ServiceWorkerRegistrar />
                       </CookieConsentProvider>
                     </GlobalToastProvider>
                   </GlobalModalProvider>

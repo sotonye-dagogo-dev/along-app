@@ -72,6 +72,48 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
     ],
   },
   {
+    id: "offline-pwa",
+    category: "Offline & App",
+    items: [
+      {
+        id: "how-offline-works",
+        question: "Does Along work offline?",
+        answer:
+          "Yes. Along is an installable app (PWA) that keeps working when your connection drops — including airplane mode. Recently viewed pages, posts, routes, and map tiles are served from an on-device cache. Cached data is labelled while offline; refresh when back online to stay updated.",
+      },
+      {
+        id: "what-works-offline",
+        question: "What can I do while offline?",
+        answer:
+          "You can revisit cached pages (Home, Explore, Search, FAQ, About, Blog), read previously loaded routes and posts, and browse your cached content. Anything that needs the network — signing in, posting, uploading photos, live search — will tell you you're offline and ask you to try again when reconnected. Non-critical actions you take offline are queued and sync automatically.",
+      },
+      {
+        id: "offline-not-cached-page",
+        question: "I opened a page offline and saw the offline screen. What now?",
+        answer:
+          "That page was never cached on this device. The offline screen lists cached pages you can visit right now (Home feed, Explore, Search, FAQ, About, Blog). Reconnect and open the page once — it will then be cached for next time.",
+      },
+      {
+        id: "install-app",
+        question: "How do I install Along on my phone or computer?",
+        answer:
+          "Open Along in Chrome, Edge, or Safari and use 'Add to Home Screen' (mobile) or the install icon in the address bar (desktop). The installed app opens full-screen, works offline with cached content, and can receive push notifications if you enable them.",
+      },
+      {
+        id: "push-notifications",
+        question: "How do push notifications work?",
+        answer:
+          "Every in-app notification — likes, comments, mentions, follows, route responses, rewards, badges, and moderation updates — is also sent as a push notification when you enable it, mirroring what you'd get by email. You can turn push on or off anytime; enabling needs a connection and your browser's permission. Tapping a notification opens the relevant post or page.",
+      },
+      {
+        id: "staying-signed-in-offline",
+        question: "Will I be signed out if my network drops?",
+        answer:
+          "No. Going offline never signs you out — your session is preserved and restored when connectivity returns. You only need to sign in again if your session genuinely expired.",
+      },
+    ],
+  },
+  {
     id: "trust",
     category: "Trust & Rewards",
     items: [

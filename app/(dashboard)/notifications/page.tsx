@@ -8,6 +8,8 @@ import { AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { PushManager } from "@/app/components/pwa/PushManager"
+import { CachedDataNotice } from "@/app/components/pwa/OfflineBanner"
 
 interface NotificationItem {
   id: string
@@ -159,6 +161,11 @@ export default function NotificationsPage() {
         >
           Mark all as read
         </button>
+      </div>
+
+      <div className="pt-3">
+        <PushManager />
+        <CachedDataNotice compact />
       </div>
 
       <div className="flex border-b border-border">

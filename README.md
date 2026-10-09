@@ -277,6 +277,8 @@ Along is a Progressive Web App that can be installed on:
 - âœ… macOS (Chrome, Safari, Edge)
 - âœ… Linux (Chrome, Firefox, Edge)
 
+Offline-first: recently viewed pages (Home, Explore, Search, FAQ, About, Blog), posts, and map tiles are cached on-device and keep working in airplane mode or on poor connections. Uncached navigations fall back to an offline page listing cached destinations. Cached data is labelled while offline - refresh when back online to stay updated. Sessions survive connectivity drops (no random logouts), and every in-app notification is mirrored to push (plus email where wired).
+
 ## ðŸŽ¨ Design System
 
 - **Primary Color**: var(--color-primary) (Along Green)
