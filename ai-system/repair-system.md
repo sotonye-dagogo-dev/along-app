@@ -586,6 +586,49 @@ Never render `unknown` behind a truthiness check. Always narrow with a `value is
 
 ---
 
+### Verify-Email 504 FUNCTION_INVOCATION_TIMEOUT From Profile — Sequential Redis Timeouts on Default 10s Budget
+
+**Symptom:**
+`POST /api/auth/verify-email` (triggered from profile EmailSecurityPanel resend) returns `504 FUNCTION_INVOCATION_TIMEOUT`. Logs: `[otpStore] redis get cooldown failed, checking memory Redis timeout after 2500ms`, `[otpStore] redis set failed, falling back to memory Redis timeout after 2500ms`, `[otpStore] redis set cooldown failed, falling back to memory Redis timeout after 2500ms`, then `Vercel Runtime Timeout Error: Task timed out after 10 seconds`.
+
+**Root Cause:**
+Three interlocking issues (same class as the 2026-09-15 forgot-password 504, regressed):
+1. `app/lib/services/otpStore.ts` `REDIS_OP_TIMEOUT_MS` had drifted back to 2500ms (repair log records 1.5s; `redis.ts` wrapper uses 1.2s). Verify-email POST awaited three Redis ops SEQUENTIALLY (get-cooldown → set-otp → set-cooldown) = 7.5s worst-case on a slow/deprovisioned Upstash host, before Resend (5s provider timeout) even started.
+2. `app/api/auth/verify-email/route.ts` (and `otp/resend`, `otp`, `change-email`, `change-password`) declared no `maxDuration`/`dynamic`, so Vercel applied the default 10s function budget — the sequential Redis worst-case alone nearly filled it.
+3. `bcrypt hashPassword` ran sequentially between the Redis ops instead of concurrently with the cooldown read, adding latency on the hot path.
+
+**Fix Applied:**
+- `otpStore.ts`: `REDIS_OP_TIMEOUT_MS` 2500 → 800ms (fail fast to memory; consistent with `redis.ts` 1.2s discipline).
+- `verify-email` + `otp/resend`: cooldown-read + bcrypt-hash via `Promise.all`; `setOtp` + `setSendCooldown` via `Promise.all` — Redis worst-case ~1.6s total. Added `export const maxDuration = 30; export const dynamic = "force-dynamic"`.
+- `register`: `setOtp` + `setSendCooldown` via `Promise.all` (same budget win).
+- `otp` verify: added `maxDuration = 15` + `force-dynamic` (get + attempt-counter + expire worst-case now ~2.4s, inside budget).
+- `change-email` (`maxDuration = 30`), `change-password` (`maxDuration = 15`): explicit budgets so a slow Redis/Resend never hits the default 10s.
+- `accountDeletionService` request side-effects: user + single-assignee admin mails via `Promise.all` (previously sequential ~10s worst-case); honest warn logs preserved.
+- `vercel.json`: added `maxDuration` entries for `verify-email` (30), `otp/resend` (30), `change-email` (30), `change-password` (15).
+- Wired-in email audit (all trigger paths verified): register (background `waitUntil`, honest payload), Google callback (fire-and-forget welcome, toggle-respecting), otp/resend + verify-email (awaited with honest `sent`/`reason` — required so the UI timer and throttle agree), forgot-password (awaited with 6s race + honest 503, token cleanup on failure), change-email (awaited, warn on failure), change-password/link-password (fire-and-forget notice), deletion lifecycle (parallel, best-effort), admin resend-verification (per-recipient honest errors), contact/bug (awaited, logged). Email provider timeout (5s `withEmailTimeout` in `emailService`) unchanged — the fix keeps the honest-`sent` contract while moving the budget win to Redis parallelism + function timeouts.
+
+**Prevention:**
+- Keep `otpStore` timeout ≤ `redis.ts` timeout (800ms vs 1.2s). Any bump must be justified against the 10s default budget.
+- Every auth route that touches Redis or Resend must declare an explicit `maxDuration` + `vercel.json` entry (no reliance on the Vercel default).
+- Never `await` two independent Redis writes sequentially on a user-facing hot path — use `Promise.all`.
+- Run `tsc --noEmit` after editing auth routes; full `tsc`/`jest`/`build` confirm green in CI/Vercel (this runner has no node_modules — verified to file-presence/syntax level only).
+
+**Files Affected:**
+- app/lib/services/otpStore.ts
+- app/api/auth/verify-email/route.ts
+- app/api/auth/otp/resend/route.ts
+- app/api/auth/otp/route.ts
+- app/api/auth/register/route.ts
+- app/api/auth/change-email/route.ts
+- app/api/auth/change-password/route.ts
+- app/lib/services/accountDeletionService.ts
+- vercel.json
+
+**Date:** 2026-10-09
+**Status:** Active
+
+---
+
 ## Resolved Errors Archive
 
 > **Section summary:** Errors that have been fully resolved and are unlikely to recur. Kept for reference.

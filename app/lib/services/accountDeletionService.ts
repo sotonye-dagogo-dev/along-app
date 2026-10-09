@@ -130,22 +130,27 @@ export async function requestAccountDeletion(userId: string, reason?: string): P
     const displayName = `${user.firstName} ${user.lastName}`;
     try {
       const { sendAccountDeletionRequestedEmail, sendAdminDeletionAlertEmail } = await import("@/app/lib/services/emailService");
-      await sendAccountDeletionRequestedEmail(user.email, {
-        firstName: user.firstName,
-        scheduledDate: scheduledLabel,
-        cancelLink: `${appUrl}/profile`,
-      });
       const adminIds = await getAdminIds();
       // Single-assignee policy: exactly one admin owns the request and gets
       // the mail + in-app ping (not every admin).
       const assignee = await getAssignedAdmin();
-      if (assignee) {
-        await sendAdminDeletionAlertEmail(assignee.email, {
-          displayName, userName: user.userName, email: user.email,
-          scheduledDate: scheduledLabel,
-          reasonLine: sanitizedReason ? `Reason: ${sanitizedReason}` : "",
-        });
-      }
+      // Parallel sends — each has its own 5s provider timeout; sequential
+      // awaits previously doubled the worst-case block on this request path.
+      const userMail = sendAccountDeletionRequestedEmail(user.email, {
+        firstName: user.firstName,
+        scheduledDate: scheduledLabel,
+        cancelLink: `${appUrl}/profile`,
+      });
+      const adminMail = assignee
+        ? sendAdminDeletionAlertEmail(assignee.email, {
+            displayName, userName: user.userName, email: user.email,
+            scheduledDate: scheduledLabel,
+            reasonLine: sanitizedReason ? `Reason: ${sanitizedReason}` : "",
+          })
+        : Promise.resolve({ sent: false, reason: "no assignee" });
+      const [userRes, adminRes] = await Promise.all([userMail, adminMail]);
+      if (!userRes.sent) console.warn(`[accountDeletion] user mail not sent: ${userRes.reason}`);
+      if (assignee && !(adminRes as { sent: boolean }).sent) console.warn(`[accountDeletion] admin mail not sent: ${(adminRes as { reason?: string }).reason}`);
       await safeNotify({
         type: "ACCOUNT_DELETION_REQUESTED", actorId: userId,
         message: `Deletion requested — @${user.userName} archived until ${scheduledLabel}`,

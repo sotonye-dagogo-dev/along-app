@@ -179,10 +179,13 @@ export async function POST(request: NextRequest) {
     const otpHash = await hashPassword(otp);
 
     const otpKey = `otp:${email}`;
-    await setOtp(otpKey, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds);
-    // Start the resend cooldown at issuance so the OTP screen timer and the
-    // server agree from the first code (prevents instant-tap 429 surprises).
-    await setSendCooldown(cooldownKeyFor(email), AUTH_VERIFICATION_CONFIG.resendCooldownSeconds);
+    // Parallel writes — a slow Upstash host costs ~800ms total, not 2x sequential.
+    await Promise.all([
+      setOtp(otpKey, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds),
+      // Start the resend cooldown at issuance so the OTP screen timer and the
+      // server agree from the first code (prevents instant-tap 429 surprises).
+      setSendCooldown(cooldownKeyFor(email), AUTH_VERIFICATION_CONFIG.resendCooldownSeconds),
+    ]);
 
     // Non-blocking email send — never hold request waiting for Resend, but now tightly observed (no false-positive).
     // Welcome fires regardless of OTP outcome (plan-register and referral

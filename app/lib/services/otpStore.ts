@@ -14,7 +14,7 @@ const resetMemoryStore = new Map<string, ResetEntry>();
 const cooldownMemoryStore = new Map<string, number>();
 const attemptsMemoryStore = new Map<string, { count: number; expiry: number }>();
 
-const REDIS_OP_TIMEOUT_MS = 2500;
+const REDIS_OP_TIMEOUT_MS = 800;
 
 let _redisClient: import("@upstash/redis").Redis | null | undefined = undefined;
 let _lastEnvKey: string | null = null;

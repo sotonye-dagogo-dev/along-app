@@ -6,6 +6,9 @@ import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 import { setOtp, setSendCooldown, getSendCooldownRemaining } from "@/app/lib/services/otpStore";
 import { AUTH_VERIFICATION_CONFIG, cooldownKeyFor } from "@/app/lib/config/authVerification";
 
+export const maxDuration = 30;
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     const rateCheck = checkRateLimit(request, "auth");
@@ -41,8 +44,14 @@ export async function POST(request: NextRequest) {
     // Per-email resend cooldown — surfaced honestly so the client timer and
     // the server agree (previously the UI counted 45s while the shared auth
     // bucket silently dropped sends, reading as "wasn't sent any").
+    // Fail-fast: cooldown read + bcrypt hash run concurrently; writes run in
+    // parallel — total Redis worst-case ~1.6s (800ms/op), inside maxDuration.
     const cooldownKey = cooldownKeyFor(email);
-    const remaining = await getSendCooldownRemaining(cooldownKey);
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const [remaining, otpHash] = await Promise.all([
+      getSendCooldownRemaining(cooldownKey),
+      hashPassword(otp),
+    ]);
     if (remaining > 0) {
       return NextResponse.json(
         {
@@ -53,13 +62,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpHash = await hashPassword(otp);
     const otpKey = `otp:${email}`;
-    await setOtp(otpKey, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds);
     // Cooldown starts at issuance (not at delivery) so rapid taps can't stack
     // overlapping codes — and each resend invalidates the previous code.
-    await setSendCooldown(cooldownKey, AUTH_VERIFICATION_CONFIG.resendCooldownSeconds);
+    await Promise.all([
+      setOtp(otpKey, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds),
+      setSendCooldown(cooldownKey, AUTH_VERIFICATION_CONFIG.resendCooldownSeconds),
+    ]);
 
     // Non-blocking send — tightly observed, never a false-positive:
     // the response reports the real delivery outcome once known.

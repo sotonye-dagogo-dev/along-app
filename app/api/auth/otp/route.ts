@@ -9,6 +9,9 @@ import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 import { getOtp, delOtp, recordVerifyAttempt, clearVerifyAttempts } from "@/app/lib/services/otpStore";
 import { AUTH_VERIFICATION_CONFIG, attemptsKeyFor } from "@/app/lib/config/authVerification";
 
+export const maxDuration = 15;
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     const rateCheck = checkRateLimit(request, "auth");
