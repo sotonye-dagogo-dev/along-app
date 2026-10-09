@@ -59,6 +59,11 @@ export type UserMinAggregateOutputType = {
   lastKnownLng: number | null
   createdAt: Date | null
   updatedAt: Date | null
+  isDeleted: boolean | null
+  deletedAt: Date | null
+  deletionRequestedAt: Date | null
+  deletionScheduledFor: Date | null
+  deletionReason: string | null
 }
 
 export type UserMaxAggregateOutputType = {
@@ -82,6 +87,11 @@ export type UserMaxAggregateOutputType = {
   lastKnownLng: number | null
   createdAt: Date | null
   updatedAt: Date | null
+  isDeleted: boolean | null
+  deletedAt: Date | null
+  deletionRequestedAt: Date | null
+  deletionScheduledFor: Date | null
+  deletionReason: string | null
 }
 
 export type UserCountAggregateOutputType = {
@@ -106,6 +116,11 @@ export type UserCountAggregateOutputType = {
   lastKnownLng: number
   createdAt: number
   updatedAt: number
+  isDeleted: number
+  deletedAt: number
+  deletionRequestedAt: number
+  deletionScheduledFor: number
+  deletionReason: number
   _all: number
 }
 
@@ -143,6 +158,11 @@ export type UserMinAggregateInputType = {
   lastKnownLng?: true
   createdAt?: true
   updatedAt?: true
+  isDeleted?: true
+  deletedAt?: true
+  deletionRequestedAt?: true
+  deletionScheduledFor?: true
+  deletionReason?: true
 }
 
 export type UserMaxAggregateInputType = {
@@ -166,6 +186,11 @@ export type UserMaxAggregateInputType = {
   lastKnownLng?: true
   createdAt?: true
   updatedAt?: true
+  isDeleted?: true
+  deletedAt?: true
+  deletionRequestedAt?: true
+  deletionScheduledFor?: true
+  deletionReason?: true
 }
 
 export type UserCountAggregateInputType = {
@@ -190,6 +215,11 @@ export type UserCountAggregateInputType = {
   lastKnownLng?: true
   createdAt?: true
   updatedAt?: true
+  isDeleted?: true
+  deletedAt?: true
+  deletionRequestedAt?: true
+  deletionScheduledFor?: true
+  deletionReason?: true
   _all?: true
 }
 
@@ -301,6 +331,11 @@ export type UserGroupByOutputType = {
   lastKnownLng: number | null
   createdAt: Date
   updatedAt: Date
+  isDeleted: boolean
+  deletedAt: Date | null
+  deletionRequestedAt: Date | null
+  deletionScheduledFor: Date | null
+  deletionReason: string | null
   _count: UserCountAggregateOutputType | null
   _avg: UserAvgAggregateOutputType | null
   _sum: UserSumAggregateOutputType | null
@@ -348,6 +383,11 @@ export type UserWhereInput = {
   lastKnownLng?: Prisma.FloatNullableFilter<"User"> | number | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  isDeleted?: Prisma.BoolFilter<"User"> | boolean
+  deletedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  deletionRequestedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  deletionScheduledFor?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  deletionReason?: Prisma.StringNullableFilter<"User"> | string | null
   posts?: Prisma.PostListRelationFilter
   comments?: Prisma.CommentListRelationFilter
   likes?: Prisma.LikeListRelationFilter
@@ -361,6 +401,7 @@ export type UserWhereInput = {
   receivedReviews?: Prisma.UserReviewListRelationFilter
   invitedBy?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   invitedUsers?: Prisma.UserListRelationFilter
+  deletionRequests?: Prisma.AccountDeletionRequestListRelationFilter
   following?: Prisma.FollowListRelationFilter
   followers?: Prisma.FollowListRelationFilter
   analyticsEvents?: Prisma.AnalyticsEventListRelationFilter
@@ -389,6 +430,11 @@ export type UserOrderByWithRelationInput = {
   lastKnownLng?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isDeleted?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletionRequestedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletionScheduledFor?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletionReason?: Prisma.SortOrderInput | Prisma.SortOrder
   posts?: Prisma.PostOrderByRelationAggregateInput
   comments?: Prisma.CommentOrderByRelationAggregateInput
   likes?: Prisma.LikeOrderByRelationAggregateInput
@@ -402,6 +448,7 @@ export type UserOrderByWithRelationInput = {
   receivedReviews?: Prisma.UserReviewOrderByRelationAggregateInput
   invitedBy?: Prisma.UserOrderByWithRelationInput
   invitedUsers?: Prisma.UserOrderByRelationAggregateInput
+  deletionRequests?: Prisma.AccountDeletionRequestOrderByRelationAggregateInput
   following?: Prisma.FollowOrderByRelationAggregateInput
   followers?: Prisma.FollowOrderByRelationAggregateInput
   analyticsEvents?: Prisma.AnalyticsEventOrderByRelationAggregateInput
@@ -433,6 +480,11 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   lastKnownLng?: Prisma.FloatNullableFilter<"User"> | number | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  isDeleted?: Prisma.BoolFilter<"User"> | boolean
+  deletedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  deletionRequestedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  deletionScheduledFor?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  deletionReason?: Prisma.StringNullableFilter<"User"> | string | null
   posts?: Prisma.PostListRelationFilter
   comments?: Prisma.CommentListRelationFilter
   likes?: Prisma.LikeListRelationFilter
@@ -446,6 +498,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   receivedReviews?: Prisma.UserReviewListRelationFilter
   invitedBy?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   invitedUsers?: Prisma.UserListRelationFilter
+  deletionRequests?: Prisma.AccountDeletionRequestListRelationFilter
   following?: Prisma.FollowListRelationFilter
   followers?: Prisma.FollowListRelationFilter
   analyticsEvents?: Prisma.AnalyticsEventListRelationFilter
@@ -474,6 +527,11 @@ export type UserOrderByWithAggregationInput = {
   lastKnownLng?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isDeleted?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletionRequestedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletionScheduledFor?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletionReason?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
   _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
@@ -506,6 +564,11 @@ export type UserScalarWhereWithAggregatesInput = {
   lastKnownLng?: Prisma.FloatNullableWithAggregatesFilter<"User"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
+  isDeleted?: Prisma.BoolWithAggregatesFilter<"User"> | boolean
+  deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+  deletionRequestedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+  deletionScheduledFor?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
+  deletionReason?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
 }
 
 export type UserCreateInput = {
@@ -529,6 +592,11 @@ export type UserCreateInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -542,6 +610,7 @@ export type UserCreateInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -570,6 +639,11 @@ export type UserUncheckedCreateInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -582,6 +656,7 @@ export type UserUncheckedCreateInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -609,6 +684,11 @@ export type UserUpdateInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -622,6 +702,7 @@ export type UserUpdateInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -650,6 +731,11 @@ export type UserUncheckedUpdateInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -662,6 +748,7 @@ export type UserUncheckedUpdateInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -690,6 +777,11 @@ export type UserCreateManyInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
 }
 
 export type UserUpdateManyMutationInput = {
@@ -713,6 +805,11 @@ export type UserUpdateManyMutationInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type UserUncheckedUpdateManyInput = {
@@ -737,6 +834,11 @@ export type UserUncheckedUpdateManyInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type UserNullableScalarRelationFilter = {
@@ -776,6 +878,11 @@ export type UserCountOrderByAggregateInput = {
   lastKnownLng?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isDeleted?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
+  deletionRequestedAt?: Prisma.SortOrder
+  deletionScheduledFor?: Prisma.SortOrder
+  deletionReason?: Prisma.SortOrder
 }
 
 export type UserAvgOrderByAggregateInput = {
@@ -805,6 +912,11 @@ export type UserMaxOrderByAggregateInput = {
   lastKnownLng?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isDeleted?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
+  deletionRequestedAt?: Prisma.SortOrder
+  deletionScheduledFor?: Prisma.SortOrder
+  deletionReason?: Prisma.SortOrder
 }
 
 export type UserMinOrderByAggregateInput = {
@@ -828,6 +940,11 @@ export type UserMinOrderByAggregateInput = {
   lastKnownLng?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  isDeleted?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
+  deletionRequestedAt?: Prisma.SortOrder
+  deletionScheduledFor?: Prisma.SortOrder
+  deletionReason?: Prisma.SortOrder
 }
 
 export type UserSumOrderByAggregateInput = {
@@ -899,6 +1016,10 @@ export type NullableFloatFieldUpdateOperationsInput = {
 
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
+}
+
+export type NullableDateTimeFieldUpdateOperationsInput = {
+  set?: Date | string | null
 }
 
 export type UserUpdateOneWithoutInvitedUsersNestedInput = {
@@ -1155,6 +1276,20 @@ export type UserUpdateOneRequiredWithoutPushSubscriptionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutPushSubscriptionsInput, Prisma.UserUpdateWithoutPushSubscriptionsInput>, Prisma.UserUncheckedUpdateWithoutPushSubscriptionsInput>
 }
 
+export type UserCreateNestedOneWithoutDeletionRequestsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDeletionRequestsInput, Prisma.UserUncheckedCreateWithoutDeletionRequestsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDeletionRequestsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutDeletionRequestsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutDeletionRequestsInput, Prisma.UserUncheckedCreateWithoutDeletionRequestsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutDeletionRequestsInput
+  upsert?: Prisma.UserUpsertWithoutDeletionRequestsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutDeletionRequestsInput, Prisma.UserUpdateWithoutDeletionRequestsInput>, Prisma.UserUncheckedUpdateWithoutDeletionRequestsInput>
+}
+
 export type UserCreateWithoutInvitedUsersInput = {
   id?: string
   userName: string
@@ -1176,6 +1311,11 @@ export type UserCreateWithoutInvitedUsersInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -1188,6 +1328,7 @@ export type UserCreateWithoutInvitedUsersInput = {
   authoredReviews?: Prisma.UserReviewCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -1216,6 +1357,11 @@ export type UserUncheckedCreateWithoutInvitedUsersInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -1227,6 +1373,7 @@ export type UserUncheckedCreateWithoutInvitedUsersInput = {
   reviewedBugReports?: Prisma.BugReportUncheckedCreateNestedManyWithoutReviewerInput
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -1259,6 +1406,11 @@ export type UserCreateWithoutInvitedByInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -1271,6 +1423,7 @@ export type UserCreateWithoutInvitedByInput = {
   authoredReviews?: Prisma.UserReviewCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -1298,6 +1451,11 @@ export type UserUncheckedCreateWithoutInvitedByInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -1310,6 +1468,7 @@ export type UserUncheckedCreateWithoutInvitedByInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -1358,6 +1517,11 @@ export type UserUpdateWithoutInvitedUsersInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -1370,6 +1534,7 @@ export type UserUpdateWithoutInvitedUsersInput = {
   authoredReviews?: Prisma.UserReviewUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -1398,6 +1563,11 @@ export type UserUncheckedUpdateWithoutInvitedUsersInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -1409,6 +1579,7 @@ export type UserUncheckedUpdateWithoutInvitedUsersInput = {
   reviewedBugReports?: Prisma.BugReportUncheckedUpdateManyWithoutReviewerNestedInput
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -1456,6 +1627,11 @@ export type UserScalarWhereInput = {
   lastKnownLng?: Prisma.FloatNullableFilter<"User"> | number | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
+  isDeleted?: Prisma.BoolFilter<"User"> | boolean
+  deletedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  deletionRequestedAt?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  deletionScheduledFor?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
+  deletionReason?: Prisma.StringNullableFilter<"User"> | string | null
 }
 
 export type UserCreateWithoutFollowingInput = {
@@ -1479,6 +1655,11 @@ export type UserCreateWithoutFollowingInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -1492,6 +1673,7 @@ export type UserCreateWithoutFollowingInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
   pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutUserInput
@@ -1519,6 +1701,11 @@ export type UserUncheckedCreateWithoutFollowingInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -1531,6 +1718,7 @@ export type UserUncheckedCreateWithoutFollowingInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutUserInput
@@ -1562,6 +1750,11 @@ export type UserCreateWithoutFollowersInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -1575,6 +1768,7 @@ export type UserCreateWithoutFollowersInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
   pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutUserInput
@@ -1602,6 +1796,11 @@ export type UserUncheckedCreateWithoutFollowersInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -1614,6 +1813,7 @@ export type UserUncheckedCreateWithoutFollowersInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutUserInput
@@ -1656,6 +1856,11 @@ export type UserUpdateWithoutFollowingInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -1669,6 +1874,7 @@ export type UserUpdateWithoutFollowingInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutUserNestedInput
@@ -1696,6 +1902,11 @@ export type UserUncheckedUpdateWithoutFollowingInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -1708,6 +1919,7 @@ export type UserUncheckedUpdateWithoutFollowingInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutUserNestedInput
@@ -1745,6 +1957,11 @@ export type UserUpdateWithoutFollowersInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -1758,6 +1975,7 @@ export type UserUpdateWithoutFollowersInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutUserNestedInput
@@ -1785,6 +2003,11 @@ export type UserUncheckedUpdateWithoutFollowersInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -1797,6 +2020,7 @@ export type UserUncheckedUpdateWithoutFollowersInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutUserNestedInput
@@ -1823,6 +2047,11 @@ export type UserCreateWithoutPostsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
   bookmarks?: Prisma.BookmarkCreateNestedManyWithoutUserInput
@@ -1835,6 +2064,7 @@ export type UserCreateWithoutPostsInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -1863,6 +2093,11 @@ export type UserUncheckedCreateWithoutPostsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
   bookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutUserInput
@@ -1874,6 +2109,7 @@ export type UserUncheckedCreateWithoutPostsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -1917,6 +2153,11 @@ export type UserUpdateWithoutPostsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
   bookmarks?: Prisma.BookmarkUpdateManyWithoutUserNestedInput
@@ -1929,6 +2170,7 @@ export type UserUpdateWithoutPostsInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -1957,6 +2199,11 @@ export type UserUncheckedUpdateWithoutPostsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
   bookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutUserNestedInput
@@ -1968,6 +2215,7 @@ export type UserUncheckedUpdateWithoutPostsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -1995,6 +2243,11 @@ export type UserCreateWithoutCommentsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
   bookmarks?: Prisma.BookmarkCreateNestedManyWithoutUserInput
@@ -2007,6 +2260,7 @@ export type UserCreateWithoutCommentsInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2035,6 +2289,11 @@ export type UserUncheckedCreateWithoutCommentsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
   bookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutUserInput
@@ -2046,6 +2305,7 @@ export type UserUncheckedCreateWithoutCommentsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2089,6 +2349,11 @@ export type UserUpdateWithoutCommentsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
   bookmarks?: Prisma.BookmarkUpdateManyWithoutUserNestedInput
@@ -2101,6 +2366,7 @@ export type UserUpdateWithoutCommentsInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2129,6 +2395,11 @@ export type UserUncheckedUpdateWithoutCommentsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
   bookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutUserNestedInput
@@ -2140,6 +2411,7 @@ export type UserUncheckedUpdateWithoutCommentsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -2167,6 +2439,11 @@ export type UserCreateWithoutLikesInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   bookmarks?: Prisma.BookmarkCreateNestedManyWithoutUserInput
@@ -2179,6 +2456,7 @@ export type UserCreateWithoutLikesInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2207,6 +2485,11 @@ export type UserUncheckedCreateWithoutLikesInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   bookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutUserInput
@@ -2218,6 +2501,7 @@ export type UserUncheckedCreateWithoutLikesInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2261,6 +2545,11 @@ export type UserUpdateWithoutLikesInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   bookmarks?: Prisma.BookmarkUpdateManyWithoutUserNestedInput
@@ -2273,6 +2562,7 @@ export type UserUpdateWithoutLikesInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2301,6 +2591,11 @@ export type UserUncheckedUpdateWithoutLikesInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   bookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutUserNestedInput
@@ -2312,6 +2607,7 @@ export type UserUncheckedUpdateWithoutLikesInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -2339,6 +2635,11 @@ export type UserCreateWithoutBookmarksInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -2351,6 +2652,7 @@ export type UserCreateWithoutBookmarksInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2379,6 +2681,11 @@ export type UserUncheckedCreateWithoutBookmarksInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -2390,6 +2697,7 @@ export type UserUncheckedCreateWithoutBookmarksInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2433,6 +2741,11 @@ export type UserUpdateWithoutBookmarksInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -2445,6 +2758,7 @@ export type UserUpdateWithoutBookmarksInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2473,6 +2787,11 @@ export type UserUncheckedUpdateWithoutBookmarksInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -2484,6 +2803,7 @@ export type UserUncheckedUpdateWithoutBookmarksInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -2511,6 +2831,11 @@ export type UserCreateWithoutNotificationsAsActorInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -2523,6 +2848,7 @@ export type UserCreateWithoutNotificationsAsActorInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2551,6 +2877,11 @@ export type UserUncheckedCreateWithoutNotificationsAsActorInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -2562,6 +2893,7 @@ export type UserUncheckedCreateWithoutNotificationsAsActorInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2605,6 +2937,11 @@ export type UserUpdateWithoutNotificationsAsActorInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -2617,6 +2954,7 @@ export type UserUpdateWithoutNotificationsAsActorInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2645,6 +2983,11 @@ export type UserUncheckedUpdateWithoutNotificationsAsActorInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -2656,6 +2999,7 @@ export type UserUncheckedUpdateWithoutNotificationsAsActorInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -2683,6 +3027,11 @@ export type UserCreateWithoutNotificationsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -2695,6 +3044,7 @@ export type UserCreateWithoutNotificationsInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2723,6 +3073,11 @@ export type UserUncheckedCreateWithoutNotificationsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -2734,6 +3089,7 @@ export type UserUncheckedCreateWithoutNotificationsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2777,6 +3133,11 @@ export type UserUpdateWithoutNotificationsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -2789,6 +3150,7 @@ export type UserUpdateWithoutNotificationsInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2817,6 +3179,11 @@ export type UserUncheckedUpdateWithoutNotificationsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -2828,6 +3195,7 @@ export type UserUncheckedUpdateWithoutNotificationsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -2855,6 +3223,11 @@ export type UserCreateWithoutActivitiesInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -2867,6 +3240,7 @@ export type UserCreateWithoutActivitiesInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2895,6 +3269,11 @@ export type UserUncheckedCreateWithoutActivitiesInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -2906,6 +3285,7 @@ export type UserUncheckedCreateWithoutActivitiesInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2949,6 +3329,11 @@ export type UserUpdateWithoutActivitiesInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -2961,6 +3346,7 @@ export type UserUpdateWithoutActivitiesInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2989,6 +3375,11 @@ export type UserUncheckedUpdateWithoutActivitiesInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -3000,6 +3391,7 @@ export type UserUncheckedUpdateWithoutActivitiesInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3027,6 +3419,11 @@ export type UserCreateWithoutBugReportsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -3039,6 +3436,7 @@ export type UserCreateWithoutBugReportsInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3067,6 +3465,11 @@ export type UserUncheckedCreateWithoutBugReportsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -3078,6 +3481,7 @@ export type UserUncheckedCreateWithoutBugReportsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3110,6 +3514,11 @@ export type UserCreateWithoutReviewedBugReportsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -3122,6 +3531,7 @@ export type UserCreateWithoutReviewedBugReportsInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3150,6 +3560,11 @@ export type UserUncheckedCreateWithoutReviewedBugReportsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -3161,6 +3576,7 @@ export type UserUncheckedCreateWithoutReviewedBugReportsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3204,6 +3620,11 @@ export type UserUpdateWithoutBugReportsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -3216,6 +3637,7 @@ export type UserUpdateWithoutBugReportsInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -3244,6 +3666,11 @@ export type UserUncheckedUpdateWithoutBugReportsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -3255,6 +3682,7 @@ export type UserUncheckedUpdateWithoutBugReportsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3293,6 +3721,11 @@ export type UserUpdateWithoutReviewedBugReportsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -3305,6 +3738,7 @@ export type UserUpdateWithoutReviewedBugReportsInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -3333,6 +3767,11 @@ export type UserUncheckedUpdateWithoutReviewedBugReportsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -3344,6 +3783,7 @@ export type UserUncheckedUpdateWithoutReviewedBugReportsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3371,6 +3811,11 @@ export type UserCreateWithoutAuthoredReviewsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -3383,6 +3828,7 @@ export type UserCreateWithoutAuthoredReviewsInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3411,6 +3857,11 @@ export type UserUncheckedCreateWithoutAuthoredReviewsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -3422,6 +3873,7 @@ export type UserUncheckedCreateWithoutAuthoredReviewsInput = {
   reviewedBugReports?: Prisma.BugReportUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3454,6 +3906,11 @@ export type UserCreateWithoutReceivedReviewsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -3466,6 +3923,7 @@ export type UserCreateWithoutReceivedReviewsInput = {
   authoredReviews?: Prisma.UserReviewCreateNestedManyWithoutReviewerInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3494,6 +3952,11 @@ export type UserUncheckedCreateWithoutReceivedReviewsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -3505,6 +3968,7 @@ export type UserUncheckedCreateWithoutReceivedReviewsInput = {
   reviewedBugReports?: Prisma.BugReportUncheckedCreateNestedManyWithoutReviewerInput
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3548,6 +4012,11 @@ export type UserUpdateWithoutAuthoredReviewsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -3560,6 +4029,7 @@ export type UserUpdateWithoutAuthoredReviewsInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -3588,6 +4058,11 @@ export type UserUncheckedUpdateWithoutAuthoredReviewsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -3599,6 +4074,7 @@ export type UserUncheckedUpdateWithoutAuthoredReviewsInput = {
   reviewedBugReports?: Prisma.BugReportUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3637,6 +4113,11 @@ export type UserUpdateWithoutReceivedReviewsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -3649,6 +4130,7 @@ export type UserUpdateWithoutReceivedReviewsInput = {
   authoredReviews?: Prisma.UserReviewUpdateManyWithoutReviewerNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -3677,6 +4159,11 @@ export type UserUncheckedUpdateWithoutReceivedReviewsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -3688,6 +4175,7 @@ export type UserUncheckedUpdateWithoutReceivedReviewsInput = {
   reviewedBugReports?: Prisma.BugReportUncheckedUpdateManyWithoutReviewerNestedInput
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3715,6 +4203,11 @@ export type UserCreateWithoutAnalyticsEventsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -3728,6 +4221,7 @@ export type UserCreateWithoutAnalyticsEventsInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutUserInput
@@ -3755,6 +4249,11 @@ export type UserUncheckedCreateWithoutAnalyticsEventsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -3767,6 +4266,7 @@ export type UserUncheckedCreateWithoutAnalyticsEventsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutUserInput
@@ -3809,6 +4309,11 @@ export type UserUpdateWithoutAnalyticsEventsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -3822,6 +4327,7 @@ export type UserUpdateWithoutAnalyticsEventsInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutUserNestedInput
@@ -3849,6 +4355,11 @@ export type UserUncheckedUpdateWithoutAnalyticsEventsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -3861,6 +4372,7 @@ export type UserUncheckedUpdateWithoutAnalyticsEventsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutUserNestedInput
@@ -3887,6 +4399,11 @@ export type UserCreateWithoutPushSubscriptionsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeCreateNestedManyWithoutUserInput
@@ -3900,6 +4417,7 @@ export type UserCreateWithoutPushSubscriptionsInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3927,6 +4445,11 @@ export type UserUncheckedCreateWithoutPushSubscriptionsInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
   posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
   comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
   likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
@@ -3939,6 +4462,7 @@ export type UserUncheckedCreateWithoutPushSubscriptionsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3981,6 +4505,11 @@ export type UserUpdateWithoutPushSubscriptionsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -3994,6 +4523,7 @@ export type UserUpdateWithoutPushSubscriptionsInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -4021,6 +4551,207 @@ export type UserUncheckedUpdateWithoutPushSubscriptionsInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
+  likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
+  bookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationRecipientUncheckedUpdateManyWithoutUserNestedInput
+  notificationsAsActor?: Prisma.NotificationUncheckedUpdateManyWithoutActorNestedInput
+  activities?: Prisma.UserActivityUncheckedUpdateManyWithoutUserNestedInput
+  bugReports?: Prisma.BugReportUncheckedUpdateManyWithoutReporterNestedInput
+  reviewedBugReports?: Prisma.BugReportUncheckedUpdateManyWithoutReviewerNestedInput
+  authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
+  receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
+  invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
+  followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
+  analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutDeletionRequestsInput = {
+  id?: string
+  userName: string
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  avatar?: string | null
+  bio?: string | null
+  location?: string | null
+  verified?: boolean
+  role?: $Enums.UserRole
+  rewardPoints?: number
+  rewardTier?: $Enums.RewardTier
+  inviteCode?: string | null
+  googleId?: string | null
+  avatarConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastKnownLat?: number | null
+  lastKnownLng?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
+  posts?: Prisma.PostCreateNestedManyWithoutUserInput
+  comments?: Prisma.CommentCreateNestedManyWithoutUserInput
+  likes?: Prisma.LikeCreateNestedManyWithoutUserInput
+  bookmarks?: Prisma.BookmarkCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationRecipientCreateNestedManyWithoutUserInput
+  notificationsAsActor?: Prisma.NotificationCreateNestedManyWithoutActorInput
+  activities?: Prisma.UserActivityCreateNestedManyWithoutUserInput
+  bugReports?: Prisma.BugReportCreateNestedManyWithoutReporterInput
+  reviewedBugReports?: Prisma.BugReportCreateNestedManyWithoutReviewerInput
+  authoredReviews?: Prisma.UserReviewCreateNestedManyWithoutReviewerInput
+  receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
+  invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
+  invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
+  followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
+  analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
+  pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutDeletionRequestsInput = {
+  id?: string
+  userName: string
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  avatar?: string | null
+  bio?: string | null
+  location?: string | null
+  verified?: boolean
+  role?: $Enums.UserRole
+  rewardPoints?: number
+  rewardTier?: $Enums.RewardTier
+  inviteCode?: string | null
+  invitedById?: string | null
+  googleId?: string | null
+  avatarConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastKnownLat?: number | null
+  lastKnownLng?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
+  posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
+  likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
+  bookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationRecipientUncheckedCreateNestedManyWithoutUserInput
+  notificationsAsActor?: Prisma.NotificationUncheckedCreateNestedManyWithoutActorInput
+  activities?: Prisma.UserActivityUncheckedCreateNestedManyWithoutUserInput
+  bugReports?: Prisma.BugReportUncheckedCreateNestedManyWithoutReporterInput
+  reviewedBugReports?: Prisma.BugReportUncheckedCreateNestedManyWithoutReviewerInput
+  authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
+  receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
+  invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
+  followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
+  analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutDeletionRequestsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutDeletionRequestsInput, Prisma.UserUncheckedCreateWithoutDeletionRequestsInput>
+}
+
+export type UserUpsertWithoutDeletionRequestsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutDeletionRequestsInput, Prisma.UserUncheckedUpdateWithoutDeletionRequestsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutDeletionRequestsInput, Prisma.UserUncheckedCreateWithoutDeletionRequestsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutDeletionRequestsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutDeletionRequestsInput, Prisma.UserUncheckedUpdateWithoutDeletionRequestsInput>
+}
+
+export type UserUpdateWithoutDeletionRequestsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userName?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  rewardPoints?: Prisma.IntFieldUpdateOperationsInput | number
+  rewardTier?: Prisma.EnumRewardTierFieldUpdateOperationsInput | $Enums.RewardTier
+  inviteCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  googleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastKnownLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posts?: Prisma.PostUpdateManyWithoutUserNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
+  likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
+  bookmarks?: Prisma.BookmarkUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationRecipientUpdateManyWithoutUserNestedInput
+  notificationsAsActor?: Prisma.NotificationUpdateManyWithoutActorNestedInput
+  activities?: Prisma.UserActivityUpdateManyWithoutUserNestedInput
+  bugReports?: Prisma.BugReportUpdateManyWithoutReporterNestedInput
+  reviewedBugReports?: Prisma.BugReportUpdateManyWithoutReviewerNestedInput
+  authoredReviews?: Prisma.UserReviewUpdateManyWithoutReviewerNestedInput
+  receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
+  invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
+  invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
+  followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
+  analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutDeletionRequestsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userName?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  rewardPoints?: Prisma.IntFieldUpdateOperationsInput | number
+  rewardTier?: Prisma.EnumRewardTierFieldUpdateOperationsInput | $Enums.RewardTier
+  inviteCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invitedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  googleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastKnownLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -4036,6 +4767,7 @@ export type UserUncheckedUpdateWithoutPushSubscriptionsInput = {
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInvitedByInput = {
@@ -4059,6 +4791,11 @@ export type UserCreateManyInvitedByInput = {
   lastKnownLng?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
 }
 
 export type UserUpdateWithoutInvitedByInput = {
@@ -4082,6 +4819,11 @@ export type UserUpdateWithoutInvitedByInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
@@ -4094,6 +4836,7 @@ export type UserUpdateWithoutInvitedByInput = {
   authoredReviews?: Prisma.UserReviewUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -4121,6 +4864,11 @@ export type UserUncheckedUpdateWithoutInvitedByInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
   comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
   likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
@@ -4133,6 +4881,7 @@ export type UserUncheckedUpdateWithoutInvitedByInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -4160,6 +4909,11 @@ export type UserUncheckedUpdateManyWithoutInvitedByInput = {
   lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 
@@ -4180,6 +4934,7 @@ export type UserCountOutputType = {
   authoredReviews: number
   receivedReviews: number
   invitedUsers: number
+  deletionRequests: number
   following: number
   followers: number
   analyticsEvents: number
@@ -4199,6 +4954,7 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   authoredReviews?: boolean | UserCountOutputTypeCountAuthoredReviewsArgs
   receivedReviews?: boolean | UserCountOutputTypeCountReceivedReviewsArgs
   invitedUsers?: boolean | UserCountOutputTypeCountInvitedUsersArgs
+  deletionRequests?: boolean | UserCountOutputTypeCountDeletionRequestsArgs
   following?: boolean | UserCountOutputTypeCountFollowingArgs
   followers?: boolean | UserCountOutputTypeCountFollowersArgs
   analyticsEvents?: boolean | UserCountOutputTypeCountAnalyticsEventsArgs
@@ -4302,6 +5058,13 @@ export type UserCountOutputTypeCountInvitedUsersArgs<ExtArgs extends runtime.Typ
 /**
  * UserCountOutputType without action
  */
+export type UserCountOutputTypeCountDeletionRequestsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AccountDeletionRequestWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
 export type UserCountOutputTypeCountFollowingArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.FollowWhereInput
 }
@@ -4350,6 +5113,11 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   lastKnownLng?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  isDeleted?: boolean
+  deletedAt?: boolean
+  deletionRequestedAt?: boolean
+  deletionScheduledFor?: boolean
+  deletionReason?: boolean
   posts?: boolean | Prisma.User$postsArgs<ExtArgs>
   comments?: boolean | Prisma.User$commentsArgs<ExtArgs>
   likes?: boolean | Prisma.User$likesArgs<ExtArgs>
@@ -4363,6 +5131,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   receivedReviews?: boolean | Prisma.User$receivedReviewsArgs<ExtArgs>
   invitedBy?: boolean | Prisma.User$invitedByArgs<ExtArgs>
   invitedUsers?: boolean | Prisma.User$invitedUsersArgs<ExtArgs>
+  deletionRequests?: boolean | Prisma.User$deletionRequestsArgs<ExtArgs>
   following?: boolean | Prisma.User$followingArgs<ExtArgs>
   followers?: boolean | Prisma.User$followersArgs<ExtArgs>
   analyticsEvents?: boolean | Prisma.User$analyticsEventsArgs<ExtArgs>
@@ -4392,6 +5161,11 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   lastKnownLng?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  isDeleted?: boolean
+  deletedAt?: boolean
+  deletionRequestedAt?: boolean
+  deletionScheduledFor?: boolean
+  deletionReason?: boolean
   invitedBy?: boolean | Prisma.User$invitedByArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -4417,6 +5191,11 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   lastKnownLng?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  isDeleted?: boolean
+  deletedAt?: boolean
+  deletionRequestedAt?: boolean
+  deletionScheduledFor?: boolean
+  deletionReason?: boolean
   invitedBy?: boolean | Prisma.User$invitedByArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -4442,9 +5221,14 @@ export type UserSelectScalar = {
   lastKnownLng?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  isDeleted?: boolean
+  deletedAt?: boolean
+  deletionRequestedAt?: boolean
+  deletionScheduledFor?: boolean
+  deletionReason?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userName" | "firstName" | "lastName" | "email" | "password" | "avatar" | "bio" | "location" | "verified" | "role" | "rewardPoints" | "rewardTier" | "inviteCode" | "invitedById" | "googleId" | "avatarConfig" | "lastKnownLat" | "lastKnownLng" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userName" | "firstName" | "lastName" | "email" | "password" | "avatar" | "bio" | "location" | "verified" | "role" | "rewardPoints" | "rewardTier" | "inviteCode" | "invitedById" | "googleId" | "avatarConfig" | "lastKnownLat" | "lastKnownLng" | "createdAt" | "updatedAt" | "isDeleted" | "deletedAt" | "deletionRequestedAt" | "deletionScheduledFor" | "deletionReason", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   posts?: boolean | Prisma.User$postsArgs<ExtArgs>
   comments?: boolean | Prisma.User$commentsArgs<ExtArgs>
@@ -4459,6 +5243,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   receivedReviews?: boolean | Prisma.User$receivedReviewsArgs<ExtArgs>
   invitedBy?: boolean | Prisma.User$invitedByArgs<ExtArgs>
   invitedUsers?: boolean | Prisma.User$invitedUsersArgs<ExtArgs>
+  deletionRequests?: boolean | Prisma.User$deletionRequestsArgs<ExtArgs>
   following?: boolean | Prisma.User$followingArgs<ExtArgs>
   followers?: boolean | Prisma.User$followersArgs<ExtArgs>
   analyticsEvents?: boolean | Prisma.User$analyticsEventsArgs<ExtArgs>
@@ -4488,6 +5273,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     receivedReviews: Prisma.$UserReviewPayload<ExtArgs>[]
     invitedBy: Prisma.$UserPayload<ExtArgs> | null
     invitedUsers: Prisma.$UserPayload<ExtArgs>[]
+    deletionRequests: Prisma.$AccountDeletionRequestPayload<ExtArgs>[]
     following: Prisma.$FollowPayload<ExtArgs>[]
     followers: Prisma.$FollowPayload<ExtArgs>[]
     analyticsEvents: Prisma.$AnalyticsEventPayload<ExtArgs>[]
@@ -4515,6 +5301,11 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     lastKnownLng: number | null
     createdAt: Date
     updatedAt: Date
+    isDeleted: boolean
+    deletedAt: Date | null
+    deletionRequestedAt: Date | null
+    deletionScheduledFor: Date | null
+    deletionReason: string | null
   }, ExtArgs["result"]["user"]>
   composites: {}
 }
@@ -4922,6 +5713,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   receivedReviews<T extends Prisma.User$receivedReviewsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$receivedReviewsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserReviewPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   invitedBy<T extends Prisma.User$invitedByArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$invitedByArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   invitedUsers<T extends Prisma.User$invitedUsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$invitedUsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  deletionRequests<T extends Prisma.User$deletionRequestsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$deletionRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AccountDeletionRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   following<T extends Prisma.User$followingArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$followingArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   followers<T extends Prisma.User$followersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$followersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   analyticsEvents<T extends Prisma.User$analyticsEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$analyticsEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AnalyticsEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -4976,6 +5768,11 @@ export interface UserFieldRefs {
   readonly lastKnownLng: Prisma.FieldRef<"User", 'Float'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly isDeleted: Prisma.FieldRef<"User", 'Boolean'>
+  readonly deletedAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly deletionRequestedAt: Prisma.FieldRef<"User", 'DateTime'>
+  readonly deletionScheduledFor: Prisma.FieldRef<"User", 'DateTime'>
+  readonly deletionReason: Prisma.FieldRef<"User", 'String'>
 }
     
 
@@ -5676,6 +6473,30 @@ export type User$invitedUsersArgs<ExtArgs extends runtime.Types.Extensions.Inter
   take?: number
   skip?: number
   distinct?: Prisma.UserScalarFieldEnum | Prisma.UserScalarFieldEnum[]
+}
+
+/**
+ * User.deletionRequests
+ */
+export type User$deletionRequestsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the AccountDeletionRequest
+   */
+  select?: Prisma.AccountDeletionRequestSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the AccountDeletionRequest
+   */
+  omit?: Prisma.AccountDeletionRequestOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AccountDeletionRequestInclude<ExtArgs> | null
+  where?: Prisma.AccountDeletionRequestWhereInput
+  orderBy?: Prisma.AccountDeletionRequestOrderByWithRelationInput | Prisma.AccountDeletionRequestOrderByWithRelationInput[]
+  cursor?: Prisma.AccountDeletionRequestWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AccountDeletionRequestScalarFieldEnum | Prisma.AccountDeletionRequestScalarFieldEnum[]
 }
 
 /**

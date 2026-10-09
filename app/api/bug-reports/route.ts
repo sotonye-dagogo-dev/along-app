@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       reporterId = null;
     }
 
-    await prisma.bugReport.create({
+    const created = await prisma.bugReport.create({
       data: {
         title,
         category: category as never,
@@ -63,17 +63,64 @@ export async function POST(request: NextRequest) {
         ...(linkedPostId ? { postId: linkedPostId } : {}),
         ...(metadata && typeof metadata === "object" ? { metadata } : {}),
       },
+      select: { id: true },
     });
 
+    // Single-admin assignment (load-balanced + randomized among equals):
+    // exactly one admin owns the issue and gets the mail + in-app ping.
+    // The reporter gets a confirmation that names the assignment state, so
+    // "our team has been notified" is an actualised fact, not a platitude.
     try {
-      const emailResult = await sendBugReportNotification(title, category, description);
+      const { assignAdminForIssue } = await import("@/app/lib/services/adminAssignmentService");
+      const assignee = await assignAdminForIssue();
+      if (assignee) {
+        await prisma.bugReport.update({
+          where: { id: created.id },
+          data: { reviewerId: assignee.id },
+        });
+      }
+      const emailResult = await sendBugReportNotification(title, category, description, assignee?.email);
       if (!emailResult.sent) {
         console.warn(`[bug-report] notification failed: ${emailResult.reason}`);
         Sentry.captureMessage(`Bug report notification failed: ${emailResult.reason}`, "warning");
       }
+      const { createNotification } = await import("@/app/lib/services/notificationService");
+      const actorId = reporterId ?? assignee?.id;
+      if (actorId && assignee) {
+        // Assignee ping (in-app). allowSelf covers the anonymous-reporter
+        // case where the assignee doubles as the notification actor.
+        void createNotification({
+          type: "REPORT",
+          actorId,
+          message: `New ${category} report assigned to you: ${title.slice(0, 120)}`,
+          recipientIds: [assignee.id],
+          allowSelf: true,
+        });
+      }
+      if (reporterId) {
+        // Reporter confirmation — actualises "our team has been notified".
+        void createNotification({
+          type: "REPORT",
+          actorId: reporterId,
+          message: assignee
+            ? `Thanks — your report "${title.slice(0, 100)}" was received and assigned for review.`
+            : `Thanks — your report "${title.slice(0, 100)}" was received and is queued for review.`,
+          recipientIds: [reporterId],
+          allowSelf: true,
+        });
+      }
     } catch (e) {
-      console.error("[bug-report] notification exception", e);
+      // Assignment fan-out is best-effort; fall back to the platform inbox.
+      console.error("[bug-report] assignment exception", e);
       Sentry.captureException(e);
+      try {
+        const emailResult = await sendBugReportNotification(title, category, description);
+        if (!emailResult.sent) {
+          console.warn(`[bug-report] fallback notification failed: ${emailResult.reason}`);
+        }
+      } catch (fallbackError) {
+        console.error("[bug-report] fallback notification exception", fallbackError);
+      }
     }
 
     return NextResponse.json({ success: true }, { status: 201 });

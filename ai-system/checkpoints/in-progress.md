@@ -1,7 +1,7 @@
 # In Progress
 
-**Session:** idle — execute-feature 2026-10-09 closed: Sprint 21 safe deletion + Email Studio (request → 7d archived grace → anonymized finalize; generic Deleted-User profile; admin deletions queue + first-N-by-signup bulk safe deletion; Email Studio visual/HTML + toggles + customs + dynamic recipients; profile sign-out + quick-links 2→3-col grid; admin KPI 2→4-col grid; static-only QA — no node_modules in runner, CI/Vercel is the gate)
-**Status:** No active sprint. Next work: confirm Sprint 21 QA green in CI/Vercel (tsc + jest incl. accountDeletion.test.ts + build with fresh `prisma generate`), exercise deletion cron + Email Studio sends in staging, then remaining backlog from `planning/task-queue.md` (live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration) via a new sprint.
+**Session:** idle — execute-feature 2026-10-09 closed: auth hardening (normalize-then-validate, referral body fallback, case-insensitive email, field-specific errors) + single-admin assignment (load-balanced + randomized, wired into bug-reports/reports/account-deletion) + avatarConfig DbNull build fix + regenerated Prisma client (tsc 0 errors, jest 30 suites / 255 pass, lint zero new)
+**Status:** No active sprint. Next work: prod-verify referral + normal registration, single-admin mail ownership, reviewerId on reports; then remaining backlog from `planning/task-queue.md` (live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration) via a new sprint.
 
 ## Last completed work (archived summary)
 

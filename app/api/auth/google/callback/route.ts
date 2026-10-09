@@ -57,7 +57,13 @@ export async function GET(request: NextRequest) {
     }
 
     const googleId = userInfo.id;
-    const email = userInfo.email;
+    // Normalize exactly like every other auth path (trim + lowercase) so a
+    // Google account and an email+password account for the same address link
+    // instead of colliding or forking.
+    const email = typeof userInfo.email === "string" ? userInfo.email.trim().toLowerCase() : "";
+    if (!email) {
+      return NextResponse.json({ error: "Failed to fetch Google user info" }, { status: 400 });
+    }
     const firstName = userInfo.given_name || "";
     const lastName = userInfo.family_name || "";
     const state = request.nextUrl.searchParams.get("state");
@@ -104,7 +110,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/home`, { status: 307 });
     }
 
-    user = await prisma.user.findUnique({ where: { email } });
+    user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
 
     if (user) {
       // Prevent overwriting an already linked googleId
@@ -143,7 +149,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/home`, { status: 307 });
     }
 
-    const baseUserName = email.split("@")[0];
+    // Derive a username that always satisfies the app's username rules
+    // (letters/numbers/underscore, min 3 chars) — raw email prefixes may
+    // contain dots, hyphens, or other characters the register form rejects.
+    const rawBase = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "_").slice(0, 20) || "traveller";
+    const baseUserName = rawBase.length >= 3 ? rawBase : `${rawBase}go`.slice(0, 30);
     let userName = baseUserName;
     let suffix = 1;
 
@@ -204,8 +214,8 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Google callback error:", error);
     Sentry.captureException(error);
-    const code = (error as any)?.code;
-    const name = (error as any)?.name;
+    const code = (error as { code?: unknown })?.code;
+    const name = (error as { name?: unknown })?.name;
     if (name === "PrismaClientKnownRequestError" || name === "PrismaClientInitializationError" || code === "P2022" || code === "P1001" || code === "P1002") {
       return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
     }

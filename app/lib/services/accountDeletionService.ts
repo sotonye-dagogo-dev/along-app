@@ -7,6 +7,7 @@
  */
 
 import * as Sentry from "@sentry/nextjs";
+import { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/app/lib/db/prisma";
 import {
   ACCOUNT_DELETION_CONFIG,
@@ -23,6 +24,8 @@ export interface DeletionRequestResult {
 }
 
 async function getAdminIds(): Promise<string[]> {
+  // Legacy helper kept for callers that only need a presence check; new code
+  // should use assignAdminForIssue() (single-assignee policy).
   try {
     const admins = await prisma.user.findMany({
       where: { role: "ADMIN", isDeleted: false },
@@ -31,6 +34,17 @@ async function getAdminIds(): Promise<string[]> {
     return admins.map((a) => a.id);
   } catch {
     return [];
+  }
+}
+
+async function getAssignedAdmin(): Promise<{ id: string; email: string } | null> {
+  try {
+    const { assignAdminForIssue } = await import(
+      "@/app/lib/services/adminAssignmentService"
+    );
+    return await assignAdminForIssue();
+  } catch {
+    return null;
   }
 }
 
@@ -119,13 +133,11 @@ export async function requestAccountDeletion(userId: string, reason?: string): P
         cancelLink: `${appUrl}/profile`,
       });
       const adminIds = await getAdminIds();
-      const adminEmails: string[] = [];
-      try {
-        const admins = await prisma.user.findMany({ where: { role: "ADMIN", isDeleted: false }, select: { email: true } });
-        adminEmails.push(...admins.map((a) => a.email));
-      } catch { /* ignore */ }
-      for (const email of adminEmails) {
-        await sendAdminDeletionAlertEmail(email, {
+      // Single-assignee policy: exactly one admin owns the request and gets
+      // the mail + in-app ping (not every admin).
+      const assignee = await getAssignedAdmin();
+      if (assignee) {
+        await sendAdminDeletionAlertEmail(assignee.email, {
           displayName, userName: user.userName, email: user.email,
           scheduledDate: scheduledLabel,
           reasonLine: sanitizedReason ? `Reason: ${sanitizedReason}` : "",
@@ -136,7 +148,15 @@ export async function requestAccountDeletion(userId: string, reason?: string): P
         message: `Deletion requested — @${user.userName} archived until ${scheduledLabel}`,
         recipientIds: [userId], allowSelf: true,
       });
-      if (adminIds.length > 0) {
+      if (assignee) {
+        await safeNotify({
+          type: "ACCOUNT_DELETION_REQUESTED", actorId: userId,
+          message: `@${user.userName} requested account deletion (due ${scheduledLabel})`,
+          recipientIds: [assignee.id],
+        });
+      } else if (adminIds.length > 0) {
+        // No assignee resolved (e.g. load query failed with several admins):
+        // fall back to the legacy fan-out rather than dropping the signal.
         await safeNotify({
           type: "ACCOUNT_DELETION_REQUESTED", actorId: userId,
           message: `@${user.userName} requested account deletion (due ${scheduledLabel})`,
@@ -175,18 +195,22 @@ export async function cancelAccountDeletion(userId: string): Promise<DeletionReq
 
     try {
       const user = await prisma.user.findUnique({ where: { id: userId }, select: { userName: true } });
-      const adminIds = await getAdminIds();
+      // Reversal pings the single assignee in-app only (no email, per
+      // anti-abuse policy). Re-resolving by load usually lands on the same
+      // admin that owned the request.
+      const assignee = await getAssignedAdmin();
+      const recipients = assignee ? [assignee.id] : await getAdminIds();
       await safeNotify({
         type: "ACCOUNT_DELETION_CANCELLED", actorId: userId,
         message: "You reversed your deletion request — welcome back!",
         recipientIds: [userId], allowSelf: true,
       });
-      if (adminIds.length > 0) {
+      if (recipients.length > 0) {
         // In-app only for reversals (no email, per anti-abuse policy).
         await safeNotify({
           type: "ACCOUNT_DELETION_CANCELLED", actorId: userId,
           message: `@${user?.userName ?? "user"} reversed their deletion request`,
-          recipientIds: adminIds,
+          recipientIds: recipients,
         });
       }
     } catch (e) {
@@ -271,7 +295,9 @@ async function finalizeOne(requestId: string, completedBy: string) {
         email: anonEmail,
         password: randomSecret,
         avatar: null,
-        avatarConfig: null,
+        // Prisma 7 Json? columns reject a bare `null` literal — DbNull
+        // writes a true SQL NULL (clears any stored avatar config).
+        avatarConfig: Prisma.DbNull,
         bio: ACCOUNT_DELETION_CONFIG.deletedBio,
         location: null,
         verified: false,
@@ -325,11 +351,13 @@ async function finalizeOne(requestId: string, completedBy: string) {
       supportEmail: process.env.PLATFORM_USER_EMAIL ?? "alongtoanywhere@gmail.com",
     });
     const adminIds = await getAdminIds();
-    if (adminIds.length > 0) {
+    const assignee = await getAssignedAdmin();
+    const recipients = assignee ? [assignee.id] : adminIds;
+    if (recipients.length > 0) {
       await safeNotify({
         type: "ACCOUNT_DELETION_COMPLETED", actorId: user.id,
         message: `@${req.originalUserName} deletion completed`,
-        recipientIds: adminIds,
+        recipientIds: recipients,
       });
     }
   } catch (e) {

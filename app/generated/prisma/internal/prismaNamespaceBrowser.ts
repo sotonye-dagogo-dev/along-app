@@ -67,7 +67,8 @@ export const ModelName = {
   AnalyticsEvent: 'AnalyticsEvent',
   EmailLog: 'EmailLog',
   PasswordResetToken: 'PasswordResetToken',
-  PushSubscription: 'PushSubscription'
+  PushSubscription: 'PushSubscription',
+  AccountDeletionRequest: 'AccountDeletionRequest'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -107,7 +108,12 @@ export const UserScalarFieldEnum = {
   lastKnownLat: 'lastKnownLat',
   lastKnownLng: 'lastKnownLng',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  isDeleted: 'isDeleted',
+  deletedAt: 'deletedAt',
+  deletionRequestedAt: 'deletionRequestedAt',
+  deletionScheduledFor: 'deletionScheduledFor',
+  deletionReason: 'deletionReason'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -335,6 +341,24 @@ export const PushSubscriptionScalarFieldEnum = {
 } as const
 
 export type PushSubscriptionScalarFieldEnum = (typeof PushSubscriptionScalarFieldEnum)[keyof typeof PushSubscriptionScalarFieldEnum]
+
+
+export const AccountDeletionRequestScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  status: 'status',
+  reason: 'reason',
+  originalEmail: 'originalEmail',
+  originalUserName: 'originalUserName',
+  requestedAt: 'requestedAt',
+  scheduledFor: 'scheduledFor',
+  cancelledAt: 'cancelledAt',
+  completedAt: 'completedAt',
+  completedBy: 'completedBy',
+  metadata: 'metadata'
+} as const
+
+export type AccountDeletionRequestScalarFieldEnum = (typeof AccountDeletionRequestScalarFieldEnum)[keyof typeof AccountDeletionRequestScalarFieldEnum]
 
 
 export const SortOrder = {

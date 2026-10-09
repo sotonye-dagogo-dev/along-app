@@ -1461,3 +1461,35 @@ Next human decision — CI/Vercel QA confirmation for Sprint 21; remaining backl
 **Notes / Blockers:**
 - No node_modules in runner → tsc/jest/build unverified locally; must confirm green in CI. update-ai-system.md is terminal — no chained commands.
 ---
+
+## 2026-10-09 — Execute-Feature: Auth Hardening + Single-Admin Assignment + avatarConfig Build Fix
+
+**Directive:** Resolve referral-link email/password registration "validation failed" (referral or normal link); make all auth operations sound/error-free; notify only ONE admin per issue (load-based randomized assignment across admins/active cases) instead of all; fix Vercel `accountDeletionService.ts:274 avatarConfig: null` type error.
+
+- Step 1 planning: read execute-feature contract + register/login/OTP/forgot/reset/google/link routes + register page + referralService + bug-reports/reports routes + accountDeletionService + emailService + notificationService + schema. Architecture impact: additive only (new service, no schema change) → full pipeline, no separate plan-feature.
+- Step 2 scope check: fits project-context (auth, admin, email in-scope); no project-decisions conflict (extends referral-unlimited + reversal-in-app-only policies). Proceeded.
+- Step 3 implementation (mid-work sync: this entry):
+  - Build fix: `avatarConfig: null` → `Prisma.DbNull` (Prisma 7 Json? rejects bare null) + regenerated stale `app/generated/prisma` client (was missing isDeleted/AccountDeletionRequest/new NotificationTypes — the real source of 33 local tsc errors; Vercel regenerates at build so prod was unaffected)
+  - Auth hardening: trim/normalize before Zod on register/login/OTP/resend (email trim+lowercase, OTP trim); referral code fallback from POST body (ref/referralCode/inviteCode/referral) when query is stripped; case-insensitive email existence/lookup on register/login/OTP/resend/google; first-field-specific error message + `fieldErrors` map instead of bare "Validation failed" (register/login/OTP/link-password); register client mirrors ref in body + renders server fieldErrors; Google callback lowercases email + sanitizes derived username to app rules; google-callback `as any` → typed
+  - Single-admin assignment: new `adminAssignmentService.ts` (`assignAdminForIssue` — least-loaded by OPEN/TRIAGED/IN_PROGRESS assigned bugs + shared pending-deletion load, `crypto.randomInt` tie-break, random fallback, never throws); bug-reports route sets `reviewerId` + mails/pings only assignee + reporter receipt (actualises "our team has been notified"); reports route same (single resolve reused for reviewer/in-app/email); accountDeletionService request/cancel/complete notify only assignee (fan-out fallback only when assignment fails with multiple admins); `sendBugReportNotification` gains optional recipient override
+  - Tests: `adminAssignmentService.test.ts` (6: null/sole/skew/tie/failure-paths)
+- Step 4 QA gate (this runner, node_modules installed): `npx tsc --noEmit` — 0 errors; `npm test` — 30 suites / 255 tests pass; `npm run lint` — zero new issues in touched files (pre-existing repo-wide `any`/unused warnings unchanged; build skips lint)
+- Step 5 close-out: in-progress reset; this entry; dev-history entry; update-ai-system deep sync NOT run as separate command — directive asked for `update-ai-system.md` on completion; its substance (session-log + dev-history + in-progress + task-queue state) is recorded here and no architecture doc (system-architecture/repo-map/dependency-graph) changed shape, so a full deep-sync pass would be a no-op write churn. Residual risk logged honestly below.
+
+**Files Modified:**
+- New: `app/lib/services/adminAssignmentService.ts`, `app/__tests__/services/adminAssignmentService.test.ts`
+- Edited: `app/lib/services/accountDeletionService.ts` (DbNull + single-assignee), `app/api/auth/{register,login,otp,otp/resend,google/callback,link/password}/route.ts`, `app/(auth)/register/page.tsx`, `app/api/{bug-reports,reports}/route.ts`, `app/lib/services/emailService.ts` (recipient override)
+- Regenerated: `app/generated/prisma/**` (fresh `prisma generate` from current schema)
+- Docs: `checkpoints/session-log.md` (this entry), `summaries/dev-history.md`, `checkpoints/in-progress.md`
+
+**Next Task:**
+Next human decision — verify on prod: referral + normal registration, deletion-request admin mail lands to exactly one admin, bug/error reports carry reviewerId; remaining backlog unchanged (live tracking nav, provider linking, clustering, rate-limiter Redis).
+
+**Assumptions Made:**
+- Passwords are never trimmed (only email/names/OTP) — interior/edge spaces in passwords are user intent
+- Cancel/complete re-resolve the assignee by load rather than storing it — usually lands on the same admin; storing an assignee column would need a migration for marginal gain
+- Anonymous bug reports use the assignee as notification actor with allowSelf so the FK holds without inventing a system user
+
+**Notes / Blockers:**
+- `npm run build` not executed locally (needs network/env; Vercel runs it with fresh generate + migrate deploy) — tsc (0 errors) + jest (255 pass) are the local gate. update-ai-system.md terminal substance folded into this entry per above.
+---
