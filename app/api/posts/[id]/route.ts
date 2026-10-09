@@ -177,7 +177,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // above and never alters content or type.
     const parsed = UPDATE_POST_SCHEMA.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: "Validation failed", details: parsed.error.flatten() }, { status: 400 });
+      const flattened = parsed.error.flatten();
+      const { firstRouteServerMessage } = await import("@/app/lib/config/routeValidation");
+      const friendly = firstRouteServerMessage(flattened, "Validation failed");
+      console.warn("[PATCH /api/posts/:id] validation failed", JSON.stringify(flattened));
+      return NextResponse.json({ error: "Validation failed", ...(friendly ? { message: friendly } : {}), details: flattened }, { status: 400 });
     }
     const { ...editable } = parsed.data as Record<string, unknown>;
     for (const field of MODERATION_CONFIG.immutablePostFields) {

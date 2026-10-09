@@ -1,7 +1,7 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 full QA gate, real runs)
+> - last-updated-by: fix-build 2026-10-09 (share-route validation, static-only — no node_modules)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: overwritten on every test run — always current
 
@@ -60,6 +60,7 @@
 
 | Date | Passed | Failed | Notes |
 |------|--------|--------|-------|
+| 2026-10-09 | — | — | Fix-build share-route validation: no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --ignoreConfig --noResolve` (zero attributable errors in routeValidation/post-schema/modal/submit/API files — remaining noise is missing-module/implicit-any under noResolve, identical on untouched files), new suite `routeValidation.test.ts` (13 cases) awaits CI — Vercel build to confirm |
 | 2026-10-09 | — | — | Fix-build verify-email 504: no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --noEmit` (zero attributable errors in touched routes/services — remaining noise is pre-existing missing @types/node + ungenerated Prisma client), `git diff` review (9 files, parallel-Redis + maxDuration only), JSON parse (vercel.json OK) — Vercel build to confirm |
 | 2026-10-09 | — | — | Fix-build verify-email 404 + fresh-OTP "expired": no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --noEmit` (zero attributable errors in touched routes/services — remaining noise is pre-existing missing @types/node + ungenerated Prisma client), `git diff` review (11 files + 4 new, DB-mirror + page only), new suites `emailOtpStore` (11 cases, mocked prisma) + `verifyEmailFlow` (6 static route/schema checks) await CI — Vercel build to confirm |
 | 2026-10-09 | 309 | 0 | Execute-feature Sprint 25 PWA/i18n/reviews QA gate: real jest/tsc/build/lint runs (36 suites, +1 reviews suite) |
