@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ROUTE_VALIDATION_CONFIG } from "@/app/lib/config/routeValidation";
 
 /** Empty-string-tolerant optional text: "" (e.g. untouched optional inputs) parses as undefined. */
 const optionalText = (min: number) =>
@@ -7,15 +8,55 @@ const optionalText = (min: number) =>
     z.string().min(min).optional()
   );
 
+/** Strict fare: blank/undefined = no fare; numeric strings are coerced once;
+ *  ranges ("400-500") coerce to NaN and fail with a guided message. */
+const fareSchema = z.preprocess(
+  (v) => {
+    if (v === undefined || v === null) return undefined;
+    if (typeof v === "string") {
+      const t = v.trim();
+      if (t.length === 0) return undefined;
+      const normalized = t.replace(/[₦,\s]/g, "");
+      // A range or free text must not silently coerce — force NaN to fail.
+      if (!/^-?\d+(\.\d{1,2})?$/.test(normalized)) return Number.NaN;
+      return Number(normalized);
+    }
+    return v;
+  },
+  z
+    .number(ROUTE_VALIDATION_CONFIG.fareInvalid)
+    .refine(
+      (n) => Number.isFinite(n),
+      ROUTE_VALIDATION_CONFIG.fareInvalid
+    )
+    .refine((n) => n >= 0, ROUTE_VALIDATION_CONFIG.fareNegative)
+    .refine(
+      (n) => n <= ROUTE_VALIDATION_CONFIG.fareMax,
+      ROUTE_VALIDATION_CONFIG.fareTooLarge
+    )
+    .optional()
+);
+
 export const POST_ROUTE_STEP_SCHEMA = z.object({
-  location: z.string().min(1),
-  description: z.string().optional(),
-  vehicle: z.string().optional(),
-  fare: z.number().optional(),
+  location: z
+    .string(ROUTE_VALIDATION_CONFIG.locationRequired)
+    .trim()
+    .min(1, ROUTE_VALIDATION_CONFIG.locationRequired)
+    .max(
+      ROUTE_VALIDATION_CONFIG.locationMax,
+      ROUTE_VALIDATION_CONFIG.locationTooLong
+    ),
+  description: z.string().max(500).optional(),
+  vehicle: z.string().max(30).optional(),
+  fare: fareSchema,
 });
 
 export const CREATE_POST_SCHEMA = z.object({
-  title: z.string().min(5, "Title must be at least 5 characters").max(100),
+  title: z
+    .string(ROUTE_VALIDATION_CONFIG.titleRequired)
+    .trim()
+    .min(ROUTE_VALIDATION_CONFIG.titleMin, ROUTE_VALIDATION_CONFIG.titleTooShort)
+    .max(ROUTE_VALIDATION_CONFIG.titleMax, ROUTE_VALIDATION_CONFIG.titleTooLong),
   description: optionalText(10),
   type: z.enum(["ROUTE", "ROUTE_REQUEST", "ROUTE_RESPONSE"]).default("ROUTE"),
   quotedPostId: z.string().min(1).optional(),

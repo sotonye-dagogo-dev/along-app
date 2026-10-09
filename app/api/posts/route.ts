@@ -34,8 +34,10 @@ export async function POST(request: NextRequest) {
 
     if (!parsed.success) {
       const flattened = parsed.error.flatten();
-      const firstFieldError = Object.values(flattened.fieldErrors).flat().find(Boolean);
-      const friendly = firstFieldError ?? flattened.formErrors[0];
+      // Config-driven sanitized first message (PII-safe, capped) alongside
+      // the full flattened details (existing shape — non-breaking).
+      const { firstRouteServerMessage } = await import("@/app/lib/config/routeValidation");
+      const friendly = firstRouteServerMessage(flattened, "Validation failed");
       // Observable server log: previously only the client saw "Validation failed"
       // with no console/server trace, which made real payload bugs invisible.
       console.warn("[POST /api/posts] validation failed", JSON.stringify(flattened));

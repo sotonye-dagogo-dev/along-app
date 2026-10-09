@@ -29,6 +29,21 @@ export { REQUEST_ROUTE_TRIGGER_CONFIG } from "./routeRequest";
 export type { RequestRouteTriggerConfig } from "./routeRequest";
 export { POST_SUBMIT_CONFIG } from "./postSubmit";
 export type { PostSubmitConfig } from "./postSubmit";
+export {
+  ROUTE_VALIDATION_CONFIG,
+  parseFareInput,
+  validateRouteComposer,
+  sanitizeRouteErrorMessage,
+  firstRouteServerMessage,
+  fieldErrorClass,
+} from "./routeValidation";
+export type {
+  RouteValidationConfig,
+  FareParseResult,
+  ComposerStepLike,
+  StepFieldErrors,
+  ComposerValidation,
+} from "./routeValidation";
 export { TEAM_MEMBERS } from "./teamConfig";
 export { SITE_REVIEWS, REVIEWS_CONFIG, reviewAuthorName, insertReviewCtaPanels } from "./reviews";
 export type { SiteReview, PlatformReviewItem, ReviewStreamEntry } from "./reviews";

@@ -290,6 +290,7 @@ function HomeContent() {
     if (clientMutationId) inflightPostKeys.add(clientMutationId)
     try {
       const { POST_SUBMIT_CONFIG } = await import("@/app/lib/config/postSubmit")
+      const { firstRouteServerMessage } = await import("@/app/lib/config/routeValidation")
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: {
@@ -313,17 +314,20 @@ function HomeContent() {
         return true
       }
       const { toastService } = await import("@/app/lib/services/toastService")
-      // Surface the first field-level message when the API returns zod details,
-      // so "Validation failed" never shows without context. Details stay in the console.
-      const fieldErrors = payload.details?.fieldErrors ?? {}
-      const firstFieldError = Object.values(fieldErrors).flat().find(Boolean)
-      const friendly = firstFieldError ?? payload.details?.formErrors?.[0] ?? payload.message ?? payload.error ?? "Failed to post. Please try again."
+      // Sanitized first-field message (config-driven) so "Validation failed"
+      // never shows without context and never leaks raw JSON/PII.
+      // The modal keeps input + draft and shows its own banner on false.
+      const friendly = firstRouteServerMessage(
+        payload.details,
+        payload.message ?? payload.error ?? "Failed to post. Please try again."
+      )
       console.error("[submitPost] failed", { status: res.status, error: payload.error, details: payload.details })
       toastService.error(friendly)
       return false
     } catch {
       const { toastService } = await import("@/app/lib/services/toastService")
-      toastService.error("Network error. Please check your connection and try again.")
+      const { sanitizeRouteErrorMessage } = await import("@/app/lib/config/routeValidation")
+      toastService.error(sanitizeRouteErrorMessage("Network error. Please check your connection and try again."))
       return false
     } finally {
       if (clientMutationId) inflightPostKeys.delete(clientMutationId)
@@ -350,7 +354,23 @@ function HomeContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
-      if (!res.ok) return false
+      if (!res.ok) {
+        // Honest sanitized feedback (was silent false) — modal stays open.
+        try {
+          const payload = await res.json().catch(() => null) as { message?: string; error?: string; details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] } } | null
+          const { firstRouteServerMessage } = await import("@/app/lib/config/routeValidation")
+          const { toastService } = await import("@/app/lib/services/toastService")
+          const { POST_ACTIONS_CONFIG } = await import("@/app/lib/config/postActions")
+          toastService.error(
+            firstRouteServerMessage(payload?.details, payload?.message ?? payload?.error ?? POST_ACTIONS_CONFIG.editError)
+          )
+        } catch {
+          const { toastService } = await import("@/app/lib/services/toastService")
+          const { POST_ACTIONS_CONFIG } = await import("@/app/lib/config/postActions")
+          toastService.error(POST_ACTIONS_CONFIG.editError)
+        }
+        return false
+      }
       const payload = await res.json().catch(() => null)
       const updated = payload?.post
       if (updated) {
@@ -365,6 +385,11 @@ function HomeContent() {
       }
       return true
     } catch {
+      try {
+        const { toastService } = await import("@/app/lib/services/toastService")
+        const { POST_ACTIONS_CONFIG } = await import("@/app/lib/config/postActions")
+        toastService.error(POST_ACTIONS_CONFIG.editError)
+      } catch { /* toast is best-effort */ }
       return false
     }
   }, [])

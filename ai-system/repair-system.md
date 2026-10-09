@@ -1,8 +1,8 @@
 # Repair System — Error Knowledge Base
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-08
-> - last-verified-against-code: 2026-10-08
+> - last-updated-by: fix-build 2026-10-09 (share-route validation)
+> - last-verified-against-code: 2026-10-09
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
 > **Overview:** A living knowledge base of errors encountered during development, their root causes, and how they were fixed. Agents should consult this before diagnosing new errors. Every fixed bug should be logged here to prevent recurrence. This file is pre-populated with known error patterns for the Along tech stack (Next.js 15 + React 19 + Ant Design 5 + Tailwind 4).
@@ -659,6 +659,90 @@ Three interlocking issues (same class as the 2026-09-15 forgot-password 504, reg
 - app/api/auth/register/route.ts, app/api/auth/otp/route.ts, app/api/auth/otp/resend/route.ts, app/api/auth/verify-email/route.ts, app/api/auth/change-email/route.ts, app/api/admin/users/route.ts
 - app/api/email/preview/route.ts, app/admin/email/page.tsx, app/lib/config/emailManagement.ts
 - app/__tests__/services/emailOtpStore.test.ts (new), app/__tests__/config/verifyEmailFlow.test.ts (new)
+
+**Date:** 2026-10-09
+**Status:** Active
+
+---
+
+### Share-Route Silent Validation Failure — Empty Stop + Fare Range Posts Nothing With Success UX
+
+**Symptom:**
+User composes a route with an empty stop location and a fare range
+("400-500"), saves a draft (toast confirms), taps Share — the modal closes
+as though publishing succeeded, but no post appears on feed/explore. UI
+showed only generic "Validation failed" with no field highlighting and no
+console/server trace pointing at the offending input.
+
+**Root Cause:**
+Three interlocking gaps (same class as the earlier "generic Validation
+failed" posting complaint, now root-caused):
+1. `ShareRouteModal.handleSubmit` only checked title≥5 + ≥2 non-empty
+   locations; empty intermediate stops were silently filtered out, and fare
+   used `parseFloat(value) || 0` — so "400-500" silently coerced to `400`
+   client-side while a raw string fare failed server Zod (`z.number()`)
+   with a raw message. No per-field errors, no error-boundary classes, and
+   the Share button stayed enabled for invalid composers.
+2. `POST_ROUTE_STEP_SCHEMA` fare was a bare `z.number().optional()`
+   (string fares → unmapped Zod text) and location had no trim/max messages.
+3. `home/page submitPost` toasted the first field message (good) but both
+   `handleEditSubmit` paths (home + post detail) returned `false` silently,
+   and the modal had no form-level banner — so a 400 was easy to misread as
+   success when the toast was missed.
+
+**Fix Applied:**
+- NEW `app/lib/config/routeValidation.ts` (zero-dep, config-driven):
+  `ROUTE_VALIDATION_CONFIG` copy, strict `parseFareInput` (blank = no fare;
+  ranges/`to`/free-text rejected with "enter one amount per leg" guidance),
+  `validateRouteComposer` (every visible step needs a location — no silent
+  drop; fares/vehicles per-index), `sanitizeRouteErrorMessage` (strips
+  HTML/JSON, redacts PII/secrets, caps length), `firstRouteServerMessage`
+  (prefers first Zod field message, sanitized), `fieldErrorClass`
+  (`border-error-border` boundary helper mirroring AppInput).
+- `app/lib/schemas/post.ts`: location trim/min/max with config messages;
+  fare via preprocess (numeric strings coerced once, ranges → NaN → guided
+  failure) + finite/≥0/≤10M refines; title trim/min/max via config.
+- `ShareRouteModal`: `_fareRaw` per step + text fare input (`inputMode`
+  decimal); inline per-field messages + `border-error-border` boundaries +
+  aria-invalid/describedby on title/description/location/fare/vehicle;
+  form-level `bg-error` banner; Share disabled (`canShare`) until the
+  composer validates (drafts still savable partial); submit runs client
+  validation first (no server attempt when invalid); failure paths set the
+  banner, keep the modal open, preserve input + draft, and never rotate the
+  idempotency key; drag-reorder carries errors with their steps.
+- `home/page submitPost` + both `handleEditSubmit` paths: sanitized
+  first-field toasts via `firstRouteServerMessage` (network errors via
+  `sanitizeRouteErrorMessage`); edit failures now toast honestly instead of
+  silent `false`.
+- `POST /api/posts` + `PATCH /api/posts/[id]`: friendly `message` via
+  `firstRouteServerMessage` (response shape unchanged — additive sanitize).
+- NEW `app/__tests__/config/routeValidation.test.ts` (13 cases: fare
+  parse/blank/range/text/negative, composer valid/empty-stop/range/short,
+  sanitize PII/markup, server-message preference, token classes).
+
+**Prevention:**
+- Never `parseFloat`/`Number()` user fare input without a strict whole-string
+  check first — coercion hides ranges. Always use `parseFareInput`.
+- Every composer step on screen is validated (no silent `.filter()` before
+  submit); filtering belongs to previews, not to submit payloads.
+- Server 400s always carry a sanitized `message` (config copy) and clients
+  always surface it inline + via toast; silent `false` returns are banned on
+  submit paths.
+- Full `tsc`/`jest`/`build` confirm green in CI/Vercel (this runner has no
+  node_modules — verified to targeted-`tsc --ignoreConfig --noResolve`
+  syntax level only: zero attributable errors, remaining noise is missing
+  modules/implicit-any under noResolve, identical on untouched files).
+
+**Files Affected:**
+- app/lib/config/routeValidation.ts (new)
+- app/lib/config/index.ts
+- app/lib/schemas/post.ts
+- app/components/features/posts/ShareRouteModal.tsx
+- app/(dashboard)/home/page.tsx
+- app/(dashboard)/posts/[id]/page.tsx
+- app/api/posts/route.ts
+- app/api/posts/[id]/route.ts
+- app/__tests__/config/routeValidation.test.ts (new)
 
 **Date:** 2026-10-09
 **Status:** Active

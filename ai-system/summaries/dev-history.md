@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 28 route accuracy + live-navigation overlay + admin users type fix)
+> - last-updated-by: fix-build 2026-10-09 (share-route validation hardening)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: historical entries do not go stale
 
@@ -1005,4 +1005,16 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Bookmarks API also returns `_isBookmarked` (`isBookmarked` kept for compat).
 - Tests: NEW `profilePosts.test.ts` (5 cases).
 **QA:** no node_modules in runner — static re-reads only (guard narrowing, Prisma delegate names Like/Bookmark, barrel exports, JSX usage, alias handling). Full gate (tsc/jest/build) deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only.
+
+## Fix-build 2026-10-09 — Share-route validation hardening
+**Directive:** empty stop + fare range ("400-500") passed the composer, server Zod rejected with bare "Validation failed", draft toast + modal close read as success with no post on feed/explore. Client validation with inline feedback + error-boundary classes + sanitized messages; Share unattemptable while invalid; draft never cleared on failure. Config/metadata-driven, reusable, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `lib/config/routeValidation.ts` (+ barrel): copy, strict `parseFareInput`, `validateRouteComposer` (every-step), `sanitizeRouteErrorMessage`, `firstRouteServerMessage`, `fieldErrorClass`.
+- `schemas/post.ts`: location/title config messages, fare preprocess + finite/≥0/≤10M refines.
+- `ShareRouteModal`: `_fareRaw` + text fare input, inline errors + token boundaries + aria, form banner, `canShare`-gated Share, validate-first submit, failure keeps modal open + preserves draft, drag carries errors.
+- `home/page` submitPost + both edit submits: sanitized honest toasts (edit silence removed).
+- POST/PATCH APIs: friendly `message` via config (shape unchanged).
+- Tests: NEW `routeValidation.test.ts` (13 cases).
+**QA:** no node_modules in runner — targeted `tsc --ignoreConfig --noResolve` zero attributable errors; new suite awaits CI. Full gate deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only.

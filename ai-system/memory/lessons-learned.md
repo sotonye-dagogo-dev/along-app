@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 offline-i18n + reuse-without-migration lessons)
+> - last-updated-by: fix-build 2026-10-09 (share-route silent-coercion lesson)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -621,5 +621,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** share-preview traced start → stop → destination perfectly, but the posted view rendered start → destination, skipping the stop.
 - **Root causes:** (1) the API destructured a validated field (`waypoints`) out of the payload and never persisted it — schema acceptance is not storage; (2) TWO readers each wrong in a different state — post detail treated intermediates-only `waypoints` as the full route (origin/destination loss when present), and the start/end fallback skipped stops when absent. Preview-vs-read divergence always means: check what the write path actually stores first, then check every reader's shape assumption.
 - **Fix pattern (reuse):** one canonical builder owned by config (`buildRoutePinsFromPost`) consumed by ALL readers + one shared trace hook (`useRouteTrace`) — preview and post views become structurally incapable of diverging. Writes must round-trip every schema-accepted field (or explicitly reject it); silent destructuring-drops are a defect class to grep for after any schema widening.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Fix-build 2026-10-09: silent coercion + silent filtering behind "shared but never posted"
+- **Symptom:** composer accepted an empty stop and a fare range, showed a saved-draft toast, closed as though published, but no post existed; only a bare "Validation failed" with no field highlight.
+- **Root causes:** (1) `parseFloat`/`Number()` on free-text fares silently coerces ranges ("400-500" → 400) while the server rejects raw strings — client and server disagreed with no inline signal; (2) the composer `.filter()`ed empty-location steps before submit, so the payload no longer represented what the user saw; (3) submit failure paths returned silent `false` with no form banner, so a missed toast read as success.
+- **Fix pattern (reuse):** strict whole-string fare parsing (`parseFareInput`) shared by composer + schema preprocess; validate every visible step (filtering is for previews, never for submit payloads); every submit path surfaces a sanitized first-field message inline + via toast and never clears drafts/closes on failure. Applies to any future free-text-numeric composer field.
 - **Supersedes:** None
 - **Superseded by:** None
