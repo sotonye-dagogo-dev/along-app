@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useReducer, useContext, useCallback } from "react"
+import { useState, useReducer, useContext, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, ClipboardList, Reply, Archive, MessagesSquare } from "lucide-react"
@@ -185,6 +185,13 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
   })
   const [expandedImage, setExpandedImage] = useState<string | null>(null)
   const auth = useContext(AuthContext)
+  // Re-sync icons when fresh props arrive (e.g. profile tab revalidates after
+  // a feed like, or the interaction cache seeds a newer state). Initial
+  // useReducer state alone would freeze the first render's icons.
+  useEffect(() => {
+    dispatch({ type: "SET_FROM_PROPS", payload: post })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post._isLiked, post._isBookmarked, post.likes, post.dislikes])
 
   const routes = Array.isArray(post.routes) ? (post.routes as RouteStep[]) : []
   const vehicles = extractVehicles(post.routes)

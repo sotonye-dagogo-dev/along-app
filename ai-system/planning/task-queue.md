@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 29 tightening-up: auth edge case + email studio + blog + audit + leaderboard)
-> - last-verified-against-code: 2026-10-09 (tsc clean, jest 333/333, next build clean, all in-runner with node_modules installed)
-> - last-synced: 2026-10-09 (Sprint 29 — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 30 profile consistency + audit build fix)
+> - last-verified-against-code: 2026-10-09 (static re-reads; no node_modules in runner — tsc/jest/build deferred to CI/Vercel)
+> - last-synced: 2026-10-09 (Sprint 30 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -484,6 +484,24 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [M] | Audit trail — AuditLog model + migration + never-throw service + /api/admin/audit + /admin/audit page + nav; hooks in users/email/blog mutations | [x] |
 | [M] | Leaderboard — API page/limit/me + totalPages/total; own-rank card + Jump-to-my-rank + pagination; test updated (take 500, no points floor, me payload) | [x] |
 | [S] | Tests — NEW `tightening.test.ts` (SVG sanitize, var sources, blog sanitize/status); leaderboard test updated | [x] |
+
+---
+
+## Sprint 30 — Profile Consistency + Audit Build Fix (execute-feature 2026-10-09)
+
+> **Section summary:** Directive close-out, non-breaking additive (no migration, no new deps, no removed APIs). QA static-level in-runner (no node_modules — tsc/jest/build deferred to CI/Vercel).
+
+| Size | Task | Done |
+|------|------|------|
+| [BUG] | Audit page Vercel type error — `unknown` metadata guard (`hasRenderableMetadata` + `formatMetadata`, never-throws) | [x] |
+| [S] | `PROFILE_POSTS_CONFIG` registry — avatar/interaction fields, token pill classes, cache keys + barrel export | [x] |
+| [M] | `GET /api/posts` viewer-scoped `_isLiked`/`_isBookmarked` enrichment (batch Like/Bookmark, never-throw) so profile tabs match feed | [x] |
+| [M] | Profile pages (own + [username]) forward avatar/avatarConfig + interaction flags (header fallback, bookmarks `isBookmarked` alias) | [x] |
+| [S] | PostCard `useEffect` SET_FROM_PROPS sync — fresh props update icons | [x] |
+| [S] | ProfilePostCard `feedStream.applyInteraction` mirror + interaction-cache seed (feed↔profile parity) | [x] |
+| [S] | EmailSecurityPanel Verified pill → `bg-success text-success-text border-success-border` tokens | [x] |
+| [S] | Bookmarks API also returns `_isBookmarked` (canonical key; `isBookmarked` kept) | [x] |
+| [S] | Tests — NEW `profilePosts.test.ts` (5: avatar fields, interaction fields, token pills, cache keys) | [x] |
 
 ---
 

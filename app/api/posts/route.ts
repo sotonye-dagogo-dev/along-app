@@ -305,7 +305,30 @@ export async function GET(request: NextRequest) {
     const resultPosts = hasMore ? (posts as unknown[]).slice(0, limit) : posts;
     const nextCursor = hasMore ? (resultPosts as { id: string }[])[resultPosts.length - 1].id : null;
 
-    return NextResponse.json({ posts: resultPosts, nextCursor }, { status: 200 });
+    // Viewer-scoped interaction enrichment (PROFILE_POSTS_CONFIG.interactionFields)
+    // so profile tabs render the same like/bookmark state as the feed.
+    // Never throws — enrichment failure returns plain rows.
+    let enriched = resultPosts;
+    if (viewerId) {
+      try {
+        const ids = (resultPosts as { id: string }[]).map((p) => p.id);
+        if (ids.length > 0) {
+          const [likes, bookmarks] = await Promise.all([
+            prisma.like.findMany({ where: { postId: { in: ids }, userId: viewerId, type: "LIKE" }, select: { postId: true } }).catch(() => [] as { postId: string }[]),
+            prisma.bookmark.findMany({ where: { postId: { in: ids }, userId: viewerId }, select: { postId: true } }).catch(() => [] as { postId: string }[]),
+          ]);
+          const liked = new Set(likes.map((l) => l.postId));
+          const saved = new Set(bookmarks.map((b) => b.postId));
+          enriched = (resultPosts as Record<string, unknown>[]).map((p) => ({
+            ...p,
+            _isLiked: liked.has(p.id as string),
+            _isBookmarked: saved.has(p.id as string),
+          }));
+        }
+      } catch { /* plain rows */ }
+    }
+
+    return NextResponse.json({ posts: enriched, nextCursor }, { status: 200 });
   } catch (error) {
     console.error("List posts error:", error);
     if (error instanceof SyntaxError) {
