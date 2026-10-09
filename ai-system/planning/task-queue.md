@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 PWA tightening + pidgin depth + platform reviews)
-> - last-verified-against-code: 2026-10-09 (sw.js v4 + pwa.ts mirror, I18nProvider bundled-fallback + cookie sync, collapsible OfflineBanner, 235/235 locale parity, /api/reviews GET+POST, ReviewsPanel, profile reviews tabs, About real-reviews + CTA cadence, admin null-safe, archiving anonymize; tsc clean + 309/309 jest green + next build clean with node_modules installed)
-> - last-synced: 2026-10-09 (Sprint 25 — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 27 admin verify + push prompt + OTP feedback)
+> - last-verified-against-code: 2026-10-09 (authVerification/pushPrompt configs execute in-runner, 250/250 locale parity, admin users PATCH action branches + users page verify column/actions review-verified; tsc/jest/build deferred to CI — no node_modules)
+> - last-synced: 2026-10-09 (Sprint 27 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -435,6 +435,22 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Save styling — `ensureEmailDocument` fragment auto-wrap at render (preview + sends); PUT regenerates text twin from new html | [x] |
 | [M] | Vars/fallbacks/origins — `{{name||fallback}}` in render/extract/sanitize; catalog 12→25; all link builders via `getAppUrl()` (google, forgot-password, verify/change-email, deletion, welcome, preview) | [x] |
 | [S] | Tests — emailStudio +13 (fallbacks, wrap, parsing, image, logo universality) | [x] |
+
+---
+
+## Sprint 27 — Admin Verify Actions + Push-Prompt Handling + OTP Feedback (execute-feature 2026-10-09)
+
+> **Section summary:** Directive close-out, non-breaking additive (no migration — cooldown/attempts reuse otpStore Redis+memory pattern; no new deps; no removed APIs — `subscribeToPush()` boolean kept as wrapper). QA static-level in-runner (no node_modules — tsc/jest/build must confirm green in CI/Vercel).
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Auth-verification registry — `config/authVerification.ts` (TTL/cooldown/attempts/keys/copy/maskEmail) + barrel | [x] |
+| [M] | otpStore cooldown + attempts helpers (additive, same timeout+memory discipline) | [x] |
+| [M] | OTP/verify-email APIs — per-email cooldown 429s, honest sent/expiresIn payloads, attempt-cap revoke, PUT rate limit | [x] |
+| [M] | OTP clients — `useOtpResend` hook, OTP screen rewrite (masked email, server timer, 429/delivery feedback), register cooldown forward, EmailSecurityPanel cooldown | [x] |
+| [M] | Push prompt — `config/pushPrompt.ts`, `pushClient` env guards + permission-in-gesture + detailed reasons, PushManager local flags + per-outcome guidance, PushProvider granted-only auto-subscribe | [x] |
+| [M] | Admin verify — PATCH `verify`/`unverify`/`resend-verification` (+user notifications, undo snapshots) + users page status column + row/bulk actions | [x] |
+| [S] | Locales +15 en/pcm (250/250 parity) + `authVerificationPush.test.ts` (6) | [x] |
 
 ---
 

@@ -132,24 +132,111 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId, userIds, role, verified } = body as {
+    const { userId, userIds, role, verified, action } = body as {
       userId?: string; userIds?: string[]; role?: string; verified?: boolean;
+      action?: "verify" | "unverify" | "resend-verification";
     };
     const targets: string[] = userIds?.length ? userIds : userId ? [userId] : [];
 
-    if (targets.length === 0 || !role) {
+    if (targets.length === 0) {
+      return NextResponse.json({ error: "userId(s) required" }, { status: 400 });
+    }
+
+    // Capture previous verification state for client-side undo (all paths).
+    const previous = await prisma.user.findMany({
+      where: { id: { in: targets } },
+      select: { id: true, role: true, verified: true },
+    });
+
+    // --- Email-verification actions (additive; role flow below unchanged) ---
+    if (action === "verify" || action === "unverify") {
+      const next = action === "verify";
+      await prisma.user.updateMany({
+        where: { id: { in: targets } },
+        data: { verified: next },
+      });
+      // Notify each affected user (self-addressed VERIFIED on verify so the
+      // push mirror fires too; silent best-effort on unverify is still
+      // recorded so the user knows their status changed).
+      try {
+        const { createNotification } = await import("@/app/lib/services/notificationService");
+        for (const t of targets) {
+          void createNotification({
+            type: "VERIFIED",
+            actorId: user.id,
+            message: next
+              ? "An admin verified your email. You're all set!"
+              : "An admin marked your email as unverified. Check your inbox for a fresh code.",
+            recipientIds: [t],
+          });
+        }
+      } catch { /* non-critical */ }
+      return NextResponse.json({ success: true, updated: targets.length, previous, action }, { status: 200 });
+    }
+
+    if (action === "resend-verification") {
+      const { hashPassword } = await import("@/app/lib/utils/security");
+      const { setOtp } = await import("@/app/lib/services/otpStore");
+      const { AUTH_VERIFICATION_CONFIG } = await import("@/app/lib/config/authVerification");
+      const { getAppUrl } = await import("@/app/lib/config/env");
+      const appUrl = getAppUrl();
+      let emailed = 0;
+      const errors: string[] = [];
+      for (const id of targets) {
+        try {
+          const target = await prisma.user.findUnique({
+            where: { id },
+            select: { id: true, email: true, firstName: true, verified: true },
+          });
+          if (!target) {
+            errors.push(`${id}: not found`);
+            continue;
+          }
+          if (target.verified) continue; // already verified — nothing to send
+          const otp = Math.floor(100000 + Math.random() * 900000).toString();
+          await setOtp(`otp:${target.email.trim().toLowerCase()}`, await hashPassword(otp), AUTH_VERIFICATION_CONFIG.otpTtlSeconds);
+          try {
+            const { sendVerifyEmail } = await import("@/app/lib/services/emailService");
+            const r = await sendVerifyEmail(
+              target.email,
+              target.firstName || "traveller",
+              otp,
+              `${appUrl}/verify-email?email=${encodeURIComponent(target.email)}`
+            );
+            if (r.sent) {
+              emailed += 1;
+              try {
+                const { createNotification } = await import("@/app/lib/services/notificationService");
+                void createNotification({
+                  type: "VERIFIED",
+                  actorId: user.id,
+                  message: "An admin re-sent your verification code. Use the newest email.",
+                  recipientIds: [target.id],
+                });
+              } catch { /* non-critical */ }
+            } else {
+              errors.push(`${target.email}: ${r.reason ?? "send failed"}`);
+            }
+          } catch {
+            errors.push(`${target.email}: send error`);
+          }
+        } catch {
+          errors.push(`${id}: failed`);
+        }
+      }
+      return NextResponse.json(
+        { success: true, updated: targets.length, emailed, previous, action, ...(errors.length ? { errors } : {}) },
+        { status: 200 }
+      );
+    }
+
+    if (!role) {
       return NextResponse.json({ error: "userId(s) and role required" }, { status: 400 });
     }
 
     if (!["USER", "ADMIN"].includes(role)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
-
-    // Capture previous roles for client-side undo.
-    const previous = await prisma.user.findMany({
-      where: { id: { in: targets } },
-      select: { id: true, role: true, verified: true },
-    });
 
     await prisma.user.updateMany({
       where: { id: { in: targets } },

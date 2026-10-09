@@ -602,3 +602,23 @@ A dedicated PlatformReview model would need a migration + new admin surface for 
 - New user-facing copy must add en+pcm keys together (parity test enforces) or a config fallback via `tf()`.
 - New notification types needing distinct icons/copy should still prefer existing types + allowSelf unless product requires a migration.
 ---
+
+**Decision:** OTP resend throttling uses a per-email cooldown key alongside (never inside) the `otp:{email}` hash; verify attempts use a separate counter key with revoke-at-cap; all three reuse the otpStore Redis-timeout + memory pattern with no schema change. Push subscription uses a detailed-result core (`subscribeToPushDetailed`) with the old boolean kept as a wrapper; prompt visibility is driven by localStorage flags + server status, not server status alone.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 27
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Changing the OTP hash shape (to bundle expiry/cooldown) would break every existing Redis row and every reader; sidecar keys keep `otp:{email}` reads byte-identical while giving the client an authoritative timer that matches the throttle — the exact mismatch behind "wasn't sent any". A boolean push API cannot distinguish denied/unsupported/offline, which is why Enable went silent; the detailed core lets the UI instruct per outcome while old callers keep compiling. Server-only prompt visibility fails offline (status endpoint unreachable) and forgets dismissals — local flags close both gaps without touching the API.
+
+**Alternatives Considered:**
+- **DB-backed OTP table + migration**: Rejected — heavier than the need; sidecar keys fix the feedback/throttle bugs, and the memory-durability caveat (already documented for OTP) is now user-visible via honest delivery flags instead of silent failure.
+- **Separate rate-limit bucket for OTP sends**: Rejected — non-breaking constraint; per-email cooldown composes with the shared auth bucket instead of splitting accounting, and 429s now carry `retryAfter` either way.
+- **Auto-requesting notification permission on page load**: Rejected — browsers ignore/reject out-of-gesture requests; permission is requested inside the Enable click, auto-subscribe only fires when already granted.
+
+**Implications:**
+- Any future code-send flow reusing `otp:{email}` must honour the same cooldown key or document why not (verify-email and resend already share it).
+- New push callers should use `subscribeToPushDetailed`; the boolean wrapper stays for compatibility.
+- New user-facing copy must add en+pcm keys together (parity test enforces) or fall back to config copy.
+---

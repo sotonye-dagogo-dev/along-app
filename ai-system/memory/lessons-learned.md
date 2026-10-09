@@ -609,3 +609,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** offline/network blips cleared auth state (AuthProvider set null on any fetch failure); SW precached auth-gated routes (login-redirect caching); push only auto-subscribed with no user control or server fan-out.
 - **Root causes:** (1) auth fetch treated network/5xx/non-JSON as unauthenticated; (2) SW had no never-cache list for /api/auth|push|admin; (3) notificationService wrote in-app rows but never fanned out to Web Push.
 - **Fix pattern (reuse):** only double-401 clears session (transients keep last-known user); centralize PWA policy in `lib/config/pwa.ts` with predicate helpers and mirror in sw.js; fan out push from the single notification write-point (fire-and-forget, never throws, unknown-type fallback).
+
+## Sprint 27: silent booleans + timer/throttle split-brain behind "nothing happens"
+- **Symptom:** push Enable clicked with zero feedback and no subscription; OTP "invalid/expired immediately" plus re-sends that never arrived with no explanation.
+- **Root causes:** (1) `subscribeToPush(): Promise<boolean>` collapsed denied/unsupported/offline/no-VAPID into one `false` with no permission request ever issued; (2) client resend timer (45s) disagreed with the server throttle (shared auth bucket 10/15min) and send failures returned success, so the UI promised mail the server never delivered; single shared OTP key meant resends invalidated the code the user was holding.
+- **Fix pattern (reuse):** never return a bare success/failure for user-initiated device or delivery flows — return `{sent|ok, reason, retryAfter, expiresIn}` and let the UI adopt the SERVER timer; request permissions inside the click gesture; persist device state locally (flags + dismissal timestamps) so prompts behave offline; keep compat wrappers when widening return shapes. Applies to any future device-permission or email/SMS-code flow.
+- **Supersedes:** None
+- **Superseded by:** None

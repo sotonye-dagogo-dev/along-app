@@ -119,6 +119,111 @@ export default function AdminUsersPage() {
     }
   }
 
+  /** Admin email-verification actions (verify / unverify / resend code). */
+  const handleVerifyChange = async (userId: string, next: boolean) => {
+    const apply = async () => {
+      try {
+        const res = await fetch("/api/admin/users", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId, action: next ? "verify" : "unverify" }),
+        })
+        if (!res.ok) throw new Error("verify failed")
+        const data = await res.json().catch(() => ({})) as { previous?: { id: string; verified: boolean }[] }
+        const prev = data.previous?.[0]
+        await load(search || undefined)
+        toastService.success(next ? "Email marked verified" : "Email marked unverified")
+        if (prev) {
+          const undoId = `admin-user-verify:${userId}:${Date.now()}`
+          undoService.register({
+            id: undoId,
+            label: "Undo verification change",
+            onUndo: () => {
+              void (async () => {
+                await fetch("/api/admin/users", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ userId, action: prev.verified ? "verify" : "unverify" }),
+                })
+                toastService.success("Verification restored")
+                load(search || undefined)
+              })()
+            },
+          })
+          toastService.undo({
+            message: next ? "Email marked verified" : "Email marked unverified",
+            undoLabel: "Undo",
+            onUndo: () => undoService.execute(undoId),
+          })
+        }
+      } catch {
+        toastService.error("Verification update failed")
+      }
+    }
+    if (!next) {
+      modalService.confirm({
+        title: "Mark email unverified?",
+        description: "The user will need a fresh verification code to confirm their address.",
+        variant: "sensitive",
+        confirmLabel: "Mark unverified",
+        onConfirm: () => { modalService.close(); void apply() },
+      })
+    } else {
+      void apply()
+    }
+  }
+
+  const handleResendCode = async (userId: string) => {
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action: "resend-verification" }),
+      })
+      if (!res.ok) throw new Error("resend failed")
+      const data = await res.json().catch(() => ({})) as { emailed?: number; errors?: string[] }
+      if (data.emailed) toastService.success(`Verification code sent (${data.emailed})`)
+      else if (data.errors?.length) toastService.error(data.errors[0])
+      else toastService.success("Nothing to send — already verified")
+    } catch {
+      toastService.error("Failed to resend code")
+    }
+  }
+
+  const handleBulkVerify = (next: boolean) => {
+    const ids = [...bulk.selected]
+    if (ids.length === 0) return
+    const run = async () => {
+      setBulkBusy(true)
+      try {
+        const res = await fetch("/api/admin/users", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userIds: ids, action: next ? "verify" : "unverify" }),
+        })
+        if (!res.ok) throw new Error("bulk failed")
+        bulk.clear()
+        await load(search || undefined)
+        toastService.success(`${ids.length} email(s) ${next ? "verified" : "unverified"}`)
+      } catch {
+        toastService.error("Bulk verification failed")
+      } finally {
+        setBulkBusy(false)
+      }
+    }
+    if (!next) {
+      modalService.confirm({
+        title: `Mark ${ids.length} email(s) unverified?`,
+        description: "Affected users will need fresh verification codes.",
+        variant: "sensitive",
+        confirmLabel: "Mark unverified",
+        onConfirm: () => { modalService.close(); void run() },
+      })
+    } else {
+      void run()
+    }
+  }
+
   const handleBulkRole = (role: string) => {
     const ids = [...bulk.selected]
     if (ids.length === 0) return
@@ -318,19 +423,21 @@ export default function AdminUsersPage() {
         <span className="inline-flex items-center gap-1.5 flex-wrap">
           <button onClick={() => handleBulkRole("ADMIN")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-primary-muted text-primary border-none font-semibold cursor-pointer disabled:opacity-50">Make admin</button>
           <button onClick={() => handleBulkRole("USER")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary border border-border cursor-pointer disabled:opacity-50">Demote</button>
+          <button onClick={() => handleBulkVerify(true)} disabled={bulk.count === 0 || bulkBusy} title="Mark selected emails verified" className="px-2 py-1 radius-sm bg-success text-white border-none font-semibold cursor-pointer disabled:opacity-50">Verify emails</button>
           <button onClick={handleBulkSuspend} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-error text-error-text border-none font-semibold cursor-pointer disabled:opacity-50">Suspend</button>
           <button onClick={handleBulkDelete} disabled={bulk.count === 0 || bulkBusy} title="Safe deletion: 7-day grace, posts anonymized" className="px-2 py-1 radius-sm bg-error text-error-text border border-error-border font-semibold cursor-pointer disabled:opacity-50">Delete (safe)</button>
         </span>
       </div>
 
       <div className="overflow-x-auto radius-lg border border-border bg-bg-card shadow-xs max-w-full">
-        <table className="w-full border-collapse text-xs min-w-[760px]">
+        <table className="w-full border-collapse text-xs min-w-[880px]">
           <thead>
             <tr className="bg-bg-elevated">
               <th className="px-3 py-3 w-10 border-b border-border-strong"><span className="sr-only">Select</span></th>
               <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-text-secondary text-left border-b border-border-strong whitespace-nowrap">User</th>
               <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-text-secondary text-left border-b border-border-strong whitespace-nowrap">Email</th>
               <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-text-secondary text-left border-b border-border-strong whitespace-nowrap">Role</th>
+              <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-text-secondary text-left border-b border-border-strong whitespace-nowrap">Email status</th>
               <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-text-secondary text-left border-b border-border-strong whitespace-nowrap">Tier</th>
               <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-text-secondary text-left border-b border-border-strong whitespace-nowrap">Posts</th>
               <th className="px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-text-secondary text-left border-b border-border-strong whitespace-nowrap">Joined</th>
@@ -339,9 +446,9 @@ export default function AdminUsersPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="text-center py-8 text-text-muted">Loading...</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-text-muted">Loading...</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={8} className="text-center py-8 text-text-muted">No users found</td></tr>
+              <tr><td colSpan={9} className="text-center py-8 text-text-muted">No users found</td></tr>
             ) : users.map((u) => {
               const checked = bulk.selected.has(u.id)
               return (
@@ -384,16 +491,48 @@ export default function AdminUsersPage() {
                   )}
                 </td>
                 <td className="px-4 py-3 border-b border-border whitespace-nowrap">
+                  <span className={`inline-flex items-center px-2 py-0.5 radius-pill text-[10px] font-semibold ${
+                    u.verified ? "bg-success text-white" : "bg-warning text-warning-text"
+                  }`}>
+                    {u.verified ? "Verified" : "Unverified"}
+                  </span>
+                </td>
+                <td className="px-4 py-3 border-b border-border whitespace-nowrap">
                   <span className={`inline-flex items-center px-2 py-0.5 radius-pill text-[10px] font-semibold ${tierColors[u.rewardTier] ?? "bg-bg-elevated text-text-secondary"}`}>
                     {u.rewardTier}
                   </span>
-                </td>
-                <td className="px-4 py-3 border-b border-border">{u._count.posts}</td>
+                </td>                <td className="px-4 py-3 border-b border-border">{u._count.posts}</td>
                 <td className="px-4 py-3 border-b border-border text-text-muted whitespace-nowrap">
                   {new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                 </td>
                 <td className="px-4 py-3 border-b border-border whitespace-nowrap">
                   <div className="flex gap-1 flex-wrap">
+                    {u.verified ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleVerifyChange(u.id, false) }}
+                        title="Mark email unverified (user gets a fresh code on next request)"
+                        className="px-2 py-1 radius-sm text-[10px] font-semibold bg-warning text-warning-text border-none cursor-pointer hover:opacity-80 transition-all duration-fast"
+                      >
+                        Unverify
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleVerifyChange(u.id, true) }}
+                          title="Mark email verified (user is notified)"
+                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-success text-white border-none cursor-pointer hover:opacity-80 transition-all duration-fast"
+                        >
+                          Verify
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleResendCode(u.id) }}
+                          title="Generate + email a fresh verification code"
+                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border cursor-pointer hover:text-primary transition-all duration-fast"
+                        >
+                          Resend code
+                        </button>
+                      </>
+                    )}
                     {u.role !== "ADMIN" ? (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleRoleChange(u.id, "ADMIN") }}

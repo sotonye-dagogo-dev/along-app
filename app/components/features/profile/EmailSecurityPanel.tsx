@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { AppButton, AppAlert } from "@/app/components/ui";
 import { toastService } from "@/app/lib/services/toastService";
+import { useOtpResend, formatCooldown } from "@/app/lib/hooks/useOtpResend";
+import { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES } from "@/app/lib/config/authVerification";
 import { MailCheck, MailPlus, KeyRound } from "lucide-react";
 
 interface Props {
@@ -33,6 +35,12 @@ export function EmailSecurityPanel({ onChanged }: Props) {
   const [awaitingChangeOtp, setAwaitingChangeOtp] = useState(false);
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
+  // Server-driven resend cooldown (shared with the OTP screen) so the timer
+  // and the throttle agree; seeded from config until the first send adopts
+  // the authoritative value.
+  const { cooldown: verifyCooldown, busy: resendBusy, requestCode } = useOtpResend(
+    AUTH_VERIFICATION_CONFIG.resendCooldownSeconds
+  );
 
   useEffect(() => {
     (async () => {
@@ -101,10 +109,26 @@ export function EmailSecurityPanel({ onChanged }: Props) {
         {showVerify && (
           <div className="p-3 rounded-md bg-bg-elevated border border-border flex flex-col gap-2">
             <div className="text-sm font-medium">Verify your email</div>
-            <p className="text-xs text-text-muted">We sent a code when you signed up. Didn&apos;t get it?</p>
-            <div className="flex gap-2 flex-wrap">
-              <AppButton size="sm" variant="secondary" loading={busy === "resend"} onClick={() => run("resend", () => post("/api/auth/verify-email", {}))}>
-                Resend code
+            <p className="text-xs text-text-muted">
+              We sent a code when you signed up ({AUTH_VERIFICATION_CONFIG.copy.codeExpiryNote(OTP_TTL_MINUTES)}). Didn&apos;t get it?
+            </p>
+            <div className="flex gap-2 flex-wrap items-center">
+              <AppButton
+                size="sm"
+                variant="secondary"
+                loading={busy === "resend" || resendBusy}
+                disabled={verifyCooldown > 0}
+                title={verifyCooldown > 0 ? AUTH_VERIFICATION_CONFIG.copy.resendCooldown(verifyCooldown) : "Send a fresh code"}
+                onClick={() => run("resend", async () => {
+                  const r = await requestCode("/api/auth/verify-email", {});
+                  if (!r.ok) throw new Error(r.error ?? "Request failed");
+                  // Delivery failures still leave a valid code server-side —
+                  // surface it instead of claiming success.
+                  if (!r.sent) throw new Error(r.error ?? AUTH_VERIFICATION_CONFIG.copy.sendFailed);
+                  return "Verification code sent — use the newest email.";
+                })}
+              >
+                {verifyCooldown > 0 ? `Resend in ${formatCooldown(verifyCooldown)}` : "Resend code"}
               </AppButton>
             </div>
             <form
