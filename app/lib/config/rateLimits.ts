@@ -11,6 +11,7 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
   likes: { windowMs: 60000, maxRequests: 60 },
   trace: { windowMs: 3600000, maxRequests: 20, message: "Route tracing limit reached (20/hour)." },
   comments: { windowMs: 60000, maxRequests: 20 },
+  reviews: { windowMs: 60000, maxRequests: 10, message: "Too many review submissions. Please try again shortly." },
   search: { windowMs: 60000, maxRequests: 30 },
   maps: { windowMs: 60000, maxRequests: 60, message: "Map requests are limited (60/min). Please try again shortly." },
 };

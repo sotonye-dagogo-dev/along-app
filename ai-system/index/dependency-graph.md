@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 routeSteps + useUserLocation edges)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 reviews + i18n + PWA v4 edges)
 > - last-verified-against-code: 2026-10-09 (accountDeletionService/email fan-out/toggle edges verified in code)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -13,7 +13,8 @@
 
 ```
 Next.js App Router (pages/layouts)
-    → Context Providers (Auth, OnlineStatus, Push, Theme, Antd, GlobalModal, Toast, CookieConsent)
+    → Context Providers (Auth, OnlineStatus, Push, Theme, Antd, GlobalModal, Toast, CookieConsent, I18n)
+        → I18nContext → bundled EN import + localStorage last-good + fetch (/locales/*.json, SW-precached v4) + along-locale cookie (middleware SSR agreement) [Sprint 25]
         → AuthContext → AuthService → Prisma / JWT / Redis
         → OnlineStatusContext → offlineQueue (flush on reconnect)
         → PushContext → pushClient → navigator.serviceWorker
@@ -27,7 +28,9 @@ Page Components (app/(auth|dashboard|admin|public|admin)/)
     → UI Components (app/components/ui/App*)
     → Feature Components (app/components/features/*)
         → posts/RequestRouteModal (route-request composer, response-mode ShareRouteModal)
-        → suggestions/EndlessCarousel (scroll-based autoplay, own overflow wrapper, ENDLESS_CAROUSEL_CONFIG) + SuggestionsRail (mobile, xl:hidden, feed-owned) + FollowButton + About reviews tape (same wrapper, SITE_REVIEWS cards)
+        → suggestions/EndlessCarousel (scroll-based autoplay, own overflow wrapper, ENDLESS_CAROUSEL_CONFIG) + SuggestionsRail (mobile, xl:hidden, feed-owned) + FollowButton + About reviews tape (same wrapper, real /api/reviews + ReviewCtaPanel cadence [Sprint 25])
+        → reviews/ReviewsPanel (star form + guest gate + FAQ + list; own profile reviews tab + #reviews deep link; other-profile read-only authorId scope [Sprint 25])
+        → (public)/LandingCopy (landing i18n islands: hero/features/CTA/feed-preview [Sprint 25])
         → ui/SuggestionsPanel (live /api/suggestions: who-to-follow, open requests, trending tags)
     → App-level Hooks (app/hooks/useAuth, useFeedInteractions)
     → Client Cache (app/lib/cache/memoryCache + app/lib/hooks/useCachedFetch)
@@ -98,6 +101,7 @@ Service Layer (app/lib/services/*)
     → undoService, toastService (TOAST_CONFIG durations), modalService → (App-level)
     → GlobalToastProvider (single-timer owner: GlobalUndoToast auto-close + progress bar share one duration, remount per toast) → GlobalUndoToast
     → PostCard + post detail (`POST_ACTIONS_CONFIG`, `MODERATION_CONFIG`) → PostMenu/ReportDialog → PATCH/DELETE/archive + POST /api/reports (transactional dedup, reporter receipt + admin triage notifications)
+    → Platform reviews: POST /api/reviews (self-pair upsert, PENDING) → `notifyReviewThanks` (REWARD+allowSelf) → Prisma Notification + push mirror (REVIEW entry); GET /api/reviews (APPROVED + own PENDING, authorId scope, SW-cached) → About tape + ReviewsPanel + profile tabs [Sprint 25]
     → Notification fan-out: posts route (ROUTE_REQUEST/NEW_ROUTE/ROUTE_RESPONSE) + like route (LIKE/DISLIKE) + comments routes (COMMENT/MENTION) → `notificationService.createNotification` (+ `mentionService` extract/diff/resolve) → Prisma Notification + Redis invalidation
     → Referrals (auth-agnostic): register page + login/register Google buttons (`?ref=` → `state=ref:`) → register route + google callback → `referralService` (unlimited linking, send-credit cap via INVITE_CONFIG) → QStash rewards worker
     → Early adopters: `earlyAdopterConfig` SiteConfig row (seeded, admin-editable via /api/admin/config with validation + Redis invalidation) → `earlyAdopterService` (createdAt-asc rank, Redis-cached; `listEarlyAdopters`) → profile badge + admin `?earlyAdopter=true` user filter
@@ -106,7 +110,7 @@ Service Layer (app/lib/services/*)
 
 Config Registries (app/lib/config/*)
     → (no app dependencies — pure config objects)
-    → 40 files (incl. index.ts) incl. routeSteps.ts (Sprint 23 destination rule + normalize: composer, PostCard, NavigationGuide, post detail, posts POST/PATCH) + mapPins.ts (Sprint 20 anchor-stable pins/user-dot/labels; Sprint 23 endpoint-snap + tracking timeouts) + mapStack.ts (Sprint 19 keyless tiles/routing/geocode/TTLs/attributions/style-stack builders/env gates; Sprint 20 dark light-parity), earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library + Sprint 20 update-in-place labels/prompt), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
+    → 40 files (incl. index.ts) incl. reviews.ts (Sprint 25 REVIEWS_CONFIG + insertReviewCtaPanels + reviewAuthorName; SITE_REVIEWS retained) + pwa.ts (Sprint 25 v4: locales precache, /api/{config,reviews} cacheable, banner copy, REVIEW mirror) + faq.ts (Sprint 25 FAQ_PCM) + footer.ts (Sprint 25 optional i18nKey) + rateLimits.ts (Sprint 25 reviews bucket) + routeSteps.ts (Sprint 23 destination rule + normalize: composer, PostCard, NavigationGuide, post detail, posts POST/PATCH) + mapPins.ts (Sprint 20 anchor-stable pins/user-dot/labels; Sprint 23 endpoint-snap + tracking timeouts) + mapStack.ts (Sprint 19 keyless tiles/routing/geocode/TTLs/attributions/style-stack builders/env gates; Sprint 20 dark light-parity), earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library + Sprint 20 update-in-place labels/prompt), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
 
 Client Utilities (app/lib/utils/*)
     → pushClient → navigator.serviceWorker, fetch (/api/push/*)
@@ -116,8 +120,8 @@ Client Utilities (app/lib/utils/*)
     → geo → fetch (/api/maps/reverse; Sprint 19 — no browser-direct upstream calls)
 
 PWA (public/sw.js)
-    → (standalone service worker — no app imports)
-    → Cache strategies: static assets, API responses, pages
+    → (standalone service worker — no app imports; mirrors app/lib/config/pwa.ts — bump both)
+    → Cache strategies: static assets, API responses, pages, /locales/ dictionaries (cache-first [Sprint 25]), SWR map tiles
 ```
 
 ### Detailed Service Dependencies

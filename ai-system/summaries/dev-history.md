@@ -25,6 +25,7 @@
 **Key Changes:**
 - [important architectural or behavioural change]
 
+
 **Next Sprint Focus:**
 [What comes next]
 ```
@@ -54,6 +55,7 @@ The final route step IS the destination, so fare/vehicle are now hidden there en
 - `npx jest` — 32/32 suites, 282/282 tests pass (emailStudio 20/20 after repairs)
 - `npm run lint` — 0 errors in touched files (9 remaining all pre-existing `no-explicit-any` in untouched files; baseline was 11, fixed 2; Vercel build skips lint)
 
+
 **Next Sprint Focus:**
 Vercel deploy green confirmation; prod-verify destination hiding across composer/feed/detail/nav + pin placement through pan/zoom + persistent user dot; remaining backlog unchanged.
 
@@ -78,6 +80,7 @@ Directive close-out: same-draft update-in-place with update-vs-new prompt, ancho
 - `npx jest` — 28 suites / 241 tests pass (7 new)
 - `npm run build` — clean
 - `npx next lint` (touched files) — no warnings or errors
+
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration.
@@ -111,6 +114,7 @@ Full repository scan completed. All `ai-system` documentation files generated wi
 **Key Changes:**
 
 - All template files in `ai-system/` populated with project-specific content
+
 
 **Next Sprint Focus:**
 Begin Phase 1 development — create config registry files in `app/lib/config/`, followed by universal component library and context providers.
@@ -149,6 +153,7 @@ Full Next.js 15 application generated with all module layers: 25 config registry
 - Two `useRequireAuth` hooks exist in different locations — may need consolidation
 - `app/lib/streams/` directory created but empty — placeholder for future reactive streams
 
+
 **Next Sprint Focus:**
 Implement remaining unimplemented features: auth middleware, like/dislike system, full search, map integration with route polyline rendering, clustering, leaderboards, integration tests, and component tests.
 
@@ -176,6 +181,7 @@ Comprehensive production audit fixing 14 issues: runtime errors (PostCard `.leng
 
 - New architecture: ThemeProvider + ThemeToggle adds dark mode toggle
 - Brand consistency: All logo references now use AppLogo with actual brand assets
+
 
 **Next Sprint Focus:**
 Implement remaining features: auth middleware, like/dislike system, full search, map integration, leaderboards, tests, Lighthouse audit.
@@ -339,6 +345,7 @@ Completed comprehensive codebase remediation across 4 sprints: forgot-password/r
 - `ExplorePinCard` and `FilterChipsBar` extracted from 560-line explore page into reusable sub-components under `app/components/features/explore/`
 - Explore page reduced from 562 to 498 lines
 
+
 **Next Sprint Focus:**
 Search with full-text indexes, clustering for map markers, component tests, accessibility audit.
 
@@ -359,6 +366,7 @@ Created global leaderboard feature: API route returning top 100 users by rewardP
 **Key Changes:**
 - New route: /leaderboard with API backend
 - Sidebar now shows Leaderboard nav item for all authenticated users
+
 
 **Next Sprint Focus:**
 Search with full-text indexes, clustering for map markers, component tests, accessibility audit.
@@ -389,6 +397,7 @@ Wired the follower/following system end-to-end: follow button now calls the API 
 - Follow button is no longer a stub — fully functional follow/unfollow
 - Followers/following have dedicated list pages
 - Integration code frozen and isolated
+
 
 **Next Sprint Focus:**
 Search with full-text indexes, clustering for map markers, component tests, accessibility audit.
@@ -424,6 +433,7 @@ Resolved tester feedback (image upload no-op, new posts invisible on feed/explor
 - QStash workers no longer 500 on every invocation due to consumed body stream
 - Security tightening: image loader wildcard removed, JWT secret fallback warns in prod, vercel headers de-duplicated
 
+
 **Next Sprint Focus:**
 Mapbox/MapLibre live-tracking navigation, carto API key wiring for base maps, link-auth provider feature, remaining P1 audit items (in-memory rate limiter → Upstash Redis, supercluster wiring for explore).
 
@@ -448,6 +458,7 @@ Fixed 504 `FUNCTION_INVOCATION_TIMEOUT` on `POST /api/auth/forgot-password` caus
 - Redis failures no longer block any hot path — every cache/OTP operation degrades to memory/DB within 1.5s even if Upstash host is deprovisioned
 - Auth email sends no longer hold the response — background via `waitUntil` matches register pattern
 
+
 **Next Sprint Focus:**
 Same as above plus rotation of `UPSTASH_REDIS_REST_URL` env var in Vercel from `willing-gazelle-101748.upstash.io` (ENOTFOUND) to valid instance.
 
@@ -464,6 +475,7 @@ Forgot-password returned success while Resend never sent anything — no mail, n
 
 **Key Changes:**
 - Background email must verify provider result — a false success is worse than an error because the user waits for mail that never arrives
+
 
 **Next Sprint Focus:**
 Reset-link "expired/invalid" reports; live map tracking; carto basemap key; auth provider linking.
@@ -482,6 +494,7 @@ Reset links reported "expired or invalid" within seconds of delivery. Root cause
 
 **Key Changes:**
 - Security tokens must be durable, not cache-resident — cache is best-effort by policy (timeout + memory fallback)
+
 
 **Next Sprint Focus:**
 Sprint 7 execute-feature (route requests E2E, caching, seed hygiene).
@@ -504,6 +517,7 @@ Full Sprint 7 workstream A–H delivered: seed backup/clear/restore scripts + `d
 - New: `GET /api/suggestions`, `GET /api/bookmarks`, `RequestRouteModal`, `EndlessCarousel`/`SuggestionsRail`/`FollowButton`, `memoryCache`/`useCachedFetch`, `scripts/` tooling
 - State strategy formally decided: keep memoryCache/useCachedFetch/feedStream, no redux (see project-decisions.md)
 
+
 **Next Sprint Focus:**
 Live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration — per backlog.
 
@@ -524,6 +538,7 @@ Closed the three honest-stale items left by the 2026-10-08 update-ai-system deep
 **Key Changes:**
 - Docs-only session — zero `app/` code changes; prior session-log test figures (122/122) independently reproduced by execution, not trust
 - No architecture impact — no plan-feature.md needed; no task-queue mutation (no sprint tasks for this remediation)
+
 
 **Next Sprint Focus:**
 Backlog per task-queue: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Open via plan-feature.md / execute-feature.md.
@@ -548,6 +563,7 @@ Implemented the Phase 4 search checkbox end-to-end, non-breaking: `searchService
 - Edited: `app/lib/config/apiRegistry.ts` (search entry), `middleware.ts` (`/search` guest route)
 - No schema/migration changes; existing `CACHE_KEYS.search` + `CACHE_TTL.searchResults` + `RATE_LIMITS.search` slots reused
 
+
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Search live-DB integration test still open (API-boundary suites mock Prisma, per convention).
 
@@ -571,6 +587,7 @@ Tightened four home/share/footer UX items, non-breaking and config-driven: the s
 - Edited: `EndlessCarousel.tsx`, `SuggestionsRail.tsx`, `ShareRouteModal.tsx`, `DraftingCoach.tsx`, `home/page.tsx`, `AppFooter.tsx`, `footer.ts`, `config/index.ts`, `posts/index.ts`
 - No schema/migration changes; no new dependencies
 
+
 **Next Sprint Focus:**
 update-ai-system deep sync (chained), then remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
 
@@ -593,6 +610,7 @@ Two directive items, non-breaking and config-driven: the home suggestions carous
 - New: `app/lib/config/routeDrafts.ts`, `app/lib/services/routeDraftsService.ts`, `app/components/features/posts/RouteDraftsPanel.tsx`, `app/__tests__/config/routeDrafts.test.ts`
 - Edited: `home/page.tsx`, `ShareRouteModal.tsx`, `lib/config/index.ts`, `posts/index.ts`
 - No schema/migration changes; no new dependencies
+
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration. Full jest/lint/build gate still needs a runner with node_modules (CI).
@@ -618,6 +636,7 @@ Five directive items, all non-breaking, config/metadata-driven. Root-caused the 
 
 **QA gate (this runner, node_modules installed via `npm ci`): tsc 0 errors; jest 15 suites / 149 tests pass; next build clean; lint shows only pre-existing issues in untouched files (none in touched files).**
 
+
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
 
@@ -642,6 +661,7 @@ Five directive iron-out items, all non-breaking, config-driven, no new dependenc
 
 **QA gate (this runner, node_modules installed via `npm ci`): tsc 0 errors; jest 16 suites / 154 tests pass; next build clean; lint clean for touched files (2 pre-existing warnings in untouched code paths).**
 
+
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
 
@@ -662,6 +682,7 @@ Directive close-out: delete/edit/archive for posts, comments and route requests 
 - Edited: `schema.prisma`, `postActions.ts`, `notifications.ts` (+service type), `apiRegistry.ts`, `config/index.ts`, `feedService.ts`, `searchService.ts`, post/comment/admin APIs, `PostCard.tsx`, `CommentList.tsx`, `posts/[id]/page.tsx`, `ShareRouteModal.tsx`, `TrustBadge.tsx`, `home/page.tsx`, `SearchPage.tsx`, admin posts/bugs pages, `sitemap.ts`, `feedStream.ts`, `posts.test.ts`
 
 **QA gate (this runner, node_modules via `npm ci`): tsc 0 errors; jest 17 suites / 160 tests pass; next build clean; lint clean for touched files (fixed 1 unused var + 1 exhaustive-deps during the gate).**
+
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
@@ -685,6 +706,7 @@ Directive close-out: post nature (ROUTE / ROUTE_REQUEST / ROUTE_RESPONSE) preser
 
 **QA gate (this runner, node_modules via `npm ci`): tsc 0 errors (after `prisma generate` for new enum values); jest 21 suites / 188 tests pass; next build clean; next lint 11 pre-existing errors / 0 new.**
 
+
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
 
@@ -706,6 +728,7 @@ Directive close-out: notifications replaced bookmarks on the mobile bottom bar w
 - Edited: `app/lib/config/navigation.ts`, `notifications.ts`, `forms.ts`, `index.ts` (barrel), `DashboardNav.tsx`, `notificationService.ts`, `referral` call sites (register, google callback), `app/api/workers/rewards/route.ts`, `app/api/users/[id]/route.ts`, `app/(dashboard)/profile/page.tsx`, `LandingCtas.tsx`, `app/(public)/page.tsx`, `package.json`, `task-queue.md`, `session-log.md`
 
 **QA gate (this runner, node_modules via `npm ci`): tsc 0 errors; jest 22 suites / 198 tests pass; next build clean; next lint 1 pre-existing warning / 0 new.**
+
 
 **Next Sprint Focus:**
 ⚠️ Remove the one-time reset (script + package.json entries) once prod DB is confirmed clean. Then backlog: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
@@ -733,6 +756,7 @@ Directive close-out in two parts: (1) the one-time prod DB reset was confirmed s
 - `npm test` — not runnable here; new suites follow the existing jest patterns (pure-config assertions + RTL component assertions); full gate (tsc + lint + tests + build) to run where deps exist
 - `package.json` validated as JSON; `git diff --stat` reviewed (12 edited + 7 new)
 
+
 **Next Sprint Focus:**
 Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
 
@@ -756,6 +780,7 @@ Closed four linked complaints in one pass: (1) the admin dashboard crashed on ev
 - `npx jest` — 25 suites / 220 tests pass
 - `npm run build` — clean
 - `npx next lint` — 0 issues in touched files (pre-existing feed/suggestions errors untouched)
+
 
 **Next Sprint Focus:**
 Remaining backlog unchanged: live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration.
@@ -802,6 +827,7 @@ Ended recurring map API-key failures by making the whole map pipeline work with 
 - `npm run build` — clean (84 static pages; `/api/maps/{route,geocode,reverse}` + `/api/routes/trace` present)
 - `npx next lint` — zero new issues (pre-existing `any` errors + RouteMap exhaustive-deps warning unchanged vs baseline stash-compare)
 
+
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration. (Carto basemap key wiring is closed by this sprint — keyless Carto is the default.) OSRM demo has no SLA (~1 req/s, Redis cache absorbs repeats); self-host path stays open if routing volume outgrows it.
 
@@ -826,6 +852,7 @@ Self-service safe deletion (request → 7-day archived grace → anonymized fina
 - `npx tsc` / `npx jest` / `npm run build` NOT runnable here (no node_modules, consistent with prior session-log note); Vercel build runs `prisma generate` + `migrate deploy` before `next build` so new Prisma models/enums resolve at build time
 - Static checks: modalService `confirmLabel` wired through provider+modal; `avatarConfig: null` clear; counter recompute captures post ids pre-wipe; manual review of all route/service/UI edits for excess-property and import-path correctness
 - Residual risk: full tsc/jest/build must be confirmed in CI/Vercel; generated client (`app/generated/prisma`) is stale until regenerated
+
 
 **Next Sprint Focus:**
 Remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration; confirm Sprint 21 QA green in CI and exercise the deletion cron + Email Studio sends in staging.
@@ -852,6 +879,7 @@ Referral/normal registration "validation failed" resolved via pre-Zod normalizat
 - `npm run lint` — zero new issues in touched files (pre-existing repo-wide warnings unchanged; Vercel build skips lint)
 - `npm run build` — not run locally (requires prod env/network); Vercel runs generate + migrate deploy + build
 
+
 **Next Sprint Focus:**
 Prod-verify referral + normal registration, single-admin mail ownership, reviewerId on bug/error reports; remaining backlog unchanged (live tracking nav, provider linking, clustering, rate-limiter Redis).
 
@@ -876,5 +904,29 @@ Prod-verify referral + normal registration, single-admin mail ownership, reviewe
 - node strip-types execution: builder 4/4 round-trips, sanitizer strips script/handlers/js-urls, env precedence correct
 - jest (17 new) / lint / build — deferred to CI/Vercel (deps absent)
 
+
+
+## Sprint 24 (2026-10-09) — PWA fulfillment + Pidgin expansion
+- PWA registry `app/lib/config/pwa.ts`: versioned caches (v3), guest-only precache, never-cache auth/push/admin, cacheable API prefixes, map-tile hosts, push mirror map, heartbeat + toast copy.
+- `public/sw.js` rewrite: navigation preload, network-first pages with offline.html fallback (cached-pages list), SWR for cacheable GET APIs + images + keyless map tiles (bounded LRU), real background-sync handshake (FLUSH_OFFLINE_QUEUE), push with actions + focus-or-open click.
+- `public/manifest.json`: id/scope/launch_handler, split any+maskable icons, PWA utm shortcuts (Explore/Search/FAQ); `public/offline.html`: design-token styling, cached-destinations list, retry + cached-feed CTA, refresh notice.
+- OnlineStatus: heartbeat (captive-portal/flaky detection), offline/online toasts, focus re-flush, SW sync relay, `useRequireOnline`; new `offlineGuard.ts` (requireOnline/isOfflineError/sanitized errors).
+- Session preservation: AuthProvider keeps last-known user on network/5xx/non-JSON; only double-401 clears. useCachedFetch serves stale cache on offline failure instead of erroring.
+- Push fan-out: `pushSender.ts` (VAPID direct send, 410 pruning, never throws) auto-mirrored from `createNotification` (fire-and-forget, forward-compatible unknown types); `/api/push/status` + `PushManager` opt-in on notifications page; existing auto-subscribe preserved.
+- Components: `OfflineBanner` (retry), `CachedDataNotice`, `ServiceWorkerRegistrar` (update-only SKIP_WAITING, never force-reloads); wired in layout + notifications page; `/api/health` heartbeat endpoint.
+- i18n: +44 keys en/pcm (pwa/offline/push/placeholders/post/notifications/profile), parity-tested incl. interpolation preservation; Pidgin genuinely translated (45/142 differing).
+- FAQ: new "Offline & App" category (6 entries: offline scope, cached-page fallback, install, push mirroring, session preservation); README PWA offline paragraph.
+- Tests: `pwa.test.ts` (11), `locales.test.ts` (4), `offlineGuard.test.ts` (3) — 18 new suites entries; full gate deferred to CI (runner has no node_modules; SW syntax + JSON parity executed locally).
+
 **Next Sprint Focus:**
 CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studio send with missing vars, select-search send, explore share + dot.
+
+## Sprint 25 (2026-10-09) — PWA Tightening + Pidgin Depth + Platform Reviews Access
+**Directive:** cache config registry (raw `guest.signIn` keys seen offline) + collapsible offline toast; pidgin across config-driven public pages (about/faq/feed/landing/leaderboard/invitations/buttons/links) with seamless toggle; user access point for platform reviews (profile tab + FAQ), About placeholders → real reviews + every-10 CTA panel, thank-you notification (no email), archiving anonymizes without admin crashes. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- PWA: pwa.ts v4 (`/locales/*.json` precache, `/api/config` + `/api/reviews` cacheable, `PWA_OFFLINE_BANNER`, REVIEW push mirror); sw.js v4 mirror + `/locales/` cache-first branch; I18nProvider bundled-EN seed + localStorage last-good + `along-locale` cookie sync + `tf()` fallback helper; OfflineBanner collapsible/expandable pill persisted per device.
+- i18n: +74 keys en/pcm (235/235 parity, interpolation preserved); FAQ_PCM 24-item pidgin map + new Reviews FAQ category; toggle wired through PostCard aria-labels, PostMenu (config-fallback), AppFooter (optional `i18nKey`), LandingCtas + new LandingCopy islands, About headings, FaqClient, leaderboard/invite/feed-empty.
+- Reviews: `GET/POST /api/reviews` (self-pair `UserReview` marker → 1/user, upsert ACID, PENDING moderation, `mine`/`authorId`/cursor, edge cache, `reviews` rate-limit bucket); ReviewsPanel (form + pending note + guest gate + FAQ + list); own-profile `reviews` tab + `#reviews` deep link; other-profile read-only tab; About real-reviews tape with CTA cadence (`insertReviewCtaPanels`); `notifyReviewThanks` (REWARD+allowSelf, no email); archiving preserves-anonymizes with null-safe admin (`reviewAuthorName`).
+- Tests: `reviews.test.ts` (8), pwa.test +4, locales REQUIRED_KEYS +32.
+**QA (this runner, node_modules installed):** `tsc --noEmit` 0 errors (2 session errors fixed: test helper typing, `useState<number>`); `jest --ci` 36/36 suites, 309/309 tests pass; `next build` clean; `next lint` 0 new (1 pre-existing `Medal` unused-var warning); `node --check sw.js` OK; locale parity via python 235/235, 0 interpolation mismatches.
+**Compliance:** no migration, no removed APIs/shapes, no new deps; SW scope/strategy additive (v4 invalidates v3 cleanly); providers additive; all errors sanitized/offline-aware; ACID upsert for reviews.

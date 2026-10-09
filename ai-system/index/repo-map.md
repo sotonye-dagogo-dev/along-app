@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 routeSteps config + useUserLocation hook)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 reviews API + panel + LandingCopy + I18nProvider hardening)
 > - last-verified-against-code: 2026-10-09 (41 config files incl. accountDeletion/emailManagement; account/cron/deletion/email APIs, deletions+email admin pages, AccountDeletionPanel verified in code; QA static-only, no node_modules)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
@@ -68,6 +68,7 @@ along-app/
 │   │   ├── routes/trace/    → POST route trace (delegates to mapProxyService; contract unchanged)
 │   │   ├── suggestions/     → GET ordered suggestions (route requests → routes → accounts, 1800s cache)
 │   │   ├── bookmarks/       → GET/POST bookmark list + toggle (per-tab profile filtering)
+│   │   ├── reviews/         → GET approved platform reviews (mine/authorId/cursor, edge-cached, SW cacheable) + POST upsert own review (PENDING, ACID, reviews-bucket rate limit, thank-you notify) [Sprint 25]
 │   │   ├── push/            → Push notification API
    │   │   │   ├── subscribe/   → POST: subscribe to push
    │   │   │   ├── unsubscribe/ → POST: unsubscribe from push
@@ -90,12 +91,12 @@ along-app/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
 │   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
-│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel (restore/update/delete)/ShareRouteModal edit mode + draft update-vs-new prompt, MapPins [MapRoutePin/MapUserDot anchor-stable], moderation [PostMenu, ReportDialog], profile [RewardsPanel, EarlyAdopterBadge, AuthLinkPanel, EmailSecurityPanel (verify/change-email/change-password, gated)], explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
+│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel (restore/update/delete)/ShareRouteModal edit mode + draft update-vs-new prompt, MapPins [MapRoutePin/MapUserDot anchor-stable], moderation [PostMenu, ReportDialog], profile [RewardsPanel, EarlyAdopterBadge, AuthLinkPanel, EmailSecurityPanel (verify/change-email/change-password, gated)], reviews [ReviewsPanel form+list+FAQ (own + read-only author-scoped)] [Sprint 25], explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
 │   │   ├── services/        → 24 service modules (mapProxy keyless trace/geocode/reverse, earlyAdopter rank/status/list, errorReport sanitized bug filing, feed, search, routeDrafts, postModeration, mention, referral, notification, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
 │   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth, useUserLocation (passive GPS fix + movement watch [Sprint 23])
-│   │   ├── config/          → 40 config files incl. index.ts (routeSteps destination no-fare/no-vehicle rule + normalize [Sprint 23], env effective-env PROJECT_ENV-wins [Sprint 22], email wrapper/icons/default-vars + EMAIL_BUILDER_CONFIG blocks/catalog [Sprint 22], mapPins anchor-stable pins/user-dot [Sprint 20], mapStack keyless tiles/routing/geocode/TTLs/attributions [Sprint 19], earlyAdopter badge key/defaults/validation/labels, reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation incl. immutablePostFields, notifications incl. DISLIKE/NEW_ROUTE, inviteConfig points-cap policy, navigation incl. isAdminRole, errorReporting category/endpoint/caps/copy, footer layout)
+│   │   ├── config/          → 40 config files incl. index.ts (reviews registry REVIEWS_CONFIG/CTA-cadence/author-name [Sprint 25], footer i18nKey + faq FAQ_PCM + rateLimits reviews bucket [Sprint 25], pwa v4 locales-precache/config-cache/banner-copy/REVIEW-mirror [Sprint 25], routeSteps destination no-fare/no-vehicle rule + normalize [Sprint 23], env effective-env PROJECT_ENV-wins [Sprint 22], email wrapper/icons/default-vars + EMAIL_BUILDER_CONFIG blocks/catalog [Sprint 22], mapPins anchor-stable pins/user-dot [Sprint 20], mapStack keyless tiles/routing/geocode/TTLs/attributions [Sprint 19], earlyAdopter badge key/defaults/validation/labels, reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation incl. immutablePostFields, notifications incl. DISLIKE/NEW_ROUTE, inviteConfig points-cap policy, navigation incl. isAdminRole, errorReporting category/endpoint/caps/copy, footer layout)
 │   │   ├── db/              → Database layer (prisma.ts, redis.ts)
 │   │   ├── hooks/           → Server-compatible custom React hooks
 │   │   ├── schemas/         → Zod validation schemas
@@ -103,7 +104,7 @@ along-app/
 │   │   ├── types/           → TypeScript type definitions
 │   │   ├── integrations/    → External service clients (transact, tega)
 │   │   └── utils/           → 11 utility modules (blog, pushClient, siteConfig, etc.) + emailSanitize (allowlist/escape) + emailBuilder (blocks↔HTML↔text lossless) + emailTemplates (escaped interpolation, shared defaults) [Sprint 22]
-│   └── providers/           → 6 context providers (Auth, OnlineStatus, Push, GlobalModal, GlobalToast, CookieConsent)
+│   └── providers/           → 6 context providers (Auth, OnlineStatus, Push, GlobalModal, GlobalToast, CookieConsent) + I18n (bundled-EN seed, last-good cache, cookie sync, tf() fallback [Sprint 25])
 │
 ├── node_modules/            → Installed dependencies
 │
@@ -139,6 +140,10 @@ along-app/
 | `prisma/`       | Database schema, migrations, and seed data                                     | `schema.prisma` (17 models, 9 enums incl. PostType + extended NotificationType), `seed.ts` (idempotent), `migrations/` (8) |
 | `scripts/`      | Seed backup/clear/restore tooling (manual-only, seed-markers only) + full prod reset script (manual-only, unhooked from builds) | `backup-seed-data.ts`, `clear-seed-data.ts`, `restore-seed-backup.ts`, `reset-prod-db.ts`          |
 | `public/`       | Static assets served at root path                                              | `sw.js` (service worker), `manifest.json`, `offline.html`                          |
+| `app/lib/config/pwa.ts` | PWA policy registry (caches, precache, push mirror, heartbeat) | versioned cache names, predicates, PWA_PUSH_MIRROR, toast copy |
+| `app/components/pwa/` | Offline/push UI (banner, cached notice, push opt-in, SW registrar) | OfflineBanner, CachedDataNotice, PushManager, ServiceWorkerRegistrar |
+| `app/lib/services/pushSender.ts` | Web Push fan-out mirrored from in-app notifications | fanOutPush (VAPID direct, 410 prune, never throws) |
+| `app/lib/utils/offlineGuard.ts` | Offline gating + sanitized network-error copy | requireOnline, isOfflineError, offlineFriendlyError |
 | `app/`          | Next.js App Router pages, API routes, components, providers, config registries | `layout.tsx`, `globals.css`, `providers/`, `api/`, `components/ui/`, `lib/config/` |
 | `node_modules/` | NPM dependencies                                                               | —                                                                                  |
 

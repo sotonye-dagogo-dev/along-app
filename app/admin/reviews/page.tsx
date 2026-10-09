@@ -4,8 +4,16 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { Shield, Check, X } from "lucide-react"
 import { ADMIN_BULK_SELECT_META } from "@/app/lib/config/admin"
+import { reviewAuthorName } from "@/app/lib/config/reviews"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 import { toastService } from "@/app/lib/services/toastService"
+
+interface AdminReviewParty {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  userName: string | null
+}
 
 interface AdminReview {
   id: string
@@ -13,8 +21,11 @@ interface AdminReview {
   comment: string | null
   status: string
   createdAt: string
-  reviewer: { id: string; firstName: string; lastName: string; userName: string }
-  reviewee: { id: string; firstName: string; lastName: string; userName: string }
+  // Nullable by design: account archiving anonymizes (never hard-deletes),
+  // so these rows survive with "Deleted User" fields — the UI must never
+  // assume a live profile behind them.
+  reviewer: AdminReviewParty | null
+  reviewee: AdminReviewParty | null
 }
 
 export default function AdminReviewsPage() {
@@ -79,7 +90,7 @@ export default function AdminReviewsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-1 min-w-0">
         <div className="min-w-0">
           <h1 className="text-[24px] sm:text-[28px] font-bold tracking-tight truncate">Reviews</h1>
-          <div className="text-sm text-text-secondary truncate">User-to-user reviews moderation</div>
+          <div className="text-sm text-text-secondary truncate">Platform & user reviews moderation</div>
         </div>
         <div className="flex flex-wrap gap-2">
           {["PENDING", "APPROVED", "REJECTED", ""].map(s => (
@@ -131,9 +142,17 @@ export default function AdminReviewsPage() {
                 <input type="checkbox" checked={bulk.selected.has(r.id)} onChange={() => bulk.toggle(r.id)} aria-label="Select review" className="w-4 h-4 accent-primary cursor-pointer shrink-0" />
                 <Shield size={14} className="text-text-muted shrink-0" />
                 <div className="text-sm font-semibold truncate">
-                  <Link href={`/profile/${r.reviewer.userName}`} className="no-underline hover:underline text-text-primary">{r.reviewer.firstName} {r.reviewer.lastName}</Link>
+                  {r.reviewer?.userName ? (
+                    <Link href={`/profile/${r.reviewer.userName}`} className="no-underline hover:underline text-text-primary">{reviewAuthorName(r.reviewer)}</Link>
+                  ) : (
+                    <span className="text-text-muted">{reviewAuthorName(r.reviewer)}</span>
+                  )}
                   <span className="text-text-muted mx-1.5">&rarr;</span>
-                  <Link href={`/profile/${r.reviewee.userName}`} className="no-underline hover:underline text-text-primary">{r.reviewee.firstName} {r.reviewee.lastName}</Link>
+                  {r.reviewee?.userName ? (
+                    <Link href={`/profile/${r.reviewee.userName}`} className="no-underline hover:underline text-text-primary">{reviewAuthorName(r.reviewee)}</Link>
+                  ) : (
+                    <span className="text-text-muted">{reviewAuthorName(r.reviewee)}</span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">

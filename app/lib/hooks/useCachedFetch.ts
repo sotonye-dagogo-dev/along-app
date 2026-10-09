@@ -81,7 +81,23 @@ export function useCachedFetch<T>(
         setError(null);
       } catch (err) {
         if (seq !== seqRef.current) return;
-        setError(err instanceof Error ? err.message : "Request failed");
+        // Offline / network failure with cached data: stay on stale data and
+        // surface nothing alarming — the OfflineBanner already explains state.
+        const envelope = key ? memoryCache.get<Envelope<T>>(key) : null;
+        if (envelope) {
+          setData(envelope.data);
+          setError(null);
+        } else {
+          const offline =
+            typeof navigator !== "undefined" && !navigator.onLine;
+          setError(
+            offline
+              ? "You are offline. Connect and retry to load this."
+              : err instanceof Error
+                ? err.message
+                : "Request failed",
+          );
+        }
       } finally {
         if (seq === seqRef.current) setLoading(false);
       }

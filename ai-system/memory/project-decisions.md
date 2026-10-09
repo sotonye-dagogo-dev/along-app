@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination-rule + pin-accuracy decisions)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 reviews + i18n + PWA decisions)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -579,4 +579,26 @@ Literal `{{var}}` in inboxes was caused by preview/send filling gaps with the id
 **Implications:**
 - New email vars must be added to template `variables` + `EMAIL_BUILDER_CONFIG.variableCatalog` together so Studio/composer/preview agree.
 - New env-dependent behavior must use `getEffectiveEnv()/isProduction()`, never raw `process.env.NODE_ENV`.
+---
+
+## Sprint 25: Platform reviews on UserReview self-pair + bundled-locale fallback + config-fallback i18n
+
+**Decision:** Platform reviews reuse `UserReview` with `reviewerId === revieweeId === authorId` (no migration; @@unique gives one-per-user + ACID upsert); thank-you reuses REWARD+allowSelf (no NotificationType migration); offline translation resilience comes from three layers (SW-precached dictionaries → localStorage last-good → bundled-EN import, never empty map); component i18n uses `tf(key, fallback)` with config literals as fallback (footer gains optional `i18nKey` only).
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 25
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+A dedicated PlatformReview model would need a migration + new admin surface for identical shape/moderation needs; the self-pair marker distinguishes platform from (unimplemented) user-to-user reviews with zero schema change. Raw keys observed offline (`guest.signIn`) came from fetch-or-empty provider logic — bundled + cached layers remove the empty-map state entirely. `tf()` with config fallback keeps config as single source of truth while making the pidgin toggle visibly seamless.
+
+**Alternatives Considered:**
+- **New PlatformReview model + migration**: Rejected — same fields/moderation as UserReview, extra migration + admin work for no gain.
+- **Per-item FAQ keys in locale JSON**: Rejected — 40+ key bloat across two files; FAQ_PCM beside source copy is single-file reviewable and equally toggleable.
+- **Server-side locale rendering**: Rejected — would split the translation source of truth; client islands (LandingCopy) keep one dictionary.
+
+**Implications:**
+- If user-to-user reviewing is ever built, it must exclude self-pairs (or migrate platform reviews out) to avoid collisions.
+- New user-facing copy must add en+pcm keys together (parity test enforces) or a config fallback via `tf()`.
+- New notification types needing distinct icons/copy should still prefer existing types + allowSelf unless product requires a migration.
 ---
