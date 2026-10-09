@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack)
-> - last-verified-against-code: 2026-10-09 (Sprint 19 map rows verified present in code; QA full green in-runner)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 safe deletion + Email Studio)
+> - last-verified-against-code: 2026-10-09 (Sprint 21 rows verified present in code; QA static-only in runner)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -160,3 +160,4 @@
 - [x] Sprint 15 (2026-10-08) — notification nav/badges, referral+points coverage, username edit, landing guest-link, one-time prod reset (198 tests / 22 suites, full gate green in-runner)
 - [x] Sprint 16 (2026-10-08) — vercel-build reset unhooked (clean-DB build confirmed; script retained manual-only) + early-adopter "First N Users #n" badge E2E (config-driven SiteConfig row, createdAt-asc rank, admin toggle/limit/label card, profile badges, list + per-user APIs, admin early-adopter filter; no migration)
 - [x] Sprint 19 (2026-10-09) — keyless map stack (OpenFreeMap vector + keyless raster step-down, OSRM-first cached server proxy with env-gated ORS/Mapbox + straight-line guarantee, `/api/maps/*` geocode proxy, renderer + geocode client cutover, trace delegate, optional-override env hygiene; 234 tests / 27 suites, full gate green in-runner)
+- [x] Sprint 20 (2026-10-09) — tightening (anchor-stable numbered pins + token user dot via shared MapPins, dark light-parity, draft update-in-place with update-vs-new prompt + per-draft Update, FAQ maps category + report/edit accuracy; 241 tests / 28 suites, full gate green in-runner)

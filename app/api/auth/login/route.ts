@@ -11,19 +11,42 @@ export async function POST(request: NextRequest) {
   try {
     const rateCheck = checkRateLimit(request, "auth");
     if (!rateCheck.allowed) return rateCheck.response;
-    const body = await request.json();
-    const parsed = LOGIN_SCHEMA.safeParse(body);
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        return NextResponse.json({ error: "Invalid request format. Please check your input." }, { status: 400 });
+      }
+      throw e;
+    }
+    // Normalize before validation (trim + lowercase email) so mobile
+    // keyboards and copy-paste whitespace can never cause a cryptic
+    // "Validation failed" — same treatment as register/OTP/reset.
+    const raw = (body ?? {}) as Record<string, unknown>;
+    const parsed = LOGIN_SCHEMA.safeParse({
+      email: typeof raw.email === "string" ? raw.email.trim().toLowerCase() : raw.email,
+      password: raw.password,
+      rememberMe: raw.rememberMe,
+    });
 
     if (!parsed.success) {
+      const flat = parsed.error.flatten();
+      const firstMessage =
+        Object.values(flat.fieldErrors).flat()[0] ??
+        flat.formErrors[0] ??
+        "Please check your email and password and try again.";
       return NextResponse.json(
-        { error: "Validation failed", details: parsed.error.flatten() },
+        { error: firstMessage, details: flat },
         { status: 400 }
       );
     }
 
     const { email, password, rememberMe } = parsed.data;
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Case-insensitive lookup: legacy rows may hold mixed-case emails while
+    // every auth write path now stores lowercase.
+    const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
 
     if (!user) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });

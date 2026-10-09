@@ -10,6 +10,9 @@ export interface EmailTemplate {
   bodyHtml: string;
   bodyText: string;
   variables: string[];
+  enabled?: boolean;
+  description?: string;
+  isSystem?: boolean;
 }
 
 export const DEFAULT_EMAIL_CONFIG: EmailConfig = {
@@ -24,6 +27,9 @@ export const EMAIL_TEMPLATE_NAMES = {
   PASSWORD_RESET: "passwordReset",
   CONTACT_NOTIFICATION: "contactNotification",
   BUG_REPORT_NOTIFICATION: "bugReportNotification",
+  ACCOUNT_DELETION_REQUESTED: "accountDeletionRequested",
+  ACCOUNT_DELETION_COMPLETED: "accountDeletionCompleted",
+  ADMIN_DELETION_ALERT: "adminDeletionAlert",
 } as const;
 
 export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
@@ -159,6 +165,87 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 </html>`,
     bodyText: "New bug report\nTitle: {{title}}\nCategory: {{category}}\n\n{{description}}",
     variables: ["title", "category", "description"],
+  },
+  {
+    name: "accountDeletionRequested",
+    subject: "Your Along account deletion request",
+    bodyHtml: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+<tr><td style="padding:32px 32px 0;text-align:center">
+<h1 style="font-size:20px;font-weight:700;margin:0 0 4px;color:#1a1a1a">Deletion request received</h1>
+<p style="font-size:14px;color:#666;margin:0 0 24px">Hi {{firstName}}, we've archived your account</p>
+</td></tr>
+<tr><td style="padding:0 32px 32px">
+<p style="font-size:14px;color:#444;margin:0 0 12px;line-height:1.6">Your account and posts are now archived and hidden from the platform. They will be permanently deleted on <strong>{{scheduledDate}}</strong> (7 days from now).</p>
+<p style="font-size:14px;color:#444;margin:0 0 12px;line-height:1.6">Changed your mind? You can reverse this any time before that date from your profile or via <a href="{{cancelLink}}" style="color:#00A862">this link</a>.</p>
+<p style="font-size:12px;color:#999;margin:16px 0 0;line-height:1.6">After deletion, personal information is removed within 30 days. Anonymised post data may be retained for platform integrity. Backups are kept for up to 30 days for recovery requests.</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body>
+</html>`,
+    bodyText: "Deletion request received\n\nHi {{firstName}}, your account and posts are now archived and hidden. They will be permanently deleted on {{scheduledDate}} (7 days from now).\n\nChanged your mind? Reverse it any time before then: {{cancelLink}}\n\nAfter deletion, personal info is removed within 30 days; anonymised posts may be retained.",
+    variables: ["firstName", "scheduledDate", "cancelLink", "appUrl"],
+    enabled: true,
+    description: "Sent to the user when they request account deletion (grace-period notice).",
+    isSystem: true,
+  },
+  {
+    name: "accountDeletionCompleted",
+    subject: "Your Along account has been deleted",
+    bodyHtml: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+<tr><td style="padding:32px 32px 0;text-align:center">
+<h1 style="font-size:20px;font-weight:700;margin:0 0 4px;color:#1a1a1a">Account deleted</h1>
+<p style="font-size:14px;color:#666;margin:0 0 24px">Hi {{firstName}}, this is your final confirmation</p>
+</td></tr>
+<tr><td style="padding:0 32px 32px">
+<p style="font-size:14px;color:#444;margin:0 0 12px;line-height:1.6">Your Along account was permanently deleted on {{completedDate}}. Your profile now appears as "Deleted User" and your likes/bookmarks were removed. Anonymised post data may be retained for platform integrity.</p>
+<p style="font-size:14px;color:#444;margin:0;line-height:1.6">If you requested recovery within 30 days, contact <a href="mailto:{{supportEmail}}" style="color:#00A862">{{supportEmail}}</a> — recovery is handled off-platform from backups where possible.</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body>
+</html>`,
+    bodyText: "Account deleted\n\nHi {{firstName}}, your Along account was permanently deleted on {{completedDate}}. Your profile now appears as Deleted User; likes/bookmarks removed; anonymised posts may be retained.\n\nRecovery within 30 days: contact {{supportEmail}} (handled off-platform from backups).",
+    variables: ["firstName", "completedDate", "supportEmail", "appUrl"],
+    enabled: true,
+    description: "Final confirmation sent to the original address when deletion completes.",
+    isSystem: true,
+  },
+  {
+    name: "adminDeletionAlert",
+    subject: "Account deletion requested: @{{userName}}",
+    bodyHtml: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+<tr><td style="padding:32px 32px">
+<h1 style="font-size:18px;font-weight:700;margin:0 0 4px;color:#1a1a1a">Deletion request</h1>
+<p style="font-size:13px;color:#666;margin:0 0 16px">{{displayName}} (@{{userName}}, {{email}}) requested account deletion.</p>
+<p style="font-size:13px;color:#666;margin:0 0 4px"><strong>Scheduled for:</strong> {{scheduledDate}}</p>
+{{reasonLine}}
+<p style="font-size:12px;color:#999;margin:16px 0 0">Manage in Admin → Users. Reversal notices arrive in-app only (no email).</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body>
+</html>`,
+    bodyText: "Deletion request\n{{displayName}} (@{{userName}}, {{email}}) requested account deletion.\nScheduled for: {{scheduledDate}}\n{{reasonLine}}\nManage in Admin → Users.",
+    variables: ["displayName", "userName", "email", "scheduledDate", "reasonLine", "appUrl"],
+    enabled: true,
+    description: "Sent to all admins when a user requests deletion.",
+    isSystem: true,
   },
 ];
 

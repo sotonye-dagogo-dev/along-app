@@ -46,6 +46,12 @@ enum ReviewStatus {
   REJECTED
 }
 
+enum AccountDeletionStatus {
+  PENDING
+  CANCELLED
+  COMPLETED
+}
+
 // User Model
 model User {
   id           String     @id @default(cuid())
@@ -70,6 +76,14 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
+  // Safe account-deletion lifecycle (non-breaking additive).
+  // PENDING = archived + grace period; COMPLETED = anonymized; CANCELLED = reversed.
+  isDeleted            Boolean    @default(false)
+  deletedAt            DateTime?
+  deletionRequestedAt  DateTime?
+  deletionScheduledFor DateTime?
+  deletionReason       String?
+
   // Relations
   posts                Post[]
   comments             Comment[]
@@ -85,6 +99,8 @@ model User {
 
   invitedBy    User?  @relation("UserInvites", fields: [invitedById], references: [id], onDelete: SetNull)
   invitedUsers User[] @relation("UserInvites")
+
+  deletionRequests AccountDeletionRequest[]
 
   // Self-referential many-to-many for following
   following       Follow[]         @relation("UserFollowing")
@@ -290,6 +306,13 @@ enum NotificationType {
   // someone they follow shares a route (ROUTE / ROUTE_RESPONSE).
   DISLIKE
   NEW_ROUTE
+  // Account-deletion lifecycle (non-breaking additive enum values).
+  // REQUESTED fans out to admins; CANCELLED confirms reversal to admins
+  // (in-app only, no email to avoid abuse); COMPLETED confirms to the user
+  // via email (in-app impossible post-anonymization).
+  ACCOUNT_DELETION_REQUESTED
+  ACCOUNT_DELETION_CANCELLED
+  ACCOUNT_DELETION_COMPLETED
 }
 
 // NotificationRecipient Model (Many-to-many between Notification and User)
@@ -466,4 +489,30 @@ model PushSubscription {
 
   @@unique([userId, endpoint])
   @@index([userId])
+}
+
+// AccountDeletionRequest — safe, reversible deletion lifecycle.
+// Request archives the account + posts; a cron finalizes after the grace
+// period by anonymizing PII and clearing personalized rows (likes/bookmarks).
+// Original contact is snapshotted so the completion email can still send
+// after PII is wiped, and to support off-platform backup recovery (30d).
+model AccountDeletionRequest {
+  id               String                @id @default(cuid())
+  userId           String
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status           AccountDeletionStatus @default(PENDING)
+  reason           String?
+  originalEmail    String
+  originalUserName String
+  requestedAt      DateTime              @default(now())
+  scheduledFor     DateTime
+  cancelledAt      DateTime?
+  completedAt      DateTime?
+  completedBy      String?
+  metadata         Json?
+
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([requestedAt(sort: Desc)])
 }

@@ -47,7 +47,9 @@ describe("execute-feature Sprint 19: keyless map stack config", () => {
     expect(light[1]).toMatch("tile.openstreetmap.org");
     expect(light[2]).toMatch("arcgisonline");
     expect(rasterFallbackTile(false, 0)).toBe(light[0]);
-    expect(rasterFallbackTile(true, 0)).toMatch("dark_all");
+    // Dark keeps the light visual params verbatim (clearer tiles in both themes).
+    expect(rasterFallbackTile(true, 0)).toBe(light[0]);
+    expect(MAP_STACK_CONFIG.darkCanvasFilter).toBe("none");
     expect(rasterFallbackDepth()).toBe(light.length);
   });
 
@@ -80,7 +82,9 @@ describe("execute-feature Sprint 19: keyless map stack config", () => {
     expect(raster.version).toBe(8);
     expect(raster.sources.basemap.tiles[0]).not.toMatch("apiKey");
     const darkRaster = buildRasterMapStyle(true, 0);
-    expect(darkRaster.sources.basemap.tiles[0]).toMatch("dark_all");
+    expect(darkRaster.sources.basemap.tiles[0]).toBe(
+      MAP_STACK_CONFIG.rasterFallbacks.light[0]
+    );
   });
 });
 

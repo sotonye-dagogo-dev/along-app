@@ -1,22 +1,22 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack QA gate)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 static-only QA)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: overwritten on every test run — always current
 
-> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 234 tests currently exist across 27 suites (verified by a real `npx jest` run in this session 2026-10-09: 27 passed, 234 passed — Sprint 19 keyless map stack session).
+> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 241 tests currently exist across 28 suites (verified by a real `npx jest` run in this session 2026-10-09: 28 passed, 241 passed — Sprint 20 tightening session).
 
 ---
 
 ## Last Run (Build)
 
 **Date:** 2026-10-09
-**Run by:** AI agent (opencode — execute-feature Sprint 19 keyless map stack)
+**Run by:** AI agent (opencode — execute-feature Sprint 20 tightening)
 
 **Build Result:**
 - `npx tsc --noEmit` — ✓ zero errors (real run this session, after `npm install`)
-- `npx jest` — 234/234 passing (27 suites, real run this session: +10 new mapStack suites)
+- `npx jest` — 241/241 passing (28 suites, real run this session: +7 new mapTightening suites)
 - `npm run build` — ✓ Compiled successfully, 84 static pages (real run this session; `/api/maps/{route,geocode,reverse}` + `/api/routes/trace` present)
 - `npx next lint` — zero new issues (pre-existing `no-explicit-any` errors + RouteMap exhaustive-deps warning verified identical on stashed baseline via `git stash`)
 - Zero test failures; keyless proof: straight-line/OSRM path resolves with all map keys unset
@@ -68,3 +68,14 @@
 | 2026-06-09 | 91 | 0 | Sprint 5: feed crash, guest auth, styling, login fixes |
 | 2026-06-09 | 91 | 0 | Sprint 4: Production audit fixes |
 | 2026-06-03 | 91 | 0 | OC-8: Production readiness audit |
+
+## Run (Sprint 21 — static-only, 2026-10-09)
+
+**Date:** 2026-10-09
+**Run by:** AI agent (opencode — execute-feature Sprint 21)
+
+- `npx tsc --noEmit` — NOT RUN (no node_modules in runner)
+- `npx jest` — NOT RUN (no node_modules in runner); new suite `app/__tests__/config/accountDeletion.test.ts` (9 assertions) awaits CI
+- `npm run build` — NOT RUN locally; Vercel runs `prisma generate` + `migrate deploy` before build so new models/enums resolve
+- Static verification: import paths, ConfirmOptions excess-property fix, Json-null clear, cron guard, recipient caps manually reviewed
+- Test figures from prior runs (241/241 Sprint 20) are historical, not re-verified this run

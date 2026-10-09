@@ -122,6 +122,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   const [drafts, setDrafts] = useState<RouteDraft[]>([])
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
   const [showDrafts, setShowDrafts] = useState(false)
+  const [savePromptOpen, setSavePromptOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [steps, setSteps] = useState<(RouteStep & { _geoResults?: GeoResult[]; _geoLoading?: boolean; _focused?: boolean; _locating?: boolean })[]>([
@@ -432,39 +433,66 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     } : null)
   }, [])
 
-  const saveDraft = useCallback(() => {
-    const stored = routeDraftsService.saveDraft({
-      title,
+  const buildDraftInput = useCallback(() => ({
+    title,
+    description,
+    steps: steps.map(({ location, description, vehicle, fare, lat, lng }) => ({
+      location,
       description,
-      steps: steps.map(({ location, description, vehicle, fare, lat, lng }) => ({
-        location,
-        description,
-        vehicle,
-        fare,
-        ...(lat !== undefined ? { lat } : {}),
-        ...(lng !== undefined ? { lng } : {}),
-      })),
-      tags,
-      images,
-      responseTo: effectiveResponseTo ? {
-        id: effectiveResponseTo.id,
-        title: effectiveResponseTo.title,
-        ...(effectiveResponseTo.user ? { user: effectiveResponseTo.user } : {}),
-        ...(effectiveResponseTo.tags ? { tags: effectiveResponseTo.tags } : {}),
-      } : null,
-    })
+      vehicle,
+      fare,
+      ...(lat !== undefined ? { lat } : {}),
+      ...(lng !== undefined ? { lng } : {}),
+    })),
+    tags,
+    images,
+    responseTo: effectiveResponseTo ? {
+      id: effectiveResponseTo.id,
+      title: effectiveResponseTo.title,
+      ...(effectiveResponseTo.user ? { user: effectiveResponseTo.user } : {}),
+      ...(effectiveResponseTo.tags ? { tags: effectiveResponseTo.tags } : {}),
+    } : null,
+  }), [title, description, steps, tags, images, effectiveResponseTo])
+
+  const persistDraftUpdate = useCallback((id: string) => {
+    const stored = routeDraftsService.updateDraft(id, buildDraftInput())
     if (!stored) {
       toastService.error(ROUTE_DRAFTS_CONFIG.saveEmptyError)
       return
     }
     setDrafts(routeDraftsService.listDrafts())
     setActiveDraftId(stored.id)
+    setSavePromptOpen(false)
+    toastService.success(ROUTE_DRAFTS_CONFIG.updatedToast)
+  }, [buildDraftInput])
+
+  const persistDraftNew = useCallback(() => {
+    const stored = routeDraftsService.saveDraft(buildDraftInput())
+    if (!stored) {
+      toastService.error(ROUTE_DRAFTS_CONFIG.saveEmptyError)
+      return
+    }
+    setDrafts(routeDraftsService.listDrafts())
+    setActiveDraftId(stored.id)
+    setSavePromptOpen(false)
     toastService.success(ROUTE_DRAFTS_CONFIG.savedToast)
-  }, [title, description, steps, tags, images, effectiveResponseTo])
+  }, [buildDraftInput])
+
+  const saveDraft = useCallback(() => {
+    // Working on the same draft → prompt: update in place or save as new.
+    // Fresh composer → save as a new entry directly.
+    if (activeDraftId) {
+      setShowDrafts(false)
+      setSavePromptOpen(true)
+      return
+    }
+    persistDraftNew()
+  }, [activeDraftId, persistDraftNew])
 
   const restoreDraft = useCallback((draft: RouteDraft) => {
     applyDraft(draft)
     setShowDrafts(false)
+    setSavePromptOpen(false)
     toastService.success(ROUTE_DRAFTS_CONFIG.restoredToast)
   }, [applyDraft])
 
@@ -476,6 +504,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
 
   useEffect(() => {
     if (!isOpen) return
+    setSavePromptOpen(false)
     // Edit mode: prefill from the post, never absorb drafts or response state.
     if (editPost) {
       setTitle(editPost.title ?? "")
@@ -734,7 +763,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
           </button>
           {showDrafts && (
             <div id="route-drafts-panel" className="px-3 pb-3">
-              <RouteDraftsPanel drafts={drafts} activeDraftId={activeDraftId} onRestore={restoreDraft} onDelete={deleteDraft} />
+              <RouteDraftsPanel drafts={drafts} activeDraftId={activeDraftId} onRestore={restoreDraft} onDelete={deleteDraft} onUpdate={persistDraftUpdate} />
             </div>
           )}
         </div>
@@ -1042,6 +1071,27 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
           </div>
         </div>
 
+        {savePromptOpen && activeDraftId && (
+          <div className="mx-4 sm:mx-6 mb-3 flex flex-col sm:flex-row sm:items-center gap-2 px-4 py-3 bg-primary-muted border border-primary radius-lg" role="dialog" aria-label={ROUTE_DRAFTS_CONFIG.updateLabel}>
+            <span className="text-xs font-medium text-text-primary flex-1">{ROUTE_DRAFTS_CONFIG.updatePromptText}</span>
+            <span className="flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => persistDraftUpdate(activeDraftId)}
+                className="inline-flex items-center h-8 px-3 radius-md bg-primary text-white text-xs font-semibold border-none cursor-pointer font-sans hover:bg-primary-light transition-colors duration-fast"
+              >
+                {ROUTE_DRAFTS_CONFIG.updateLabel}
+              </button>
+              <button
+                type="button"
+                onClick={persistDraftNew}
+                className="inline-flex items-center h-8 px-3 radius-md border border-border bg-bg-card text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:text-text-primary transition-colors duration-fast"
+              >
+                {ROUTE_DRAFTS_CONFIG.saveAsNewLabel}
+              </button>
+            </span>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             {!isEditing && (

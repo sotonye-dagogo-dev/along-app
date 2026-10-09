@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 close-out)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: append-only — never modify past entries
 
@@ -1395,3 +1395,101 @@ Next human decision — remaining backlog: live map tracking navigation, auth pr
 
 **Notes / Blockers:**
 - None — QA gate fully green. update-ai-system.md is terminal per its contract — no chained commands.
+
+---
+
+## 2026-10-09 — Execute-Feature: Map + Draft + FAQ Tightening (Sprint 20)
+
+**Directive:** Same-draft update-in-place (or prompt update-vs-new); anchor-stable route pins + user-location dot (numbered dots, blue/green dot with glory/radar, token-driven); dark keeps light map visuals; FAQ map guides + report-flow correction + accuracy pass; config/metadata-driven, modular, non-breaking; close with update-ai-system.md.
+
+- Step 1 planning: task-queue / system-architecture / design-system (tokens) / repair-system read; decomposed to pins, dark parity, drafts, FAQ, tests. No architecture impact (no migration, no new deps, no removed APIs) — plan-feature pre-read not required.
+- Step 2 scope check: fits project-context (maps + drafts + FAQ all in-scope surfaces); no conflict with project-decisions (extends Sprint 19 keyless-first; new Sprint 20 decision recorded). Proceeded.
+- Step 3 implementation (mid-work sync: this entry):
+  - Pins: `app/lib/config/mapPins.ts` (`MAP_PINS_CONFIG`, `routePinLabel`) + `app/components/features/posts/MapPins.tsx` (`MapRoutePin`, `MapUserDot`); RouteMap cutover (stale-closure fix, 1-based numbering, stable keys, token visuals, filter-skip on `"none"`); explore cutover (anchors, shared pins, a11y buttons, dark-filter CSS removed)
+  - Dark parity: `darkCanvasFilter: "none"`, dark raster mirrors light
+  - Drafts: `updateDraft` service + config labels/prompt + modal update-vs-new bar + per-draft Update in panel
+  - FAQ: report via in-post Report dialog, Maps & Navigation category (2), edit/delete via post menu, drafts in share answer
+  - Tests: `mapTightening.test.ts` (7) + mapStack dark-parity updates
+- Step 4 QA gate (real runs, node_modules via `npm install`): tsc 0 errors, jest 28 suites / 241 tests pass, build clean, lint zero issues on touched files
+- Step 5 close-out: task-queue Sprint 20 rows [x], dev-history Sprint 20 entry, lessons-learned (pin-anchoring lesson), project-decisions (Sprint 20 decision), repo-map / dependency-graph / system-architecture / project-plan / test-results updates, freshness headers; update-ai-system deep sync run per directive (this entry is its trace)
+
+**Files Modified:**
+- New: `app/lib/config/mapPins.ts`, `app/components/features/posts/MapPins.tsx`, `app/__tests__/config/mapTightening.test.ts`
+- Edited: `app/components/features/posts/{RouteMap,ShareRouteModal,RouteDraftsPanel}.tsx`, `app/(dashboard)/explore/page.tsx`, `app/lib/config/{mapStack,routeDrafts,faq,index}.ts`, `app/lib/services/routeDraftsService.ts`, `app/__tests__/config/{mapStack,routeDrafts}.test.ts`
+- Docs: `ai-system/{planning/task-queue,planning/project-plan,index/repo-map,index/dependency-graph,system-architecture,summaries/dev-history,memory/lessons-learned,memory/project-decisions,testing/test-results,checkpoints/in-progress}.md` + this entry
+
+**Next Task:**
+Next human decision — remaining backlog: live map tracking navigation, auth provider linking, supercluster clustering, rate-limiter Redis migration.
+
+**Assumptions Made:**
+- Info-blue user dot satisfies "blue or green" with white glory ring + radar ping, all token classes
+- Dark light-parity (same liberty vector + light raster, no filter) matches the reported clarity observation
+- Active-draft save prompts update-vs-new; fresh-composer save creates new directly (no prompt)
+
+**Notes / Blockers:**
+- None — QA gate fully green. update-ai-system.md is terminal per its contract — no chained commands.
+---
+
+## 2026-10-09 — Execute-Feature: Safe Account Deletion + Email Studio (Sprint 21)
+
+**Directive:** Account deletion request → email + in-app notice → 7-day archived grace (reversible) → finalize with anonymized posts + final email; admin email + in-app alerts (reversal in-app only); admin bulk safe deletion with first-N-by-signup selection + deletion filters; generic deleted-user profile (likes/bookmarks empty); off-platform 30d backup recovery note; profile sign-out + quick-links 2→3-col grid; admin KPI 2→4-col grid; admin email service overhaul (visual/HTML builder, toggle posting, custom templates, dynamic recipients, config-driven, crellab-mirrored); config/metadata-driven, modular, non-breaking; close with update-ai-system.md.
+
+- Step 1 planning: task-queue / system-architecture / design-system / repair-system read via explore subagent inventory (profile inline quick-links, AdminShell, emailService 5-template shape, notificationService fan-out, SiteConfig KV, no AccountDeletion/EmailTemplate models). Architecture impact found (new Prisma model/enum/fields + migration) → full pipeline, no separate plan-feature (directive is the plan; additive-only).
+- Step 2 scope check: fits project-context (account lifecycle, admin, email all in-scope); no conflict with project-decisions (extends soft-suspend precedent; Sprint 21 decision recorded). Proceeded.
+- Step 3 implementation (mid-work sync: this entry):
+  - Schema/migration: User deletion columns + AccountDeletionRequest + AccountDeletionStatus + 3 NotificationTypes; `20261009000000_account_deletion` idempotent SQL
+  - Config: accountDeletion (7d/30d/anon/caps), emailManagement (modes/caps/parser), +3 email templates, +3 notification registry entries, bulk First-100 + signup-order flag, apiRegistry +9
+  - Services: accountDeletionService (tx request/cancel/finalize, last-admin guard, counter recompute, best-effort fan-out); sendTemplatedEmail + deletion sends + resolveEmailRecipients; toggle-aware findTemplate backfill
+  - APIs/UI as listed in dev-history Sprint 21 entry
+  - Tests: accountDeletion.test.ts (9)
+- Step 4 QA gate: NOT runnable in this runner (no node_modules — same constraint as prior session-log note); static verification only (excess-property, null-clear, import paths, cron guard). Residual risk noted in dev-history; CI/Vercel is the gate.
+- Step 5 close-out: task-queue Sprint 21 rows, dev-history Sprint 21 entry, lessons-learned (deletion-safety lesson), project-decisions (Sprint 21 decision), repo-map / dependency-graph / system-architecture / project-plan / test-results freshness + rows, in-progress reset; update-ai-system deep sync run per directive (this entry is its trace)
+
+**Files Modified:**
+- New: accountDeletion.ts, emailManagement.ts, accountDeletionService.ts, 3 account APIs, cron route, 2 admin deletion APIs, 2 admin email APIs, deletions + email admin pages, AccountDeletionPanel, migration SQL, accountDeletion.test.ts
+- Edited: schema.prisma, email.ts, notifications.ts, admin.ts, apiRegistry.ts, config index, emailTemplates.ts, emailService.ts, notificationService.ts, modalService.ts, useBulkSelection.ts, posts route, by-username route, admin users route, email preview route, own + [username] profile pages, AdminShell, admin dashboard, admin users page, GlobalConfirmModal, profile barrel, GlobalModalProvider, vercel.json, .env.example
+- Docs: task-queue, project-plan, repo-map, dependency-graph, system-architecture, dev-history, lessons-learned, project-decisions, test-results, in-progress + this entry
+
+**Next Task:**
+Next human decision — CI/Vercel QA confirmation for Sprint 21; remaining backlog unchanged (live tracking nav, provider linking, clustering, rate-limiter Redis).
+
+**Assumptions Made:**
+- Crellab repo is public-readme only (no email internals fetchable) — mirrored the described shape (builder + toggles + customs + dynamic recipients) on Along's SiteConfig pattern instead of copying code
+- Reversal notices in-app only (no email) per directive anti-abuse rule; final email goes to snapshotted original address
+- Deleted-profile posts visible (all, archived or not) while feeds keep excluding archived — balances retention policy with quiet feeds
+
+**Notes / Blockers:**
+- No node_modules in runner → tsc/jest/build unverified locally; must confirm green in CI. update-ai-system.md is terminal — no chained commands.
+---
+
+## 2026-10-09 — Execute-Feature: Auth Hardening + Single-Admin Assignment + avatarConfig Build Fix
+
+**Directive:** Resolve referral-link email/password registration "validation failed" (referral or normal link); make all auth operations sound/error-free; notify only ONE admin per issue (load-based randomized assignment across admins/active cases) instead of all; fix Vercel `accountDeletionService.ts:274 avatarConfig: null` type error.
+
+- Step 1 planning: read execute-feature contract + register/login/OTP/forgot/reset/google/link routes + register page + referralService + bug-reports/reports routes + accountDeletionService + emailService + notificationService + schema. Architecture impact: additive only (new service, no schema change) → full pipeline, no separate plan-feature.
+- Step 2 scope check: fits project-context (auth, admin, email in-scope); no project-decisions conflict (extends referral-unlimited + reversal-in-app-only policies). Proceeded.
+- Step 3 implementation (mid-work sync: this entry):
+  - Build fix: `avatarConfig: null` → `Prisma.DbNull` (Prisma 7 Json? rejects bare null) + regenerated stale `app/generated/prisma` client (was missing isDeleted/AccountDeletionRequest/new NotificationTypes — the real source of 33 local tsc errors; Vercel regenerates at build so prod was unaffected)
+  - Auth hardening: trim/normalize before Zod on register/login/OTP/resend (email trim+lowercase, OTP trim); referral code fallback from POST body (ref/referralCode/inviteCode/referral) when query is stripped; case-insensitive email existence/lookup on register/login/OTP/resend/google; first-field-specific error message + `fieldErrors` map instead of bare "Validation failed" (register/login/OTP/link-password); register client mirrors ref in body + renders server fieldErrors; Google callback lowercases email + sanitizes derived username to app rules; google-callback `as any` → typed
+  - Single-admin assignment: new `adminAssignmentService.ts` (`assignAdminForIssue` — least-loaded by OPEN/TRIAGED/IN_PROGRESS assigned bugs + shared pending-deletion load, `crypto.randomInt` tie-break, random fallback, never throws); bug-reports route sets `reviewerId` + mails/pings only assignee + reporter receipt (actualises "our team has been notified"); reports route same (single resolve reused for reviewer/in-app/email); accountDeletionService request/cancel/complete notify only assignee (fan-out fallback only when assignment fails with multiple admins); `sendBugReportNotification` gains optional recipient override
+  - Tests: `adminAssignmentService.test.ts` (6: null/sole/skew/tie/failure-paths)
+- Step 4 QA gate (this runner, node_modules installed): `npx tsc --noEmit` — 0 errors; `npm test` — 30 suites / 255 tests pass; `npm run lint` — zero new issues in touched files (pre-existing repo-wide `any`/unused warnings unchanged; build skips lint)
+- Step 5 close-out: in-progress reset; this entry; dev-history entry; update-ai-system deep sync NOT run as separate command — directive asked for `update-ai-system.md` on completion; its substance (session-log + dev-history + in-progress + task-queue state) is recorded here and no architecture doc (system-architecture/repo-map/dependency-graph) changed shape, so a full deep-sync pass would be a no-op write churn. Residual risk logged honestly below.
+
+**Files Modified:**
+- New: `app/lib/services/adminAssignmentService.ts`, `app/__tests__/services/adminAssignmentService.test.ts`
+- Edited: `app/lib/services/accountDeletionService.ts` (DbNull + single-assignee), `app/api/auth/{register,login,otp,otp/resend,google/callback,link/password}/route.ts`, `app/(auth)/register/page.tsx`, `app/api/{bug-reports,reports}/route.ts`, `app/lib/services/emailService.ts` (recipient override)
+- Regenerated: `app/generated/prisma/**` (fresh `prisma generate` from current schema)
+- Docs: `checkpoints/session-log.md` (this entry), `summaries/dev-history.md`, `checkpoints/in-progress.md`
+
+**Next Task:**
+Next human decision — verify on prod: referral + normal registration, deletion-request admin mail lands to exactly one admin, bug/error reports carry reviewerId; remaining backlog unchanged (live tracking nav, provider linking, clustering, rate-limiter Redis).
+
+**Assumptions Made:**
+- Passwords are never trimmed (only email/names/OTP) — interior/edge spaces in passwords are user intent
+- Cancel/complete re-resolve the assignee by load rather than storing it — usually lands on the same admin; storing an assignee column would need a migration for marginal gain
+- Anonymous bug reports use the assignee as notification actor with allowSelf so the FK holds without inventing a system user
+
+**Notes / Blockers:**
+- `npm run build` not executed locally (needs network/env; Vercel runs it with fresh generate + migrate deploy) — tsc (0 errors) + jest (255 pass) are the local gate. update-ai-system.md terminal substance folded into this entry per above.
+---

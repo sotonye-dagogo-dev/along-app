@@ -37,7 +37,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "how-to-share-route",
         question: "How do I share a route?",
         answer:
-          "Tap the 'Share Route' button from the navigation menu. Add your start and end locations, waypoints, fare details, transport mode, and any relevant photos. The more details you provide, the higher your post's quality score.",
+          "Tap the 'Share Route' button from the navigation menu. Add your start and end locations, waypoints, fare details, transport mode, and any relevant photos. The more details you provide, the higher your post's quality score. You can park unfinished work with Save Draft and continue it later — reopening a draft lets you update it in place or save it as a new entry.",
       },
       {
         id: "route-verification",
@@ -49,7 +49,25 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "editing-post",
         question: "Can I edit or delete a post?",
         answer:
-          "Yes, you can edit or delete your own posts from your profile page. Edits may reset the recency component of your post's validity score.",
+          "Yes. Open the menu (⋯) on any of your posts — in the feed, on the post page, or on your profile — and choose Edit, Archive, or Delete. Destructive actions ask for confirmation first and can be undone. Edits may reset the recency component of your post's validity score, and a post's nature (route, request, or response) is always preserved through edits.",
+      },
+    ],
+  },
+  {
+    id: "maps",
+    category: "Maps & Navigation",
+    items: [
+      {
+        id: "map-tracings-pins",
+        question: "How do I read the maps — tracings and pins?",
+        answer:
+          "The green line (tracing) is the route path connecting your stops in order. Numbered dots sit exactly on each stop — dot 1 is your origin, the last dot is your destination, and the numbers in between match the route steps. The pulsing blue dot with a soft halo is your own live location.",
+      },
+      {
+        id: "map-zoom-move-mobile",
+        question: "How do I zoom and move the map on mobile?",
+        answer:
+          "Drag with one finger to move (pan) the map. Pinch with two fingers to zoom in and out, or double-tap to zoom in. On the Explore page you can drag the bottom sheet handle to see more routes, and tap any numbered dot to preview that route. Use the Expand button on a route map for a full-screen view.",
       },
     ],
   },
@@ -91,7 +109,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "report-content",
         question: "How do I report inappropriate content?",
         answer:
-          "Use the Report Bug page to flag problematic posts, or contact our moderation team through the Contact page. Admins review all reports and take appropriate action.",
+          "Open the menu (⋯) on the post and choose Report, then pick a reason — the report goes straight to our moderation team and stays anonymous. You can also send extra context through the Contact page or file a platform issue via the Report Bug page. Admins review every report and notify you of the outcome.",
       },
     ],
   },

@@ -8,8 +8,15 @@
     "app/api/routes/trace/route.ts": { "maxDuration": 15 },
     "app/api/posts/route.ts": { "maxDuration": 15 },
     "app/api/posts/feed/route.ts": { "maxDuration": 15 },
-    "app/api/upload/route.ts": { "maxDuration": 30 }
+    "app/api/upload/route.ts": { "maxDuration": 30 },
+    "app/api/cron/process-deletions/route.ts": { "maxDuration": 60 }
   },
+  "crons": [
+    {
+      "path": "/api/cron/process-deletions",
+      "schedule": "0 2 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/_next/static/(.*)",

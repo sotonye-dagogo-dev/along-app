@@ -9,12 +9,22 @@ export async function POST(request: NextRequest) {
   try {
     const rateCheck = checkRateLimit(request, "auth");
     if (!rateCheck.allowed) return rateCheck.response;
-    const body = await request.json();
-    const email = body.email as string | undefined;
-    if (!email || typeof email !== "string") {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (e) {
+      if (e instanceof SyntaxError) {
+        return NextResponse.json({ error: "Invalid request format. Please check your input." }, { status: 400 });
+      }
+      throw e;
     }
-    const user = await prisma.user.findUnique({ where: { email } });
+    const rawEmail = (body as Record<string, unknown>).email;
+    const email = typeof rawEmail === "string" ? rawEmail.trim().toLowerCase() : "";
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "Enter a valid email address" }, { status: 400 });
+    }
+    // Case-insensitive lookup for legacy mixed-case rows.
+    const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
     if (!user) return NextResponse.json({ error: "No account found for this email" }, { status: 404 });
     if (user.verified) return NextResponse.json({ error: "Account already verified" }, { status: 400 });
 

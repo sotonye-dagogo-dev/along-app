@@ -27,10 +27,13 @@ export const ADMIN_METRICS_META = {
 
 export const ADMIN_BULK_SELECT_META = {
   quickPresets: [
-    { id: "first10", label: "First 10", count: 10 },
-    { id: "first25", label: "First 25", count: 25 },
-    { id: "first50", label: "First 50", count: 50 },
+    { id: "first10", label: "First 10 signups", count: 10 },
+    { id: "first25", label: "First 25 signups", count: 25 },
+    { id: "first50", label: "First 50 signups", count: 50 },
+    { id: "first100", label: "First 100 signups", count: 100 },
   ],
+  /** Quick presets select the earliest-joined N users (createdAt asc), not the first N rows on screen. */
+  firstNBySignupOrder: true,
   actions: ["selectAll", "invert", "undo", "clear"] as const,
 } as const;
 

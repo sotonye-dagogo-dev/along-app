@@ -11,6 +11,7 @@ export interface GlobalConfirmModalProps {
   variant: "destructive" | "sensitive";
   title: string;
   description: string;
+  confirmLabel?: string;
 }
 
 export function GlobalConfirmModal({
@@ -20,6 +21,7 @@ export function GlobalConfirmModal({
   variant,
   title,
   description,
+  confirmLabel,
 }: GlobalConfirmModalProps) {
   const isDestructive = variant === "destructive";
   const Icon = isDestructive ? AlertTriangle : HelpCircle;
@@ -69,7 +71,7 @@ export function GlobalConfirmModal({
           variant={isDestructive ? "destructive" : "primary"}
           onClick={onConfirm}
         >
-          Confirm
+          {confirmLabel ?? "Confirm"}
         </AppButton>
       </div>
     </AppModal>

@@ -40,6 +40,7 @@ export function GlobalModalProvider({ children }: { children: React.ReactNode })
           title={options.title}
           description={options.description}
           variant={options.variant}
+          confirmLabel={options.confirmLabel}
           onConfirm={handleConfirm}
           onClose={handleClose}
         />

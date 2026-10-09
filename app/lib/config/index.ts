@@ -29,6 +29,8 @@ export { TEAM_MEMBERS } from "./teamConfig";
 export { SITE_REVIEWS } from "./reviews";
 export type { SiteReview } from "./reviews";
 export { TRANSPORT_INTEGRATION_REGISTRY } from "./mapIntegrations";
+export { MAP_PINS_CONFIG, routePinLabel } from "./mapPins";
+export type { MapPinsConfig } from "./mapPins";
 export {
   MAP_STACK_CONFIG,
   vectorStyleUrl,
@@ -55,6 +57,10 @@ export {
 } from "./earlyAdopter";
 export type { EarlyAdopterConfig } from "./earlyAdopter";
 export { RATE_LIMITS } from "./rateLimits";
+export { ACCOUNT_DELETION_CONFIG, deletionScheduledFor, buildDeletedUserName, buildDeletedEmail, isDeletionOverdue } from "./accountDeletion";
+export type { AccountDeletionStatus } from "./accountDeletion";
+export { EMAIL_MANAGEMENT_CONFIG, isSystemTemplate, parseManualEmails } from "./emailManagement";
+export type { EmailTemplateRecord, EmailRecipientSelection, EmailRecipientMode } from "./emailManagement";
 export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, SITE_CONFIG_EDITORS, inferConfigKind, formatDelta } from "./admin";
 export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId } from "./admin";
 export { VALIDATION_RULES } from "./validationRules";

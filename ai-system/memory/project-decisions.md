@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless-first decision)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 pin/draft/faq decisions)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -477,3 +477,47 @@ Recurring API-key failures (Carto `?apiKey=` demands, Mapbox/ORS key dependence)
 - New map clients must consume `MAP_STACK_CONFIG` builders and `/api/maps/*` — never add upstream URLs or `NEXT_PUBLIC_*` map keys to client code.
 - If routing volume approaches OSRM demo limits, the next step is self-hosted OSRM or a keyed override — reference this decision.
 - `.env.example` documents all keyed map vars as optional; do not reintroduce required map keys without revisiting this decision.
+
+---
+
+## Sprint 20: Pin Parity + Draft Update-in-Place (Numbered Dots, Dark Light-Parity, Update-vs-New)
+
+**Decision:** All map renderers share `MapRoutePin`/`MapUserDot` from `MAP_PINS_CONFIG` (center anchor, zero offset, 1-based stop numbers, token-only classes); dark mode renders the identical light visual params (`darkCanvasFilter: "none"`, dark raster mirrors light). Draft saves on an active draft prompt update-in-place vs save-as-new (`updateDraft` keeps id, refreshes `savedAt`, moves to top); per-draft Update is available from the drafts panel.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 20
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Pin drift was an anchoring/identity divergence between renderers, not a tile fault — sharing one marker implementation removes the class of bug. Users verified light tiles read clearer, so dark keeps them verbatim instead of a second style path. Draft duplication came from save-always-creates; prompting update-vs-new on the active draft preserves intent without losing the explicit new-entry path.
+
+**Alternatives Considered:**
+- **Per-renderer pin fixes**: Rejected — leaves the divergence class in place for the next renderer.
+- **New dark tile style**: Rejected — user evidence says the light params are already clearer; parity is cheaper and provably consistent.
+- **Silent auto-update on save**: Rejected — prompt preserves the user's explicit "new entry" intent.
+
+**Implications:**
+- New map surfaces must use `MapPins.tsx` + `MAP_PINS_CONFIG` — no bespoke marker divs or hardcoded hex.
+- Do not reintroduce a dark canvas filter or dark-only raster without revisiting this decision.
+
+---
+
+## Sprint 21: Safe Deletion Lifecycle + Email Studio on SiteConfig
+
+**Decision:** Ship deletion as `AccountDeletionRequest` (PENDING→CANCELLED/COMPLETED) with 7-day archive grace and in-place anonymization; keep email templates in `SiteConfig` (no new EmailTemplate table) with enable toggles + custom rows; first-N bulk presets resolve earliest signups via `?order=oldest`.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 21
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+A SiteConfig-backed template store reuses the existing admin-override pattern (no migration, backfill-merge for new system templates) and matches the crellab-described builder shape without copying unavailable code. In-place anonymization preserves post integrity where row deletion would cascade. Earliest-signup selection matches the badge/reward semantics the presets were built for.
+
+**Alternatives Considered:**
+- **New EmailTemplate table**: Rejected — heavier migration for no behavioral gain; SiteConfig JSON already supports the builder.
+- **Hard row delete + cascade**: Rejected — violates anonymised-retention policy and destroys counters/links.
+- **On-screen first-N selection**: Rejected — list order is newest-first; presets must mean earliest signups.
+
+**Implications:**
+- New notification/email types must be added to both Prisma enum (migration) and TS registries together.
+- Template toggles audit to EmailLog (`template_toggle`); paused templates skip sends without throwing.

@@ -60,6 +60,15 @@ export const ReviewStatus = {
 export type ReviewStatus = (typeof ReviewStatus)[keyof typeof ReviewStatus]
 
 
+export const AccountDeletionStatus = {
+  PENDING: 'PENDING',
+  CANCELLED: 'CANCELLED',
+  COMPLETED: 'COMPLETED'
+} as const
+
+export type AccountDeletionStatus = (typeof AccountDeletionStatus)[keyof typeof AccountDeletionStatus]
+
+
 export const PostType = {
   ROUTE: 'ROUTE',
   ROUTE_REQUEST: 'ROUTE_REQUEST',
@@ -91,7 +100,10 @@ export const NotificationType = {
   REPORT: 'REPORT',
   MODERATION: 'MODERATION',
   DISLIKE: 'DISLIKE',
-  NEW_ROUTE: 'NEW_ROUTE'
+  NEW_ROUTE: 'NEW_ROUTE',
+  ACCOUNT_DELETION_REQUESTED: 'ACCOUNT_DELETION_REQUESTED',
+  ACCOUNT_DELETION_CANCELLED: 'ACCOUNT_DELETION_CANCELLED',
+  ACCOUNT_DELETION_COMPLETED: 'ACCOUNT_DELETION_COMPLETED'
 } as const
 
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]

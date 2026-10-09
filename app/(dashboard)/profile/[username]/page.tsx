@@ -71,6 +71,7 @@ interface ProfileApiResponse {
   }
   isFollowing?: boolean
   earlyAdopter?: EarlyAdopterPayload | null
+  isDeleted?: boolean
 }
 
 export default function OtherProfilePage() {
@@ -132,10 +133,11 @@ export default function OtherProfilePage() {
 
   const isFollowing = profileRes?.isFollowing ?? false
 
-  const posts = useMemo(
-    () => (postsData?.posts ?? []).filter((p) => p.user.userName === userName),
-    [postsData, userName]
-  )
+  const posts = useMemo(() => {
+    // Deleted users have no personalized tabs — likes/bookmarks always empty.
+    if ((profileRes as { isDeleted?: boolean } | undefined)?.isDeleted && (activeTab === "liked")) return []
+    return (postsData?.posts ?? []).filter((p) => p.user.userName === userName)
+  }, [postsData, userName, profileRes, activeTab])
 
   const loading = authLoading || profileLoading
 
@@ -181,6 +183,8 @@ export default function OtherProfilePage() {
   if (!profile) {
     return <div className="max-w-[680px] mx-auto px-4 py-8"><AppEmptyState {...EMPTY_STATES.error} /></div>
   }
+
+  const isDeletedProfile = Boolean((profileRes as { isDeleted?: boolean } | undefined)?.isDeleted)
 
   return (
     <div className="max-w-[680px] mx-auto px-4 py-4">
@@ -240,7 +244,15 @@ export default function OtherProfilePage() {
           ))}
         </div>
 
+        {isDeletedProfile && (
+          <div className="mb-3.5 rounded-lg border border-border bg-bg-elevated px-4 py-3 text-xs text-text-secondary leading-relaxed">
+            This account has been deleted. Posts shown are anonymised and retained for platform integrity;
+            likes and bookmarks are not available for deleted users.
+          </div>
+        )}
+
         <div className="flex gap-2 mb-3.5">
+          {!isDeletedProfile && (
           <button
             onClick={handleFollow}
             className={`flex-1 h-9 px-4 radius-md text-sm font-semibold cursor-pointer font-sans inline-flex items-center justify-center gap-1.5 transition-all duration-fast ${
@@ -264,6 +276,7 @@ export default function OtherProfilePage() {
               <><UserPlus size={14} /> Follow</>
             )}
           </button>
+          )}
         </div>
 
         {isFollowing && mutualCount > 0 && (

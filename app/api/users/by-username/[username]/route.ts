@@ -22,6 +22,7 @@ export async function GET(
         role: true,
         rewardPoints: true,
         rewardTier: true,
+        isDeleted: true,
         _count: { select: { posts: true, followers: true, following: true } },
         createdAt: true,
       },
@@ -29,6 +30,26 @@ export async function GET(
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Deleted users render as a generic profile: no PII, no personalized
+    // tabs (likes/bookmarks empty), posts stay attributed for integrity.
+    if ((user as { isDeleted?: boolean }).isDeleted) {
+      return NextResponse.json({
+        user: {
+          ...user,
+          firstName: "Deleted",
+          lastName: "User",
+          avatar: null,
+          avatarConfig: null,
+          bio: "This account has been deleted.",
+          verified: false,
+          rewardPoints: 0,
+        },
+        isFollowing: false,
+        earlyAdopter: null,
+        isDeleted: true,
+      });
     }
 
     const currentUser = await getUserFromRequest();

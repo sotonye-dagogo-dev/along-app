@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 proxy-ownership lesson)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 pin-anchoring lesson)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -528,6 +528,38 @@ Any third-party call the browser makes directly inherits that provider's browser
 
 **Apply When:**
 Any integration where the provider has a browser-use policy (geocoding, routing, tiles) or where key rotation has ever caused an outage — default the client to the internal proxy and keep the keyed path as an override, never the primary.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Marker Drift Is an Anchoring + Identity Bug, Not a Tiles Bug — Share the Pin
+
+**Context:**
+Sprint 20: polylines tracked coordinates correctly through pan/zoom while pins drifted. The polyline is drawn in map space (always exact); pins are HTML elements positioned by the Marker layer, so any per-renderer divergence (missing `anchor="center"`, varying pixel sizes, keys containing lat/lng that remount on every move, stale-closure label logic) shows up as drift that looks like a tile/projection fault.
+
+**What We Learned:**
+Fix pins at the Marker layer, not the tile layer: one shared pin component with an explicit center anchor + zero offset, fixed visual size, stable React keys (index-based, never coordinate-based), and numbering derived from stop order (index + 1) rather than object identity. Keep all of it in a token-only config (`MAP_PINS_CONFIG`) so every renderer paints the identical marker. Same session: when users report one theme renders clearer, the cheapest correct fix is visual parity (same style/filter params in both themes), not a new dark style.
+
+**Apply When:**
+Any map marker looks "almost right" but won't hold its coordinate, or theme-specific map rendering diverges — centralize the marker + style params before touching providers or tiles.
+
+**Supersedes:** None
+**Superseded by:** None
+
+---
+
+## Deletion Safety Is a Lifecycle, Not a Row Delete — Archive First, Anonymize Later
+
+**Context:**
+Sprint 21: policy promised account deletion but no flow existed. Deleting a User row outright would cascade-delete posts (violating the "anonymised post data retained" clause), orphan counters, and leave no grace or recovery path.
+
+**What We Learned:**
+Model deletion as request → archived grace → finalize: archive posts immediately (feeds go quiet), snapshot the contact address on the request row (final email must survive PII wipe), capture interacted post ids before wiping likes/bookmarks (denormalized counters go stale otherwise), and anonymize the user row in place (stable id keeps posts linked). Guard the last admin, keep reversals in-app-only (no email abuse vector), and cap cron finalization per run. Off-platform backup recovery (30d) needs only a documented note, not platform code.
+
+**Apply When:**
+Any destructive user-data operation with retention grace, anonymization requirements, or denormalized counters — snapshot contacts first, capture affected ids before wiping, finalize idempotently.
 
 **Supersedes:** None
 **Superseded by:** None

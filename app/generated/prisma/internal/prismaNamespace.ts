@@ -400,7 +400,8 @@ export const ModelName = {
   AnalyticsEvent: 'AnalyticsEvent',
   EmailLog: 'EmailLog',
   PasswordResetToken: 'PasswordResetToken',
-  PushSubscription: 'PushSubscription'
+  PushSubscription: 'PushSubscription',
+  AccountDeletionRequest: 'AccountDeletionRequest'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -416,7 +417,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "follow" | "post" | "comment" | "like" | "bookmark" | "notification" | "notificationRecipient" | "userActivity" | "siteConfig" | "bugReport" | "contactSubmission" | "userReview" | "analyticsEvent" | "emailLog" | "passwordResetToken" | "pushSubscription"
+    modelProps: "user" | "follow" | "post" | "comment" | "like" | "bookmark" | "notification" | "notificationRecipient" | "userActivity" | "siteConfig" | "bugReport" | "contactSubmission" | "userReview" | "analyticsEvent" | "emailLog" | "passwordResetToken" | "pushSubscription" | "accountDeletionRequest"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1678,6 +1679,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AccountDeletionRequest: {
+      payload: Prisma.$AccountDeletionRequestPayload<ExtArgs>
+      fields: Prisma.AccountDeletionRequestFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AccountDeletionRequestFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AccountDeletionRequestFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload>
+        }
+        findFirst: {
+          args: Prisma.AccountDeletionRequestFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AccountDeletionRequestFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload>
+        }
+        findMany: {
+          args: Prisma.AccountDeletionRequestFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload>[]
+        }
+        create: {
+          args: Prisma.AccountDeletionRequestCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload>
+        }
+        createMany: {
+          args: Prisma.AccountDeletionRequestCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AccountDeletionRequestCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload>[]
+        }
+        delete: {
+          args: Prisma.AccountDeletionRequestDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload>
+        }
+        update: {
+          args: Prisma.AccountDeletionRequestUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload>
+        }
+        deleteMany: {
+          args: Prisma.AccountDeletionRequestDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AccountDeletionRequestUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AccountDeletionRequestUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload>[]
+        }
+        upsert: {
+          args: Prisma.AccountDeletionRequestUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccountDeletionRequestPayload>
+        }
+        aggregate: {
+          args: Prisma.AccountDeletionRequestAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAccountDeletionRequest>
+        }
+        groupBy: {
+          args: Prisma.AccountDeletionRequestGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AccountDeletionRequestGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AccountDeletionRequestCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AccountDeletionRequestCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1738,7 +1813,12 @@ export const UserScalarFieldEnum = {
   lastKnownLat: 'lastKnownLat',
   lastKnownLng: 'lastKnownLng',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  isDeleted: 'isDeleted',
+  deletedAt: 'deletedAt',
+  deletionRequestedAt: 'deletionRequestedAt',
+  deletionScheduledFor: 'deletionScheduledFor',
+  deletionReason: 'deletionReason'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -1966,6 +2046,24 @@ export const PushSubscriptionScalarFieldEnum = {
 } as const
 
 export type PushSubscriptionScalarFieldEnum = (typeof PushSubscriptionScalarFieldEnum)[keyof typeof PushSubscriptionScalarFieldEnum]
+
+
+export const AccountDeletionRequestScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  status: 'status',
+  reason: 'reason',
+  originalEmail: 'originalEmail',
+  originalUserName: 'originalUserName',
+  requestedAt: 'requestedAt',
+  scheduledFor: 'scheduledFor',
+  cancelledAt: 'cancelledAt',
+  completedAt: 'completedAt',
+  completedBy: 'completedBy',
+  metadata: 'metadata'
+} as const
+
+export type AccountDeletionRequestScalarFieldEnum = (typeof AccountDeletionRequestScalarFieldEnum)[keyof typeof AccountDeletionRequestScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -2224,6 +2322,20 @@ export type EnumReviewStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Pri
 export type ListEnumReviewStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ReviewStatus[]'>
     
 
+
+/**
+ * Reference to a field of type 'AccountDeletionStatus'
+ */
+export type EnumAccountDeletionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AccountDeletionStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'AccountDeletionStatus[]'
+ */
+export type ListEnumAccountDeletionStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AccountDeletionStatus[]'>
+    
+
 /**
  * Batch Payload for updateMany & deleteMany & createMany
  */
@@ -2336,6 +2448,7 @@ export type GlobalOmitConfig = {
   emailLog?: Prisma.EmailLogOmit
   passwordResetToken?: Prisma.PasswordResetTokenOmit
   pushSubscription?: Prisma.PushSubscriptionOmit
+  accountDeletionRequest?: Prisma.AccountDeletionRequestOmit
 }
 
 /* Types for Logging */

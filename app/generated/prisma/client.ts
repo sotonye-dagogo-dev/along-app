@@ -124,3 +124,8 @@ export type PasswordResetToken = Prisma.PasswordResetTokenModel
  * 
  */
 export type PushSubscription = Prisma.PushSubscriptionModel
+/**
+ * Model AccountDeletionRequest
+ * 
+ */
+export type AccountDeletionRequest = Prisma.AccountDeletionRequestModel

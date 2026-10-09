@@ -9,6 +9,8 @@ import { Search, LocateFixed, SlidersHorizontal, Link2, X, ChevronLeft } from "l
 import { ExplorePinCard, FilterChipsBar } from "@/app/components/features/explore"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { getMapStyleStack, rasterFallbackDepth } from "@/app/lib/config/mapStack"
+import { MAP_PINS_CONFIG } from "@/app/lib/config/mapPins"
+import { MapRoutePin, MapUserDot } from "@/app/components/features/posts/MapPins"
 
 const MapView = dynamic(() => import("react-map-gl/maplibre"), { ssr: false })
 const Marker = dynamic(() => import("react-map-gl/maplibre").then((m) => ({ default: m.Marker })), { ssr: false })
@@ -253,18 +255,33 @@ export default function ExplorePage() {
           reuseMaps
         >
           {userLocation && (
-            <Marker latitude={userLocation.lat} longitude={userLocation.lng}>
-              <div className="w-4 h-4 rounded-circle bg-primary border-2 border-white shadow-md" />
+            <Marker
+              latitude={userLocation.lat}
+              longitude={userLocation.lng}
+              anchor={MAP_PINS_CONFIG.markerAnchor}
+              offset={MAP_PINS_CONFIG.markerOffset as unknown as [number, number]}
+            >
+              <MapUserDot />
             </Marker>
           )}
-          {filteredPins.map((pin) => (
-            <Marker key={pin.id} latitude={pin.lat} longitude={pin.lng} onClick={() => setSelectedPin(pin)}>
-              <div
-                className="w-[24px] h-[24px] rounded-circle bg-primary text-white text-[10px] font-bold flex items-center justify-center shadow-sm border-2 border-white cursor-pointer hover:scale-110 transition-transform"
+          {filteredPins.map((pin, idx) => (
+            <Marker
+              key={pin.id}
+              latitude={pin.lat}
+              longitude={pin.lng}
+              anchor={MAP_PINS_CONFIG.markerAnchor}
+              offset={MAP_PINS_CONFIG.markerOffset as unknown as [number, number]}
+              onClick={() => setSelectedPin(pin)}
+            >
+              <button
+                type="button"
+                onClick={() => setSelectedPin(pin)}
+                aria-label={`${pin.title} - ${pin.validityTier ?? "developing"} (${pin.validityScore})`}
                 title={`${pin.title} - ${pin.validityTier ?? "developing"} (${pin.validityScore})`}
+                className="bg-transparent border-none p-0 cursor-pointer"
               >
-                {pin.tags.length > 0 ? Math.min(pin.tags.length, 99) : "•"}
-              </div>
+                <MapRoutePin index={idx} total={filteredPins.length} label={pin.title} />
+              </button>
             </Marker>
           ))}
         </MapView>
@@ -496,9 +513,6 @@ export default function ExplorePage() {
         @keyframes slideUp {
           from { transform: translateY(100%); }
           to { transform: translateY(0); }
-        }
-        .dark-map :global(.maplibregl-canvas) {
-          filter: brightness(1.35) contrast(1.1);
         }
       `}</style>
     </div>

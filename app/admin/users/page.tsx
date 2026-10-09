@@ -21,27 +21,41 @@ interface AdminUser {
   rewardTier: string
   rewardPoints: number
   verified: boolean
+  isDeleted?: boolean
+  deletionScheduledFor?: string | null
   _count: { posts: number }
   createdAt: string
 }
+
+const DELETION_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "pending", label: "Deletion pending" },
+  { id: "deleted", label: "Deleted" },
+] as const
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [deletionFilter, setDeletionFilter] = useState<string>("all")
 
   const bulk = useBulkSelection(users, (u) => u.id)
 
   const loadRef = useRef<AbortController | null>(null)
 
-  const load = async (q?: string) => {
+  const load = async (q?: string, deletion?: string) => {
     loadRef.current?.abort()
     loadRef.current = new AbortController()
     const signal = loadRef.current.signal
     setLoading(true)
     try {
-      const url = q ? `/api/admin/users?q=${encodeURIComponent(q)}` : "/api/admin/users"
+      const params = new URLSearchParams()
+      if (q) params.set("q", q)
+      const d = deletion ?? deletionFilter
+      if (d && d !== "all") params.set("deletion", d)
+      const qs = params.toString()
+      const url = qs ? `/api/admin/users?${qs}` : "/api/admin/users"
       const res = await fetch(url, { signal })
       if (res.ok) {
         const data = await res.json()
@@ -65,6 +79,30 @@ export default function AdminUsersPage() {
     const timer = setTimeout(() => { if (search) load(search); else load() }, 300)
     return () => clearTimeout(timer)
   }, [search])
+
+  useEffect(() => {
+    load(search || undefined, deletionFilter)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deletionFilter])
+
+  /** First-N quick presets = earliest N signups (createdAt asc), not the on-screen order. */
+  const handleSelectFirstNBySignup = async (n: number) => {
+    try {
+      setBulkBusy(true)
+      const res = await fetch(`/api/admin/users?order=oldest&limit=${n}`)
+      if (!res.ok) throw new Error("fetch failed")
+      const data = await res.json()
+      const ids = ((data.users ?? []) as AdminUser[]).slice(0, n).map((u) => u.id)
+      // Ensure listed rows exist locally where possible, then select the ids.
+      bulk.selectIds(ids)
+      toastService.success(`Selected first ${ids.length} signups`)
+    } catch {
+      // Fallback: first N of the current list (non-breaking).
+      bulk.selectFirstN(n)
+    } finally {
+      setBulkBusy(false)
+    }
+  }
 
   const handleRoleChange = async (userId: string, role: string) => {
     try {
@@ -169,6 +207,43 @@ export default function AdminUsersPage() {
     })
   }
 
+  /** Safe bulk deletion: starts the 7-day archived grace flow per user (posts anonymized on finalize). */
+  const handleBulkDelete = () => {
+    const ids = [...bulk.selected]
+    if (ids.length === 0) return
+    modalService.confirm({
+      title: `Request deletion for ${ids.length} user(s)?`,
+      description: "Accounts + posts are archived immediately and anonymized after the 7-day grace period. Likes/bookmarks are removed; anonymised posts retained. Users can reverse until then.",
+      variant: "destructive",
+      confirmLabel: "Request deletion",
+      onConfirm: () => {
+        modalService.close()
+        void (async () => {
+          setBulkBusy(true)
+          try {
+            let ok = 0
+            for (const id of ids) {
+              const res = await fetch("/api/admin/deletions/finalize", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "request", userId: id, reason: "admin bulk deletion" }),
+              })
+              if (res.ok) ok += 1
+            }
+            bulk.clear()
+            await load(search || undefined)
+            if (ok === ids.length) toastService.success(`${ok} deletion request(s) started (7-day grace)`)
+            else toastService.error(`${ok}/${ids.length} started — check deletions panel`)
+          } catch {
+            toastService.error("Bulk deletion failed")
+          } finally {
+            setBulkBusy(false)
+          }
+        })()
+      },
+    })
+  }
+
   const tierColors: Record<string, string> = {
     BRONZE: "bg-bg-elevated text-text-secondary",
     SILVER: "bg-bg-elevated text-text-primary",
@@ -185,13 +260,32 @@ export default function AdminUsersPage() {
           <h1 className="text-[24px] sm:text-[28px] font-bold tracking-tight truncate">Users</h1>
           <div className="text-sm text-text-secondary truncate">Manage registered users</div>
         </div>
-        <div className="w-full sm:w-64">
-          <AppInput
-            placeholder="Search users..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            icon={<Search size={14} />}
-          />
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex gap-1 flex-wrap" role="tablist" aria-label="Deletion filter">
+            {DELETION_FILTERS.map((f) => (
+              <button
+                key={f.id}
+                role="tab"
+                aria-selected={deletionFilter === f.id}
+                onClick={() => setDeletionFilter(f.id)}
+                className={`px-2.5 py-1.5 radius-md text-xs font-medium cursor-pointer border transition-colors ${
+                  deletionFilter === f.id
+                    ? "bg-primary-muted text-primary border-primary"
+                    : "bg-bg-card text-text-secondary border-border hover:text-text-primary"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="w-full sm:w-64">
+            <AppInput
+              placeholder="Search users..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              icon={<Search size={14} />}
+            />
+          </div>
         </div>
       </div>
 
@@ -215,7 +309,7 @@ export default function AdminUsersPage() {
         <span className="inline-flex items-center gap-1 flex-wrap">
           <span className="text-text-muted">Quick:</span>
           {ADMIN_BULK_SELECT_META.quickPresets.map((p) => (
-            <button key={p.id} onClick={() => bulk.selectFirstN(p.count)} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary hover:text-primary cursor-pointer border-none">
+            <button key={p.id} onClick={() => handleSelectFirstNBySignup(p.count)} title="Earliest signups first" className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary hover:text-primary cursor-pointer border-none">
               {p.label}
             </button>
           ))}
@@ -225,6 +319,7 @@ export default function AdminUsersPage() {
           <button onClick={() => handleBulkRole("ADMIN")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-primary-muted text-primary border-none font-semibold cursor-pointer disabled:opacity-50">Make admin</button>
           <button onClick={() => handleBulkRole("USER")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary border border-border cursor-pointer disabled:opacity-50">Demote</button>
           <button onClick={handleBulkSuspend} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-error text-error-text border-none font-semibold cursor-pointer disabled:opacity-50">Suspend</button>
+          <button onClick={handleBulkDelete} disabled={bulk.count === 0 || bulkBusy} title="Safe deletion: 7-day grace, posts anonymized" className="px-2 py-1 radius-sm bg-error text-error-text border border-error-border font-semibold cursor-pointer disabled:opacity-50">Delete (safe)</button>
         </span>
       </div>
 
@@ -281,6 +376,12 @@ export default function AdminUsersPage() {
                     {u.role === "ADMIN" && <Shield size={10} />}
                     {u.role}
                   </span>
+                  {u.isDeleted && (
+                    <span className="ml-1 inline-flex items-center px-2 py-0.5 radius-pill text-[10px] font-semibold bg-bg-elevated text-text-muted">Deleted</span>
+                  )}
+                  {!u.isDeleted && u.deletionScheduledFor && (
+                    <span className="ml-1 inline-flex items-center px-2 py-0.5 radius-pill text-[10px] font-semibold bg-warning text-warning-text" title={`Scheduled: ${new Date(u.deletionScheduledFor).toLocaleDateString()}`}>Deletion pending</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 border-b border-border whitespace-nowrap">
                   <span className={`inline-flex items-center px-2 py-0.5 radius-pill text-[10px] font-semibold ${tierColors[u.rewardTier] ?? "bg-bg-elevated text-text-secondary"}`}>
