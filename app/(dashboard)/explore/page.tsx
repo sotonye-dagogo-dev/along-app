@@ -11,6 +11,7 @@ import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { getMapStyleStack, rasterFallbackDepth } from "@/app/lib/config/mapStack"
 import { MAP_PINS_CONFIG } from "@/app/lib/config/mapPins"
 import { MapRoutePin, MapUserDot } from "@/app/components/features/posts/MapPins"
+import { toastService } from "@/app/lib/services/toastService"
 
 const MapView = dynamic(() => import("react-map-gl/maplibre"), { ssr: false })
 const Marker = dynamic(() => import("react-map-gl/maplibre").then((m) => ({ default: m.Marker })), { ssr: false })
@@ -70,6 +71,9 @@ export default function ExplorePage() {
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
   const [sortBy, setSortBy] = useState("validity")
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locating, setLocating] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const watchId = useRef<number | null>(null)
   // Keyless map stack (Sprint 19): vector primary, raster step-down on error.
   const [styleIdx, setStyleIdx] = useState(0)
   useEffect(() => {
@@ -215,23 +219,105 @@ export default function ExplorePage() {
     document.addEventListener("pointerup", handlePointerUp)
   }
 
-  const handleNearMe = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((pos) => {
-        const lat = pos.coords.latitude
-        const lng = pos.coords.longitude
-        setUserLocation({ lat, lng })
-        setViewState({ latitude: lat, longitude: lng, zoom: 14 })
-        updateUrl(lat, lng, 14)
-        mapRef.current?.flyTo({ center: [lng, lat], zoom: 14, duration: 1500 })
-      })
-    }
-  }
+  // User location pin: always visible once granted. Requests on mount
+  // (passive — no view jump), keeps a watchPosition subscription so the dot
+  // tracks movement, and cleans up on unmount. Denials fail softly; the
+  // Near-me button re-centres on demand with feedback.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) return;
+    let cancelled = false;
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (cancelled) return;
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => { /* silent — button explains on demand */ },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+      );
+      watchId.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          if (cancelled) return;
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => { /* keep last known fix */ },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
+      );
+    } catch { /* geolocation unavailable */ }
+    return () => {
+      cancelled = true;
+      try {
+        if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current);
+      } catch { /* ignore */ }
+      watchId.current = null;
+    };
+  }, []);
 
-  const handleShareView = () => {
-    const url = window.location.href
-    navigator.clipboard.writeText(url)
-  }
+  const handleNearMe = () => {
+    if (!("geolocation" in navigator)) {
+      toastService.error("Location isn't available on this device");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserLocation({ lat, lng });
+        setViewState({ latitude: lat, longitude: lng, zoom: 14 });
+        updateUrl(lat, lng, 14);
+        mapRef.current?.flyTo({ center: [lng, lat], zoom: 14, duration: 1500 });
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          toastService.error("Location access denied — enable it to see your pin");
+        } else if (err.code === err.TIMEOUT) {
+          toastService.error("Location timed out — try again");
+        } else {
+          toastService.error("Couldn't get your location");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
+  const handleShareView = async () => {
+    const url = window.location.href;
+    const title = "Along — explore routes";
+    if (sharing) return;
+    setSharing(true);
+    try {
+      if (typeof navigator !== "undefined" && "share" in navigator) {
+        try {
+          await (navigator as Navigator & { share: (d: { title: string; url: string }) => Promise<void> }).share({ title, url });
+          toastService.success("Shared!");
+          return;
+        } catch (e) {
+          if (e instanceof Error && /abort|cancel/i.test(e.name + e.message)) return;
+        }
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        toastService.success("Link copied — share it anywhere");
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        toastService.success("Link copied — share it anywhere");
+      }
+    } catch {
+      toastService.error("Couldn't share right now — copy the address bar URL");
+    } finally {
+      setSharing(false);
+    }
+  };
 
   // Shared keyless style stack (OpenFreeMap vector → keyless raster
   // fallbacks; no apiKey params, no mapbox:// branch).
@@ -305,10 +391,12 @@ export default function ExplorePage() {
         </div>
         <button
           onClick={handleNearMe}
-          className="w-10 h-10 rounded-md border border-border bg-bg-card text-text-secondary flex items-center justify-center shrink-0 hover:bg-bg-elevated hover:text-primary transition-colors duration-fast cursor-pointer"
-          aria-label="Near me"
+          disabled={locating}
+          className="w-10 h-10 rounded-md border border-border bg-bg-card text-text-secondary flex items-center justify-center shrink-0 hover:bg-bg-elevated hover:text-primary transition-colors duration-fast cursor-pointer disabled:opacity-60"
+          aria-label={locating ? "Locating…" : "Near me"}
+          title={userLocation ? "Centred on your location" : "Show my location"}
         >
-          <LocateFixed size={18} />
+          <LocateFixed size={18} className={locating ? "animate-pulse" : ""} />
         </button>
       </div>
 
@@ -435,11 +523,12 @@ export default function ExplorePage() {
       {/* Share this view - Desktop */}
       <button
         onClick={handleShareView}
-        className="absolute bottom-6 right-6 z-15 hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 radius-md border border-border bg-bg-card/85 backdrop-blur-[12px] saturate-[180%] text-text-secondary text-xs font-medium cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-card hover:text-primary shadow-sm"
+        disabled={sharing}
+        className="absolute bottom-6 right-6 z-15 hidden lg:inline-flex items-center gap-1.5 px-3.5 py-2 radius-md border border-border bg-bg-card/85 backdrop-blur-[12px] saturate-[180%] text-text-secondary text-xs font-medium cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-card hover:text-primary shadow-sm disabled:opacity-60"
         aria-label="Share this view"
       >
         <Link2 size={16} />
-        Share this view
+        {sharing ? "Sharing…" : "Share this view"}
       </button>
 
       {/* Mobile Bottom Sheet */}
@@ -475,14 +564,16 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {/* Share this view - Mobile */}
+      {/* Share this view - Mobile (tracks the bottom-sheet height) */}
       <button
         onClick={handleShareView}
-        className="lg:hidden absolute bottom-[calc(40vh+16px)] right-4 z-15 inline-flex items-center gap-1.5 px-3 py-1.5 radius-md border border-border bg-bg-card/85 backdrop-blur-[12px] text-text-secondary text-xs font-medium cursor-pointer font-sans hover:bg-bg-card hover:text-primary shadow-sm"
+        disabled={sharing}
+        style={{ bottom: `calc(${bottomSheetHeight} + 16px)` }}
+        className="lg:hidden absolute right-4 z-15 inline-flex items-center gap-1.5 px-3 py-1.5 radius-md border border-border bg-bg-card/85 backdrop-blur-[12px] text-text-secondary text-xs font-medium cursor-pointer font-sans hover:bg-bg-card hover:text-primary shadow-sm disabled:opacity-60"
         aria-label="Share this view"
       >
         <Link2 size={14} />
-        Share
+        {sharing ? "…" : "Share"}
       </button>
 
       {/* Mobile Filter Drawer */}
@@ -497,9 +588,9 @@ export default function ExplorePage() {
             <div className="flex items-center gap-1.5 flex-wrap mb-2">
               <FilterChipsBar filters={filters} onToggle={(label) => setFilters((prev) => prev.map((x) => (x.label === label ? { ...x, active: !x.active } : x)))} />
             </div>
-            <button onClick={handleNearMe} className="w-full h-9 flex items-center justify-center gap-2 radius-md border border-border bg-bg-card text-text-secondary text-xs font-medium cursor-pointer hover:bg-bg-elevated mt-1" aria-label="Near me">
+            <button onClick={handleNearMe} disabled={locating} className="w-full h-9 flex items-center justify-center gap-2 radius-md border border-border bg-bg-card text-text-secondary text-xs font-medium cursor-pointer hover:bg-bg-elevated mt-1 disabled:opacity-60" aria-label="Near me">
               <LocateFixed size={14} />
-              Use my location
+              {locating ? "Locating…" : "Use my location"}
             </button>
           </div>
         </div>

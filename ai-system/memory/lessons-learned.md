@@ -563,3 +563,8 @@ Any destructive user-data operation with retention grace, anonymization requirem
 
 **Supersedes:** None
 **Superseded by:** None
+
+## Sprint 22: literal-{{var}} sends + PROJECT_ENV split-brain
+- **Symptom:** admin-composed mails arrived with raw `{{identifier}}` text (variable values never supplied or keys mismatched); `PROJECT_ENV=production` left insecure cookies + dev logs because only 2 prisma files honored it.
+- **Root causes:** (1) interpolation only replaced supplied keys, leaving the rest verbatim, and preview deliberately filled gaps with the identifier; (2) env reads were scattered `process.env.NODE_ENV` with no central resolver.
+- **Fix pattern (reuse):** interpolate against `{{(\w+)}}` globally with merged defaults and empty-string fallback + HTML-escape values; keep `{{...}}` intact through the sanitizer via placeholder-token protection; resolve env once in `lib/config/env.ts` (PROJECT_ENV wins) and consume `isProduction()/getEffectiveEnv()` everywhere. Verified: builder round-trips + sanitizer + env precedence executed under node strip-types.

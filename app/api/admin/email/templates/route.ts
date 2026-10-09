@@ -4,6 +4,8 @@ import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { DEFAULT_EMAIL_TEMPLATES } from "@/app/lib/config/email";
 import type { EmailTemplate } from "@/app/lib/config/email";
 import { isSystemTemplate } from "@/app/lib/config/emailManagement";
+import { sanitizeStoredBody, deriveBodyText } from "@/app/lib/utils/emailTemplates";
+import { extractVariables, stripTags } from "@/app/lib/utils/emailSanitize";
 
 async function readStored(): Promise<EmailTemplate[]> {
   try {
@@ -29,17 +31,19 @@ async function writeStored(templates: EmailTemplate[]) {
 function sanitize(t: Partial<EmailTemplate>, existing?: EmailTemplate): EmailTemplate | null {
   const name = String(t.name ?? existing?.name ?? "").trim().slice(0, 64);
   if (!name || !/^[a-zA-Z0-9_-]+$/.test(name)) return null;
-  const subject = String(t.subject ?? existing?.subject ?? "").slice(0, 200);
-  const bodyHtml = String(t.bodyHtml ?? existing?.bodyHtml ?? "").slice(0, 100000);
-  const bodyText = String(t.bodyText ?? existing?.bodyText ?? "").slice(0, 50000);
+  const subject = stripTags(String(t.subject ?? existing?.subject ?? "")).slice(0, 200);
+  const rawHtml = String(t.bodyHtml ?? existing?.bodyHtml ?? "").slice(0, 100000);
+  const bodyHtml = sanitizeStoredBody(rawHtml);
+  const rawText = String(t.bodyText ?? existing?.bodyText ?? "");
+  const bodyText = stripTags(rawText).slice(0, 50000) || deriveBodyText("", bodyHtml);
   if (!subject || !bodyHtml) return null;
-  const vars = Array.isArray(t.variables) ? t.variables.map(String).slice(0, 50)
-    : Array.from(new Set([...(bodyHtml.matchAll(/\{\{(\w+)\}\}/g)).map((m) => m[1]), ...(subject.matchAll(/\{\{(\w+)\}\}/g)).map((m) => m[1])])).slice(0, 50);
+  const vars = Array.isArray(t.variables) ? t.variables.map(String).filter((v) => /^\w+$/.test(v)).slice(0, 50)
+    : extractVariables(bodyHtml, subject, bodyText);
   return {
-    name, subject, bodyHtml, bodyText: bodyText || bodyHtml.replace(/<[^>]+>/g, " ").slice(0, 50000),
+    name, subject, bodyHtml, bodyText,
     variables: vars,
     enabled: typeof t.enabled === "boolean" ? t.enabled : (existing?.enabled ?? true),
-    description: typeof t.description === "string" ? t.description.slice(0, 300) : existing?.description,
+    description: typeof t.description === "string" ? stripTags(t.description).slice(0, 300) : existing?.description,
     isSystem: existing?.isSystem ?? isSystemTemplate(name),
   };
 }

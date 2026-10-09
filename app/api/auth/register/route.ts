@@ -180,7 +180,9 @@ export async function POST(request: NextRequest) {
     const otpKey = `otp:${email}`;
     await setOtp(otpKey, otpHash, 900);
 
-    // Non-blocking email send — never hold request waiting for Resend, but now tightly observed (no false-positive)
+    // Non-blocking email send — never hold request waiting for Resend, but now tightly observed (no false-positive).
+    // Welcome fires regardless of OTP outcome (plan-register and referral
+    // links share this path; referral isolation above keeps them non-interfering).
     const sendInBackground = async () => {
       try {
         const { sendOtpEmail, sendWelcomeEmail } = await import("@/app/lib/services/emailService");
@@ -192,11 +194,9 @@ export async function POST(request: NextRequest) {
         if (process.env.NODE_ENV !== "production") {
           console.log(`[DEV] OTP for ${email}: ${otp}`);
         }
-        if (otpResult.sent) {
-          const welcomeResult = await sendWelcomeEmail(email, firstName);
-          if (!welcomeResult.sent) {
-            console.warn(`[REGISTER] welcome email failed for ${email}: ${welcomeResult.reason}`);
-          }
+        const welcomeResult = await sendWelcomeEmail(email, firstName);
+        if (!welcomeResult.sent) {
+          console.warn(`[REGISTER] welcome email failed for ${email}: ${welcomeResult.reason}`);
         }
       } catch (e) {
         console.error("[REGISTER] background email failed", e);

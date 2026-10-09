@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 safe deletion + Email Studio)
-> - last-verified-against-code: 2026-10-09 (schema/migration, accountDeletion/emailManagement configs, accountDeletionService, account/cron/admin-deletion/admin-email APIs, AccountDeletionPanel, deletions + email admin pages, profile/admin grids verified in code; QA static-only — no node_modules in runner)
-> - last-synced: 2026-10-09 (Sprint 21 safe deletion + Email Studio — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 22 email/auth/profile/explore/env)
+> - last-verified-against-code: 2026-10-09 (env/sanitize/builder/auth-routes/panel/profile/explore/README verified in code; QA static+execution only — no node_modules in runner)
+> - last-synced: 2026-10-09 (Sprint 22 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -370,6 +370,24 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Admin dashboard — KPI grid `grid-cols-2 lg:grid-cols-4`; AdminShell Deletions/Email nav | [x] |
 | [XL] | Email Studio — visual/HTML builder, enable toggles (audited transitions), custom create/delete (system protected), preview, composer with dynamic recipients (admins/all/role/firstN/search/manual, capped), `sendTemplatedEmail` + `resolveEmailRecipients` | [x] |
 | [S] | Tests — `accountDeletion.test.ts` (9: grace/retention, scheduling, anon identity, overdue, system templates, recipient modes, manual parse, bulk signup-order) | [x] |
+
+---
+
+## Sprint 22 — Email Studio Tightening + Auth-Email Wiring + Profile Tabs + Explore Share/Location + Env Centralization (execute-feature 2026-10-09)
+
+> **Section summary:** Directive close-out, non-breaking additive (no migration — verify/change-email reuse otpStore; no new deps; no removed APIs). QA static+execution in-runner (no node_modules — tsc --noResolve zero attributable errors; node strip-types proved builder round-trips/sanitizer/env; jest 17 new + lint + build deferred to CI/Vercel).
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Env centralization — `lib/config/env.ts` (PROJECT_ENV-wins) + prisma.ts cutover + README table + .env.example docs + barrel exports | [x] |
+| [M] | Sanitization all round — `lib/utils/emailSanitize.ts` (allowlist/escape/extract) + admin templates PUT + all send paths + recipient guard | [x] |
+| [M] | Interpolation fix — missing vars → "" (never literal {{ident}}), HTML-escaped values, shared defaults incl. absolute logoUrl, preview readable samples | [x] |
+| [M] | Shared wrapper + icons — composeEmailDocument/Text, EMAIL_DEFAULT_VARIABLES, EMAIL_ICONS SVG (welcome emojis replaced), 3 new system templates | [x] |
+| [XL] | Studio rebuild — blocks editor + variable catalog/custom + in-place text + raw HTML + lossless switching + per-var composer + select-search recipients | [x] |
+| [L] | Auth-email wiring — welcome on Google signup + unconditional on register; verify-email/change-email/change-password APIs + link/password notice | [x] |
+| [M] | Profile — EmailSecurityPanel (gated) + account tab group + quick-links grid between tab sections | [x] |
+| [M] | Explore — functional share (sheet→clipboard→fallback + toasts) + persistent watched user dot + locating states + sheet-tracking share position | [x] |
+| [S] | README logo → public/logo.svg + Email Studio/env sections; tests `emailStudio.test.ts` (17) | [x] |
 
 ---
 

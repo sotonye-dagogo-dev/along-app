@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 safe deletion + Email Studio)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 22 email/auth/profile/explore/env)
 > - last-verified-against-code: 2026-10-09 (41 config files incl. accountDeletion/emailManagement; account/cron/deletion/email APIs, deletions+email admin pages, AccountDeletionPanel verified in code; QA static-only, no node_modules)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
@@ -90,19 +90,19 @@ along-app/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
 │   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
-│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel (restore/update/delete)/ShareRouteModal edit mode + draft update-vs-new prompt, MapPins [MapRoutePin/MapUserDot anchor-stable], moderation [PostMenu, ReportDialog], profile [RewardsPanel, EarlyAdopterBadge], explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
+│   │   └── features/        → Domain-specific components (comments, posts incl. RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel (restore/update/delete)/ShareRouteModal edit mode + draft update-vs-new prompt, MapPins [MapRoutePin/MapUserDot anchor-stable], moderation [PostMenu, ReportDialog], profile [RewardsPanel, EarlyAdopterBadge, AuthLinkPanel, EmailSecurityPanel (verify/change-email/change-password, gated)], explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
 │   │   ├── services/        → 24 service modules (mapProxy keyless trace/geocode/reverse, earlyAdopter rank/status/list, errorReport sanitized bug filing, feed, search, routeDrafts, postModeration, mention, referral, notification, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)
 │   │   ├── hooks/           → useCachedFetch (read-through + SWR + in-flight dedup), useRequireAuth
-│   │   ├── config/          → 39 config files incl. index.ts (mapPins anchor-stable pins/user-dot [Sprint 20], mapStack keyless tiles/routing/geocode/TTLs/attributions [Sprint 19], earlyAdopter badge key/defaults/validation/labels, reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation incl. immutablePostFields, notifications incl. DISLIKE/NEW_ROUTE, inviteConfig points-cap policy, navigation incl. isAdminRole, errorReporting category/endpoint/caps/copy, footer layout)
+│   │   ├── config/          → 39 config files incl. index.ts (env effective-env PROJECT_ENV-wins [Sprint 22], email wrapper/icons/default-vars + EMAIL_BUILDER_CONFIG blocks/catalog [Sprint 22], mapPins anchor-stable pins/user-dot [Sprint 20], mapStack keyless tiles/routing/geocode/TTLs/attributions [Sprint 19], earlyAdopter badge key/defaults/validation/labels, reviews/SITE_REVIEWS, carousel, shareRoute, routeDrafts, routeRequest, toast, postActions, postSubmit, moderation incl. immutablePostFields, notifications incl. DISLIKE/NEW_ROUTE, inviteConfig points-cap policy, navigation incl. isAdminRole, errorReporting category/endpoint/caps/copy, footer layout)
 │   │   ├── db/              → Database layer (prisma.ts, redis.ts)
 │   │   ├── hooks/           → Server-compatible custom React hooks
 │   │   ├── schemas/         → Zod validation schemas
 │   │   ├── streams/         → Reactive streams
 │   │   ├── types/           → TypeScript type definitions
 │   │   ├── integrations/    → External service clients (transact, tega)
-│   │   └── utils/           → 11 utility modules (blog, pushClient, siteConfig, etc.)
+│   │   └── utils/           → 11 utility modules (blog, pushClient, siteConfig, etc.) + emailSanitize (allowlist/escape) + emailBuilder (blocks↔HTML↔text lossless) + emailTemplates (escaped interpolation, shared defaults) [Sprint 22]
 │   └── providers/           → 6 context providers (Auth, OnlineStatus, Push, GlobalModal, GlobalToast, CookieConsent)
 │
 ├── node_modules/            → Installed dependencies

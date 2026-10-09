@@ -44,6 +44,12 @@ export async function POST(request: NextRequest) {
 
     const hashed = await hashPassword(password);
     await prisma.user.update({ where: { id: user.id }, data: { password: hashed } });
+    if (hasPassword) {
+      try {
+        const { sendChangePasswordNotice } = await import("@/app/lib/services/emailService");
+        void sendChangePasswordNotice(dbUser.email, dbUser.firstName || "traveller");
+      } catch { /* non-critical */ }
+    }
 
     return NextResponse.json({ message: hasPassword ? "Password updated" : "Password added. You can now sign in with email and password." }, { status: 200 });
   } catch (error) {

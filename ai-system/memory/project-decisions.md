@@ -521,3 +521,26 @@ A SiteConfig-backed template store reuses the existing admin-override pattern (n
 **Implications:**
 - New notification/email types must be added to both Prisma enum (migration) and TS registries together.
 - Template toggles audit to EmailLog (`template_toggle`); paused templates skip sends without throwing.
+
+---
+
+## Sprint 22: Email hardening + verify/change flows without migration + env single source
+
+**Decision:** Missing email vars render as "" (never literal `{{ident}}`); no Prisma migration for verify/change-email (otpStore keys, address bound into hash); `change-password` is hasPassword-only (first credential stays in link/password); env decisions go through `lib/config/env.ts` (PROJECT_ENV wins); Studio keeps blocks as single source with lossless mode conversions.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 22
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Literal `{{var}}` in inboxes was caused by preview/send filling gaps with the identifier itself; empty-string fallback plus readable preview samples fixes the class. otpStore reuse avoids a migration for flows with identical durability needs (same caveat as OTP already documented). Splitting first-credential creation from password change avoids two writers racing on Google-only accounts. PROJECT_ENV-wins fixes the observed split (prisma honored it, cookies/logs/secrets did not).
+
+**Alternatives Considered:**
+- **EmailVerificationToken table**: Rejected — same durability as OTP store, extra migration for no gain.
+- **Keep literal placeholders in sends**: Rejected — the reported bug; empty fallback is the safe default.
+- **Direct NODE_ENV reads kept**: Rejected — preserves the differentiation gap the directive called out.
+
+**Implications:**
+- New email vars must be added to template `variables` + `EMAIL_BUILDER_CONFIG.variableCatalog` together so Studio/composer/preview agree.
+- New env-dependent behavior must use `getEffectiveEnv()/isProduction()`, never raw `process.env.NODE_ENV`.
+---
