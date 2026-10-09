@@ -273,7 +273,18 @@ export default function PostDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       })
-      if (!res.ok) throw new Error("edit failed")
+      if (!res.ok) {
+        try {
+          const payload = await res.json().catch(() => null) as { message?: string; error?: string; details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] } } | null
+          const { firstRouteServerMessage } = await import("@/app/lib/config/routeValidation")
+          toastService.error(
+            firstRouteServerMessage(payload?.details, payload?.message ?? payload?.error ?? POST_ACTIONS_CONFIG.editError)
+          )
+        } catch {
+          toastService.error(POST_ACTIONS_CONFIG.editError)
+        }
+        return false
+      }
       setEditOpen(false)
       await refreshPost()
       return true
