@@ -8,6 +8,7 @@ import { AppCard, AppUserLabel, TrustBadge, VehicleChip, ImageLightbox } from "@
 import { PostMenu, type PostMenuPost } from "@/app/components/features/moderation"
 import { AuthContext } from "@/app/providers/AuthProvider"
 import { MODERATION_CONFIG } from "@/app/lib/config"
+import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import type { VehicleType } from "@/app/lib/types"
 
 const MiniRouteMap = dynamic(() => import("./RouteMap").then((m) => ({ default: m.RouteMap })), { ssr: false })
@@ -108,7 +109,11 @@ function formatCount(n: number): string {
 function extractVehicles(routes: unknown): string[] {
   if (!Array.isArray(routes)) return []
   const vehicles = new Set<string>()
-  for (const step of routes) {
+  // Destination is the final stop — its vehicle (if a legacy row carries
+  // one) never describes an onward leg, so it is excluded here.
+  for (let i = 0; i < routes.length; i++) {
+    const step = routes[i]
+    if (!showStepVehicle(i, routes.length)) continue
     if (step && typeof step === "object" && "vehicle" in step && step.vehicle) {
       vehicles.add(step.vehicle as string)
     }
@@ -383,7 +388,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
                   <span className="text-sm text-text-muted italic">Stop {index + 1}</span>
                 )}
               </div>
-              {showFare && step.fare !== undefined && step.fare !== null && (
+              {showFare && showStepFare(index, routes.length) && step.fare !== undefined && step.fare !== null && (
                 <span className="text-sm font-semibold text-text-primary flex items-center gap-1 shrink-0">
                   <BadgeDollarSign size={14} className="text-text-muted" />
                   ₦{step.fare}

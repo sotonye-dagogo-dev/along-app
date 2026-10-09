@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Navigation, ChevronLeft, ChevronRight, MapPin, BadgeDollarSign, X, LocateFixed, AlertTriangle, Compass } from "lucide-react"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
+import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import type { VehicleType } from "@/app/lib/types"
 
 interface RouteStep {
@@ -233,7 +234,8 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
-              {currentStep?.vehicle && VEHICLE_REGISTRY[currentStep.vehicle as VehicleType] && (
+              {/* Destination (final stop) shows no fare/vehicle — no onward leg. */}
+              {showStepVehicle(currentStepIndex, validSteps.length) && currentStep?.vehicle && VEHICLE_REGISTRY[currentStep.vehicle as VehicleType] && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 radius-pill text-xs font-medium bg-primary-muted text-primary">
                   {(() => {
                     const VIcon = VEHICLE_REGISTRY[currentStep.vehicle as VehicleType].icon
@@ -242,7 +244,7 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
                   {VEHICLE_REGISTRY[currentStep.vehicle as VehicleType].label}
                 </span>
               )}
-              {currentStep?.fare !== undefined && currentStep.fare !== null && currentStep.fare > 0 && (
+              {showStepFare(currentStepIndex, validSteps.length) && currentStep?.fare !== undefined && currentStep.fare !== null && currentStep.fare > 0 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 radius-pill text-xs font-medium bg-bg-elevated text-text-secondary">
                   <BadgeDollarSign size={14} />
                   ₦{currentStep.fare}
@@ -337,9 +339,10 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
                     {step.description && (
                       <div className="text-xs text-text-muted mt-0.5 line-clamp-2">{step.description}</div>
                     )}
-                    {(step.vehicle || step.fare) && (
+                    {(showStepVehicle(i, validSteps.length) && step.vehicle && VEHICLE_REGISTRY[step.vehicle as VehicleType]) ||
+                    (showStepFare(i, validSteps.length) && step.fare !== undefined && step.fare !== null && step.fare > 0) ? (
                       <div className="flex items-center gap-2 mt-1">
-                        {step.vehicle && VEHICLE_REGISTRY[step.vehicle as VehicleType] && (
+                        {showStepVehicle(i, validSteps.length) && step.vehicle && VEHICLE_REGISTRY[step.vehicle as VehicleType] && (
                           <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 radius-pill text-[10px] font-medium bg-bg-elevated text-text-secondary">
                             {(() => {
                               const VIcon = VEHICLE_REGISTRY[step.vehicle as VehicleType].icon
@@ -348,11 +351,11 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
                             {VEHICLE_REGISTRY[step.vehicle as VehicleType].label}
                           </span>
                         )}
-                        {step.fare !== undefined && step.fare !== null && step.fare > 0 && (
+                        {showStepFare(i, validSteps.length) && step.fare !== undefined && step.fare !== null && step.fare > 0 && (
                           <span className="text-[10px] text-text-muted">₦{step.fare}</span>
                         )}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               )

@@ -6,6 +6,7 @@ import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, C
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { SHARE_ROUTE_MODAL_CONFIG } from "@/app/lib/config"
+import { ROUTE_STEPS_CONFIG, isDestinationStep, showStepFare, showStepVehicle, normalizeRouteSteps } from "@/app/lib/config/routeSteps"
 import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit"
 import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
 import { draftingCoachService } from "@/app/lib/services/DraftingCoachService"
@@ -283,7 +284,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   const liveTrace = trace && trace.sig === traceSig ? trace : null
   const displayDistance = liveTrace ? liveTrace.distance : estimate.distanceKm
   const displayDuration = liveTrace ? liveTrace.duration : estimate.durationMins
-  const totalFare = steps.reduce((sum, s) => sum + (s.fare || 0), 0)
+  // Destination is the final stop — its fare/vehicle are meaningless, so the
+  // total only sums the legs that actually travel somewhere.
+  const totalFare = steps.reduce((sum, s, i) => sum + (isDestinationStep(i, steps.length) ? 0 : (s.fare || 0)), 0)
 
   useEffect(() => {
     if (!isOpen || !traceSig) {
@@ -632,10 +635,14 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     if (isEditing && editPost) {
       try {
         const { POST_ACTIONS_CONFIG } = await import("@/app/lib/config/postActions")
+        // Destination fare/vehicle are stripped: the final stop has no onward leg.
+        const submitSteps = normalizeRouteSteps(
+          stepsToSubmit.map(({ _geoResults, _geoLoading, _focused, _locating, ...rest }) => rest)
+        )
         const ok = await onEditSubmit?.(editPost.id, {
           title: title.trim(),
           ...(description.trim() ? { description: description.trim() } : {}),
-          routes: stepsToSubmit.map(({ _geoResults, _geoLoading, _focused, _locating, ...rest }) => rest),
+          routes: submitSteps,
           images,
           tags: tags.slice(0, 10),
           startLat: first?.lat,
@@ -661,13 +668,17 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     }
     let result: boolean | void
     try {
+      // Destination fare/vehicle are stripped: the final stop has no onward leg.
+      const submitSteps = normalizeRouteSteps(
+        stepsToSubmit.map(({ _geoResults, _geoLoading, _focused, _locating, ...rest }) => rest)
+      )
       result = await onSubmit?.({
         title: title.trim(),
         // Omit empty descriptions: the API treats "" as a min-length failure,
         // and the quality-score checkpoint needs >=10 chars to pass.
         ...(description.trim() ? { description: description.trim() } : {}),
         ...(isResponse && effectiveResponseTo ? { type: "ROUTE_RESPONSE" as const, quotedPostId: effectiveResponseTo.id } : {}),
-        routes: stepsToSubmit.map(({ _geoResults, _geoLoading, _focused, _locating, ...rest }) => rest),
+        routes: submitSteps,
         images,
         tags: tags.slice(0, 10),
         startLat: first?.lat,
@@ -908,6 +919,11 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                         placeholder="Describe this stop, landmarks, and boarding instructions..."
                         className="w-full min-h-[60px] px-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none transition-colors duration-fast resize-y bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
                       />
+                      {/* Fare + vehicle describe the leg STARTING at this stop.
+                          The destination is the final stop — no onward leg, so
+                          both are hidden there (metadata-driven via
+                          ROUTE_STEPS_CONFIG) and stripped on submit. */}
+                      {showStepVehicle(index, steps.length) && (
                       <div className="flex flex-wrap gap-1.5">
                         {VEHICLE_OPTIONS.map((vType) => {
                           const vConfig = VEHICLE_REGISTRY[vType]
@@ -929,6 +945,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                           )
                         })}
                       </div>
+                      )}
+                      {showStepFare(index, steps.length) ? (
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-text-primary font-semibold text-sm pointer-events-none">₦</span>
                         <input
@@ -939,6 +957,14 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                           className="w-full h-10 pl-7 pr-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none transition-colors duration-fast bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
                         />
                       </div>
+                      ) : (
+                      <p
+                        className="text-[11px] text-text-muted italic px-0.5"
+                        aria-label={ROUTE_STEPS_CONFIG.destinationHintAriaLabel}
+                      >
+                        {ROUTE_STEPS_CONFIG.destinationHint}
+                      </p>
+                      )}
                     </div>
                   </div>
                 ))}

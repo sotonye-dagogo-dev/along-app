@@ -52,7 +52,7 @@ export function defaultEmailVars(): Record<string, string> {
  */
 function renderTemplate(template: string, variables: Record<string, string>, escape: boolean): string {
   const merged: Record<string, string> = { ...defaultEmailVars(), ...variables };
-  let result = template.replace(/\{\{(\w+)\}\}/g, (_m, key: string) => {
+  const result = template.replace(/\{\{(\w+)\}\}/g, (_m, key: string) => {
     const v = merged[key];
     if (v == null) return "";
     const s = String(v);
@@ -80,15 +80,18 @@ export function renderEmailSubject(subject: string, vars: Record<string, string>
 
 /** Sanitize a stored body before persist (keeps {{vars}} intact). */
 export function sanitizeStoredBody(dirty: string): string {
-  // Protect placeholders from the sanitizer, restore after.
-  const token = (i: number) => `__VAR${i}__`;
+  // Protect placeholders from the sanitizer, restore after. The token is a
+  // `#`-fragment so href/src values carrying a {{var}} still pass the
+  // sanitizer's isSafeUrl allowlist (a bare `__VARn__` token was dropped as
+  // an unsafe URL, silently deleting e.g. `<a href="{{appUrl}}/home">`).
+  const token = (i: number) => `#__ALONG_VAR${i}__`;
   const vars: string[] = [];
   const protectedHtml = dirty.replace(/\{\{\w+\}\}/g, (m) => {
     vars.push(m);
     return token(vars.length - 1);
   });
   const clean = sanitizeEmailHtml(protectedHtml);
-  return clean.replace(/__VAR(\d+)__/g, (_m, i: string) => vars[Number(i)] ?? "");
+  return clean.replace(/#__ALONG_VAR(\d+)__/g, (_m, i: string) => vars[Number(i)] ?? "");
 }
 
 export function deriveBodyText(bodyText: string, bodyHtml: string): string {

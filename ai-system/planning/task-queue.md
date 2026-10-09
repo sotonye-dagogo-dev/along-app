@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 22 email/auth/profile/explore/env)
-> - last-verified-against-code: 2026-10-09 (env/sanitize/builder/auth-routes/panel/profile/explore/README verified in code; QA static+execution only — no node_modules in runner)
-> - last-synced: 2026-10-09 (Sprint 22 — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination fare/vehicle + pin accuracy + EmailSecurityPanel type fix)
+> - last-verified-against-code: 2026-10-09 (routeSteps rule E2E, RouteMap snap/CSS/memoization, useUserLocation hook, explore/post-detail wiring, EmailSecurityPanel fix verified in code; tsc clean + 282/282 jest green with node_modules installed)
+> - last-synced: 2026-10-09 (Sprint 23 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -388,6 +388,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [M] | Profile — EmailSecurityPanel (gated) + account tab group + quick-links grid between tab sections | [x] |
 | [M] | Explore — functional share (sheet→clipboard→fallback + toasts) + persistent watched user dot + locating states + sheet-tracking share position | [x] |
 | [S] | README logo → public/logo.svg + Email Studio/env sections; tests `emailStudio.test.ts` (17) | [x] |
+
+## Sprint 23 — Destination Fare/Vehicle Rule + Map-Pin Accuracy + Deploy Type Fix (execute-feature 2026-10-09)
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | `ROUTE_STEPS_CONFIG` — destination hides fare/vehicle + `isDestinationStep`/`showStepFare`/`showStepVehicle`/`normalizeRouteSteps` helpers + barrel exports | [x] |
+| [M] | ShareRouteModal — hide fare/vehicle inputs on destination (hint instead), strip on create+edit submit, totals exclude destination | [x] |
+| [M] | Post views — PostCard (fare badge + vehicle extraction), post detail, NavigationGuide (live + list) hide destination fare/vehicle (legacy rows covered) | [x] |
+| [S] | API backstop — POST + PATCH `normalizeRouteSteps` so stored rows never imply a leg past the destination | [x] |
+| [M] | RouteMap accuracy — `maplibre-gl.css` import, origin/destination snap to traced endpoints, stable mapLib promise, content-keyed memoized pins/coords/bounds (fit effect never fights pan/zoom) | [x] |
+| [M] | User-location everywhere — shared `useUserLocation` hook (config tracking timeouts); explore uses it (Near-me override kept, controlled `onMove`, accuracy halo) + post-detail passive dot (live-nav fix wins) | [x] |
+| [S] | Deploy type fix — EmailSecurityPanel dead `if` (`verified !== false` no-overlap) removed; emailStudio tsc blockers fixed (dotAll flag → `[\s\S]`, readonly NODE_ENV writes) | [x] |
+| [S] | Latent test repairs — emailStudio suite loads in-runner (redis ESM stub mock), `sanitizeStoredBody` `#`-fragment tokens preserve `{{var}}` hrefs; 2 pre-existing prefer-const lint errors fixed | [x] |
+| [S] | Tests — `routeSteps.test.ts` (5) + mapTightening snap/tracking (2); full gate in-runner: tsc clean, 32/32 suites 282/282 tests, 0 lint errors in touched files | [x] |
 
 ---
 

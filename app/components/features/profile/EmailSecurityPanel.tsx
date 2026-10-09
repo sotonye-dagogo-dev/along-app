@@ -82,9 +82,9 @@ export function EmailSecurityPanel({ onChanged }: Props) {
   if (loading) return <div className="h-20 bg-bg-elevated animate-pulse rounded-lg" />;
   const showVerify = verified === false;
   const showChangePw = status?.hasPassword === true;
-  if (!showVerify && !showChangePw && verified !== false) {
-    // Verified + passwordless (Google-only): only change-email is relevant.
-  }
+  // NOTE: verified === true + passwordless (Google-only) renders only the
+  // change-email section above — no extra branch needed (previous empty
+  // `if` removed; it also tripped TS's no-overlap comparison check).
 
   return (
     <div className="bg-bg-card border border-border rounded-lg p-4 mb-4">

@@ -44,6 +44,16 @@ describe("map pins: anchor-stable, numbered, token-driven", () => {
     expect(MAP_PINS_CONFIG.userDot.radarClass).not.toMatch(hex);
     expect(MAP_PINS_CONFIG.routeDot.dotClass).toMatch("primary");
   });
+
+  it("snaps origin/destination dots to the road-traced endpoints (same pipeline as the polyline)", () => {
+    expect(MAP_PINS_CONFIG.snapEndpointsToPolyline).toBe(true);
+  });
+
+  it("tracks the user fix passively with config-driven timeouts", () => {
+    expect(MAP_PINS_CONFIG.tracking.timeoutMs).toBeGreaterThan(0);
+    expect(MAP_PINS_CONFIG.tracking.maximumAgeMs).toBeGreaterThan(0);
+    expect(MAP_PINS_CONFIG.tracking.watchMaximumAgeMs).toBeGreaterThan(0);
+  });
 });
 
 describe("dark mode keeps light visual params", () => {

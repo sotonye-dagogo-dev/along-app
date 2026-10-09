@@ -5,6 +5,7 @@ import { CREATE_POST_SCHEMA } from "@/app/lib/schemas/post";
 import { validityEngine } from "@/app/lib/services/ValidityEngine";
 import { qstashService } from "@/app/lib/services/qstashService";
 import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit";
+import { normalizeRouteSteps } from "@/app/lib/config/routeSteps";
 import { idempotencyService } from "@/app/lib/services/idempotencyService";
 
 const POST_AUTHOR_INCLUDE = {
@@ -44,7 +45,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, routes, images, tags, region, startLat, startLng, endLat, endLng, totalDistanceKm, estimatedMins, type, description, quotedPostId } = parsed.data;
+    const { title, routes: rawRoutes, images, tags, region, startLat, startLng, endLat, endLng, totalDistanceKm, estimatedMins, type, description, quotedPostId } = parsed.data;
+    // Destination is the final stop — strip any fare/vehicle it carries so
+    // stored rows never imply a leg beyond the destination (clients already
+    // hide + strip; this is the server-side backstop for old clients).
+    const routes = normalizeRouteSteps(rawRoutes);
 
     // Idempotency (ACID double-submit protection): the composer sends one
     // `clientMutationId` per editing session. A replayed key returns the

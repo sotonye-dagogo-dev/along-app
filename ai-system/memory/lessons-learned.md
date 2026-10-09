@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 20 pin-anchoring lesson)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 map-memoization + ESM-mock lessons)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -30,6 +30,28 @@
 ---
 
 ## Lessons
+
+## Inline `import()` Promises and Fresh Object Identities Re-init Maps and Yank Cameras
+
+**Context:**
+RouteMap passed `mapLib={import('maplibre-gl')}` inline (fresh promise per render) and computed pins/bounds as fresh objects per render, so the fit effect re-fired every render.
+
+**What We Learned:**
+Stabilize the mapLib promise in a ref, and memoize pins/coords/bounds on content keys so camera effects only fire when geography actually changes. Missing `maplibre-gl.css` imports also unseat markers — every MapLibre renderer must import it.
+
+**Apply When:**
+Any react-map-gl renderer work: stable mapLib + memoized derived geo + CSS import are the checklist.
+
+## ESM-Only Deps Break Jest Suites — Stub at the Seam, Test Pure Helpers
+
+**Context:**
+`emailStudio.test.ts` could never load in-runner: `@upstash/redis → uncrypto` ships ESM that the jest transform won't parse (fails identically on clean main).
+
+**What We Learned:**
+A hoisted `jest.mock` of the repo-owned seam (`@/app/lib/db/redis`) mirroring its no-op-when-unconfigured behaviour lets pure-helper suites run without touching production code. Always verify pre-existing failure with `git stash` before claiming a fix.
+
+**Apply When:**
+Any suite importing (transitively) ESM-only node_modules that jest can't parse; prefer seam-stubbing over transform config changes.
 
 ## Duplicate Hook Files Cause Confusion
 

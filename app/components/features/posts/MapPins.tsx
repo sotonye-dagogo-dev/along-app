@@ -27,7 +27,7 @@ export function MapRoutePin({ index, total, label }: MapRoutePinProps) {
     >
       <div
         className={`flex items-center justify-center rounded-full font-bold border-2 ${routeDot.dotClass}`}
-        style={{ width: routeDot.size, height: routeDot.size, fontSize: routeDot.fontSize }}
+        style={{ width: routeDot.size, height: routeDot.size, fontSize: routeDot.fontSize, lineHeight: 1 }}
       >
         {text}
       </div>

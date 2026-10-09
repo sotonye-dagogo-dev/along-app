@@ -5,9 +5,11 @@ import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import type { MapRef } from "react-map-gl/maplibre"
+import "maplibre-gl/dist/maplibre-gl.css"
 import { Search, LocateFixed, SlidersHorizontal, Link2, X, ChevronLeft } from "lucide-react"
 import { ExplorePinCard, FilterChipsBar } from "@/app/components/features/explore"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
 import { getMapStyleStack, rasterFallbackDepth } from "@/app/lib/config/mapStack"
 import { MAP_PINS_CONFIG } from "@/app/lib/config/mapPins"
 import { MapRoutePin, MapUserDot } from "@/app/components/features/posts/MapPins"
@@ -70,10 +72,20 @@ export default function ExplorePage() {
   const [isDark, setIsDark] = useState(false)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
   const [sortBy, setSortBy] = useState("validity")
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  // User location pin: always visible once granted. The shared hook requests
+  // on mount (no view jump) and watches so the dot tracks movement; the
+  // manual override lets "Near me" plant an explicit fix for feedback.
+  const trackedLocation = useUserLocation()
+  const [manualLocation, setManualLocation] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null)
+  const userLocation = manualLocation ?? trackedLocation
   const [locating, setLocating] = useState(false)
   const [sharing, setSharing] = useState(false)
-  const watchId = useRef<number | null>(null)
+  // Stable mapLib promise (see RouteMap): a fresh `import()` per render can
+  // re-init the map mid-interaction and unseat markers.
+  const mapLibRef = useRef<Promise<unknown> | null>(null)
+  if (mapLibRef.current === null && typeof window !== "undefined") {
+    mapLibRef.current = import("maplibre-gl")
+  }
   // Keyless map stack (Sprint 19): vector primary, raster step-down on error.
   const [styleIdx, setStyleIdx] = useState(0)
   useEffect(() => {
@@ -223,35 +235,7 @@ export default function ExplorePage() {
   // (passive — no view jump), keeps a watchPosition subscription so the dot
   // tracks movement, and cleans up on unmount. Denials fail softly; the
   // Near-me button re-centres on demand with feedback.
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) return;
-    let cancelled = false;
-    try {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (cancelled) return;
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        },
-        () => { /* silent — button explains on demand */ },
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
-      );
-      watchId.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          if (cancelled) return;
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        },
-        () => { /* keep last known fix */ },
-        { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
-      );
-    } catch { /* geolocation unavailable */ }
-    return () => {
-      cancelled = true;
-      try {
-        if (watchId.current != null) navigator.geolocation.clearWatch(watchId.current);
-      } catch { /* ignore */ }
-      watchId.current = null;
-    };
-  }, []);
+  // (Now owned by the shared useUserLocation hook above — no local watch.)
 
   const handleNearMe = () => {
     if (!("geolocation" in navigator)) {
@@ -263,7 +247,7 @@ export default function ExplorePage() {
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        setUserLocation({ lat, lng });
+        setManualLocation({ lat, lng, accuracy: pos.coords.accuracy });
         setViewState({ latitude: lat, longitude: lng, zoom: 14 });
         updateUrl(lat, lng, 14);
         mapRef.current?.flyTo({ center: [lng, lat], zoom: 14, duration: 1500 });
@@ -329,11 +313,14 @@ export default function ExplorePage() {
       <div className={`w-full h-full ${isDark ? "dark-map" : ""}`}>
         <MapView
           ref={mapRef}
-          mapLib={import("maplibre-gl")}
+          mapLib={(mapLibRef.current ?? import("maplibre-gl")) as never}
           {...viewState}
           mapStyle={mapStyle}
           style={{ width: "100%", height: "100%" }}
           attributionControl={false}
+          onMove={(e: { viewState: { latitude: number; longitude: number; zoom: number } }) =>
+            setViewState({ latitude: e.viewState.latitude, longitude: e.viewState.longitude, zoom: e.viewState.zoom })
+          }
           onMoveEnd={(e: { viewState: { latitude: number; longitude: number; zoom: number } }) =>
             handleViewportChange(e.viewState)
           }
@@ -342,12 +329,13 @@ export default function ExplorePage() {
         >
           {userLocation && (
             <Marker
+              key="user-location"
               latitude={userLocation.lat}
               longitude={userLocation.lng}
               anchor={MAP_PINS_CONFIG.markerAnchor}
               offset={MAP_PINS_CONFIG.markerOffset as unknown as [number, number]}
             >
-              <MapUserDot />
+              <MapUserDot accuracy={userLocation.accuracy} />
             </Marker>
           )}
           {filteredPins.map((pin, idx) => (
