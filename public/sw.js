@@ -16,7 +16,7 @@
  * - Push mirrors every in-app notification; click focuses/opens the URL.
  */
 
-const CACHE_VERSION = "v3";
+const CACHE_VERSION = "v4";
 const STATIC_CACHE = `along-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `along-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `along-api-${CACHE_VERSION}`;
@@ -34,6 +34,10 @@ const PRECACHE = [
   "/blog",
   "/manifest.json",
   "/offline.html",
+  // Config registry: locale dictionaries (I18nProvider fetches these
+  // client-side — precaching stops raw i18n keys leaking while offline).
+  "/locales/en.json",
+  "/locales/pcm.json",
 ];
 const OFFLINE_FALLBACK = "/offline.html";
 
@@ -45,8 +49,10 @@ const CACHEABLE_API = [
   "/api/notifications",
   "/api/leaderboard",
   "/api/site-config",
+  "/api/config",
   "/api/faq",
   "/api/blog",
+  "/api/reviews",
 ];
 const MAP_HOSTS = [
   "tiles.openfreemap.org",
@@ -216,6 +222,43 @@ self.addEventListener("fetch", (event) => {
               )
           );
         return cached || network;
+      })()
+    );
+    return;
+  }
+
+  // Config registry (locale dictionaries, site config JSON): cache-first.
+  // These are versioned content the client must have even on first offline
+  // load — without them the UI renders raw i18n keys (e.g. guest.signIn).
+  if (url.pathname.startsWith("/locales/")) {
+    event.respondWith(
+      (async () => {
+        const cached = await caches.match(request);
+        if (cached) {
+          // Revalidate in the background; serve stale instantly while offline.
+          fetch(request)
+            .then((res) => {
+              if (res && res.ok) {
+                const cache = caches.open(STATIC_CACHE);
+                cache.then((c) => c.put(request, res.clone()).catch(() => {}));
+              }
+            })
+            .catch(() => {});
+          return cached;
+        }
+        try {
+          const res = await fetch(request);
+          if (res && res.ok) {
+            const cache = await caches.open(STATIC_CACHE);
+            cache.put(request, res.clone()).catch(() => {});
+          }
+          return res;
+        } catch (_) {
+          return new Response("{}", {
+            headers: { "Content-Type": "application/json" },
+            status: 503,
+          });
+        }
       })()
     );
     return;

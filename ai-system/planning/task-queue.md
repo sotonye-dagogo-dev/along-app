@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination fare/vehicle + pin accuracy + EmailSecurityPanel type fix)
-> - last-verified-against-code: 2026-10-09 (routeSteps rule E2E, RouteMap snap/CSS/memoization, useUserLocation hook, explore/post-detail wiring, EmailSecurityPanel fix verified in code; tsc clean + 282/282 jest green with node_modules installed)
-> - last-synced: 2026-10-09 (Sprint 23 — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 PWA tightening + pidgin depth + platform reviews)
+> - last-verified-against-code: 2026-10-09 (sw.js v4 + pwa.ts mirror, I18nProvider bundled-fallback + cookie sync, collapsible OfflineBanner, 235/235 locale parity, /api/reviews GET+POST, ReviewsPanel, profile reviews tabs, About real-reviews + CTA cadence, admin null-safe, archiving anonymize; tsc clean + 309/309 jest green + next build clean with node_modules installed)
+> - last-synced: 2026-10-09 (Sprint 25 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -402,6 +402,24 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | Deploy type fix — EmailSecurityPanel dead `if` (`verified !== false` no-overlap) removed; emailStudio tsc blockers fixed (dotAll flag → `[\s\S]`, readonly NODE_ENV writes) | [x] |
 | [S] | Latent test repairs — emailStudio suite loads in-runner (redis ESM stub mock), `sanitizeStoredBody` `#`-fragment tokens preserve `{{var}}` hrefs; 2 pre-existing prefer-const lint errors fixed | [x] |
 | [S] | Tests — `routeSteps.test.ts` (5) + mapTightening snap/tracking (2); full gate in-runner: tsc clean, 32/32 suites 282/282 tests, 0 lint errors in touched files | [x] |
+
+---
+
+## Sprint 25 — PWA Tightening + Pidgin Depth + Platform Reviews Access (execute-feature 2026-10-09)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no removed APIs/shapes; review storage reuses UserReview self-pair; notifications reuse REWARD+allowSelf; footer config gains optional i18nKey only). QA full in-runner: tsc 0 errors, jest 36/36 suites 309/309 tests, next build clean, lint 0 new (1 pre-existing warning in untouched import).
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Config-registry caching — pwa.ts v4: `/locales/*.json` precached, `/api/config` + `/api/reviews` cacheable; sw.js mirror v4 + `/locales/` cache-first branch (stale-while-revalidate); I18nProvider bundled-EN fallback + localStorage last-good + `along-locale` cookie sync (middleware SSR/client agree, no raw keys offline) | [x] |
+| [S] | Collapsible offline toast — OfflineBanner collapse/expand pill + full bar, persisted (`along-offline-banner-collapsed`), reset-per-episode, config copy + `pwa.collapse/expand/collapsedLabel` keys, i18n-aware via t() with config fallback | [x] |
+| [M] | Pidgin depth — +74 keys (about/faq/feed/landing/leaderboard/invite/reviews/footer/empty/common), 235/235 en/pcm parity, interpolation preserved; FAQ_PCM per-item map (24 entries incl. 3 new Reviews FAQs) + Reviews FAQ category in faq.ts | [x] |
+| [M] | Toggle that translates — `tf(key, fallback)` helper; wired PostCard aria-labels, PostMenu (config-fallback labels), AppFooter (optional i18nKey), LandingCtas + LandingCopy islands, About headings, FaqClient chrome+items, leaderboard/invite/feed-empty | [x] |
+| [M] | Reviews API — `GET/POST /api/reviews` (self-pair platform marker, APPROVED public + own PENDING via mine=1, authorId scope, cursor pagination, edge cache, rateLimits `reviews` bucket, sanitized/offline-aware errors, ACID upsert) | [x] |
+| [M] | Reviews UI — ReviewsPanel (star form, update-in-place, pending note, guest gate, FAQ blurb, community list); own profile `reviews` tab + `#reviews` deep link; other-profile read-only `reviews` tab (authorId scope) | [x] |
+| [M] | About real reviews — SITE_REVIEWS retired from display; SW-cached fetch + skeletons + empty state; ReviewCtaPanel interleaved via `insertReviewCtaPanels` (≤10 end, 11–19 midpoint, ≥20 every 10); authed→/profile#reviews, guests→/register | [x] |
+| [S] | Thank-you + archiving — `notifyReviewThanks` (REWARD+allowSelf, in-app + REVIEW push mirror, no email); finalize/request document reviews-preserved-anonymized; admin page null-safe (Deleted User, no dead profile links) | [x] |
+| [S] | Tests — `reviews.test.ts` (8: CTA cadence incl. 11→5/14→7/25→10+21, empty CTA-only, anonymized names); pwa.test +4 (locales precache, config/reviews cacheable, banner copy, REVIEW mirror); locales REQUIRED_KEYS +32 | [x] |
 
 ---
 

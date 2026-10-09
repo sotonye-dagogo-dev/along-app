@@ -1,25 +1,26 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 static-only QA)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 full QA gate, real runs)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: overwritten on every test run — always current
 
-> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 241 tests currently exist across 28 suites (verified by a real `npx jest` run in this session 2026-10-09: 28 passed, 241 passed — Sprint 20 tightening session).
+> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 309 tests currently exist across 36 suites (verified by a real `npx jest --ci` run in this session 2026-10-09: 36 passed, 309 passed — Sprint 25).
 
 ---
 
 ## Last Run (Build)
 
 **Date:** 2026-10-09
-**Run by:** AI agent (opencode — execute-feature Sprint 20 tightening)
+**Run by:** AI agent (opencode — execute-feature Sprint 25)
 
 **Build Result:**
-- `npx tsc --noEmit` — ✓ zero errors (real run this session, after `npm install`)
-- `npx jest` — 241/241 passing (28 suites, real run this session: +7 new mapTightening suites)
-- `npm run build` — ✓ Compiled successfully, 84 static pages (real run this session; `/api/maps/{route,geocode,reverse}` + `/api/routes/trace` present)
-- `npx next lint` — zero new issues (pre-existing `no-explicit-any` errors + RouteMap exhaustive-deps warning verified identical on stashed baseline via `git stash`)
-- Zero test failures; keyless proof: straight-line/OSRM path resolves with all map keys unset
+- `npx tsc --noEmit` — ✓ zero errors (real run this session, after `npm install`; 2 session errors fixed: reviews.test helper typing, `useState<number>` rating)
+- `npx jest --ci` — 309/309 passing (36 suites, real run this session: +1 reviews suite, +4 pwa cases, +32 locale keys)
+- `npx next build` — ✓ compiled successfully (real run this session; `/api/reviews` GET+POST present, LandingCopy islands, profile reviews tabs)
+- `npx next lint` — zero new issues (1 pre-existing `Medal` unused-var warning in untouched leaderboard import; pre-existing `no-explicit-any` errors in untouched files)
+- `node --check public/sw.js` — OK; python locale parity 235/235, 0 interpolation mismatches
+- Zero test failures
 
 ---
 
@@ -41,6 +42,9 @@
 | search API | 9 | validation, type/region/postType filters, pagination, 503, 429 (`search.test.ts`, search session, Prisma mocked) |
 | searchService | 8 | normalization, short-query guard, cache read-through, tag aggregation, cursor, P2022 retry (`searchService.test.ts`, search session, Prisma mocked) |
 | mapStack config + proxy | 10 | keyless vector/raster URLs, fallback order, dark mapping, attribution, preconnect hosts, style-stack shape, cache-key determinism, straight-line proof, offline degradation, Nominatim-shape normalization (`mapStack.test.ts`, Sprint 19, redis mocked) |
+| reviews config | 8 | CTA cadence (≤10 end, 11→5, 14→7, ≥20 every 10, empty CTA-only), rating bounds, anonymized-author names (`reviews.test.ts`, Sprint 25) |
+| pwa config | 15 | versioned caches, guest-only precache, locale-registry precache, config/reviews cacheability, banner collapse copy, REVIEW push mirror, sanitized toast copy (`pwa.test.ts`, Sprint 24 +4 Sprint 25) |
+| locale parity | 4+ | identical en/pcm key sets (235/235 Sprint 25), PWA/offline/reviews/about/faq/leaderboard/invite coverage, pidgin divergence, interpolation preservation (`locales.test.ts`, Sprint 24, keys extended Sprint 25) |
 
 ---
 
@@ -56,7 +60,7 @@
 
 | Date | Passed | Failed | Notes |
 |------|--------|--------|-------|
-| 2026-10-09 | 234 | 0 | Execute-feature Sprint 19 keyless map stack QA gate: real jest/tsc/build/lint runs (27 suites, +1 mapStack suite) |
+| 2026-10-09 | 309 | 0 | Execute-feature Sprint 25 PWA/i18n/reviews QA gate: real jest/tsc/build/lint runs (36 suites, +1 reviews suite) |
 | 2026-10-09 | — | — | Fix-build maplibre CSS: no node_modules in runner, full jest/tsc/build not runnable; verified via `node --check` (next.config.mjs OK) + alias-resolution simulation (old prefix-match → doubled dist path; new exact-match leaves CSS untouched, bare import still aliased) — Vercel build to confirm |
 | 2026-10-08 | — | — | Fix-build Sentry hardening: no node_modules in runner, full jest/tsc/build not runnable; verified via `node --check` (next.config.mjs OK), JSON parse (package.json OK), grep (no `--no-engine` remains, all Sentry keys present) — Vercel build to confirm |
 | 2026-10-08 | — | — | Fix-build `bugId` duplicate: no node_modules in runner, full jest/tsc/build not runnable; verified via grep (single `targetBugId` declaration, no redeclaration) — Vercel build to confirm |

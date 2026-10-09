@@ -8,6 +8,7 @@ import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import dynamic from "next/dynamic"
 import { RewardsPanel, EditProfileModal, EarlyAdopterBadgeFromStatus } from "@/app/components/features/profile"
+import { ReviewsPanel } from "@/app/components/features/reviews"
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 import { AuthLinkPanel } from "@/app/components/features/profile/AuthLinkPanel"
 import { EmailSecurityPanel } from "@/app/components/features/profile/EmailSecurityPanel"
@@ -69,8 +70,9 @@ interface PostItem {
 }
 
 // Profile content tabs: "routes" lists actual routes (ROUTE + ROUTE_RESPONSE),
-// "requests" lists route requests, "archived" is the owner's private library.
-const PROFILE_TABS = ["posts", "routes", "requests", "liked", "bookmarks", "archived"] as const
+// "requests" lists route requests, "archived" is the owner's private library,
+// "reviews" is the platform-reviews access point (form + community reviews).
+const PROFILE_TABS = ["posts", "routes", "requests", "liked", "bookmarks", "archived", "reviews"] as const
 type ProfileTab = (typeof PROFILE_TABS)[number]
 
 // Secondary account tabs — same tab styling as content tabs; keeps the
@@ -90,6 +92,15 @@ export default function OwnProfilePage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+
+  // Deep link: /profile#reviews (About CTA panel) opens the Reviews tab.
+  React.useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && window.location.hash === "#reviews") {
+        setActiveTab("reviews");
+      }
+    } catch { /* ignore */ }
+  }, [])
 
   const handleSignOut = async () => {
     if (signingOut) return
@@ -115,9 +126,12 @@ export default function OwnProfilePage() {
     "/api/rewards/history",
     { ttlSec: 300, enabled: ready }
   )
-  // Per-tab post lists (posts / routes / requests / liked / bookmarks / archived)
+  // Per-tab post lists (posts / routes / requests / liked / bookmarks / archived).
+  // The reviews tab owns no post query — ReviewsPanel fetches its own data.
   const tabQuery =
-    activeTab === "bookmarks"
+    activeTab === "reviews"
+      ? "/api/reviews?limit=1"
+      : activeTab === "bookmarks"
       ? "/api/bookmarks?limit=20"
       : activeTab === "liked"
         ? `/api/posts?limit=20&likedBy=${userId}`
@@ -131,7 +145,7 @@ export default function OwnProfilePage() {
   const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
     ready ? `profile-tab:${userId}:${activeTab}` : null,
     tabQuery,
-    { ttlSec: 120, enabled: ready }
+    { ttlSec: 120, enabled: ready && activeTab !== "reviews" }
   )
 
   const profile = profileRes?.user ?? null
@@ -409,6 +423,10 @@ export default function OwnProfilePage() {
         </div>
 
         <div className="flex flex-col gap-3 sm:gap-4 pb-8 min-w-0">
+          {activeTab === "reviews" ? (
+            <ReviewsPanel />
+          ) : (
+            <>
           {posts.length === 0 && !postsLoading && (
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
@@ -447,6 +465,8 @@ export default function OwnProfilePage() {
               }
             />
           ))}
+            </>
+          )}
         </div>
       </div>
 

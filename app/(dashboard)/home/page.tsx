@@ -16,6 +16,7 @@ import { EMPTY_STATES } from "@/app/lib/config"
 import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
 import { routeDraftsService } from "@/app/lib/services/routeDraftsService"
 import { useAuth } from "@/app/hooks/useAuth"
+import { useTranslation } from "@/app/providers/I18nProvider"
 import { useFeedInteractions } from "@/app/hooks/useFeedInteractions"
 import { feedStream } from "@/app/lib/streams/feedStream"
 
@@ -77,6 +78,7 @@ interface NewPostPayload {
 const inflightPostKeys = new Set<string>()
 
 function HomeContent() {
+  const { tf } = useTranslation()
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
@@ -451,7 +453,12 @@ function HomeContent() {
         ) : loading ? (
           Array.from({ length: 3 }).map((_, i) => <PostCardSkeleton key={i} />)
         ) : (
-          <AppEmptyState {...EMPTY_STATES.feed} />
+          <AppEmptyState
+            {...EMPTY_STATES.feed}
+            title={tf("empty.feed.title", EMPTY_STATES.feed.title)}
+            description={tf("empty.feed.desc", EMPTY_STATES.feed.description ?? "")}
+            actionLabel={tf("empty.feed.action", EMPTY_STATES.feed.actionLabel ?? "")}
+          />
         )}
 
         <div ref={loaderRef} className="h-4" />

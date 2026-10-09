@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Trophy, Medal, TrendingUp, Users, MapPin } from "lucide-react"
+import { useTranslation } from "@/app/providers/I18nProvider"
 
 interface LeaderboardEntry {
   rank: number
@@ -35,6 +36,7 @@ function getRankBadge(rank: number): { icon: string; bg: string } {
 }
 
 export default function LeaderboardPage() {
+  const { tf } = useTranslation()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<"all" | "month" | "week">("all")
@@ -61,9 +63,9 @@ export default function LeaderboardPage() {
     <div className="max-w-2xl mx-auto px-4 py-6">
       <div className="flex items-center gap-2 mb-1">
         <Trophy className="w-6 h-6 text-yellow-500" />
-        <h1 className="text-xl font-bold text-text-primary">Leaderboard</h1>
+        <h1 className="text-xl font-bold text-text-primary">{tf("leaderboard.title", "Leaderboard")}</h1>
       </div>
-      <p className="text-sm text-text-muted mb-5">Top contributors ranked by reward points</p>
+      <p className="text-sm text-text-muted mb-5">{tf("leaderboard.subtitle", "Top contributors ranked by reward points")}</p>
 
       {/* Period selector */}
       <div className="flex items-center gap-2 mb-5">
@@ -118,7 +120,7 @@ export default function LeaderboardPage() {
             <div key={i} className="h-14 rounded-lg bg-bg-elevated animate-pulse" />
           ))
         ) : entries.length === 0 ? (
-          <div className="text-center py-12 text-text-muted text-sm">No data yet</div>
+          <div className="text-center py-12 text-text-muted text-sm">{tf("leaderboard.empty", "No ranked contributors yet. Share a route to top the board.")}</div>
         ) : (
           entries.slice(3).map((entry) => {
             const badge = getRankBadge(entry.rank)

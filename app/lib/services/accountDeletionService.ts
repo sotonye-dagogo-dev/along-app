@@ -117,6 +117,8 @@ export async function requestAccountDeletion(userId: string, reason?: string): P
         data: { deletionRequestedAt: now, deletionScheduledFor: scheduledFor, deletionReason: sanitizedReason || null },
       });
       // Archive all live posts so they vanish from feeds/explore/search.
+      // Reviews stay visible-but-attributed during grace (reversal restores
+      // everything); final anonymization happens in finalizeOne.
       await tx.post.updateMany({ where: { userId, isArchived: false }, data: { isArchived: true, archivedAt: now } });
       return req;
     });
@@ -317,6 +319,11 @@ async function finalizeOne(requestId: string, completedBy: string) {
     // Ensure posts stay archived-but-attributed (anonymised post data
     // retained for platform integrity per policy). Keep them archived.
     await tx.post.updateMany({ where: { userId: user.id }, data: { isArchived: true, archivedAt: now } });
+    // Reviews are intentionally NOT deleted: the user row above is anonymized
+    // in place (id stable), so authored/received UserReview rows survive with
+    // "Deleted User" attribution. Admin + public surfaces render them via
+    // null-safe helpers (reviewAuthorName) and never crash on anonymized
+    // authors. Hard-deletes never happen here, so onDelete:Cascade never fires.
     await tx.accountDeletionRequest.update({
       where: { id: requestId },
       data: { status: "COMPLETED", completedAt: now, completedBy },

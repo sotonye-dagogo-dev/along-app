@@ -3,9 +3,11 @@
 import { useContext } from "react"
 import Link from "next/link"
 import { AuthContext } from "@/app/providers/AuthProvider"
+import { useTranslation } from "@/app/providers/I18nProvider"
 
 export function HeroCtas() {
   const auth = useContext(AuthContext)
+  const { tf } = useTranslation()
   const isAuth = auth?.isAuthenticated ?? false
   const isLoading = auth?.isLoading ?? true
 
@@ -19,7 +21,7 @@ export function HeroCtas() {
         href="/home"
         className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-white text-primary text-base font-semibold hover:shadow-lg transition-shadow"
       >
-        View Feed &rarr;
+        {tf("landing.cta.continueToFeed", "Continue to feed")} &rarr;
       </Link>
     )
   }
@@ -30,13 +32,13 @@ export function HeroCtas() {
         href="/register"
         className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-white text-primary text-base font-semibold hover:shadow-lg transition-shadow"
       >
-        Get Started &rarr;
+        {tf("landing.hero.getStarted", "Get Started →").replace(" →", "")} &rarr;
       </Link>
       <Link
         href="/login"
         className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-transparent text-white text-base font-medium border border-white/40 hover:bg-white/10 transition-colors"
       >
-        Sign In
+        {tf("landing.hero.signIn", "Sign In")}
       </Link>
     </>
   )
@@ -44,6 +46,7 @@ export function HeroCtas() {
 
 export function BottomCta() {
   const auth = useContext(AuthContext)
+  const { tf } = useTranslation()
   const isAuth = auth?.isAuthenticated ?? false
   const isLoading = auth?.isLoading ?? true
 
@@ -57,7 +60,7 @@ export function BottomCta() {
         href="/home"
         className="inline-flex items-center gap-2 h-12 px-7 rounded-md bg-white text-primary text-base font-semibold hover:shadow-lg transition-shadow"
       >
-        View Feed &rarr;
+        {tf("landing.cta.continueToFeed", "Continue to feed")} &rarr;
       </Link>
     )
   }
@@ -67,7 +70,7 @@ export function BottomCta() {
       href="/register"
       className="inline-flex items-center gap-2 h-12 px-7 rounded-md bg-white text-primary text-base font-semibold hover:shadow-lg transition-shadow"
     >
-      Create Free Account &rarr;
+      {tf("landing.cta.createAccount", "Create Free Account →").replace(" →", "")} &rarr;
     </Link>
   )
 }
@@ -80,6 +83,7 @@ export function BottomCta() {
  */
 export function GuestContinueLink() {
   const auth = useContext(AuthContext)
+  const { tf } = useTranslation()
   const isAuth = auth?.isAuthenticated ?? false
   const isLoading = auth?.isLoading ?? true
 
@@ -90,7 +94,7 @@ export function GuestContinueLink() {
       href="/home"
       className="mt-5 inline-block text-sm text-white/70 hover:text-white transition-colors underline underline-offset-2"
     >
-      Continue as guest
+      {tf("auth.continueAsGuest", "Continue as guest")}
     </Link>
   )
 }

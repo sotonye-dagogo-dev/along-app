@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { Search, ChevronDown } from "lucide-react";
+import { useTranslation } from "@/app/providers/I18nProvider";
 import type { FaqCategory } from "@/app/lib/config/faq";
+import { FAQ_PCM } from "@/app/lib/config/faq";
 
 interface FaqClientProps {
   categories: FaqCategory[];
 }
 
 export default function FaqClient({ categories }: FaqClientProps) {
+  const { tf, locale } = useTranslation();
   const [search, setSearch] = useState("");
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
 
@@ -21,7 +24,28 @@ export default function FaqClient({ categories }: FaqClientProps) {
     });
   };
 
-  const filtered = categories
+  // Dictionary-driven with config fallbacks: per-item pidgin overrides live
+  // in FAQ_PCM (config layer, keyed by item id); missing entries fall back
+  // to the config English so nothing ever renders a raw key. Search matches
+  // the displayed (translated) text.
+  const tItem = (id: string, field: "question" | "answer", fallback: string) => {
+    if (locale === "pcm") {
+      const override = FAQ_PCM[id]?.[field];
+      if (override) return override;
+    }
+    return fallback;
+  };
+
+  const translated = categories.map((cat) => ({
+    ...cat,
+    items: cat.items.map((item) => ({
+      ...item,
+      question: tItem(item.id, "question", item.question),
+      answer: tItem(item.id, "answer", item.answer),
+    })),
+  }));
+
+  const filtered = translated
     .map((cat) => ({
       ...cat,
       items: cat.items.filter(
@@ -36,10 +60,10 @@ export default function FaqClient({ categories }: FaqClientProps) {
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="text-center mb-10">
         <h1 className="text-3xl font-bold text-text-primary mb-3">
-          Frequently Asked Questions
+          {tf("faq.title", "Frequently Asked Questions")}
         </h1>
         <p className="text-text-secondary mb-6">
-          Everything you need to know about Along.
+          {tf("faq.subtitle", "Everything you need to know about Along.")}
         </p>
         <div className="relative max-w-md mx-auto">
           <Search
@@ -48,7 +72,7 @@ export default function FaqClient({ categories }: FaqClientProps) {
           />
           <input
             type="text"
-            placeholder="Search questions..."
+            placeholder={tf("faq.searchPlaceholder", "Search questions...")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
@@ -58,7 +82,7 @@ export default function FaqClient({ categories }: FaqClientProps) {
 
       {filtered.length === 0 ? (
         <p className="text-center text-text-muted py-12">
-          No results found. Try a different search term.
+          {tf("faq.noResults", "No results found. Try a different search term.")}
         </p>
       ) : (
         filtered.map((category) => (

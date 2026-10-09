@@ -1,10 +1,9 @@
-import Link from "next/link";
-import { Route, ShieldCheck, Users } from "lucide-react";
 import { buildMetadata } from "@/app/lib/utils/metadata";
 import { websiteSchema } from "@/app/lib/utils/structuredData";
 import { StructuredData } from "@/app/components/ui/StructuredData";
 import AppLogo from "../components/ui/AppLogo";
 import { HeroCtas, BottomCta, GuestContinueLink } from "@/app/components/ui/LandingCtas";
+import { LandingHeroCopy, LandingFeatures, LandingCtaHeading, LandingFeedPreviewHeading, LandingFeedEmpty } from "./LandingCopy";
 import { prisma } from "@/app/lib/db/prisma";
 
 export const metadata = buildMetadata({
@@ -174,12 +173,7 @@ export default async function LandingPage() {
         <div className="pointer-events-none">
           <AppLogo variant="full" size="md" className="w-full" linkTo="" />
         </div>
-        <h1 className="text-white font-extrabold tracking-tight leading-tight mb-3 text-[clamp(32px,5vw,48px)]">
-          Navigate Together.
-        </h1>
-        <p className="text-white/80 text-[clamp(14px,2vw,16px)] max-w-[480px] mb-8 leading-relaxed">
-          Share routes. Discover better ways. Together.
-        </p>
+        <LandingHeroCopy />
         <div className="flex gap-3 flex-wrap justify-center">
           <HeroCtas />
         </div>
@@ -188,23 +182,7 @@ export default async function LandingPage() {
 
       {/* Features */}
       <section className="py-6 sm:py-8 px-5 bg-bg-base">
-        <div className="max-w-[400px] sm:max-w-[960px] mx-auto grid gap-5 sm:grid-cols-3">
-          <FeatureCard
-            icon={<Route size={24} />}
-            title="Share Routes"
-            description="Post your daily commute routes with step-by-step directions and fare info."
-          />
-          <FeatureCard
-            icon={<ShieldCheck size={24} />}
-            title="Trust Scores"
-            description="Community-verified route validity so you know what's real and what's not."
-          />
-          <FeatureCard
-            icon={<Users size={24} />}
-            title="Community"
-            description="Join thousands of Lagos commuters sharing real-time route intelligence."
-          />
-        </div>
+        <LandingFeatures />
       </section>
 
       {/* Social Proof — real platform stats, never hardcoded marketing numbers */}
@@ -219,18 +197,12 @@ export default async function LandingPage() {
       {/* Feed Preview */}
       <section className="py-6 sm:py-8 px-5 bg-bg-elevated">
         <div className="max-w-[640px] mx-auto flex flex-col gap-5">
-          <span className="text-xs font-medium text-text-muted tracking-wide uppercase">
-            Recent from the community
-          </span>
+          <LandingFeedPreviewHeading />
           {landingPosts.length > 0 ? (
             landingPosts.map((post) => <PostPreviewCard key={post.id} {...toPreviewProps(post)} />)
           ) : (
             <div className="bg-bg-card border border-border rounded-xl px-4 py-6 text-center text-sm text-text-muted">
-              No routes shared yet —{" "}
-              <Link href="/register" className="text-primary font-semibold hover:underline">
-                be the first to share one
-              </Link>
-              .
+              <LandingFeedEmpty />
             </div>
           )}
         </div>
@@ -241,24 +213,10 @@ export default async function LandingPage() {
         className="py-8 sm:py-10 px-5 text-center"
         style={{ background: "linear-gradient(135deg,#004A2C 0%,#00623B 50%,#00A862 100%)" }}
       >
-        <h2 className="text-[clamp(24px,4vw,36px)] font-bold tracking-tight text-white mb-6">
-          Start navigating smarter
-        </h2>
+        <LandingCtaHeading />
         <BottomCta />
       </section>
     </>
-  );
-}
-
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
-  return (
-    <div className="bg-bg-elevated border border-border rounded-xl p-6 text-center hover:-translate-y-0.5 hover:shadow-md transition-all duration-base">
-      <div className="w-12 h-12 rounded-xl bg-primary-muted flex items-center justify-center mx-auto mb-4 text-primary">
-        {icon}
-      </div>
-      <h3 className="text-base font-semibold mb-1.5">{title}</h3>
-      <p className="text-sm text-text-secondary leading-relaxed max-w-[280px] mx-auto">{description}</p>
-    </div>
   );
 }
 

@@ -4,6 +4,7 @@ import { useState, useCallback } from "react"
 import { MoreHorizontal } from "lucide-react"
 import { AppDropdown } from "@/app/components/ui"
 import { POST_ACTIONS_CONFIG } from "@/app/lib/config"
+import { useTranslation } from "@/app/providers/I18nProvider"
 import { toastService } from "@/app/lib/services/toastService"
 import {
   isAdminRole,
@@ -47,6 +48,7 @@ export function PostMenu({
   onArchivedChanged,
 }: PostMenuProps) {
   const [reportOpen, setReportOpen] = useState(false)
+  const { tf } = useTranslation()
   const isOwner = !!viewerId && viewerId === post.user.id
   const isAdmin = isAdminRole(viewerRole)
   const archived = (post as { isArchived?: boolean }).isArchived ?? false
@@ -110,22 +112,24 @@ export function PostMenu({
     })
   }, [requireAuth, isAdmin, isOwner, post, onDeleted, onRestored])
 
+  // Labels stay metadata-driven (config) with pidgin i18n overrides — the
+  // config value is the fallback so new actions never render raw keys.
   const items: { label: string; variant?: "default" | "destructive"; onClick: () => void }[] = [
-    { label: POST_ACTIONS_CONFIG.copyLinkLabel, onClick: () => void handleCopyLink() },
+    { label: tf("post.copyLink", POST_ACTIONS_CONFIG.copyLinkLabel), onClick: () => void handleCopyLink() },
   ]
   // Report is for other people's posts; owners manage their own via edit/archive/delete.
   if (!isOwner) {
-    items.push({ label: POST_ACTIONS_CONFIG.reportLabel, variant: "destructive", onClick: openReport })
+    items.push({ label: tf("post.report", POST_ACTIONS_CONFIG.reportLabel), variant: "destructive", onClick: openReport })
   }
   if (isOwner && onEdit) {
-    items.push({ label: POST_ACTIONS_CONFIG.editLabel, onClick: handleEdit })
+    items.push({ label: tf("post.edit", POST_ACTIONS_CONFIG.editLabel), onClick: handleEdit })
   }
   if (isOwner || isAdmin) {
     items.push({
-      label: archived ? POST_ACTIONS_CONFIG.unarchiveLabel : POST_ACTIONS_CONFIG.archiveLabel,
+      label: archived ? tf("post.unarchive", POST_ACTIONS_CONFIG.unarchiveLabel) : tf("post.archive", POST_ACTIONS_CONFIG.archiveLabel),
       onClick: handleArchiveToggle,
     })
-    items.push({ label: POST_ACTIONS_CONFIG.deleteLabel, variant: "destructive", onClick: handleDelete })
+    items.push({ label: tf("post.delete", POST_ACTIONS_CONFIG.deleteLabel), variant: "destructive", onClick: handleDelete })
   }
 
   return (
@@ -135,7 +139,7 @@ export function PostMenu({
         trigger={
           <button
             className="w-7 h-7 rounded-circle flex items-center justify-center text-text-muted hover:bg-bg-elevated transition-colors duration-fast"
-            aria-label="More options"
+            aria-label={tf("common.moreOptions", "More options")}
           >
             <MoreHorizontal size={16} />
           </button>
