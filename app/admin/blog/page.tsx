@@ -26,9 +26,9 @@ export default function AdminBlogPage() {
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [author, setAuthor] = useState(BLOG_MANAGEMENT_CONFIG.defaultAuthor);
-  const [category, setCategory] = useState("updates");
-  const [image, setImage] = useState(BLOG_MANAGEMENT_CONFIG.defaultImage);
+  const [author, setAuthor] = useState<string>(BLOG_MANAGEMENT_CONFIG.defaultAuthor);
+  const [category, setCategory] = useState<string>("updates");
+  const [image, setImage] = useState<string>(BLOG_MANAGEMENT_CONFIG.defaultImage);
   const [status, setStatus] = useState<BlogPostStatus>(BLOG_MANAGEMENT_CONFIG.defaultStatus);
   const [blocks, setBlocks] = useState<EmailBlock[]>(defaultBlocks());
 
