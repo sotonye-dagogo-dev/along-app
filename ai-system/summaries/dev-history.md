@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination rule + pin accuracy + deploy type fix)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 28 route accuracy + live-navigation overlay + admin users type fix)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: historical entries do not go stale
 
@@ -33,6 +33,32 @@
 ---
 
 ## History
+
+## 2026-10-09 — Execute-Feature: Route Accuracy (preview = post view) + Live-Navigation Overlay + Admin Users Type Fix (Sprint 28)
+
+**Summary:**
+Posted route maps skipped intermediate stops (start → destination) while the composer preview traced them correctly. Root cause was server-side: POST `/api/posts` destructured `waypoints` away and never persisted them, and the post-detail pin builder mapped `waypoints` as the full route instead of origin + intermediates + destination. Both are fixed behind one canonical builder, post detail now fetches a road-snapped trace like the preview (with a bounded geocode backfill for legacy rows), live navigation opens as a near-fullscreen floating overlay with map + guide side-by-side, and the Vercel `admin/users` `actorId` type error is resolved with the established `as string` pattern.
+
+**Completed:**
+- Deploy fix: `app/api/admin/users/route.ts` `actorId: user.id` → `user.id as string` (2 sites — verify/unverify + resend-verification notifications)
+- Persistence: POST `/api/posts` accepts + stores `waypoints` (schema already allowed them; PATCH already passed them through)
+- Canonical pins: NEW `lib/config/routePins.ts` + barrel (`buildRoutePinsFromPost`, `buildTraceInputFromPins`, `ROUTE_PINS_CONFIG`); PostCard mini-map + post detail consume it
+- Detail trace: NEW `lib/hooks/useRouteTrace.ts` (instant estimate + debounced trace + 10-min memory cache + silent fallback); legacy waypoint-less rows backfill via bounded (≤5) geocode of missing stop labels
+- Navigation overlay: NEW `LiveNavigationModal` (fixed overlay, 92dvh panel, mobile map-over-guide stack, desktop 360px side panel from `LIVE_NAVIGATION_CONFIG`, Escape/backdrop/body-lock, unmount stops tracking); post detail renders CTA card + modal; inline map no longer follows user
+- RouteMap `height` widened to `number | string` so the modal can fill its flex parent with `"100%"`
+
+**Key Changes:**
+- New: `app/lib/config/routePins.ts`, `app/lib/hooks/useRouteTrace.ts`, `app/components/features/posts/LiveNavigationModal.tsx`, `app/__tests__/config/routePins.test.ts`
+- Edited: `app/api/{admin/users,posts}/route.ts`, `app/components/features/posts/{PostCard,RouteMap,index}.tsx`, `app/(dashboard)/posts/[id]/page.tsx`, `lib/config/{index,navigation}.ts`
+
+**QA gate (this runner, node_modules installed via npm install):**
+- `npx tsc --noEmit` — clean (exit 0), incl. the exact `admin/users/route.ts:166` gate that failed Vercel
+- `npx jest` — 38/38 suites, 333/333 tests pass (incl. new routePins 5/5)
+- `npx next lint` on touched files — zero warnings/errors
+- `npm run vercel-build` (`next build`) — clean
+
+**Next Sprint Focus:**
+Vercel deploy green confirmation; prod-verify a 3-stop post traces start → stop → destination in feed + detail, legacy posts backfill stops, navigation modal map follows the user dot beside the guide; remaining backlog unchanged.
 
 ## 2026-10-09 — Execute-Feature: Destination Fare/Vehicle Rule + Pin Accuracy + Deploy Type Fix (Sprint 23)
 
@@ -930,3 +956,26 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `reviews.test.ts` (8), pwa.test +4, locales REQUIRED_KEYS +32.
 **QA (this runner, node_modules installed):** `tsc --noEmit` 0 errors (2 session errors fixed: test helper typing, `useState<number>`); `jest --ci` 36/36 suites, 309/309 tests pass; `next build` clean; `next lint` 0 new (1 pre-existing `Medal` unused-var warning); `node --check sw.js` OK; locale parity via python 235/235, 0 interpolation mismatches.
 **Compliance:** no migration, no removed APIs/shapes, no new deps; SW scope/strategy additive (v4 invalidates v3 cleanly); providers additive; all errors sanitized/offline-aware; ACID upsert for reviews.
+
+## Sprint 26 (2026-10-09) — Email Studio tightening: live preview, logo universality, parsing, save-styling, vars/fallbacks, origins
+- Live unsaved preview: Studio debounced client render (canonical draft → wrap → interpolate w/ samples + composer overrides) + Live/Saved badge + whitespace-insensitive dirty tracking; `POST /api/email/preview` draft endpoint (sanitize + fill + same pipeline).
+- Logo/images universal: all 11 defaults head with logo img (`alt={{appName}}`) + shared wrapper/footer; image blocks email-safe with alt fallback + Studio thumbnails; legacy header SVG gone.
+- Builder parsing: `htmlToBlocks` strips inline tags (no raw HTML in paragraphs), handles div/td wrappers, CTA + nested-list splits, dedupe; backreference fix (`\5`→`\4`).
+- Save styling: `ensureEmailDocument` fragment auto-wrap at render (preview + sends); PUT regenerates text twin from new html.
+- Vars/fallbacks/origins: `{{name||fallback}}` everywhere (render/extract/sanitize); catalog 12→25; every link builder via `getAppUrl()` (google, forgot-password, verify/change-email, deletion, welcome, preview samples) — no localhost in prod paths.
+- Tests: +13 emailStudio cases (fallbacks, wrap, parsing, image, logo universality).
+- QA: runner has no node_modules → full gate (tsc/jest/build) deferred to CI/Vercel; change-set verified by review (14 files, additive-only, no migration/deps).
+
+## Sprint 27 (2026-10-09) — Admin verify actions + push-prompt handling + OTP feedback
+**Directive:** admin email-verification actions; push Enable notice (no action, no push, never clears) with graceful per-environment handling + local flag; verify-email OTP feedback (instant invalid/expired, missing re-sends, rate-limit invisibility). Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- Registries: `config/authVerification.ts` (otpTtl 900s, resendCooldown 60s, maxVerifyAttempts 5, key prefixes, copy, maskEmail/cooldownKeyFor/attemptsKeyFor) + `config/pushPrompt.ts` (enabled/dismissed keys, 7-day dismiss TTL, per-outcome copy, isLikelyIos) + barrel exports.
+- otpStore additive: `setSendCooldown`/`getSendCooldownRemaining`, `recordVerifyAttempt`/`clearVerifyAttempts` (Redis withTimeout + memory fallback, same discipline as OTP).
+- APIs: `otp/resend` + `verify-email` POST enforce per-email cooldown (429 + `retryAfter` header/body) and return honest `{sent, expiresIn, cooldown, invalidatesPrevious}`; `otp` POST + `verify-email` PUT use attempt counter (revoke at 5, `expired`/`attemptsLeft` flags, contextual copy); `verify-email` PUT newly shares the auth rate bucket.
+- Register seeds the cooldown at issuance and returns timers; register page forwards `?cooldown=`; OTP screen rewritten (real masked email, expiry + newest-only notes, server-adopted timer, delivery-failure vs rate-limit distinction); `useOtpResend` hook shared with EmailSecurityPanel (cooldown display + honest resend errors).
+- Push: `getPushSupport()` (SSR/insecure-context/no-SW guards), `ensurePushPermission()` (in-gesture request), `subscribeToPushDetailed()` (ok/unsupported/insecure-context/no-vapid/no-service-worker/denied/dismissed-permission/subscribe-failed/server-rejected/offline; never throws; `subscribeToPush()` boolean kept); PushManager persists `along-push-enabled` + dismissal timestamp, renders per-outcome guidance (+iOS Add-to-Home-Screen help) with retry + toasts; PushProvider auto-subscribes only when permission already granted.
+- Admin: `PATCH /api/admin/users` handles `verify`/`unverify` (VERIFIED notification to user, `previous` snapshot for undo) and `resend-verification` (fresh OTP + verifyEmail send, `{emailed, errors}` honesty, skips verified); users page gains Email-status column, Verify/Unverify/Resend-code row actions (confirm on unverify), bulk Verify, undo toasts.
+- Locales: +15 keys en/pcm (250/250 parity, interpolation preserved, pidgin genuinely translated).
+- Tests: `app/__tests__/config/authVerificationPush.test.ts` (6: registry values, key builders, maskEmail, copy coverage, pushPrompt storage/copy, isLikelyIos).
+**QA:** no node_modules in runner — node strip-types executed both configs clean; locale parity script 250/250 identical. `npx tsc --noEmit` + `npm test` + `next build` deferred to CI/Vercel (must confirm green).
+**Compliance:** no migration, no new deps, no removed APIs; errors sanitized; notifications never-throw; ACID untouched.

@@ -3,33 +3,36 @@
 import React, { useState, useRef, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { AppButton, AppCard, AppAlert, AppSpinner } from "@/app/components/ui"
+import { toastService } from "@/app/lib/services/toastService"
+import { useOtpResend, formatCooldown } from "@/app/lib/hooks/useOtpResend"
+import {
+  AUTH_VERIFICATION_CONFIG,
+  OTP_TTL_MINUTES,
+  maskEmail,
+} from "@/app/lib/config/authVerification"
 
 const OTP_LENGTH = 6
-const RESEND_COOLDOWN = 45
 
 function OtpForm() {
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""))
   const [error, setError] = useState("")
+  const [info, setInfo] = useState("")
   const [loading, setLoading] = useState(false)
-  const [countdown, setCountdown] = useState(RESEND_COOLDOWN)
-  const [canResend, setCanResend] = useState(false)
+  const [sendFailed, setSendFailed] = useState(false)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const searchParams = useSearchParams()
   const email = searchParams.get("email") || ""
   const rememberMe = searchParams.get("rememberMe") === "true"
+  // Register starts the server cooldown at issuance; seed the timer from the
+  // URL when the register response provided one (?cooldown=), else the
+  // config default so first-tap resends never 429 by surprise.
+  const seedCooldown = Number(searchParams.get("cooldown") ?? "") || AUTH_VERIFICATION_CONFIG.resendCooldownSeconds
+  const { cooldown, busy: resending, requestCode } = useOtpResend(seedCooldown)
+  const canResend = cooldown <= 0
 
   useEffect(() => {
     inputRefs.current[0]?.focus()
   }, [])
-
-  useEffect(() => {
-    if (countdown <= 0) {
-      setCanResend(true)
-      return
-    }
-    const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [countdown])
 
   const handleChange = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return
@@ -62,12 +65,24 @@ function OtpForm() {
     inputRefs.current[focusIndex]?.focus()
   }
 
-  const handleResend = () => {
-    if (!canResend) return
-    setCountdown(RESEND_COOLDOWN)
-    setCanResend(false)
-    // Resend OTP — use forgot-password style or re-trigger register OTP flow via new endpoint
-    fetch("/api/auth/otp/resend", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }).catch(() => {})
+  const handleResend = async () => {
+    if (!canResend || resending) return
+    setError("")
+    setInfo("")
+    const result = await requestCode("/api/auth/otp/resend", { email })
+    if (result.ok) {
+      setSendFailed(!result.sent)
+      if (result.sent) {
+        setInfo(`New code sent to ${maskEmail(email)}. ${AUTH_VERIFICATION_CONFIG.copy.previousInvalidated}`)
+        toastService.success("New code sent — use the newest email.")
+      } else {
+        // Code IS valid server-side; only delivery failed — say so plainly.
+        setError(result.error ?? AUTH_VERIFICATION_CONFIG.copy.sendFailed)
+      }
+    } else {
+      // 429 carries retryAfter and the hook already adopted the timer.
+      setError(result.error ?? "Couldn't resend. Please try again.")
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,6 +93,7 @@ function OtpForm() {
       return
     }
     setError("")
+    setInfo("")
     setLoading(true)
     try {
       const res = await fetch("/api/auth/otp", {
@@ -91,17 +107,19 @@ function OtpForm() {
           const text = await res.text()
           const data = text ? JSON.parse(text) as { error?: string } : null
           if (data?.error) msg = data.error
-          else if (res.status === 504) msg = "Server is busy. Please try again."
+          else if (res.status === 504 || res.status === 503) msg = "Server is busy. Your code stays valid — please try again in a moment."
+          else if (res.status === 429) msg = AUTH_VERIFICATION_CONFIG.copy.rateLimited(Number(res.headers.get("Retry-After") ?? "60"))
         } catch {
-          msg = res.status === 504 ? "Server is busy. Please try again." : "Verification failed. Please try again."
+          msg = res.status === 504 || res.status === 503 ? "Server is busy. Your code stays valid — please try again in a moment." : "Verification failed. Please try again."
         }
         throw new Error(msg)
       }
+      toastService.success("Email verified — welcome!")
       window.location.href = "/"
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong"
       if (msg.includes("Unexpected token") || msg.includes("is not valid JSON")) {
-        setError("Server is busy. Please try again in a moment.")
+        setError("Server is busy. Your code stays valid — please try again in a moment.")
       } else {
         setError(msg)
       }
@@ -110,24 +128,36 @@ function OtpForm() {
     }
   }
 
-  const formatCountdown = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, "0")
-    const s = (seconds % 60).toString().padStart(2, "0")
-    return `${m}:${s}`
-  }
-
   return (
     <AppCard variant="elevated" className="p-10">
       <div className="text-center mb-8">
         <h1 className="text-2xl font-bold text-text-primary mb-2">Verify your email</h1>
         <p className="text-sm text-text-secondary">
-          Enter the 6-digit code sent to t***@example.com
+          {email ? (
+            <>Enter the 6-digit code sent to <span className="font-semibold">{maskEmail(email)}</span></>
+          ) : (
+            <>Enter the 6-digit code sent to your email</>
+          )}
+        </p>
+        <p className="text-xs text-text-muted mt-1">
+          {AUTH_VERIFICATION_CONFIG.copy.codeExpiryNote(OTP_TTL_MINUTES)}{" "}
+          {AUTH_VERIFICATION_CONFIG.copy.previousInvalidated}
         </p>
       </div>
 
       {error && (
         <AppAlert variant="error" className="mb-6" dismissible onDismiss={() => setError("")}>
           {error}
+        </AppAlert>
+      )}
+      {info && !error && (
+        <AppAlert variant="info" className="mb-6" dismissible onDismiss={() => setInfo("")}>
+          {info}
+        </AppAlert>
+      )}
+      {sendFailed && !error && (
+        <AppAlert variant="warning" className="mb-6" dismissible onDismiss={() => setSendFailed(false)}>
+          {AUTH_VERIFICATION_CONFIG.copy.sendFailed}
         </AppAlert>
       )}
 
@@ -156,17 +186,18 @@ function OtpForm() {
 
       <div className="text-center mt-6">
         {!canResend ? (
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm text-text-secondary" role="status" aria-live="polite">
             Resend code in{" "}
-            <span className="text-primary font-semibold">{formatCountdown(countdown)}</span>
+            <span className="text-primary font-semibold">{formatCooldown(cooldown)}</span>
           </p>
         ) : (
           <button
             type="button"
-            onClick={handleResend}
-            className="text-sm text-primary font-medium hover:text-primary-dark transition-colors duration-fast cursor-pointer"
+            onClick={() => void handleResend()}
+            disabled={resending}
+            className="text-sm text-primary font-medium hover:text-primary-dark transition-colors duration-fast cursor-pointer disabled:opacity-50"
           >
-            Didn&apos;t receive it? Resend
+            {resending ? "Sending…" : "Didn't receive it? Resend"}
           </button>
         )}
       </div>

@@ -60,25 +60,34 @@ export default function RegisterPage() {
         // the link survives clients/proxies that strip URL params.
         body: JSON.stringify(refCode ? { ...form, ref: refCode } : form),
       })
+      // Parse once (body can only be read once) — success carries the
+      // server cooldown so the OTP timer and throttle agree from the start.
+      let successData: { cooldown?: number } | null = null
+      try {
+        const text = await res.text()
+        successData = text ? JSON.parse(text) as { error?: string; fieldErrors?: Record<string, string>; cooldown?: number } : null
+      } catch {
+        // Non-JSON body (gateway timeout page etc.) — handled by status below.
+        successData = null
+      }
       if (!res.ok) {
-        let msg = "Registration failed"
-        try {
-          const text = await res.text()
-          const data = text ? JSON.parse(text) as { error?: string; fieldErrors?: Record<string, string> } : null
-          if (data?.fieldErrors && typeof data.fieldErrors === "object") {
-            setFieldErrors((prev) => ({ ...prev, ...data.fieldErrors }))
-          }
-          if (data?.error) msg = data.error
-          else if (res.status === 504 || res.status === 503) msg = "Server is busy. Please try again in a moment."
-          else if (res.status === 429) msg = "Too many attempts. Please wait and try again."
-        } catch {
-          if (res.status === 504 || res.status === 503) msg = "Server is busy. Please try again in a moment."
-          else msg = `Request failed (${res.status}). Please try again.`
+        const data = successData as { error?: string; fieldErrors?: Record<string, string> } | null
+        if (data?.fieldErrors && typeof data.fieldErrors === "object") {
+          setFieldErrors((prev) => ({ ...prev, ...data.fieldErrors! }))
         }
-        throw new Error(msg)
+        throw new Error(
+          data?.error ??
+          (res.status === 504 || res.status === 503 ? "Server is busy. Please try again in a moment." :
+            res.status === 429 ? "Too many attempts. Please wait and try again." :
+              `Request failed (${res.status}). Please try again.`)
+        )
       }
       toastService.success("Account created! Check your email for the verification code.")
-      setTimeout(() => { window.location.href = `/otp?email=${encodeURIComponent(form.email)}` }, 300)
+      const cooldownSuffix =
+        successData && typeof successData.cooldown === "number"
+          ? `&cooldown=${successData.cooldown}`
+          : ""
+      setTimeout(() => { window.location.href = `/otp?email=${encodeURIComponent(form.email.trim().toLowerCase())}${cooldownSuffix}` }, 300)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Something went wrong"
       if (msg.includes("Unexpected token") || msg.includes("is not valid JSON")) {

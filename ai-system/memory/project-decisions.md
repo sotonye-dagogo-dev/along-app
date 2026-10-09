@@ -602,3 +602,42 @@ A dedicated PlatformReview model would need a migration + new admin surface for 
 - New user-facing copy must add en+pcm keys together (parity test enforces) or a config fallback via `tf()`.
 - New notification types needing distinct icons/copy should still prefer existing types + allowSelf unless product requires a migration.
 ---
+
+**Decision:** OTP resend throttling uses a per-email cooldown key alongside (never inside) the `otp:{email}` hash; verify attempts use a separate counter key with revoke-at-cap; all three reuse the otpStore Redis-timeout + memory pattern with no schema change. Push subscription uses a detailed-result core (`subscribeToPushDetailed`) with the old boolean kept as a wrapper; prompt visibility is driven by localStorage flags + server status, not server status alone.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 27
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Changing the OTP hash shape (to bundle expiry/cooldown) would break every existing Redis row and every reader; sidecar keys keep `otp:{email}` reads byte-identical while giving the client an authoritative timer that matches the throttle — the exact mismatch behind "wasn't sent any". A boolean push API cannot distinguish denied/unsupported/offline, which is why Enable went silent; the detailed core lets the UI instruct per outcome while old callers keep compiling. Server-only prompt visibility fails offline (status endpoint unreachable) and forgets dismissals — local flags close both gaps without touching the API.
+
+**Alternatives Considered:**
+- **DB-backed OTP table + migration**: Rejected — heavier than the need; sidecar keys fix the feedback/throttle bugs, and the memory-durability caveat (already documented for OTP) is now user-visible via honest delivery flags instead of silent failure.
+- **Separate rate-limit bucket for OTP sends**: Rejected — non-breaking constraint; per-email cooldown composes with the shared auth bucket instead of splitting accounting, and 429s now carry `retryAfter` either way.
+- **Auto-requesting notification permission on page load**: Rejected — browsers ignore/reject out-of-gesture requests; permission is requested inside the Enable click, auto-subscribe only fires when already granted.
+
+**Implications:**
+- Any future code-send flow reusing `otp:{email}` must honour the same cooldown key or document why not (verify-email and resend already share it).
+- New push callers should use `subscribeToPushDetailed`; the boolean wrapper stays for compatibility.
+- New user-facing copy must add en+pcm keys together (parity test enforces) or fall back to config copy.
+---
+
+**Decision:** `waypoints` on a Post stores the INTERMEDIATE stops only (excludes origin + destination, which live in `startLat/startLng` + `endLat/endLng`); every map renderer must compose pins via the canonical `buildRoutePinsFromPost` (origin + intermediates + destination in step order) and never treat `waypoints` as the full route. Post detail fetches a road-snapped trace for the full pin sequence via the shared `useRouteTrace` hook (same pipeline as the composer preview); legacy waypoint-less rows backfill missing stops with a bounded best-effort geocode rather than rendering a start→destination skip.
+**Date:** 2026-10-09
+**Made by:** AI agent (opencode) — execute-feature Sprint 28
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+The composer sends `waypoints` as intermediates-only and previews all steps, but POST dropped `waypoints` server-side while post detail read them as the whole route — so both states of the data rendered wrong (skip vs origin-loss). One canonical builder plus one shared trace hook makes preview and post views structurally incapable of diverging again. The bounded geocode backfill rescues rows stored during the drop window without a migration.
+
+**Alternatives Considered:**
+- **Store full pin list (incl. origin/destination) in `waypoints`**: Rejected — duplicates start/end coords, breaks the existing composer contract and every stored row's shape; the builder handles both shapes' composition instead.
+- **Backfill via migration/geocode-all script**: Rejected — heavier than the need and rate-limit-hostile; lazy bounded client backfill fixes views on read with zero schema change.
+- **Auto-start geolocation when the nav modal opens**: Rejected — permission requests must stay inside the user's Start-tap gesture; the modal mounts map + guide together and tracking starts on Start.
+
+**Implications:**
+- Any future renderer (feed maps, suggestions, admin previews) must use `buildRoutePinsFromPost` — never hand-roll start/waypoints/end composition.
+- Any future trace consumer must use `useRouteTrace` (or the same estimate→debounced-trace→cache→fallback discipline) so offline/429 behaviour stays uniform.
+- If `waypoints` semantics ever change, the builder (not each call site) is the single migration point.

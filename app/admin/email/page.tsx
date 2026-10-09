@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Code, PenLine, Send, Plus, Trash2, RefreshCw, Type, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { toastService } from "@/app/lib/services/toastService";
 import { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, parseManualEmails } from "@/app/lib/config/emailManagement";
+import { composeEmailDocument } from "@/app/lib/config/email";
 import type { EmailTemplate } from "@/app/lib/config/email";
 import {
   blocksToHtml, blocksToText, textToBlocks, htmlToBlocks, defaultBlocks, newBlockId,
@@ -19,6 +20,66 @@ interface ComposerSelection {
 }
 
 interface UserHit { id: string; userName: string; firstName: string; lastName: string; email: string }
+
+/** Client-side twin of the server renderer (preview parity, no save needed). */
+function escapeLiveHtml(raw: string): string {
+  return raw.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+function parseLiveToken(inner: string): { name: string; fallback: string } | null {
+  const m = String(inner ?? "").match(/^\s*(\w+)\s*(?:\|\|?\s*([\s\S]*?))?\s*$/);
+  if (!m) return null;
+  let fb = (m[2] ?? "").trim();
+  if ((fb.startsWith('"') && fb.endsWith('"')) || (fb.startsWith("'") && fb.endsWith("'"))) fb = fb.slice(1, -1);
+  return { name: m[1], fallback: fb };
+}
+
+function interpolateLive(template: string, vars: Record<string, string>, escape: boolean): string {
+  return String(template ?? "").replace(/\{\{\s*([\s\S]*?)\s*\}\}/g, (full, inner: string) => {
+    const p = parseLiveToken(inner);
+    if (!p) return "";
+    let s = vars[p.name] ?? "";
+    if (!String(s).trim() && p.fallback) s = p.fallback;
+    if (!s) return "";
+    return escape ? escapeLiveHtml(String(s)) : String(s);
+  });
+}
+
+function liveDefaults(): Record<string, string> {
+  const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin.replace(/\/$/, "") : "https://www.alongng.com";
+  return {
+    appUrl: origin,
+    appName: "Along",
+    logoUrl: `${origin}/logo.svg`,
+    supportEmail: "support@alongng.com",
+    year: String(new Date().getFullYear()),
+    firstName: "Adaobi",
+  };
+}
+
+function liveSamplesFor(templateName: string): Record<string, string> {
+  const d = liveDefaults();
+  const base: Record<string, Record<string, string>> = {
+    otp: { otp: "482937" },
+    welcome: { firstName: "Adaobi" },
+    passwordReset: { resetLink: `${d.appUrl}/reset?token=sample-token-123` },
+    verifyEmail: { firstName: "Adaobi", otp: "482937", verifyLink: `${d.appUrl}/verify-email?token=sample` },
+    changeEmail: { firstName: "Adaobi", newEmail: "ada@newmail.com", otp: "482937", confirmLink: `${d.appUrl}/profile?emailConfirmed=1` },
+    changePassword: { firstName: "Adaobi", changedAt: new Date().toUTCString() },
+    contactNotification: { senderName: "Chidi Okonkwo", senderEmail: "chidi@example.com", message: "I love the app! Would love to see more routes in Lagos mainland." },
+    bugReportNotification: { title: "Route map not loading", category: "UI", description: "When I open the route map on the post page, the map stays blank." },
+    accountDeletionRequested: { firstName: "Adaobi", scheduledDate: "October 16, 2026", cancelLink: `${d.appUrl}/profile` },
+    accountDeletionCompleted: { firstName: "Adaobi", completedDate: "October 16, 2026", supportEmail: "alongtoanywhere@gmail.com" },
+    adminDeletionAlert: { displayName: "Adaobi Eze", userName: "adaobi", email: "adaobi@example.com", scheduledDate: "October 16, 2026", reasonLine: "Reason: leaving for now" },
+  };
+  return { ...d, ...(base[templateName] ?? {}) };
+}
+
+function wrapLiveFragment(fragment: string, subject: string): string {
+  if (/<table[\s>]/i.test(fragment) || /<html[\s>]/i.test(fragment)) return fragment;
+  const title = String(subject || "Along update").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "Along update";
+  return composeEmailDocument({ title, bodyHtml: fragment });
+}
 
 /**
  * Admin Email Studio — config-driven template builder + composer.
@@ -38,8 +99,11 @@ export default function AdminEmailPage() {
   const [saving, setSaving] = useState(false);
   const [editorMode, setEditorMode] = useState<"visual" | "html" | "text">("visual");
   const [previewMode, setPreviewMode] = useState<"preview" | "html" | "text">("preview");
-  const [previewHtml, setPreviewHtml] = useState("");
-  const [previewText, setPreviewText] = useState("");
+  const [savedHtml, setSavedHtml] = useState("");
+  const [savedText, setSavedText] = useState("");
+  const [liveHtml, setLiveHtml] = useState("");
+  const [liveText, setLiveText] = useState("");
+  const [dirty, setDirty] = useState(false);
 
   // Builder draft — blocks are canonical; html/text derived + synced.
   const [blocks, setBlocks] = useState<EmailBlock[]>(defaultBlocks());
@@ -51,6 +115,7 @@ export default function AdminEmailPage() {
   const [newName, setNewName] = useState("");
   const [customVar, setCustomVar] = useState("");
   const lastMode = useRef<"visual" | "html" | "text">("visual");
+  const baseline = useRef("");
 
   // Composer
   const [composeVars, setComposeVars] = useState<Record<string, string>>({});
@@ -104,10 +169,13 @@ export default function AdminEmailPage() {
       setDraftDesc(current.description ?? "");
       setComposeVars({});
       setComposeJson("");
+      setDirty(false);
+      baseline.current = JSON.stringify({ s: current.subject, h: current.bodyHtml });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.name, isNew]);
 
+  // Saved-template baseline (server render of the stored template).
   useEffect(() => {
     if (!selected) return;
     (async () => {
@@ -115,12 +183,59 @@ export default function AdminEmailPage() {
         const res = await fetch(`/api/email/preview?template=${encodeURIComponent(selected)}`);
         if (res.ok) {
           const data = await res.json();
-          setPreviewHtml(data.rendered?.html ?? "");
-          setPreviewText(data.rendered?.text ?? "");
+          setSavedHtml(data.rendered?.html ?? "");
+          setSavedText(data.rendered?.text ?? "");
         }
       } catch { /* ignore */ }
     })();
   }, [selected, templates]);
+
+  const canonicalHtmlLive = () => {
+    if (editorMode === "html") return draftHtml;
+    if (editorMode === "text") return blocksToHtml(textToBlocks(draftText));
+    return blocksToHtml(blocks);
+  };
+
+  // Live unsaved preview — debounced re-render from the canonical draft so
+  // every keystroke/block edit reflects before saving. Mirrors the server
+  // pipeline (fragment auto-wrap + sample/default vars + fallbacks).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        const name = isNew ? newName.trim() || "draft" : selected;
+        const samples = liveSamplesFor(name);
+        const overrides: Record<string, string> = {};
+        for (const [k, v] of Object.entries(composeVars)) {
+          if (v.trim()) overrides[k] = v;
+        }
+        const vars = { ...samples, ...overrides };
+        const frag = canonicalHtmlLive();
+        const wrapped = wrapLiveFragment(frag, draftSubject);
+        setLiveHtml(interpolateLive(wrapped, vars, true));
+        const textSrc = editorMode === "text" ? draftText : blocksToText(editorMode === "html" ? htmlToBlocks(draftHtml) : blocks);
+        setLiveText(interpolateLive(textSrc || draftSubject, vars, false));
+        // Dirty = draft differs from the last hydrated/saved baseline.
+        if (isNew) {
+          setDirty(true);
+        } else if (baseline.current) {
+          try {
+            const base = JSON.parse(baseline.current) as { s: string; h: string };
+            const norm = (s: string) => String(s ?? "").replace(/\s+/g, " ").trim();
+            // Compare subject + text-level content (whitespace-insensitive)
+            // so pure reformatting doesn't flag unsaved changes.
+            const fragText = frag.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            const baseText = String(base.h ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            setDirty(norm(draftSubject) !== norm(base.s) || fragText !== baseText);
+          } catch { /* leave dirty as-is */ }
+        }
+      } catch { /* keep last good preview */ }
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, draftHtml, draftText, draftSubject, editorMode, selected, isNew, newName, composeVars]);
+
+  const previewHtml = liveHtml || savedHtml;
+  const previewText = liveText || savedText;
 
   /** Lossless mode switching: sync canonical blocks before changing tabs. */
   const switchMode = (next: "visual" | "html" | "text") => {
@@ -166,7 +281,7 @@ export default function AdminEmailPage() {
     else if (type === "paragraph") base.text = "New paragraph — supports {{variables}}";
     else if (type === "button") { base.text = "Open Along"; base.url = "{{appUrl}}/home"; }
     else if (type === "link") { base.text = "Learn more"; base.url = "{{appUrl}}/faq"; }
-    else if (type === "image") { base.src = "{{logoUrl}}"; base.url = "{{logoUrl}}"; base.text = "Along logo"; }
+    else if (type === "image") { base.src = "{{logoUrl}}"; base.text = "{{appName}}"; }
     else if (type === "list") base.items = ["First item", "Second item"];
     setBlocks((p) => [...p, base]);
   };
@@ -200,6 +315,8 @@ export default function AdminEmailPage() {
       toastService.success(`Template “${name}” saved`);
       setIsNew(false);
       setSelected(name);
+      setDirty(false);
+      baseline.current = JSON.stringify({ s: draftSubject, h: bodyHtml });
       await load();
     } catch (e) {
       toastService.error(e instanceof Error ? e.message : "Save failed");
@@ -476,13 +593,24 @@ export default function AdminEmailPage() {
                     </div>
                   )}
                   {b.type === "image" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      <input value={b.src ?? b.url ?? ""} placeholder="Image URL ({{logoUrl}} available)" aria-label="Image source"
-                        onChange={(e) => setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, src: e.target.value, url: e.target.value } : x)))}
-                        className="rounded border border-border bg-bg-card px-2 py-1.5 text-sm font-mono" />
-                      <input value={b.text ?? ""} placeholder="Alt text" aria-label="Alt text"
-                        onChange={(e) => setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, text: e.target.value } : x)))}
-                        className="rounded border border-border bg-bg-card px-2 py-1.5 text-sm" />
+                    <div className="flex flex-col gap-1.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        <input value={b.src ?? b.url ?? ""} placeholder="Image URL ({{logoUrl}} available)" aria-label="Image source"
+                          onChange={(e) => setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, src: e.target.value, url: undefined } : x)))}
+                          className="rounded border border-border bg-bg-card px-2 py-1.5 text-sm font-mono" />
+                        <input value={b.text ?? ""} placeholder="Alt text ({{appName}} available)" aria-label="Alt text"
+                          onChange={(e) => setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, text: e.target.value } : x)))}
+                          className="rounded border border-border bg-bg-card px-2 py-1.5 text-sm" />
+                      </div>
+                      {(b.src ?? b.url ?? "").trim() !== "" && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={(b.src ?? b.url ?? "").replace(/\{\{\s*logoUrl\s*\}\}/g, `${typeof window !== "undefined" ? window.location.origin : "https://www.alongng.com"}/logo.svg`).replace(/\{\{\s*appUrl\s*\}\}/g, typeof window !== "undefined" ? window.location.origin : "https://www.alongng.com")}
+                          alt={b.text || "Image preview"}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          className="max-w-[160px] max-h-[80px] object-contain rounded border border-border bg-bg-elevated self-center"
+                        />
+                      )}
                     </div>
                   )}
                   {b.type === "list" && (
@@ -524,7 +652,11 @@ export default function AdminEmailPage() {
         <div className="flex flex-col gap-4 min-w-0">
           <section className="bg-bg-card border border-border radius-lg overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="text-sm font-semibold truncate">Preview</span>
+              <span className="text-sm font-semibold truncate flex items-center gap-2">Preview
+                {dirty
+                  ? <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 radius-pill bg-primary-muted text-primary">Live — unsaved changes</span>
+                  : <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 radius-pill bg-bg-elevated text-text-muted">Saved</span>}
+              </span>
               <div className="flex gap-1">
                 {(["preview", "html", "text"] as const).map((m) => (
                   <button key={m} onClick={() => setPreviewMode(m)} title={m}

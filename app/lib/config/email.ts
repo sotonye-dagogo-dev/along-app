@@ -107,7 +107,7 @@ export function composeEmailDocument(opts: {
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
 <tr><td style="padding:28px 32px 0;text-align:center">
-<a href="${appUrl}/home"><img src="${logo}" alt="Along" width="96" style="display:inline-block;border:0;outline:none" /></a>
+<a href="${appUrl}/home"><img src="${logo}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
 <h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">${opts.title}</h1>
 ${opts.subtitle ? `<p style="font-size:14px;color:#666;margin:0 0 20px">${opts.subtitle}</p>` : ""}
 </td></tr>
@@ -138,8 +138,8 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-<tr><td style="padding:32px 32px 0;text-align:center">
-<svg viewBox="0 0 28 28" width="40" height="40" fill="none"><circle cx="14" cy="14" r="12" fill="#00A862"/><circle cx="10" cy="10" r="2.5" fill="#b8f0d8"/><circle cx="18" cy="18" r="2.5" fill="#b8f0d8"/><path d="M10 10L18 18" stroke="#fff" stroke-width="2"/></svg>
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
 <h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Verify your email</h1>
 <p style="font-size:14px;color:#666;margin:0 0 24px">Use the code below to complete your registration</p>
 </td></tr>
@@ -149,14 +149,14 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 </td></tr>
 <tr><td style="padding:24px 32px 32px;text-align:center;border-top:1px solid #eee">
 <p style="font-size:11px;color:#999;margin:0">If you didn't request this, you can safely ignore this email.</p>
-<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; 2026 Along. All rights reserved.</p>
+<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
 </td></tr>
 </table>
 </td></tr></table>
 </body>
 </html>`,
     bodyText: "Your Along verification code is: {{otp}}\n\nThis code expires in 15 minutes.\n\nIf you didn't request this, you can safely ignore this email.",
-    variables: ["otp"],
+    variables: ["otp", "appUrl", "logoUrl", "appName", "year"],
   },
   {
     name: "welcome",
@@ -167,9 +167,9 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-<tr><td style="padding:32px 32px 0;text-align:center">
-<svg viewBox="0 0 28 28" width="40" height="40" fill="none"><circle cx="14" cy="14" r="12" fill="#00A862"/><circle cx="10" cy="10" r="2.5" fill="#b8f0d8"/><circle cx="18" cy="18" r="2.5" fill="#b8f0d8"/><path d="M10 10L18 18" stroke="#fff" stroke-width="2"/></svg>
-<h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Welcome, {{firstName}}!</h1>
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
+<h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Welcome, {{firstName||traveller}}!</h1>
 <p style="font-size:14px;color:#666;margin:0 0 24px">You're all set to start exploring</p>
 </td></tr>
 <tr><td style="padding:0 32px 32px">
@@ -183,13 +183,14 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 </td></tr>
 <tr><td style="padding:16px 32px 32px;text-align:center;border-top:1px solid #eee">
 <p style="font-size:11px;color:#999;margin:0">If you have questions, reply to this email or visit our <a href="{{appUrl}}/faq" style="color:#00A862;text-decoration:none">FAQ</a>.</p>
+<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
 </td></tr>
 </table>
 </td></tr></table>
 </body>
 </html>`,
-    bodyText: "Welcome, {{firstName}}!\n\nThanks for joining Along. Here's what you can do:\n- Share your favorite routes\n- Discover trusted recommendations\n- Earn trust badges and rewards\n\nStart exploring: {{appUrl}}/home",
-    variables: ["firstName", "appUrl"],
+    bodyText: "Welcome, {{firstName||traveller}}!\n\nThanks for joining Along. Here's what you can do:\n- Share your favorite routes\n- Discover trusted recommendations\n- Earn trust badges and rewards\n\nStart exploring: {{appUrl}}/home",
+    variables: ["firstName", "appUrl", "logoUrl", "appName", "year"],
   },
   {
     name: "passwordReset",
@@ -200,20 +201,25 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-<tr><td style="padding:32px 32px 0;text-align:center">
-<h1 style="font-size:20px;font-weight:700;margin:0 0 4px;color:#1a1a1a">Reset your password</h1>
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
+<h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Reset your password</h1>
 <p style="font-size:14px;color:#666;margin:0 0 24px">Click the button below to reset your password</p>
 </td></tr>
-<tr><td style="padding:0 32px 32px;text-align:center">
-<a href="{{resetLink}}" style="display:inline-block;background:#00A862;color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600">Reset password</a>
+<tr><td style="padding:0 32px 8px;text-align:center">
+<div style="text-align:center;margin:8px 0 4px"><a href="{{resetLink}}" style="display:inline-block;background:#00A862;color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600">Reset password</a></div>
 <p style="font-size:12px;color:#999;margin:16px 0 0">This link expires in 1 hour. If you didn't request this, ignore this email.</p>
+</td></tr>
+<tr><td style="padding:16px 32px 28px;text-align:center;border-top:1px solid #eee">
+<p style="font-size:11px;color:#999;margin:0">Questions? Reply to this email or visit our <a href="{{appUrl}}/faq" style="color:#00A862;text-decoration:none">FAQ</a>.</p>
+<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
 </td></tr>
 </table>
 </td></tr></table>
 </body>
 </html>`,
     bodyText: "Reset your Along password\n\nClick the link below to reset your password:\n{{resetLink}}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.",
-    variables: ["resetLink"],
+    variables: ["resetLink", "appUrl", "logoUrl", "appName", "year"],
   },
   {
     name: "verifyEmail",
@@ -225,7 +231,7 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
 <tr><td style="padding:28px 32px 0;text-align:center">
-<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="Along" width="96" style="display:inline-block;border:0" /></a>
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
 <h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Verify your email</h1>
 <p style="font-size:14px;color:#666;margin:0 0 20px">Hi {{firstName}}, confirm this address to finish setup</p>
 </td></tr>
@@ -257,7 +263,7 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
 <tr><td style="padding:28px 32px 0;text-align:center">
-<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="Along" width="96" style="display:inline-block;border:0" /></a>
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
 <h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Confirm your new email</h1>
 <p style="font-size:14px;color:#666;margin:0 0 20px">Hi {{firstName}}, use the code below to confirm {{newEmail}}</p>
 </td></tr>
@@ -289,7 +295,7 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
 <tr><td style="padding:28px 32px 0;text-align:center">
-<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="Along" width="96" style="display:inline-block;border:0" /></a>
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
 <h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Password updated</h1>
 <p style="font-size:14px;color:#666;margin:0 0 20px">Hi {{firstName}}, your password was changed {{changedAt}}</p>
 </td></tr>
@@ -317,19 +323,24 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-<tr><td style="padding:32px 32px 0">
-<h1 style="font-size:18px;font-weight:700;margin:0 0 4px;color:#1a1a1a">New contact message</h1>
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
+<h1 style="font-size:18px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">New contact message</h1>
 <p style="font-size:13px;color:#666;margin:0 0 20px">From {{senderName}} ({{senderEmail}})</p>
 </td></tr>
-<tr><td style="padding:0 32px 32px">
+<tr><td style="padding:0 32px 8px">
 <div style="background:#f9f9f9;border:1px solid #eee;border-radius:8px;padding:16px;font-size:13px;color:#444;line-height:1.6;white-space:pre-wrap">{{message}}</div>
+</td></tr>
+<tr><td style="padding:16px 32px 28px;text-align:center;border-top:1px solid #eee">
+<p style="font-size:11px;color:#999;margin:0">Questions? Reply to this email or visit our <a href="{{appUrl}}/faq" style="color:#00A862;text-decoration:none">FAQ</a>.</p>
+<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
 </td></tr>
 </table>
 </td></tr></table>
 </body>
 </html>`,
     bodyText: "New contact message\nFrom: {{senderName}} ({{senderEmail}})\n\n{{message}}",
-    variables: ["senderName", "senderEmail", "message"],
+    variables: ["senderName", "senderEmail", "message", "appUrl", "logoUrl", "appName", "year"],
   },
   {
     name: "bugReportNotification",
@@ -340,20 +351,25 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-<tr><td style="padding:32px 32px 0">
-<h1 style="font-size:18px;font-weight:700;margin:0 0 4px;color:#1a1a1a">New bug report</h1>
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
+<h1 style="font-size:18px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">New bug report</h1>
 <p style="font-size:13px;color:#666;margin:0 0 4px"><strong>Title:</strong> {{title}}</p>
 <p style="font-size:13px;color:#666;margin:0 0 20px"><strong>Category:</strong> {{category}}</p>
 </td></tr>
-<tr><td style="padding:0 32px 32px">
+<tr><td style="padding:0 32px 8px">
 <div style="background:#f9f9f9;border:1px solid #eee;border-radius:8px;padding:16px;font-size:13px;color:#444;line-height:1.6;white-space:pre-wrap">{{description}}</div>
+</td></tr>
+<tr><td style="padding:16px 32px 28px;text-align:center;border-top:1px solid #eee">
+<p style="font-size:11px;color:#999;margin:0">Manage in Admin → Bug reports.</p>
+<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
 </td></tr>
 </table>
 </td></tr></table>
 </body>
 </html>`,
     bodyText: "New bug report\nTitle: {{title}}\nCategory: {{category}}\n\n{{description}}",
-    variables: ["title", "category", "description"],
+    variables: ["title", "category", "description", "appUrl", "logoUrl", "appName", "year"],
   },
   {
     name: "accountDeletionRequested",
@@ -364,21 +380,26 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-<tr><td style="padding:32px 32px 0;text-align:center">
-<h1 style="font-size:20px;font-weight:700;margin:0 0 4px;color:#1a1a1a">Deletion request received</h1>
-<p style="font-size:14px;color:#666;margin:0 0 24px">Hi {{firstName}}, we've archived your account</p>
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
+<h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Deletion request received</h1>
+<p style="font-size:14px;color:#666;margin:0 0 24px">Hi {{firstName||traveller}}, we've archived your account</p>
 </td></tr>
-<tr><td style="padding:0 32px 32px">
+<tr><td style="padding:0 32px 8px">
 <p style="font-size:14px;color:#444;margin:0 0 12px;line-height:1.6">Your account and posts are now archived and hidden from the platform. They will be permanently deleted on <strong>{{scheduledDate}}</strong> (7 days from now).</p>
 <p style="font-size:14px;color:#444;margin:0 0 12px;line-height:1.6">Changed your mind? You can reverse this any time before that date from your profile or via <a href="{{cancelLink}}" style="color:#00A862">this link</a>.</p>
 <p style="font-size:12px;color:#999;margin:16px 0 0;line-height:1.6">After deletion, personal information is removed within 30 days. Anonymised post data may be retained for platform integrity. Backups are kept for up to 30 days for recovery requests.</p>
+</td></tr>
+<tr><td style="padding:16px 32px 28px;text-align:center;border-top:1px solid #eee">
+<p style="font-size:11px;color:#999;margin:0">Questions? Reply to this email or visit our <a href="{{appUrl}}/faq" style="color:#00A862;text-decoration:none">FAQ</a>.</p>
+<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
 </td></tr>
 </table>
 </td></tr></table>
 </body>
 </html>`,
     bodyText: "Deletion request received\n\nHi {{firstName}}, your account and posts are now archived and hidden. They will be permanently deleted on {{scheduledDate}} (7 days from now).\n\nChanged your mind? Reverse it any time before then: {{cancelLink}}\n\nAfter deletion, personal info is removed within 30 days; anonymised posts may be retained.",
-    variables: ["firstName", "scheduledDate", "cancelLink", "appUrl"],
+    variables: ["firstName", "scheduledDate", "cancelLink", "appUrl", "logoUrl", "appName", "year"],
     enabled: true,
     description: "Sent to the user when they request account deletion (grace-period notice).",
     isSystem: true,
@@ -392,20 +413,24 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-<tr><td style="padding:32px 32px 0;text-align:center">
-<h1 style="font-size:20px;font-weight:700;margin:0 0 4px;color:#1a1a1a">Account deleted</h1>
-<p style="font-size:14px;color:#666;margin:0 0 24px">Hi {{firstName}}, this is your final confirmation</p>
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
+<h1 style="font-size:20px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Account deleted</h1>
+<p style="font-size:14px;color:#666;margin:0 0 24px">Hi {{firstName||traveller}}, this is your final confirmation</p>
 </td></tr>
-<tr><td style="padding:0 32px 32px">
+<tr><td style="padding:0 32px 8px">
 <p style="font-size:14px;color:#444;margin:0 0 12px;line-height:1.6">Your Along account was permanently deleted on {{completedDate}}. Your profile now appears as "Deleted User" and your likes/bookmarks were removed. Anonymised post data may be retained for platform integrity.</p>
 <p style="font-size:14px;color:#444;margin:0;line-height:1.6">If you requested recovery within 30 days, contact <a href="mailto:{{supportEmail}}" style="color:#00A862">{{supportEmail}}</a> — recovery is handled off-platform from backups where possible.</p>
+</td></tr>
+<tr><td style="padding:16px 32px 28px;text-align:center;border-top:1px solid #eee">
+<p style="font-size:11px;color:#999;margin:0">&copy; {{year}} {{appName}}. All rights reserved.</p>
 </td></tr>
 </table>
 </td></tr></table>
 </body>
 </html>`,
     bodyText: "Account deleted\n\nHi {{firstName}}, your Along account was permanently deleted on {{completedDate}}. Your profile now appears as Deleted User; likes/bookmarks removed; anonymised posts may be retained.\n\nRecovery within 30 days: contact {{supportEmail}} (handled off-platform from backups).",
-    variables: ["firstName", "completedDate", "supportEmail", "appUrl"],
+    variables: ["firstName", "completedDate", "supportEmail", "appUrl", "logoUrl", "appName", "year"],
     enabled: true,
     description: "Final confirmation sent to the original address when deletion completes.",
     isSystem: true,
@@ -419,19 +444,25 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
 <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
-<tr><td style="padding:32px 32px">
-<h1 style="font-size:18px;font-weight:700;margin:0 0 4px;color:#1a1a1a">Deletion request</h1>
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
+<h1 style="font-size:18px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Deletion request</h1>
 <p style="font-size:13px;color:#666;margin:0 0 16px">{{displayName}} (@{{userName}}, {{email}}) requested account deletion.</p>
+</td></tr>
+<tr><td style="padding:0 32px 8px">
 <p style="font-size:13px;color:#666;margin:0 0 4px"><strong>Scheduled for:</strong> {{scheduledDate}}</p>
 {{reasonLine}}
 <p style="font-size:12px;color:#999;margin:16px 0 0">Manage in Admin → Users. Reversal notices arrive in-app only (no email).</p>
+</td></tr>
+<tr><td style="padding:16px 32px 28px;text-align:center;border-top:1px solid #eee">
+<p style="font-size:11px;color:#999;margin:0">&copy; {{year}} {{appName}}. All rights reserved.</p>
 </td></tr>
 </table>
 </td></tr></table>
 </body>
 </html>`,
     bodyText: "Deletion request\n{{displayName}} (@{{userName}}, {{email}}) requested account deletion.\nScheduled for: {{scheduledDate}}\n{{reasonLine}}\nManage in Admin → Users.",
-    variables: ["displayName", "userName", "email", "scheduledDate", "reasonLine", "appUrl"],
+    variables: ["displayName", "userName", "email", "scheduledDate", "reasonLine", "appUrl", "logoUrl", "appName", "year"],
     enabled: true,
     description: "Sent to all admins when a user requests deletion.",
     isSystem: true,

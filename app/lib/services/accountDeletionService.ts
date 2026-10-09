@@ -15,6 +15,7 @@ import {
   buildDeletedUserName,
   buildDeletedEmail,
 } from "@/app/lib/config/accountDeletion";
+import { getAppUrl } from "@/app/lib/config/env";
 
 export interface DeletionRequestResult {
   ok: boolean;
@@ -124,7 +125,7 @@ export async function requestAccountDeletion(userId: string, reason?: string): P
     });
 
     // Side-effects (best-effort, outside tx).
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const appUrl = getAppUrl();
     const scheduledLabel = scheduledFor.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     const displayName = `${user.firstName} ${user.lastName}`;
     try {

@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 reviews + i18n + PWA v4 edges)
-> - last-verified-against-code: 2026-10-09 (accountDeletionService/email fan-out/toggle edges verified in code)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 28 route accuracy + live-navigation overlay)
+> - last-verified-against-code: 2026-10-09 (routePins/useRouteTrace/LiveNavigationModal edges verified in code; tsc + jest + build green in-runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -110,10 +110,11 @@ Service Layer (app/lib/services/*)
 
 Config Registries (app/lib/config/*)
     → (no app dependencies — pure config objects)
-    → 40 files (incl. index.ts) incl. reviews.ts (Sprint 25 REVIEWS_CONFIG + insertReviewCtaPanels + reviewAuthorName; SITE_REVIEWS retained) + pwa.ts (Sprint 25 v4: locales precache, /api/{config,reviews} cacheable, banner copy, REVIEW mirror) + faq.ts (Sprint 25 FAQ_PCM) + footer.ts (Sprint 25 optional i18nKey) + rateLimits.ts (Sprint 25 reviews bucket) + routeSteps.ts (Sprint 23 destination rule + normalize: composer, PostCard, NavigationGuide, post detail, posts POST/PATCH) + mapPins.ts (Sprint 20 anchor-stable pins/user-dot/labels; Sprint 23 endpoint-snap + tracking timeouts) + mapStack.ts (Sprint 19 keyless tiles/routing/geocode/TTLs/attributions/style-stack builders/env gates; Sprint 20 dark light-parity), earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library + Sprint 20 update-in-place labels/prompt), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
+    → 42 files (incl. index.ts) incl. authVerification.ts (Sprint 27 OTP TTL/cooldown/attempts/keys/copy/maskEmail → otpStore sidecar keys + otp/resend/verify-email/register + useOtpResend + OTP screen/EmailSecurityPanel) + pushPrompt.ts (Sprint 27 storage keys/dismiss TTL/outcome copy/iOS-detect → PushManager/PushProvider/pushClient) + reviews.ts (Sprint 25 REVIEWS_CONFIG + insertReviewCtaPanels + reviewAuthorName; SITE_REVIEWS retained) + pwa.ts (Sprint 25 v4: locales precache, /api/{config,reviews} cacheable, banner copy, REVIEW mirror) + faq.ts (Sprint 25 FAQ_PCM) + footer.ts (Sprint 25 optional i18nKey) + rateLimits.ts (Sprint 25 reviews bucket) + routeSteps.ts (Sprint 23 destination rule + normalize: composer, PostCard, NavigationGuide, post detail, posts POST/PATCH) + mapPins.ts (Sprint 20 anchor-stable pins/user-dot/labels; Sprint 23 endpoint-snap + tracking timeouts) + mapStack.ts (Sprint 19 keyless tiles/routing/geocode/TTLs/attributions/style-stack builders/env gates; Sprint 20 dark light-parity) + routePins.ts (Sprint 28 canonical origin+intermediates+destination builder + trace input + ROUTE_PINS_CONFIG: PostCard, post detail) + navigation LIVE_NAVIGATION_CONFIG (Sprint 28 live-nav overlay copy/panel width → LiveNavigationModal), earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library + Sprint 20 update-in-place labels/prompt), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
 
 Client Utilities (app/lib/utils/*)
-    → pushClient → navigator.serviceWorker, fetch (/api/push/*)
+    → pushClient → Notification permission (in-gesture) + navigator.serviceWorker + PushManager API, fetch (/api/push/*) [Sprint 27: getPushSupport/ensurePushPermission/subscribeToPushDetailed, boolean wrapper kept]
+    → useOtpResend → fetch (otp/resend, verify-email trigger) + AUTH_VERIFICATION_CONFIG timers [Sprint 27]
     → sendPushNotification → fetch (QStash URL)
     → siteConfig → Prisma, Redis (cached config lookups)
     → blog → fs (MDX file reading at build time)
@@ -182,9 +183,11 @@ Map API Routes (`app/api/maps/route|geocode|reverse`)
     → Consumers (client-only, same-origin): RouteStepInput + ShareRouteModal (debounced, abortable) + geo.ts reverseGeocode
 
 Map Renderers (RouteMap.tsx, explore/page.tsx)
-    → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset; dark light-parity — filter `"none"`, dark raster mirrors light) + mapPins (`MAP_PINS_CONFIG` center anchor/zero offset, `routePinLabel` 1-based, `snapEndpointsToPolyline`, `tracking` timeouts [Sprint 23])
+    → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset; dark light-parity — filter `"none"`, dark raster mirrors light) + mapPins (`MAP_PINS_CONFIG` center anchor/zero offset, `routePinLabel` 1-based, `snapEndpointsToPolyline`, `tracking` timeouts [Sprint 23]) + routePins (`buildRoutePinsFromPost` origin+intermediates+destination, `buildTraceInputFromPins`, `ROUTE_PINS_CONFIG` [Sprint 28])
     → Shared visuals: MapPins.tsx (`MapRoutePin` numbered dot, `MapUserDot` info-blue + glory ring + radar) — token classes only, no hardcoded hex
     → Shared location: `useUserLocation` hook (passive fix + watch; explore override + post-detail fallback [Sprint 23])
+    → Shared trace: `useRouteTrace` hook (estimate + debounced `/api/routes/trace` + memory cache + silent fallback [Sprint 28] — composer preview + post detail)
+    → Live overlay: `LiveNavigationModal` (map + NavigationGuide together, `LIVE_NAVIGATION_CONFIG` [Sprint 28] — post detail)
     → MapLibre GL vector tiles (keyless) — zero `NEXT_PUBLIC_*` map keys read (+ `maplibre-gl.css` import required by every renderer [Sprint 23])
 
 NotificationService

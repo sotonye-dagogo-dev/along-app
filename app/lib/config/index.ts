@@ -1,6 +1,6 @@
 export { VEHICLE_REGISTRY } from "./vehicles";
 export { ROUTE_STATUS_REGISTRY } from "./routeStatus";
-export { NAV_REGISTRY, filterNavItems, isAdminRole } from "./navigation";
+export { NAV_REGISTRY, filterNavItems, isAdminRole, LIVE_NAVIGATION_CONFIG } from "./navigation";
 export { ERROR_REPORTING_CONFIG, ERROR_SENSITIVE_PATTERNS } from "./errorReporting";
 export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, USERNAME_RULE, POST_CREATE_FIELDS, BUG_REPORT_FIELDS, CONTACT_FIELDS } from "./forms";
 export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
@@ -21,6 +21,8 @@ export { SHARE_ROUTE_MODAL_CONFIG } from "./shareRoute";
 export type { ShareRouteModalConfig } from "./shareRoute";
 export { ROUTE_STEPS_CONFIG, isDestinationStep, showStepFare, showStepVehicle, normalizeRouteSteps } from "./routeSteps";
 export type { RouteStepsConfig, RouteStepLike } from "./routeSteps";
+export { buildRoutePinsFromPost, buildTraceInputFromPins, ROUTE_PINS_CONFIG } from "./routePins";
+export type { RoutePinLike, BuildRoutePinsInput, StoredRouteStepLike, StoredWaypointLike } from "./routePins";
 export { ROUTE_DRAFTS_CONFIG } from "./routeDrafts";
 export type { RouteDraftsConfig } from "./routeDrafts";
 export { REQUEST_ROUTE_TRIGGER_CONFIG } from "./routeRequest";
@@ -59,6 +61,10 @@ export {
 } from "./earlyAdopter";
 export type { EarlyAdopterConfig } from "./earlyAdopter";
 export { RATE_LIMITS } from "./rateLimits";
+export { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES, cooldownKeyFor, attemptsKeyFor, maskEmail } from "./authVerification";
+export type { AuthVerificationConfig } from "./authVerification";
+export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";
+export type { PushPromptConfig, PushSubscribeReason } from "./pushPrompt";
 export { ACCOUNT_DELETION_CONFIG, deletionScheduledFor, buildDeletedUserName, buildDeletedEmail, isDeletionOverdue } from "./accountDeletion";
 export type { AccountDeletionStatus } from "./accountDeletion";
 export { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, isSystemTemplate, parseManualEmails } from "./emailManagement";
