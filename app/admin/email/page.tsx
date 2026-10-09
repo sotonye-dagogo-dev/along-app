@@ -17,6 +17,7 @@ interface ComposerSelection {
   count: number;
   query: string;
   emails: string;
+  includeUnverified: boolean;
 }
 
 interface UserHit { id: string; userName: string; firstName: string; lastName: string; email: string }
@@ -121,7 +122,7 @@ export default function AdminEmailPage() {
   const [composeVars, setComposeVars] = useState<Record<string, string>>({});
   const [composeJson, setComposeJson] = useState("");
   const [useJsonVars, setUseJsonVars] = useState(false);
-  const [selection, setSelection] = useState<ComposerSelection>({ mode: "admins", role: "USER", count: 100, query: "", emails: "" });
+  const [selection, setSelection] = useState<ComposerSelection>({ mode: "admins", role: "USER", count: 100, query: "", emails: "", includeUnverified: false });
   const [sending, setSending] = useState(false);
   // Select-search recipients
   const [userHits, setUserHits] = useState<UserHit[]>([]);
@@ -358,6 +359,25 @@ export default function AdminEmailPage() {
     }
   };
 
+  // Restore-to-default: drops the DB override so the hardcoded config
+  // fallback applies again (hardcoded updates never auto-overwrite saves).
+  const handleRestore = async () => {
+    if (!selected) return;
+    try {
+      const res = await fetch("/api/admin/email/templates", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restore: selected }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((d as { error?: string }).error ?? "Restore failed");
+      toastService.success(`“${selected}” restored to default`);
+      await load();
+    } catch (e) {
+      toastService.error(e instanceof Error ? e.message : "Restore failed");
+    }
+  };
+
   // Select-search: debounced lookup against /api/admin/users?q=
   const onSearchInput = (q: string) => {
     setSelection({ ...selection, query: q });
@@ -396,19 +416,20 @@ export default function AdminEmailPage() {
       const res = await fetch("/api/admin/email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          templateName: selected,
-          vars,
-          selection: {
-            mode: selection.mode,
-            role: selection.role,
-            count: selection.count,
-            query: selection.query,
-            emails: selection.mode === "search" && pickedEmails.length
-              ? pickedEmails
-              : parseManualEmails(selection.emails),
-          },
-        }),
+          body: JSON.stringify({
+            templateName: selected,
+            vars,
+            selection: {
+              mode: selection.mode === "search" && pickedEmails.length ? "manual" : selection.mode,
+              role: selection.role,
+              count: selection.count,
+              query: selection.query,
+              includeUnverified: selection.includeUnverified,
+              emails: selection.mode === "search" && pickedEmails.length
+                ? pickedEmails
+                : parseManualEmails(selection.emails),
+            },
+          }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((data as { error?: string }).error ?? "Send failed");
@@ -632,11 +653,17 @@ export default function AdminEmailPage() {
             </div>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button onClick={handleSave} disabled={saving}
               className="px-3 py-2 radius-md bg-primary text-white text-xs font-semibold border-none cursor-pointer disabled:opacity-50">
               {saving ? "Saving…" : isNew ? "Create template" : "Save changes"}
             </button>
+            {!isNew && current && (
+              <button onClick={handleRestore} title="Drop DB overrides and fall back to the hardcoded default (hardcoded updates never auto-overwrite saves)"
+                className="inline-flex items-center gap-1 px-3 py-2 radius-md border border-border text-xs font-semibold cursor-pointer">
+                <RefreshCw size={13} /> Restore default
+              </button>
+            )}
             {!isNew && current && !current.isSystem && (
               <button onClick={handleDelete} className="inline-flex items-center gap-1 px-3 py-2 radius-md bg-error text-error-text text-xs font-semibold border-none cursor-pointer">
                 <Trash2 size={13} /> Delete
@@ -745,10 +772,31 @@ export default function AdminEmailPage() {
                   className="rounded-md border border-border bg-bg-base p-2 font-mono" />
               </label>
             )}
-            {/* Per-variable value inputs */}
+            {selection.mode !== "manual" && (
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="inline-flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={selection.includeUnverified}
+                    onChange={(e) => setSelection({ ...selection, includeUnverified: e.target.checked })}
+                    className="w-4 h-4 accent-primary cursor-pointer"
+                  />
+                  <span className="font-medium">Include unverified emails</span>
+                </span>
+                <span className="text-[11px] text-text-muted leading-relaxed">
+                  {selection.includeUnverified
+                    ? "Unverified addresses included — note: unverified emails may fail delivery since the addresses are not confirmed."
+                    : "Unverified emails are filtered out by default to avoid resource wastage."}
+                </span>
+              </label>
+            )}
+            {/* Per-variable value inputs — only manual-entry vars REQUIRE input.
+                Platform defaults (appUrl/logoUrl/…) + user-derived
+                (firstName/userName/email) + generated (otp/verifyLink/…)
+                resolve automatically per recipient. */}
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-text-muted font-medium text-xs">Values for {current?.variables.length ? `(${current.variables.length} vars)` : "(no vars declared)"}</span>
+                <span className="text-text-muted font-medium text-xs">Values for {current?.variables.length ? `(${current.variables.length} vars)` : "(no vars declared)"} — auto vars send without input</span>
                 <button onClick={() => setUseJsonVars(!useJsonVars)} className="text-[11px] text-primary cursor-pointer bg-transparent border-none">
                   {useJsonVars ? "Use field inputs" : "Use JSON instead"}
                 </button>
@@ -759,14 +807,23 @@ export default function AdminEmailPage() {
                   className="rounded-md border border-border bg-bg-base p-2 font-mono text-xs" />
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                  {(current?.variables ?? []).map((v) => (
-                    <label key={v} className="flex flex-col gap-0.5 text-xs">
-                      <span className="font-mono text-text-muted">{`{{${v}}}`}</span>
-                      <input value={composeVars[v] ?? ""} onChange={(e) => setComposeVars((p) => ({ ...p, [v]: e.target.value }))}
-                        placeholder={EMAIL_BUILDER_CONFIG.variableCatalog.find((c) => c.name === v)?.example ?? `Value for ${v}`}
-                        className="rounded-md border border-border bg-bg-base px-2 py-1.5 text-xs" />
-                    </label>
-                  ))}
+                  {(current?.variables ?? []).map((v) => {
+                    const auto = ["appUrl", "appName", "logoUrl", "supportEmail", "year", "firstName", "lastName", "userName", "email", "displayName", "otp", "verifyLink", "resetLink", "confirmLink", "cancelLink", "changedAt", "scheduledDate", "completedDate", "reasonLine"].includes(v);
+                    return (
+                      <label key={v} className="flex flex-col gap-0.5 text-xs">
+                        <span className="font-mono text-text-muted flex items-center gap-1.5">{`{{${v}}}`}
+                          <span className={`text-[9px] font-bold uppercase tracking-wide px-1 py-px radius-pill ${auto ? "bg-success text-white" : "bg-warning text-warning-text"}`}>
+                            {auto ? "auto" : "manual*"}
+                          </span>
+                        </span>
+                        <input value={composeVars[v] ?? ""} onChange={(e) => setComposeVars((p) => ({ ...p, [v]: e.target.value }))}
+                          placeholder={auto
+                            ? `Auto per recipient — override optional (${EMAIL_BUILDER_CONFIG.variableCatalog.find((c) => c.name === v)?.example ?? v})`
+                            : (EMAIL_BUILDER_CONFIG.variableCatalog.find((c) => c.name === v)?.example ?? `Value for ${v} (required for manual addresses)`)}
+                          className="rounded-md border border-border bg-bg-base px-2 py-1.5 text-xs" />
+                      </label>
+                    );
+                  })}
                   {(current?.variables ?? []).length === 0 && (
                     <span className="text-[11px] text-text-muted">This template declares no variables — sends use shared defaults (appUrl, logoUrl, …).</span>
                   )}

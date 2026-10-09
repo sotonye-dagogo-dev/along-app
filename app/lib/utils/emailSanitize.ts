@@ -11,6 +11,10 @@ const ALLOWED_TAGS = new Set([
   "table", "tr", "td", "th", "tbody", "thead",
   "div", "span", "blockquote", "pre", "code",
   "center", "font",
+  // Inline SVG icons (EMAIL_ICONS) — required so icons render in preview
+  // AND in sent mail. Presentation attrs only; scripts/event handlers are
+  // still stripped by the generic filters below.
+  "svg", "path", "circle", "polygon", "rect", "line", "polyline", "g",
 ]);
 
 const ALLOWED_ATTRS: Record<string, Set<string>> = {
@@ -21,6 +25,14 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
   td: new Set(["style", "align", "valign", "colspan", "width"]),
   th: new Set(["style", "align", "valign", "colspan", "width"]),
   div: new Set(["style"]),
+  svg: new Set(["viewbox", "width", "height", "fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "style"]),
+  path: new Set(["d", "fill", "stroke", "stroke-width", "style"]),
+  circle: new Set(["cx", "cy", "r", "fill", "stroke", "stroke-width", "style"]),
+  polygon: new Set(["points", "fill", "stroke", "stroke-width", "style"]),
+  rect: new Set(["width", "height", "x", "y", "rx", "fill", "stroke", "stroke-width", "style"]),
+  line: new Set(["x1", "y1", "x2", "y2", "stroke", "stroke-width", "style"]),
+  polyline: new Set(["points", "fill", "stroke", "stroke-width", "style"]),
+  g: new Set(["fill", "stroke", "stroke-width", "style"]),
   span: new Set(["style"]),
   p: new Set(["style"]),
   h1: new Set(["style"]),
@@ -97,19 +109,22 @@ export function sanitizeEmailHtml(dirty: string, maxLen = 100000): string {
       // Rebuild opening tag with only allowed attrs.
       if (tag.startsWith("</")) return `</${name}>`;
       const selfClose = tag.endsWith("/>");
-      const attrRe = /([a-zA-Z-]+)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/g;
+      const attrRe = /([a-zA-Z][a-zA-Z0-9-]*)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/g;
       const kept: string[] = [];
       let am: RegExpExecArray | null;
       while ((am = attrRe.exec(tag)) !== null) {
-        const key = am[1].toLowerCase();
+        const rawKey = am[1];
+        const key = rawKey.toLowerCase();
         const val = am[2];
         if (!allowed.has(key) && key !== "style") continue;
+        // Preserve camelCase for SVG (viewBox is case-sensitive).
+        const outKey = key === "viewbox" ? "viewBox" : key;
         if ((key === "href" || key === "src") && !isSafeUrl(val.replace(/^["']|["']$/g, ""))) continue;
         if (key === "style") {
           const styleVal = val.replace(/^["']|["']$/g, "");
           if (/expression|javascript:|behaviour|behavior|binding/i.test(styleVal)) continue;
         }
-        kept.push(`${key}=${val}`);
+        kept.push(`${outKey}=${val}`);
       }
       // Preserve bare style-less structural attrs
       return `<${name}${kept.length ? " " + kept.join(" ") : ""}${selfClose ? " /" : ""}>`;

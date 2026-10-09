@@ -18,6 +18,8 @@ interface LeaderboardEntry {
   followerCount: number
 }
 
+const PAGE_SIZE = 20
+
 function getTierColor(tier: string | null): string {
   switch (tier) {
     case "platinum": return "text-purple-500"
@@ -40,15 +42,23 @@ export default function LeaderboardPage() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<"all" | "month" | "week">("all")
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [me, setMe] = useState<LeaderboardEntry | null>(null)
+  const [jumpHighlight, setJumpHighlight] = useState(false)
 
   useEffect(() => {
     const load = async () => {
       setLoading(true)
       try {
-        const res = await fetch("/api/leaderboard")
+        const res = await fetch(`/api/leaderboard?page=${page}&limit=${PAGE_SIZE}&me=1`)
         if (res.ok) {
           const data = await res.json()
           setEntries(data.leaderboard ?? [])
+          setTotalPages(data.totalPages ?? 1)
+          setTotal(data.total ?? 0)
+          setMe(data.me ?? null)
         }
       } catch (err) {
         console.error("Failed to load leaderboard", err)
@@ -57,7 +67,16 @@ export default function LeaderboardPage() {
       }
     }
     load()
-  }, [period])
+  }, [period, page])
+
+  // Jump to my rank: fetch the page holding my rank, then highlight my row.
+  const jumpToMyRank = async () => {
+    if (!me?.rank) return
+    const myPage = Math.max(1, Math.ceil(me.rank / PAGE_SIZE))
+    setPage(myPage)
+    setJumpHighlight(true)
+    setTimeout(() => setJumpHighlight(false), 3000)
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -84,8 +103,23 @@ export default function LeaderboardPage() {
         ))}
       </div>
 
-      {/* Top 3 podium */}
-      {!loading && entries.length >= 3 && (
+      {/* Own rank + jump (large boards) */}
+      {!loading && me && (
+        <div className="flex items-center justify-between gap-2 mb-4 px-4 py-2.5 rounded-lg bg-primary-muted border border-primary/20">
+          <span className="text-xs font-semibold text-text-primary">
+            {tf("leaderboard.yourRank", "Your rank")}: #{me.rank} · {me.rewardPoints.toLocaleString()} pts
+          </span>
+          <button
+            onClick={jumpToMyRank}
+            className="px-3 py-1.5 radius-pill text-xs font-semibold bg-primary text-white border-none cursor-pointer"
+          >
+            Jump to my rank
+          </button>
+        </div>
+      )}
+
+      {/* Top 3 podium (first page only) */}
+      {!loading && page === 1 && entries.length >= 3 && (
         <div className="flex items-end justify-center gap-3 mb-6">
           {[1, 0, 2].map((i) => {
             const e = entries[i]
@@ -122,13 +156,15 @@ export default function LeaderboardPage() {
         ) : entries.length === 0 ? (
           <div className="text-center py-12 text-text-muted text-sm">{tf("leaderboard.empty", "No ranked contributors yet. Share a route to top the board.")}</div>
         ) : (
-          entries.slice(3).map((entry) => {
+          (page === 1 ? entries.slice(3) : entries).map((entry) => {
             const badge = getRankBadge(entry.rank)
+            const isMe = me?.id === entry.id
             return (
               <Link
                 key={entry.id}
+                id={isMe ? "my-rank-row" : undefined}
                 href={`/profile/${entry.userName}`}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-bg-card border border-border hover:bg-bg-elevated transition-colors no-underline"
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg bg-bg-card border hover:bg-bg-elevated transition-colors no-underline ${isMe && jumpHighlight ? "border-primary ring-2 ring-primary/30" : "border-border"}`}
               >
                 <div className={`w-8 h-8 rounded-circle flex items-center justify-center text-xs font-bold shrink-0 ${badge.bg} ${entry.rank <= 3 ? "" : "text-text-secondary"}`}>
                   {badge.icon}
@@ -158,6 +194,29 @@ export default function LeaderboardPage() {
           })
         )}
       </div>
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="px-3 py-1.5 radius-md text-xs font-semibold border border-border bg-bg-card cursor-pointer disabled:opacity-40"
+          >
+            Prev
+          </button>
+          <span className="text-xs text-text-muted">
+            Page {page} of {totalPages} · {total} ranked
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="px-3 py-1.5 radius-md text-xs font-semibold border border-border bg-bg-card cursor-pointer disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -171,6 +171,10 @@ export async function PATCH(request: NextRequest) {
           });
         }
       } catch { /* non-critical */ }
+      try {
+        const { logAudit } = await import("@/app/lib/services/auditService");
+        await logAudit({ actorId: user.id as string, action: `user.${action}`, entity: "user", metadata: { targets, next } });
+      } catch { /* ignore */ }
       return NextResponse.json({ success: true, updated: targets.length, previous, action }, { status: 200 });
     }
 
@@ -246,6 +250,10 @@ export async function PATCH(request: NextRequest) {
           : { role: role as "USER" | "ADMIN" },
     });
 
+    try {
+      const { logAudit } = await import("@/app/lib/services/auditService");
+      await logAudit({ actorId: user.id as string, action: "user.role", entity: "user", metadata: { targets, role, verified: verified ?? null } });
+    } catch { /* ignore */ }
     return NextResponse.json({ success: true, updated: targets.length, previous }, { status: 200 });
   } catch (error) {
     console.error("Admin user update error:", error);

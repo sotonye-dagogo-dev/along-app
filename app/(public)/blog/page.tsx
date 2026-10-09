@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Clock, User } from "lucide-react";
-import { PAGE_META, BLOG_LAYOUT_CONFIG } from "@/app/lib/config";
+import { PAGE_META, BLOG_LAYOUT_CONFIG, DEFAULT_BLOG_CATEGORIES } from "@/app/lib/config";
 import { buildPublicMetadata } from "@/app/lib/utils/metadata";
-import { getAllPosts } from "@/app/lib/utils/blog";
-import type { BlogPostFrontmatter } from "@/app/lib/utils/blog";
+import { getPublicBlogPosts } from "@/app/lib/utils/blogStore";
+import type { ManagedBlogPost } from "@/app/lib/utils/blogStore";
 
 export const metadata: Metadata = buildPublicMetadata(
   PAGE_META.blog.title,
@@ -12,7 +12,7 @@ export const metadata: Metadata = buildPublicMetadata(
   "/blog",
 );
 
-function PostCard({ post }: { post: BlogPostFrontmatter }) {
+function PostCard({ post }: { post: ManagedBlogPost }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
@@ -43,18 +43,44 @@ function PostCard({ post }: { post: BlogPostFrontmatter }) {
   );
 }
 
-export default function BlogPage() {
-  const posts = getAllPosts();
-  const featured = posts.slice(0, BLOG_LAYOUT_CONFIG.featuredCount);
-  const remaining = posts.slice(BLOG_LAYOUT_CONFIG.featuredCount);
+interface Props {
+  searchParams: Promise<{ page?: string; category?: string }>;
+}
+
+export default async function BlogPage({ searchParams }: Props) {
+  const { page: pageRaw, category: categoryRaw } = await searchParams;
+  const page = Math.max(1, Number(pageRaw) || 1);
+  const category = (categoryRaw ?? "all").toLowerCase();
+  // Managed (admin-published) posts first, filesystem seeds as fallback —
+  // sanitized + styled at render like the config examples.
+  const all = await getPublicBlogPosts();
+  const filtered = category === "all" ? all : all.filter((p) => p.category.toLowerCase() === category);
+  const perPage = BLOG_LAYOUT_CONFIG.postsPerPage;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const safePage = Math.min(page, totalPages);
+  const posts = filtered.slice((safePage - 1) * perPage, safePage * perPage);
+  const featured = safePage === 1 && category === "all" ? posts.slice(0, BLOG_LAYOUT_CONFIG.featuredCount) : [];
+  const remaining = safePage === 1 && category === "all" ? posts.slice(BLOG_LAYOUT_CONFIG.featuredCount) : posts;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
-      <div className="text-center mb-10">
+      <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-text-primary mb-3">Blog</h1>
         <p className="text-text-secondary max-w-lg mx-auto">
           Route tips, platform updates, and stories from the Along community.
         </p>
+      </div>
+
+      <div className="flex gap-2 flex-wrap justify-center mb-8">
+        {DEFAULT_BLOG_CATEGORIES.map((c) => (
+          <Link
+            key={c.id}
+            href={c.id === "all" ? "/blog" : `/blog?category=${c.id}`}
+            className={`px-3 py-1.5 radius-pill text-xs font-medium border transition-colors ${category === c.id ? "bg-primary text-white border-primary" : "bg-bg-card text-text-secondary border-border"}`}
+          >
+            {c.label}
+          </Link>
+        ))}
       </div>
 
       {posts.length === 0 ? (
@@ -88,6 +114,28 @@ export default function BlogPage() {
               <PostCard key={post.slug} post={post} />
             ))}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              {safePage > 1 && (
+                <Link
+                  href={safePage === 2 && category === "all" ? "/blog" : `/blog?page=${safePage - 1}${category !== "all" ? `&category=${category}` : ""}`}
+                  className="px-3 py-1.5 radius-md text-xs font-semibold border border-border bg-bg-card"
+                >
+                  Prev
+                </Link>
+              )}
+              <span className="text-xs text-text-muted">Page {safePage} of {totalPages}</span>
+              {safePage < totalPages && (
+                <Link
+                  href={`/blog?page=${safePage + 1}${category !== "all" ? `&category=${category}` : ""}`}
+                  className="px-3 py-1.5 radius-md text-xs font-semibold border border-border bg-bg-card"
+                >
+                  Next
+                </Link>
+              )}
+            </div>
+          )}
         </>
       )}
 
