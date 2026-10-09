@@ -423,6 +423,21 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 
 ---
 
+## Sprint 26 — Email Studio Tightening: live preview, logo universality, parsing, save-styling, vars/fallbacks, origins (execute-feature 2026-10-09)
+
+> **Section summary:** Directive close-out, non-breaking additive (no migration, no new deps, no removed APIs; GET preview shape unchanged). QA static-review in-runner (no node_modules — tsc/jest/build must confirm green in CI/Vercel).
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Live unsaved preview — Studio debounced client render (canonical draft → wrap → samples + composer overrides) + Live/Saved badge + baseline dirty tracking; `POST /api/email/preview` draft endpoint | [x] |
+| [M] | Logo universality — all 11 defaults head with logo img (`alt={{appName}}`) + shared wrapper/footer; legacy header SVG removed; image blocks email-safe + Studio thumbnails | [x] |
+| [M] | Builder parsing — `htmlToBlocks` strips inline tags (no raw HTML in paragraphs), div/td wrappers, CTA/nested-list splits, dedupe; `\5`→`\4` backreference fix | [x] |
+| [S] | Save styling — `ensureEmailDocument` fragment auto-wrap at render (preview + sends); PUT regenerates text twin from new html | [x] |
+| [M] | Vars/fallbacks/origins — `{{name||fallback}}` in render/extract/sanitize; catalog 12→25; all link builders via `getAppUrl()` (google, forgot-password, verify/change-email, deletion, welcome, preview) | [x] |
+| [S] | Tests — emailStudio +13 (fallbacks, wrap, parsing, image, logo universality) | [x] |
+
+---
+
 ## Backlog
 
 > **Section summary:** Known work that needs to be done but hasn't been scheduled yet.

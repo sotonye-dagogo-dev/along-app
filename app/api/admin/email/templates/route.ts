@@ -34,8 +34,11 @@ function sanitize(t: Partial<EmailTemplate>, existing?: EmailTemplate): EmailTem
   const subject = stripTags(String(t.subject ?? existing?.subject ?? "")).slice(0, 200);
   const rawHtml = String(t.bodyHtml ?? existing?.bodyHtml ?? "").slice(0, 100000);
   const bodyHtml = sanitizeStoredBody(rawHtml);
-  const rawText = String(t.bodyText ?? existing?.bodyText ?? "");
-  const bodyText = stripTags(rawText).slice(0, 50000) || deriveBodyText("", bodyHtml);
+  // Plain-text twin always regenerates from the NEW html unless the caller
+  // explicitly supplied bodyText (Studio sends html-only edits) — otherwise
+  // the text preview/send would show stale pre-edit content after saving.
+  const rawText = typeof t.bodyText === "string" && t.bodyText.trim() ? String(t.bodyText) : "";
+  const bodyText = rawText ? stripTags(rawText).slice(0, 50000) : deriveBodyText("", bodyHtml);
   if (!subject || !bodyHtml) return null;
   const vars = Array.isArray(t.variables) ? t.variables.map(String).filter((v) => /^\w+$/.test(v)).slice(0, 50)
     : extractVariables(bodyHtml, subject, bodyText);

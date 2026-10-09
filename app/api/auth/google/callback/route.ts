@@ -3,6 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { signAccessToken, signRefreshToken } from "@/app/lib/utils/auth";
 import { setAuthCookies } from "@/app/lib/utils/cookies";
+import { getAppUrl } from "@/app/lib/config/env";
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
     const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const appUrl = getAppUrl();
 
     if (!googleClientId || !googleClientSecret) {
       return NextResponse.json(

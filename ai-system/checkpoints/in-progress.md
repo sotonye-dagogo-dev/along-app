@@ -1,6 +1,6 @@
-**Session:** idle — execute-feature 2026-10-09 (Sprint 25) closed: PWA tightening (v4 config-registry caching + collapsible offline toast), pidgin depth (235 keys + toggle wired), platform reviews E2E (API + panel + profile tabs + About tape + CTA cadence + thank-you + anonymize). QA green in-runner (tsc 0, jest 309/309, build clean). Docs deep-synced (update-ai-system chain).
-**Status:** No active sprint. Next work: Vercel deploy green confirmation (SW v3→v4 rollover, `/api/reviews` live check) + seed/moderate first platform reviews.
+**Session:** idle — execute-feature 2026-10-09 (Sprint 26) closed: Email Studio tightening (live unsaved preview + POST draft endpoint, universal logo-img wrapper, tag-stripping htmlToBlocks, fragment auto-wrap on render, `{{var||fallback}}` vars, getAppUrl origins everywhere). Change-set review-verified in-runner (no node_modules — tsc/jest/build deferred to CI/Vercel). Docs deep-synced (update-ai-system chain).
+**Status:** No active sprint. Next work: Vercel deploy green confirmation (`tsc` + `emailStudio` jest + `next build`) + prod-verify a Studio edit→preview→save→preview cycle and one wired-in mail (e.g. welcome/verify) for origin correctness.
 
 ## Last completed work (archived summary)
 
-Execute-feature 2026-10-09 — Sprint 25: see `summaries/dev-history.md` (Sprint 25 entry) and `checkpoints/session-log.md` (2026-10-09 Sprint 25 entry) for full detail.
+Execute-feature 2026-10-09 — Sprint 26: see `summaries/dev-history.md` (Sprint 26 entry) and `checkpoints/session-log.md` (2026-10-09 Email Studio tightening entry) for full detail.
