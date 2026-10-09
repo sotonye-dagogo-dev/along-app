@@ -6,12 +6,22 @@ import { verifyPassword } from "@/app/lib/utils/security";
 import { signAccessToken, signRefreshToken } from "@/app/lib/utils/auth";
 import { setAuthCookies } from "@/app/lib/utils/cookies";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
-import { getOtp, delOtp } from "@/app/lib/services/otpStore";
+import { getOtp, delOtp, recordVerifyAttempt, clearVerifyAttempts } from "@/app/lib/services/otpStore";
+import { AUTH_VERIFICATION_CONFIG, attemptsKeyFor } from "@/app/lib/config/authVerification";
 
 export async function POST(request: NextRequest) {
   try {
     const rateCheck = checkRateLimit(request, "auth");
-    if (!rateCheck.allowed) return rateCheck.response;
+    if (!rateCheck.allowed) {
+      const retryAfter = Number(rateCheck.response.headers.get("Retry-After") ?? "900");
+      return NextResponse.json(
+        {
+          error: AUTH_VERIFICATION_CONFIG.copy.rateLimited(retryAfter),
+          retryAfter,
+        },
+        { status: 429, headers: { "Retry-After": String(retryAfter) } }
+      );
+    }
     let body: unknown;
     try {
       body = await request.json();
@@ -49,14 +59,42 @@ export async function POST(request: NextRequest) {
     const storedHash = await getOtp(otpKey);
 
     if (!storedHash) {
-      return NextResponse.json({ error: "OTP expired or invalid" }, { status: 400 });
+      // Covers three real cases: never issued, TTL elapsed, or replaced by
+      // a newer resend (same key) — the copy says so instead of a bare
+      // "OTP expired or invalid".
+      await clearVerifyAttempts(attemptsKeyFor(email));
+      return NextResponse.json(
+        { error: AUTH_VERIFICATION_CONFIG.copy.expired, expired: true },
+        { status: 400 }
+      );
     }
 
     const valid = await verifyPassword(otp, storedHash);
 
     if (!valid) {
-      return NextResponse.json({ error: "Invalid OTP" }, { status: 400 });
+      const attempts = await recordVerifyAttempt(
+        attemptsKeyFor(email),
+        AUTH_VERIFICATION_CONFIG.otpTtlSeconds
+      );
+      const attemptsLeft = AUTH_VERIFICATION_CONFIG.maxVerifyAttempts - attempts;
+      if (attempts >= AUTH_VERIFICATION_CONFIG.maxVerifyAttempts) {
+        // Revoke: brute-force cap reached — a fresh code is required.
+        await delOtp(otpKey);
+        await clearVerifyAttempts(attemptsKeyFor(email));
+        return NextResponse.json(
+          { error: AUTH_VERIFICATION_CONFIG.copy.attemptsExhausted, expired: true },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json(
+        {
+          error: AUTH_VERIFICATION_CONFIG.copy.incorrect(Math.max(0, attemptsLeft)),
+          attemptsLeft: Math.max(0, attemptsLeft),
+        },
+        { status: 400 }
+      );
     }
+    await clearVerifyAttempts(attemptsKeyFor(email));
 
     // Case-insensitive lookup for legacy mixed-case rows; update by id.
     const existing = await prisma.user.findFirst({

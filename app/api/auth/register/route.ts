@@ -4,7 +4,8 @@ import { prisma } from "@/app/lib/db/prisma";
 import { REGISTER_SCHEMA } from "@/app/lib/schemas/auth";
 import { hashPassword } from "@/app/lib/utils/security";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
-import { setOtp } from "@/app/lib/services/otpStore";
+import { setOtp, setSendCooldown } from "@/app/lib/services/otpStore";
+import { AUTH_VERIFICATION_CONFIG, cooldownKeyFor } from "@/app/lib/config/authVerification";
 
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
@@ -178,7 +179,10 @@ export async function POST(request: NextRequest) {
     const otpHash = await hashPassword(otp);
 
     const otpKey = `otp:${email}`;
-    await setOtp(otpKey, otpHash, 900);
+    await setOtp(otpKey, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds);
+    // Start the resend cooldown at issuance so the OTP screen timer and the
+    // server agree from the first code (prevents instant-tap 429 surprises).
+    await setSendCooldown(cooldownKeyFor(email), AUTH_VERIFICATION_CONFIG.resendCooldownSeconds);
 
     // Non-blocking email send — never hold request waiting for Resend, but now tightly observed (no false-positive).
     // Welcome fires regardless of OTP outcome (plan-register and referral
@@ -217,7 +221,14 @@ export async function POST(request: NextRequest) {
       void sendInBackground();
     }
 
-    return NextResponse.json({ message: "OTP sent to email" }, { status: 201 });
+    return NextResponse.json(
+      {
+        message: "OTP sent to email",
+        expiresIn: AUTH_VERIFICATION_CONFIG.otpTtlSeconds,
+        cooldown: AUTH_VERIFICATION_CONFIG.resendCooldownSeconds,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     Sentry.captureException(error);
     // Don't leak internal details to client — sanitize all messages

@@ -9,6 +9,10 @@ type ResetEntry = { email: string; hash: string; expiry: number };
 // Singleton in-memory fallbacks (shared across imports)
 const otpMemoryStore = new Map<string, OtpEntry>();
 const resetMemoryStore = new Map<string, ResetEntry>();
+// Per-email resend-cooldown + verify-attempt fallbacks. Kept separate from
+// the OTP hash so the `otp:{email}` read shape never changes (non-breaking).
+const cooldownMemoryStore = new Map<string, number>();
+const attemptsMemoryStore = new Map<string, { count: number; expiry: number }>();
 
 const REDIS_OP_TIMEOUT_MS = 2500;
 
@@ -155,4 +159,92 @@ export function __resetOtpStoreForTests() {
   _lastEnvKey = null;
   otpMemoryStore.clear();
   resetMemoryStore.clear();
+  cooldownMemoryStore.clear();
+  attemptsMemoryStore.clear();
+}
+
+/**
+ * Resend-cooldown helpers (additive, non-breaking). A cooldown key holds a
+ * unix-ms "not before" timestamp with the same TTL as the cooldown window.
+ * Redis-backed when available, per-instance memory otherwise (same durability
+ * caveat as OTP memory fallback — the API always returns the remaining
+ * seconds so the UI can display an honest timer either way).
+ */
+export async function setSendCooldown(key: string, windowSeconds: number): Promise<void> {
+  const notBefore = Date.now() + windowSeconds * 1000;
+  const redis = await getRedis();
+  if (redis) {
+    try {
+      await withTimeout(redis.set(key, String(notBefore), { ex: windowSeconds }));
+      return;
+    } catch (e) {
+      console.warn("[otpStore] redis set cooldown failed, falling back to memory", (e as Error).message);
+    }
+  }
+  cooldownMemoryStore.set(key, notBefore);
+}
+
+/** Seconds remaining before another send is allowed (0 = allowed). */
+export async function getSendCooldownRemaining(key: string): Promise<number> {
+  const redis = await getRedis();
+  if (redis) {
+    try {
+      const val = await withTimeout(redis.get<string>(key));
+      if (val) {
+        const remaining = Math.ceil((Number(val) - Date.now()) / 1000);
+        if (remaining > 0) return remaining;
+      }
+    } catch (e) {
+      console.warn("[otpStore] redis get cooldown failed, checking memory", (e as Error).message);
+    }
+  }
+  const notBefore = cooldownMemoryStore.get(key);
+  if (!notBefore) return 0;
+  const remaining = Math.ceil((notBefore - Date.now()) / 1000);
+  if (remaining <= 0) {
+    cooldownMemoryStore.delete(key);
+    return 0;
+  }
+  return remaining;
+}
+
+/**
+ * Wrong-code attempt counter (additive). Counts failures inside the OTP TTL
+ * window; callers revoke the code once `maxAttempts` is reached.
+ */
+export async function recordVerifyAttempt(key: string, windowSeconds: number): Promise<number> {
+  const redis = await getRedis();
+  if (redis) {
+    try {
+      const count = await withTimeout(redis.incr(key));
+      if (count === 1) {
+        try {
+          await withTimeout(redis.expire(key, windowSeconds));
+        } catch { /* TTL best-effort */ }
+      }
+      return count;
+    } catch (e) {
+      console.warn("[otpStore] redis incr attempts failed, falling back to memory", (e as Error).message);
+    }
+  }
+  const now = Date.now();
+  const entry = attemptsMemoryStore.get(key);
+  if (!entry || entry.expiry <= now) {
+    attemptsMemoryStore.set(key, { count: 1, expiry: now + windowSeconds * 1000 });
+    return 1;
+  }
+  entry.count += 1;
+  return entry.count;
+}
+
+export async function clearVerifyAttempts(key: string): Promise<void> {
+  const redis = await getRedis();
+  if (redis) {
+    try {
+      await withTimeout(redis.del(key));
+    } catch (e) {
+      console.warn("[otpStore] redis del attempts failed", (e as Error).message);
+    }
+  }
+  attemptsMemoryStore.delete(key);
 }

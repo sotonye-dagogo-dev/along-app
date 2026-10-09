@@ -59,6 +59,10 @@ export {
 } from "./earlyAdopter";
 export type { EarlyAdopterConfig } from "./earlyAdopter";
 export { RATE_LIMITS } from "./rateLimits";
+export { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES, cooldownKeyFor, attemptsKeyFor, maskEmail } from "./authVerification";
+export type { AuthVerificationConfig } from "./authVerification";
+export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";
+export type { PushPromptConfig, PushSubscribeReason } from "./pushPrompt";
 export { ACCOUNT_DELETION_CONFIG, deletionScheduledFor, buildDeletedUserName, buildDeletedEmail, isDeletionOverdue } from "./accountDeletion";
 export type { AccountDeletionStatus } from "./accountDeletion";
 export { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, isSystemTemplate, parseManualEmails } from "./emailManagement";
