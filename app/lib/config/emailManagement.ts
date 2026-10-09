@@ -96,7 +96,7 @@ export const EMAIL_BUILDER_CONFIG = {
     { name: "supportEmail", label: "Support email", example: "support@alongng.com" },
     { name: "year", label: "Year", example: "2026" },
     { name: "otp", label: "OTP code", example: "482937" },
-    { name: "verifyLink", label: "Verify link", example: "https://www.alongng.com/verify?token=…" },
+    { name: "verifyLink", label: "Verify link", example: "https://www.alongng.com/verify-email?email=adaobi%40example.com" },
     { name: "resetLink", label: "Reset link", example: "https://www.alongng.com/reset-password?token=…" },
     { name: "confirmLink", label: "Confirm link", example: "https://www.alongng.com/profile?emailConfirmed=1" },
     { name: "cancelLink", label: "Cancel link", example: "https://www.alongng.com/profile" },

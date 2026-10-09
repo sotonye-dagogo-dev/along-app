@@ -55,6 +55,7 @@ export async function middleware(request: NextRequest) {
   const guestRoutes = [
     "/", "/about", "/contact", "/privacy", "/terms", "/report-bug",
     "/faq", "/blog", "/home", "/explore", "/search", "/forgot-password",
+    "/verify-email",
   ];
   if (guestRoutes.some((r) => isExactPath(pathname, r))) {
     return response;

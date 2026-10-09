@@ -180,11 +180,23 @@ export async function POST(request: NextRequest) {
 
     const otpKey = `otp:${email}`;
     // Parallel writes — a slow Upstash host costs ~800ms total, not 2x sequential.
+    // The Postgres row is the durable copy: Redis/memory alone is per-instance
+    // (non-durable across serverless), which read as "expired seconds after
+    // issuance". Best-effort — a pending migration never fails signup.
+    const { storeEmailOtpDb, EMAIL_OTP_PURPOSES } = await import(
+      "@/app/lib/services/emailOtpStore"
+    );
     await Promise.all([
       setOtp(otpKey, otpHash, AUTH_VERIFICATION_CONFIG.otpTtlSeconds),
       // Start the resend cooldown at issuance so the OTP screen timer and the
       // server agree from the first code (prevents instant-tap 429 surprises).
       setSendCooldown(cooldownKeyFor(email), AUTH_VERIFICATION_CONFIG.resendCooldownSeconds),
+      storeEmailOtpDb(
+        email,
+        otpHash,
+        EMAIL_OTP_PURPOSES.verify,
+        AUTH_VERIFICATION_CONFIG.otpTtlSeconds
+      ).catch(() => {}),
     ]);
 
     // Non-blocking email send — never hold request waiting for Resend, but now tightly observed (no false-positive).

@@ -61,10 +61,24 @@ export async function POST(request: NextRequest) {
     const otpKey = `otp:${email}`;
     const storedHash = await getOtp(otpKey);
 
+    // Durable fallback (same class as verify-email PUT): Redis/memory is
+    // per-instance, so when it holds no hash the Postgres mirror decides —
+    // a just-received code must not read as "expired". A present-but-
+    // mismatched hash is still a wrong code (attempts below, unchanged).
+    let validViaDb = false;
     if (!storedHash) {
-      // Covers three real cases: never issued, TTL elapsed, or replaced by
-      // a newer resend (same key) — the copy says so instead of a bare
-      // "OTP expired or invalid".
+      try {
+        const { verifyEmailOtpDb, EMAIL_OTP_PURPOSES } = await import(
+          "@/app/lib/services/emailOtpStore"
+        );
+        validViaDb = await verifyEmailOtpDb(email, otp, EMAIL_OTP_PURPOSES.verify);
+      } catch { validViaDb = false; }
+    }
+
+    if (!storedHash && !validViaDb) {
+      // Covers two real cases now: never issued, or TTL elapsed on every
+      // store. A newer resend still replaces the single-active row, so the
+      // copy stays honest.
       await clearVerifyAttempts(attemptsKeyFor(email));
       return NextResponse.json(
         { error: AUTH_VERIFICATION_CONFIG.copy.expired, expired: true },
@@ -72,7 +86,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const valid = await verifyPassword(otp, storedHash);
+    const valid = storedHash ? await verifyPassword(otp, storedHash) : validViaDb;
 
     if (!valid) {
       const attempts = await recordVerifyAttempt(
@@ -84,6 +98,12 @@ export async function POST(request: NextRequest) {
         // Revoke: brute-force cap reached — a fresh code is required.
         await delOtp(otpKey);
         await clearVerifyAttempts(attemptsKeyFor(email));
+        try {
+          const { consumeEmailOtpsDb, EMAIL_OTP_PURPOSES } = await import(
+            "@/app/lib/services/emailOtpStore"
+          );
+          await consumeEmailOtpsDb(email, EMAIL_OTP_PURPOSES.verify);
+        } catch { /* non-critical */ }
         return NextResponse.json(
           { error: AUTH_VERIFICATION_CONFIG.copy.attemptsExhausted, expired: true },
           { status: 400 }
@@ -113,6 +133,12 @@ export async function POST(request: NextRequest) {
     });
 
     await delOtp(otpKey);
+    try {
+      const { consumeEmailOtpsDb, EMAIL_OTP_PURPOSES } = await import(
+        "@/app/lib/services/emailOtpStore"
+      );
+      await consumeEmailOtpsDb(email, EMAIL_OTP_PURPOSES.verify);
+    } catch { /* non-critical */ }
 
     const accessToken = signAccessToken({ userId: user.id, role: user.role }, rememberMe);
     const refreshToken = signRefreshToken({ userId: user.id, role: user.role }, rememberMe);
