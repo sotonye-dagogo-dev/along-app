@@ -920,3 +920,13 @@ Prod-verify referral + normal registration, single-admin mail ownership, reviewe
 
 **Next Sprint Focus:**
 CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studio send with missing vars, select-search send, explore share + dot.
+
+## Sprint 25 (2026-10-09) — PWA Tightening + Pidgin Depth + Platform Reviews Access
+**Directive:** cache config registry (raw `guest.signIn` keys seen offline) + collapsible offline toast; pidgin across config-driven public pages (about/faq/feed/landing/leaderboard/invitations/buttons/links) with seamless toggle; user access point for platform reviews (profile tab + FAQ), About placeholders → real reviews + every-10 CTA panel, thank-you notification (no email), archiving anonymizes without admin crashes. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- PWA: pwa.ts v4 (`/locales/*.json` precache, `/api/config` + `/api/reviews` cacheable, `PWA_OFFLINE_BANNER`, REVIEW push mirror); sw.js v4 mirror + `/locales/` cache-first branch; I18nProvider bundled-EN seed + localStorage last-good + `along-locale` cookie sync + `tf()` fallback helper; OfflineBanner collapsible/expandable pill persisted per device.
+- i18n: +74 keys en/pcm (235/235 parity, interpolation preserved); FAQ_PCM 24-item pidgin map + new Reviews FAQ category; toggle wired through PostCard aria-labels, PostMenu (config-fallback), AppFooter (optional `i18nKey`), LandingCtas + new LandingCopy islands, About headings, FaqClient, leaderboard/invite/feed-empty.
+- Reviews: `GET/POST /api/reviews` (self-pair `UserReview` marker → 1/user, upsert ACID, PENDING moderation, `mine`/`authorId`/cursor, edge cache, `reviews` rate-limit bucket); ReviewsPanel (form + pending note + guest gate + FAQ + list); own-profile `reviews` tab + `#reviews` deep link; other-profile read-only tab; About real-reviews tape with CTA cadence (`insertReviewCtaPanels`); `notifyReviewThanks` (REWARD+allowSelf, no email); archiving preserves-anonymizes with null-safe admin (`reviewAuthorName`).
+- Tests: `reviews.test.ts` (8), pwa.test +4, locales REQUIRED_KEYS +32.
+**QA (this runner, node_modules installed):** `tsc --noEmit` 0 errors (2 session errors fixed: test helper typing, `useState<number>`); `jest --ci` 36/36 suites, 309/309 tests pass; `next build` clean; `next lint` 0 new (1 pre-existing `Medal` unused-var warning); `node --check sw.js` OK; locale parity via python 235/235, 0 interpolation mismatches.
+**Compliance:** no migration, no removed APIs/shapes, no new deps; SW scope/strategy additive (v4 invalidates v3 cleanly); providers additive; all errors sanitized/offline-aware; ACID upsert for reviews.

@@ -7,7 +7,7 @@
  * two in sync and bump PWA_CACHE_VERSION when the precache list changes.
  */
 
-export const PWA_CACHE_VERSION = "v3";
+export const PWA_CACHE_VERSION = "v4";
 
 export const PWA_CACHE_NAMES = {
   static: `along-static-${PWA_CACHE_VERSION}`,
@@ -40,6 +40,11 @@ export const PWA_PRECACHE_ROUTES = [
   "/blog",
   "/manifest.json",
   "/offline.html",
+  // Config registry: locale dictionaries are fetched client-side by
+  // I18nProvider — precaching them stops raw keys (e.g. guest.signIn)
+  // leaking into the UI on first offline load.
+  "/locales/en.json",
+  "/locales/pcm.json",
 ] as const;
 
 export const PWA_OFFLINE_FALLBACK = "/offline.html" as const;
@@ -74,8 +79,12 @@ export const PWA_CACHEABLE_API_PREFIXES = [
   "/api/notifications",
   "/api/leaderboard",
   "/api/site-config",
+  "/api/config",
   "/api/faq",
   "/api/blog",
+  // Approved platform reviews back the About page; GET-only caching is safe
+  // (the SW only caches GET — review POSTs always hit the network).
+  "/api/reviews",
 ] as const;
 
 export function isNeverCacheApi(pathname: string): boolean {
@@ -118,6 +127,18 @@ export const PWA_TOAST_COPY = {
   backOnline: "Back online. Refresh to stay updated.",
   blockedOffline: "You are offline. This needs a connection — please try again when back online.",
   cachedNotice: "Cached data shown offline. Refresh when back online to stay updated.",
+  // Offline banner collapse/expand (banner must never block interaction).
+  collapse: "Minimize",
+  expand: "Offline info",
+  collapsedLabel: "Offline",
+  retry: "Retry",
+} as const;
+
+/** Offline banner collapse state (persisted per device, survives reloads). */
+export const PWA_OFFLINE_BANNER = {
+  storageKey: "along-offline-banner-collapsed",
+  /** Start collapsed on small screens where the banner covers the most UI. */
+  defaultCollapsed: false,
 } as const;
 
 export const PWA_PUSH_DEFAULTS = {
@@ -156,6 +177,9 @@ export const PWA_PUSH_MIRROR: Record<
   ACCOUNT_DELETION_REQUESTED: { title: "Account deletion requested", body: (m) => m, url: () => "/notifications" },
   ACCOUNT_DELETION_CANCELLED: { title: "Account deletion cancelled", body: (m) => m, url: () => "/notifications" },
   ACCOUNT_DELETION_COMPLETED: { title: "Account deletion completed", body: (m) => m, url: () => "/notifications" },
+  // Platform-review thank-you (sent as REWARD in-app; explicit entry keeps
+  // push copy stable even though the in-app type is REWARD).
+  REVIEW: { title: "Thanks for your review", body: (m) => m, url: () => "/about" },
 };
 
 export function resolvePushPayload(

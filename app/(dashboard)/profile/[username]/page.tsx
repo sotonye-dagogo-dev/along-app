@@ -10,6 +10,7 @@ import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 import { EarlyAdopterBadgeFromStatus } from "@/app/components/features/profile"
+import { ReviewsPanel } from "@/app/components/features/reviews"
 
 interface EarlyAdopterPayload {
   enabled: boolean
@@ -92,11 +93,14 @@ export default function OtherProfilePage() {
   )
   // Per-tab post lists for this profile (posts / routes / requests / liked).
   // "routes" = actual routes (ROUTE + ROUTE_RESPONSE); requests live on
-  // their own tab so they never masquerade as routes.
+  // their own tab so they never masquerade as routes. The reviews tab owns
+  // no post query — ReviewsPanel fetches the author's platform review.
   const profileId = profileRes?.user?.id
   const tabQuery = !profileId
     ? "/api/posts?limit=20"
-    : activeTab === "liked"
+    : activeTab === "reviews"
+      ? "/api/reviews?limit=1"
+      : activeTab === "liked"
       ? `/api/posts?limit=20&likedBy=${profileId}`
       : activeTab === "routes"
         ? `/api/posts?limit=20&userId=${profileId}&type=ROUTE,ROUTE_RESPONSE`
@@ -106,7 +110,7 @@ export default function OtherProfilePage() {
   const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
     ready && profileId ? `profile-tab:${profileId}:${activeTab}` : null,
     tabQuery,
-    { ttlSec: 120, enabled: ready }
+    { ttlSec: 120, enabled: ready && activeTab !== "reviews" }
   )
 
   const profile = useMemo<ProfileData | null>(() => {
@@ -288,7 +292,7 @@ export default function OtherProfilePage() {
           aria-label="Profile content"
           className="flex gap-1 sm:gap-2 border-b border-border mb-4 overflow-x-auto overscroll-x-contain pb-px -mx-1 px-1 scrollbar-thin"
         >
-          {["posts", "routes", "requests", "liked"].map((tab) => (
+          {["posts", "routes", "requests", "liked", "reviews"].map((tab) => (
             <button
               key={tab}
               role="tab"
@@ -307,6 +311,10 @@ export default function OtherProfilePage() {
         </div>
 
         <div className="flex flex-col gap-3 sm:gap-4 pb-8 min-w-0">
+          {activeTab === "reviews" && profileId ? (
+            <ReviewsPanel showForm={false} authorId={profileId} />
+          ) : (
+            <>
           {posts.length === 0 && !postsLoading && (
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
@@ -346,6 +354,8 @@ export default function OtherProfilePage() {
               }
             />
           ))}
+            </>
+          )}
         </div>
       </div>
     </div>

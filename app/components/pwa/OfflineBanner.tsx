@@ -1,15 +1,92 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
-import { PWA_TOAST_COPY } from "@/app/lib/config/pwa";
+import { useTranslation } from "@/app/providers/I18nProvider";
+import { PWA_TOAST_COPY, PWA_OFFLINE_BANNER } from "@/app/lib/config/pwa";
 
 /**
- * Slim offline banner — renders nothing when online. Config-driven copy,
- * design-system tokens via CSS variables, no layout shift (fixed bottom).
+ * Slim offline banner — renders nothing when online. Collapsible so it never
+ * blocks interaction: collapsed it shrinks to a corner pill that can be
+ * re-expanded while still offline. Collapse state persists per device.
+ * Copy is config-driven with i18n pidgin variants.
  */
 export function OfflineBanner() {
   const { isOnline, recheck } = useOnlineStatus();
+  const { t } = useTranslation();
+  const [collapsed, setCollapsed] = useState<boolean>(PWA_OFFLINE_BANNER.defaultCollapsed);
+
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(PWA_OFFLINE_BANNER.storageKey) === "1");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Reset to expanded on every fresh offline episode so the user notices.
+  useEffect(() => {
+    if (!isOnline) {
+      try {
+        setCollapsed(localStorage.getItem(PWA_OFFLINE_BANNER.storageKey) === "1");
+      } catch {
+        // ignore
+      }
+    }
+  }, [isOnline]);
+
   if (isOnline) return null;
+
+  const toggleCollapsed = (next: boolean) => {
+    setCollapsed(next);
+    try {
+      localStorage.setItem(PWA_OFFLINE_BANNER.storageKey, next ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  };
+
+  const wentOffline = t("pwa.offlineBanner") === "pwa.offlineBanner" ? PWA_TOAST_COPY.wentOffline : t("pwa.offlineBanner");
+  const retryLabel = t("pwa.retry") === "pwa.retry" ? PWA_TOAST_COPY.retry : t("pwa.retry");
+  const collapseLabel = t("pwa.collapse") === "pwa.collapse" ? PWA_TOAST_COPY.collapse : t("pwa.collapse");
+  const expandLabel = t("pwa.expand") === "pwa.expand" ? PWA_TOAST_COPY.expand : t("pwa.expand");
+  const collapsedLabel = t("pwa.collapsedLabel") === "pwa.collapsedLabel" ? PWA_TOAST_COPY.collapsedLabel : t("pwa.collapsedLabel");
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => toggleCollapsed(false)}
+        aria-expanded={false}
+        aria-label={expandLabel}
+        title={expandLabel}
+        style={{
+          position: "fixed",
+          right: 12,
+          bottom: 12,
+          zIndex: 60,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "8px 12px",
+          borderRadius: 999,
+          border: "none",
+          background: "var(--offline-bg, #1f2937)",
+          color: "var(--offline-fg, #fff)",
+          boxShadow: "0 8px 28px rgba(0,0,0,.25)",
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: "pointer",
+        }}
+      >
+        <span aria-hidden>📡</span>
+        {collapsedLabel}
+        <ChevronUp size={14} aria-hidden />
+      </button>
+    );
+  }
+
   return (
     <div
       role="status"
@@ -32,7 +109,7 @@ export function OfflineBanner() {
       }}
     >
       <span aria-hidden>📡</span>
-      <span style={{ flex: 1 }}>{PWA_TOAST_COPY.wentOffline}</span>
+      <span style={{ flex: 1 }}>{wentOffline}</span>
       <button
         onClick={() => void recheck()}
         style={{
@@ -45,7 +122,26 @@ export function OfflineBanner() {
           cursor: "pointer",
         }}
       >
-        Retry
+        {retryLabel}
+      </button>
+      <button
+        type="button"
+        onClick={() => toggleCollapsed(true)}
+        aria-expanded={true}
+        aria-label={collapseLabel}
+        title={collapseLabel}
+        style={{
+          background: "transparent",
+          color: "inherit",
+          border: "1px solid currentColor",
+          borderRadius: 8,
+          padding: "6px 8px",
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+        }}
+      >
+        <ChevronDown size={14} aria-hidden />
       </button>
     </div>
   );
@@ -57,7 +153,9 @@ export function OfflineBanner() {
  */
 export function CachedDataNotice({ compact = false }: { compact?: boolean }) {
   const { isOnline } = useOnlineStatus();
+  const { t } = useTranslation();
   if (isOnline) return null;
+  const copy = t("pwa.cachedNotice") === "pwa.cachedNotice" ? PWA_TOAST_COPY.cachedNotice : t("pwa.cachedNotice");
   return (
     <div
       role="note"
@@ -70,7 +168,7 @@ export function CachedDataNotice({ compact = false }: { compact?: boolean }) {
         marginBottom: compact ? 6 : 10,
       }}
     >
-      {PWA_TOAST_COPY.cachedNotice}
+      {copy}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 map-memoization + ESM-mock lessons)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 offline-i18n + reuse-without-migration lessons)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -590,6 +590,20 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** admin-composed mails arrived with raw `{{identifier}}` text (variable values never supplied or keys mismatched); `PROJECT_ENV=production` left insecure cookies + dev logs because only 2 prisma files honored it.
 - **Root causes:** (1) interpolation only replaced supplied keys, leaving the rest verbatim, and preview deliberately filled gaps with the identifier; (2) env reads were scattered `process.env.NODE_ENV` with no central resolver.
 - **Fix pattern (reuse):** interpolate against `{{(\w+)}}` globally with merged defaults and empty-string fallback + HTML-escape values; keep `{{...}}` intact through the sanitizer via placeholder-token protection; resolve env once in `lib/config/env.ts` (PROJECT_ENV wins) and consume `isProduction()/getEffectiveEnv()` everywhere. Verified: builder round-trips + sanitizer + env precedence executed under node strip-types.
+
+## Sprint 25: fetch-or-empty providers leak raw keys — seed from bundle + cache
+- **Symptom:** offline UI showed `guest.signIn`-style identifiers; locale fetch failure reset translations to `{}`.
+- **Root causes:** (1) provider initialized empty and only filled on network success; (2) SW had no `/locales/` handling so the fetch failed offline with nothing to fall back to.
+- **Fix pattern (reuse):** seed client providers from a bundled import, overlay last-good localStorage synchronously, then revalidate over network; add the fetched asset to SW precache + runtime handling in the same sprint. Applies to any fetch-driven provider (locales, site-config, feature flags).
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 25: reuse tables/types via marker rows instead of migrating
+- **Symptom:** three "new" needs (platform reviews storage, thank-you notification type, FAQ pidgin) each suggested a migration or schema/config expansion.
+- **Root causes:** defaulting to new-model thinking before checking whether an existing unique constraint or type already expresses the need.
+- **Fix pattern (reuse):** self-pair `UserReview` (+@@unique = one-per-user + upsert), REWARD+allowSelf thank-you, FAQ_PCM beside source copy — zero migrations, zero new tables, admin surfaces keep working. Migrate only when the need genuinely exceeds the existing shape.
+- **Supersedes:** None
+- **Superseded by:** None
 
 ## Sprint 24: PWA offline without session invalidation
 - **Symptom:** offline/network blips cleared auth state (AuthProvider set null on any fetch failure); SW precached auth-gated routes (login-redirect caching); push only auto-subscribed with no user control or server fan-out.

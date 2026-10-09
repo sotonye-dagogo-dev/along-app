@@ -7,6 +7,7 @@ import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, Cl
 import { AppCard, AppUserLabel, TrustBadge, VehicleChip, ImageLightbox } from "@/app/components/ui"
 import { PostMenu, type PostMenuPost } from "@/app/components/features/moderation"
 import { AuthContext } from "@/app/providers/AuthProvider"
+import { useTranslation } from "@/app/providers/I18nProvider"
 import { MODERATION_CONFIG } from "@/app/lib/config"
 import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import type { VehicleType } from "@/app/lib/types"
@@ -173,6 +174,7 @@ function postCardReducer(state: PostCardState, action: PostCardAction): PostCard
 }
 
 export default function PostCard({ post, onLike, onDislike, onBookmark, onShare, onComment, onRespond, onEdit, onDeleted, onRestored, onArchivedChanged }: PostCardProps) {
+  const { tf } = useTranslation()
   const [state, dispatch] = useReducer(postCardReducer, {
     liked: post._isLiked ?? false,
     likesCount: post.likes,
@@ -493,7 +495,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         <button
           onClick={(e) => { e.stopPropagation(); handleLike(); }}
           className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${state.liked ? "liked text-error-text" : ""}`}
-          aria-label="Like"
+          aria-label={tf("post.like", "Like")}
         >
           <Heart size={16} className={state.liked ? "fill-error-text stroke-error-text" : ""} />
           {state.likesCount > 0 && <span>{formatCount(state.likesCount)}</span>}
@@ -502,7 +504,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         <button
           onClick={(e) => { e.stopPropagation(); handleDislike(); }}
           className="flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans"
-          aria-label="Dislike"
+          aria-label={tf("post.dislike", "Dislike")}
         >
           <ThumbsDown size={16} />
           {state.dislikesCount > 0 && <span>{formatCount(state.dislikesCount)}</span>}
@@ -511,7 +513,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         <button
           onClick={(e) => { e.stopPropagation(); handleCommentClick(); }}
           className="flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans"
-          aria-label="Comment"
+          aria-label={tf("post.comment", "Comment")}
         >
           <MessageCircle size={16} />
           {post.comments > 0 && <span>{formatCount(post.comments)}</span>}
@@ -521,7 +523,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
           <button
             onClick={(e) => { e.stopPropagation(); handleBookmarkClick(); }}
             className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${state.bookmarked ? "bookmarked text-primary" : ""}`}
-            aria-label="Bookmark"
+            aria-label={tf("post.bookmark", "Bookmark")}
           >
             <Bookmark size={16} className={state.bookmarked ? "fill-primary stroke-primary" : ""} />
           </button>
@@ -529,7 +531,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
           <button
             onClick={(e) => { e.stopPropagation(); handleShareClick(); }}
             className="flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans"
-            aria-label="Share"
+            aria-label={tf("post.share", "Share")}
           >
             <Share2 size={16} />
           </button>

@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 21 safe deletion + Email Studio)
-> - last-verified-against-code: 2026-10-09 (Sprint 21 rows verified present in code; QA static-only in runner)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 PWA tightening + pidgin depth + platform reviews)
+> - last-verified-against-code: 2026-10-09 (Sprint 25 rows verified present in code; tsc + jest + build green in-runner)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -162,3 +162,4 @@
 - [x] Sprint 19 (2026-10-09) — keyless map stack (OpenFreeMap vector + keyless raster step-down, OSRM-first cached server proxy with env-gated ORS/Mapbox + straight-line guarantee, `/api/maps/*` geocode proxy, renderer + geocode client cutover, trace delegate, optional-override env hygiene; 234 tests / 27 suites, full gate green in-runner)
 - [x] Sprint 20 (2026-10-09) — tightening (anchor-stable numbered pins + token user dot via shared MapPins, dark light-parity, draft update-in-place with update-vs-new prompt + per-draft Update, FAQ maps category + report/edit accuracy; 241 tests / 28 suites, full gate green in-runner)
 - [x] Sprint 24 (2026-10-09) — PWA fulfillment (v3 SW, manifest, heartbeat toasts, fallback cached-pages, session preservation, push fan-out mirror) + Pidgin +44 keys + FAQ Offline & App (18 new tests; full gate deferred to CI — no node_modules in runner)
+- [x] Sprint 25 (2026-10-09) — PWA tightening (v4 SW: locales precache + cache-first, config/reviews cacheable, collapsible offline banner, bundled-EN + last-good + cookie locale sync) + Pidgin depth (+74 keys, FAQ_PCM, toggle wired via tf() across post actions/menus/footer/landing/About/FAQ/leaderboard/invite/feed) + platform reviews E2E (`/api/reviews` self-pair upsert, ReviewsPanel, profile tabs + #reviews link, About real-reviews tape + CTA cadence, thank-you notify, anonymize-on-archive, null-safe admin; no migration) (309 tests / 36 suites, full gate green in-runner: tsc + jest + build)

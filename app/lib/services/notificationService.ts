@@ -135,6 +135,25 @@ export async function notifyReferralConversion(
 }
 
 /**
+ * Thanks the user for a platform review (in-app + push mirror, never email).
+ * Uses REWARD with allowSelf (self-addressed, like WELCOME) so no
+ * NotificationType migration is needed. Fire-and-forget — never throws.
+ */
+export async function notifyReviewThanks(userId: string): Promise<string | null> {
+  if (!userId) return null;
+  try {
+    return await createNotification({
+      type: "REWARD",
+      actorId: userId,
+      message: "Thanks for reviewing Along! Your review is in moderation and will appear on the About page once approved.",
+      recipientIds: [userId],
+      allowSelf: true,
+    });
+  } catch {
+    return null;
+  }
+}
+/**
  * Notifies the earner after points land (and on tier promotion).
  * Called by the rewards worker with the awardPoints result — void, never throws.
  */

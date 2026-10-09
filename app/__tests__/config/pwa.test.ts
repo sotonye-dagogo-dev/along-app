@@ -4,6 +4,7 @@ import {
   PWA_PRECACHE_ROUTES,
   PWA_CACHED_DESTINATIONS,
   PWA_NEVER_CACHE_API,
+  PWA_OFFLINE_BANNER,
   isNeverCacheApi,
   isCacheableApi,
   isMapTileHost,
@@ -67,6 +68,30 @@ describe("pwa config", () => {
     expect(fallback.url).toBe("/notifications");
   });
 
+  it("precaches the config registry (locale dictionaries) so no raw keys leak offline", () => {
+    expect(PWA_PRECACHE_ROUTES).toContain("/locales/en.json");
+    expect(PWA_PRECACHE_ROUTES).toContain("/locales/pcm.json");
+  });
+
+  it("caches config-registry + reviews GET endpoints", () => {
+    expect(isCacheableApi("/api/site-config?key=x")).toBe(true);
+    expect(isCacheableApi("/api/config")).toBe(true);
+    expect(isCacheableApi("/api/reviews?limit=20")).toBe(true);
+  });
+
+  it("exposes collapsible offline-banner copy + storage key", () => {
+    expect(PWA_TOAST_COPY.collapse).toBeTruthy();
+    expect(PWA_TOAST_COPY.expand).toBeTruthy();
+    expect(PWA_TOAST_COPY.collapsedLabel).toBeTruthy();
+    expect(PWA_OFFLINE_BANNER.storageKey).toBeTruthy();
+  });
+
+  it("resolves a REVIEW push payload (thank-you mirror)", () => {
+    const p = resolvePushPayload("REVIEW", "Thanks for reviewing Along!");
+    expect(p.title).toMatch(/review/i);
+    expect(p.body).toContain("Thanks for reviewing Along!");
+    expect(p.url).toBe("/about");
+  });
   it("has sanitized offline toast copy (no raw error leakage)", () => {
     expect(PWA_TOAST_COPY.wentOffline).not.toMatch(/unexpected token|<\!|an error occurred/i);
     expect(PWA_TOAST_COPY.blockedOffline).toMatch(/offline/i);

@@ -3,10 +3,14 @@ import { Github, Twitter, Mail } from "lucide-react";
 interface FooterLink {
   label: string;
   href: string;
+  /** Optional i18n key for pidgin/dictionary overrides (label = fallback). */
+  i18nKey?: string;
 }
 
 interface FooterColumn {
   title: string;
+  /** Optional i18n key for the column heading (title = fallback). */
+  i18nKey?: string;
   links: FooterLink[];
 }
 
@@ -38,29 +42,32 @@ export const FOOTER_CONFIG: FooterConfig = {
   columns: [
     {
       title: "Along",
+      i18nKey: "footer.company",
       links: [
-        { label: "About", href: "/about" },
-        { label: "Contact", href: "/contact" },
-        { label: "Privacy Policy", href: "/privacy" },
-        { label: "Terms of Service", href: "/terms" },
+        { label: "About", href: "/about", i18nKey: "footer.about" },
+        { label: "Contact", href: "/contact", i18nKey: "footer.contact" },
+        { label: "Privacy Policy", href: "/privacy", i18nKey: "footer.privacy" },
+        { label: "Terms of Service", href: "/terms", i18nKey: "footer.terms" },
       ],
     },
     {
       title: "Features",
+      i18nKey: "footer.features",
       links: [
-        { label: "Explore Routes", href: "/explore" },
-        { label: "Share Route", href: "/home" },
-        { label: "Notifications", href: "/notifications" },
-        { label: "Invite Friends", href: "/invite" },
+        { label: "Explore Routes", href: "/explore", i18nKey: "footer.exploreRoutes" },
+        { label: "Share Route", href: "/home", i18nKey: "nav.shareRoute" },
+        { label: "Notifications", href: "/notifications", i18nKey: "footer.notifications" },
+        { label: "Invite Friends", href: "/invite", i18nKey: "footer.inviteFriends" },
       ],
     },
     {
       title: "Community",
+      i18nKey: "footer.community",
       links: [
-        { label: "Blog", href: "/blog" },
-        { label: "FAQ", href: "/faq" },
-        { label: "Report a Bug", href: "/report-bug" },
-        { label: "Join Discord", href: "https://discord.gg/along" },
+        { label: "Blog", href: "/blog", i18nKey: "footer.blog" },
+        { label: "FAQ", href: "/faq", i18nKey: "footer.faq" },
+        { label: "Report a Bug", href: "/report-bug", i18nKey: "footer.reportBug" },
+        { label: "Join Discord", href: "https://discord.gg/along", i18nKey: "footer.joinDiscord" },
       ],
     },
   ],

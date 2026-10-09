@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 23 destination rule + pin accuracy + deploy type fix)
+> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 PWA tightening + pidgin depth + platform reviews)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: append-only — never modify past entries
 
@@ -34,6 +34,33 @@
 ---
 
 ## Sessions
+
+---
+
+## Session — 2026-10-09 (Sprint 25: PWA tightening + pidgin depth + platform reviews access)
+
+**Completed:**
+- PWA: config-registry caching (pwa.ts v4 + sw.js v4 mirror + `/locales/` cache-first; I18nProvider bundled-EN + last-good cache + cookie sync) — raw keys (guest.signIn) no longer leak offline; OfflineBanner collapsible/expandable + persisted.
+- i18n: +74 en/pcm keys (235/235 parity) for about/faq/feed/landing/leaderboard/invite/reviews/footer; FAQ_PCM 24-item map + Reviews FAQ category; `tf()` fallback helper wired through PostCard/PostMenu/Footer/Landing/About/FAQ/leaderboard/invite/feed.
+- Reviews: `GET/POST /api/reviews` (self-pair UserReview, upsert ACID, moderation, mine/authorId/cursor, rate-limit); ReviewsPanel; own + other profile `reviews` tabs (+ `#reviews` deep link); About real-reviews tape with CTA cadence (≤10 end, 11–19 midpoint, ≥20 every 10); thank-you in-app notification (no email); archiving anonymizes, admin null-safe.
+- QA gate green in-runner: tsc 0 errors, jest 36/36 + 309/309, next build clean, lint 0 new.
+
+**Files Modified:**
+- Edited: `app/lib/config/{pwa,reviews,faq,footer,index,rateLimits}.ts`, `public/sw.js`, `public/locales/{en,pcm}.json`, `app/providers/I18nProvider.tsx`, `app/components/pwa/OfflineBanner.tsx`, `app/components/{ui/{AppFooter,LandingCtas},features/{posts/PostCard,moderation/PostMenu}}`, `app/(public)/{page,about/AboutPageClient,faq/FaqClient}.tsx`, `app/(dashboard)/{home,invite,leaderboard,profile/page,profile/[username]/page}.tsx`, `app/lib/services/{notificationService,accountDeletionService}.ts`, `app/admin/reviews/page.tsx`, `app/__tests__/config/{pwa,locales}.test.ts`
+- New: `app/(public)/LandingCopy.tsx`, `app/api/reviews/route.ts`, `app/components/features/reviews/{ReviewsPanel.tsx,index.ts}`, `app/__tests__/config/reviews.test.ts`
+- Docs: task-queue (Sprint 25), dev-history (Sprint 25), this log, test-results, project-decisions, lessons-learned, system-architecture, repo-map, dependency-graph, project-plan; in-progress cleared.
+
+**Next Task:**
+Vercel deploy confirmation (SW v3→v4 cache rollover, `/api/reviews` migration-free verification); seed/moderate first platform reviews; prod-verify thank-you notification + push mirror.
+
+**Assumptions Made:**
+- Platform reviews = UserReview self-pair (reviewerId === revieweeId); one per user via existing @@unique; no migration.
+- Thank-you = REWARD+allowSelf (no NotificationType migration); push copy via explicit REVIEW mirror entry.
+- SITE_REVIEWS config retained (unused by About) for fallback/future use.
+
+**Notes / Blockers:**
+- `npm install` run in-runner for the QA gate (node_modules present now, gitignored); no package.json/package-lock changes.
+- Chain: execute-feature Step 5 → update-ai-system deep sync executed in this session (not just sync-context).
 
 ---
 
