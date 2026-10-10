@@ -172,11 +172,19 @@ export async function POST(request: NextRequest) {
       Sentry.captureException(e);
     }
 
+    // A sustained (non-duplicate) report raises report pressure on the post —
+    // recompute trust (fire-and-forget, never fails the report).
+    try {
+      const { qstashService } = await import("@/app/lib/services/qstashService");
+      void qstashService.publishValidityRecompute({ postId });
+    } catch {
+      /* non-critical */
+    }
+
     return NextResponse.json(
       { success: true, reportId: result.reportId, message: MODERATION_CONFIG.reportReceived },
       { status: 201 }
-    );
-  } catch (error) {
+    );  } catch (error) {
     console.error("Report submission error:", error);
     Sentry.captureException(error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

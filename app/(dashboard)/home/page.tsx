@@ -18,6 +18,7 @@ import { routeDraftsService } from "@/app/lib/services/routeDraftsService"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useTranslation } from "@/app/providers/I18nProvider"
 import { useFeedInteractions } from "@/app/hooks/useFeedInteractions"
+import { usePostShare } from "@/app/hooks/usePostShare"
 import { feedStream } from "@/app/lib/streams/feedStream"
 
 interface FeedPost {
@@ -255,6 +256,8 @@ function HomeContent() {
     await feedStream.refresh()
   }
 
+  const { sharePost } = usePostShare()
+
   const { handleLike, handleDislike, handleBookmark, handleComment } = useFeedInteractions({
     onLike: async (postId, liked) => {
       feedStream.applyInteraction({ postId, type: "like", value: liked })
@@ -464,6 +467,7 @@ function HomeContent() {
               onLike={handleLike}
               onDislike={handleDislike}
               onBookmark={handleBookmark}
+              onShare={(postId) => void sharePost(postId, post.title)}
               onComment={handleComment}
               onRespond={handleRespond}
               onEdit={handleEditPost as never}

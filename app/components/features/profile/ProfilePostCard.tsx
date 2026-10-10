@@ -7,6 +7,7 @@ import PostCard from "@/app/components/features/posts/PostCard"
 import { AppModal } from "@/app/components/ui/AppModal"
 import { CommentInput, CommentList } from "@/app/components/features/comments"
 import { POST_ACTIONS_CONFIG } from "@/app/lib/config"
+import { sharePostLink } from "@/app/lib/services/postShareService"
 import { toastService } from "@/app/lib/services/toastService"
 import { feedStream } from "@/app/lib/streams/feedStream"
 import { useAuth } from "@/app/hooks/useAuth"
@@ -104,26 +105,12 @@ export function ProfilePostCard({ post, onRemoved }: ProfilePostCardProps) {
   }, [])
 
   const handleShare = useCallback(async (postId: string) => {
-    const url = typeof window !== "undefined" ? `${window.location.origin}/posts/${postId}` : `/posts/${postId}`
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: post.title, url }).catch(() => {})
-        return
-      }
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url)
-      } else {
-        const ta = document.createElement("textarea")
-        ta.value = url
-        ta.style.position = "fixed"
-        ta.style.opacity = "0"
-        document.body.appendChild(ta)
-        ta.select()
-        document.execCommand("copy")
-        document.body.removeChild(ta)
-      }
-      toastService.success(POST_ACTIONS_CONFIG.copySuccess)
-    } catch {
+    // Shared service: Web Share → clipboard → legacy fallback. Behaviour is
+    // identical to the previous inline version, now deduplicated.
+    const outcome = await sharePostLink(postId, post.title || POST_ACTIONS_CONFIG.shareTitleDefault)
+    if (outcome.ok) {
+      if (outcome.method !== "web-share") toastService.success(POST_ACTIONS_CONFIG.copySuccess)
+    } else {
       toastService.error(POST_ACTIONS_CONFIG.copyError)
     }
   }, [post.title])

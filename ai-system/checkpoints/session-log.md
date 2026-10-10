@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 PWA tightening + pidgin depth + platform reviews)
-> - last-verified-against-code: 2026-10-09
+> - last-updated-by: execute-command 2026-10-10 (Sprint 31 universal share + dynamic trust)
+> - last-verified-against-code: 2026-10-10
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -1745,3 +1745,17 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules — targeted `tsc --noResolve` zero attributable errors (missing-module noise only; faq.ts clean); usage grep confirms all mounts POST-backed. Full jest/tsc/build deferred to CI/Vercel.
 **Compliance:** minimal fix per fix-build contract; repair-system entry + test-results row added; sync-context chain (system-architecture Post Actions row) below; in-progress cleared.
 **Chain:** fix-build → repair-system + test-results + session-log (here) + sync-context; in-progress.md cleared.
+
+## Session 2026-10-10 — Universal post share + dynamic trust engine (execute-command)
+**Directive:** share button/icon must work on posts everywhere (cards, details, profiles — previously profile-only); trust score/breakdown must be dynamic, accurate, and verifiably responsive to community growth (followers, interactions), not stuck at 10. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Root causes:** (1) Share logic lived ONLY in `ProfilePostCard.handleShare`; `PostCard` merely delegated to an optional `onShare?.()` with no fallback, so feed/search/detail/bookmarks Share icons were dead (detail's were literal `()=>{}` / missing-handler stubs). (2) `ValidityEngine.evaluate` took only votes/detail/similarity/recency — no author, engagement, or report inputs — and the ONLY recompute trigger was post-create; like/bookmark/comment/follow/report/edit never re-queued, so scores froze at creation value. Create used `routes.length*20` + hardcoded similarity 100 while the worker used distance+steps + real tag overlap → 37→10 flash. (3) `TrustBadge` tooltip rendered synthetic `score ± offsets`, never real components.
+**Implemented:**
+- NEW `app/lib/services/postShareService.ts` (buildPostUrl/sharePostLink: Web Share → clipboard → legacy textarea, never throws, ShareOutcome) + NEW `app/hooks/usePostShare.ts` (config-driven toasts); `POST_ACTIONS_CONFIG` += shareLabel/shareTitleDefault/postPath.
+- `PostCard.handleShareClick` falls back to the shared service when `onShare` is omitted (override prop kept → non-breaking); `ProfilePostCard` deduplicated onto the service (identical behaviour); feed (`home/page`), search (`SearchPage`), post detail (top-bar + engagement-bar stubs → real `handleShare`), bookmarks (new per-card Share button) all wired.
+- `ValidityEngine` v2: optional `authorFollowerCount/authorVerified/authorAgeDays/comments/bookmarks/views/shares/openReports`; reputation (log-scale followers + verified + age) / engagement / reportPressure sub-scores as additive bonus/penalty (reputationWeight .15, engagementWeight .10, reportPenaltyWeight .25); legacy call sites (no new inputs) score EXACTLY as before; NEW shared `computeRouteDetailScore` (canonical, create+worker agree) + `computeSimilarityRatio`.
+- `POST /api/posts`: synchronous similarity + author signals at insert (no more optimistic flash); worker loads full signals (followers/verified/age/engagement/open non-RESOLVED/CLOSED reports); triggers added to like (3 branches), bookmark (both), comments POST, PATCH edit, reports POST, follow/unfollow (bounded last-20 refresh); `GET /api/posts/[id]` ships live `validityBreakdown` (best-effort, never fails read).
+- `TrustBadge` += optional `breakdown` prop: live component rows (+ Reputation/Engagement only when real, "live" marker); legacy placeholder preserved when absent; `PostCard` + post detail forward `validityBreakdown`.
+- Tests: NEW `postShareService.test.ts` (8); `ValidityEngine.test.ts` += dynamic-signal + scorer suites (9); `TrustBadge.test.tsx` += live-breakdown suites (2).
+**QA:** no node_modules in runner — static verification only (scope audit of all edits, type-flow re-reads, arithmetic proof of legacy-test preservation, one misplaced-block repair in posts/[id] GET verified by re-read). Full jest/tsc/build deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only (optional fields/props, fire-and-forget triggers, best-effort fallbacks).
+**Chain:** execute-command → session-log (here) + dev-history + task-queue + update-ai-system deep sync; in-progress.md cleared.

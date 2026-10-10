@@ -60,4 +60,40 @@ describe("TrustBadge", () => {
     const { container } = render(<TrustBadge level="low" score={10} size="default" />);
     expect(container.querySelector(".text-sm")).toBeInTheDocument();
   });
+
+  it("shows live breakdown values when provided", async () => {
+    const user = userEvent.setup();
+    render(
+      <TrustBadge
+        level="verified"
+        score={72}
+        showTooltip
+        breakdown={{ community: 80, detail: 70, corroboration: 60, recency: 90, reputation: 55, engagement: 40 }}
+      />
+    );
+
+    const badge = screen.getByText("Verified").closest(".relative");
+    await act(async () => {
+      await user.hover(badge!);
+    });
+
+    expect(screen.getByText("Trust Breakdown")).toBeInTheDocument();
+    // Live rows render the exact engine values (not score-derived offsets).
+    expect(screen.getByText("80%")).toBeInTheDocument();
+    expect(screen.getByText("Reputation")).toBeInTheDocument();
+    expect(screen.getByText("Engagement")).toBeInTheDocument();
+  });
+
+  it("omits reputation/engagement rows without live values", async () => {
+    const user = userEvent.setup();
+    render(<TrustBadge level="verified" score={72} showTooltip />);
+
+    const badge = screen.getByText("Verified").closest(".relative");
+    await act(async () => {
+      await user.hover(badge!);
+    });
+
+    expect(screen.queryByText("Reputation")).not.toBeInTheDocument();
+    expect(screen.queryByText("Engagement")).not.toBeInTheDocument();
+  });
 });

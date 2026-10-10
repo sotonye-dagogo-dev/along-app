@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { qstashService } from "@/app/lib/services/qstashService";
-import { validityEngine } from "@/app/lib/services/ValidityEngine";
+import { validityEngine, computeRouteDetailScore, computeSimilarityRatio } from "@/app/lib/services/ValidityEngine";
 import { CACHE_KEYS } from "@/app/lib/config";
 
 export async function POST(request: NextRequest) {
@@ -24,8 +24,13 @@ export async function POST(request: NextRequest) {
       where: { id: postId },
       select: {
         id: true,
+        userId: true,
         likes: true,
         dislikes: true,
+        comments: true,
+        bookmarks: true,
+        views: true,
+        shares: true,
         routes: true,
         createdAt: true,
         tags: true,
@@ -36,15 +41,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    const routes = post.routes as Array<{ distance?: number; steps?: unknown[] }> | null;
-    const routeDetailScore = routes
-      ? Math.min(100, routes.reduce((sum, r) => {
-          let score = 0;
-          if (r.distance && r.distance > 0) score += 30;
-          if (r.steps && r.steps.length > 0) score += Math.min(70, r.steps.length * 10);
-          return sum + score;
-        }, 0))
-      : 0;
+    // Canonical detail scorer (shared with POST /api/posts) so create-time
+    // and recompute-time scores agree.
+    const routeDetailScore = computeRouteDetailScore(post.routes);
 
     const similarPosts = await prisma.post.count({
       where: {
@@ -56,7 +55,36 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-    const similarityRatio = Math.min(100, similarPosts * 10);
+    const similarityRatio = computeSimilarityRatio(similarPosts);
+
+    // Dynamic signals: author reputation (followers/verification/age),
+    // engagement depth (comments/bookmarks/views/shares), and report
+    // pressure (open reports). Every lookup is best-effort — a missing
+    // relation degrades to 0 signal, never to a failed recompute.
+    let authorFollowerCount = 0;
+    let authorVerified = false;
+    let authorAgeDays = 0;
+    let openReports = 0;
+    try {
+      const [author, followerCount, reports] = await Promise.all([
+        prisma.user.findUnique({
+          where: { id: post.userId },
+          select: { verified: true, createdAt: true },
+        }).catch(() => null),
+        prisma.follow.count({ where: { followingId: post.userId } }).catch(() => 0),
+        prisma.bugReport.count({
+          where: { postId, status: { notIn: ["RESOLVED", "CLOSED"] } },
+        }).catch(() => 0),
+      ]);
+      authorFollowerCount = followerCount ?? 0;
+      authorVerified = author?.verified ?? false;
+      if (author?.createdAt) {
+        authorAgeDays = Math.max(0, (Date.now() - new Date(author.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      }
+      openReports = reports ?? 0;
+    } catch {
+      /* signal fallbacks above (all zero) already apply */
+    }
 
     const result = await validityEngine.evaluate({
       likes: post.likes,
@@ -64,6 +92,14 @@ export async function POST(request: NextRequest) {
       routeDetailScore,
       similarityRatio,
       createdAt: post.createdAt,
+      authorFollowerCount,
+      authorVerified,
+      authorAgeDays,
+      comments: post.comments,
+      bookmarks: post.bookmarks,
+      views: post.views,
+      shares: post.shares,
+      openReports,
     });
 
     await prisma.post.update({

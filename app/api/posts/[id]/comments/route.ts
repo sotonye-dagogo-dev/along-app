@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { COMMENT_SCHEMA } from "@/app/lib/schemas/post";
+import { qstashService } from "@/app/lib/services/qstashService";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -104,6 +105,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         }
       }
     } catch { /* notifications are non-critical */ }
+
+    // Comments feed the engagement leg of trust — recompute (fire-and-forget,
+    // never fails the comment).
+    try {
+      void qstashService.publishValidityRecompute({ postId: id });
+    } catch { /* non-critical */ }
 
     return NextResponse.json({ comment }, { status: 201 });
   } catch (error) {

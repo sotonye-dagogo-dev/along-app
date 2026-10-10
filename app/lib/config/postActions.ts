@@ -9,6 +9,10 @@ export interface PostActionsConfig {
   reportLabel: string;
   copySuccess: string;
   copyError: string;
+  /** Shared "share this post" copy + URL shape (used by postShareService). */
+  shareLabel: string;
+  shareTitleDefault: string;
+  postPath: (postId: string) => string;
   reportTitle: string;
   reportSubtitle: (title: string) => string;
   reportReasonLabel: string;
@@ -63,6 +67,9 @@ export const POST_ACTIONS_CONFIG: PostActionsConfig = {
   reportLabel: "Report",
   copySuccess: "Link copied to clipboard",
   copyError: "Couldn't copy the link. Please try again.",
+  shareLabel: "Share",
+  shareTitleDefault: "Check out this route on Along",
+  postPath: (postId: string) => `/posts/${encodeURIComponent(postId)}`,
   reportTitle: "Report this post",
   reportSubtitle: (title: string) =>
     title ? `Tell us what's wrong with "${title.slice(0, 80)}"` : "Tell us what's wrong with this post",
