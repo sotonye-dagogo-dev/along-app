@@ -15,6 +15,7 @@ import { PostMenu, type PostMenuPost } from "@/app/components/features/moderatio
 import { undoService } from "@/app/lib/services/undoService"
 import { toastService } from "@/app/lib/services/toastService"
 import { useAuth } from "@/app/hooks/useAuth"
+import { usePostShare } from "@/app/hooks/usePostShare"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
 import { useRouteTrace } from "@/app/lib/hooks/useRouteTrace"
@@ -71,6 +72,14 @@ interface PostDetail {
   bookmarks: number
   validityScore: number
   validityTier: string | null
+  validityBreakdown?: {
+    community?: number
+    detail?: number
+    corroboration?: number
+    recency?: number
+    reputation?: number
+    engagement?: number
+  } | null
   region: string | null
   totalDistanceKm: number | null
   estimatedMins: number | null
@@ -143,6 +152,7 @@ export default function PostDetailPage() {
   const postId = params.id as string
   const ready = !authLoading && Boolean(postId)
   const viewerId = currentUser?.id ?? "guest"
+  const { sharePost } = usePostShare()
 
   const { data: postData, loading: postLoading, mutate: mutatePost } = useCachedFetch<{ post: PostDetail; archived?: boolean }>(
     ready ? `post:${viewerId}:${postId}` : null,
@@ -161,6 +171,12 @@ export default function PostDetailPage() {
   const likesCount = post?.likes ?? 0
   const bookmarked = post?._isBookmarked ?? false
   const loading = authLoading || postLoading || commentsLoading
+
+  const handleShare = () => {
+    if (!post) return
+    if (!requireAuth("share routes")) return
+    void sharePost(post.id, post.title)
+  }
 
   const handleLike = async () => {
     if (!post) return
@@ -446,7 +462,7 @@ export default function PostDetailPage() {
           <Link href="/explore" className="text-text-secondary no-underline hover:text-primary hover:underline">Routes</Link>
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={() => {}} className="w-9 h-9 rounded-circle flex items-center justify-center border-none bg-transparent text-text-secondary cursor-pointer hover:bg-bg-elevated hover:text-primary transition-colors duration-fast" aria-label="Share">
+          <button onClick={handleShare} className="w-9 h-9 rounded-circle flex items-center justify-center border-none bg-transparent text-text-secondary cursor-pointer hover:bg-bg-elevated hover:text-primary transition-colors duration-fast" aria-label="Share">
             <Share2 size={18} />
           </button>
           <button onClick={handleBookmark} className={`w-9 h-9 rounded-circle flex items-center justify-center border-none bg-transparent cursor-pointer transition-colors duration-fast hover:bg-bg-elevated hover:text-primary ${bookmarked ? "text-primary" : "text-text-secondary"}`} aria-label="Bookmark">
@@ -528,7 +544,7 @@ export default function PostDetailPage() {
       </div>
 
       <div className="mb-3.5">
-        {showTrust && <TrustBadge level={trustLevel} score={post.validityScore} />}
+        {showTrust && <TrustBadge level={trustLevel} score={post.validityScore} breakdown={post.validityBreakdown ?? null} />}
       </div>
 
       <div className="flex gap-1.5 flex-wrap mb-4">
@@ -636,7 +652,7 @@ export default function PostDetailPage() {
         <button onClick={handleBookmark} className={`flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-elevated ${bookmarked ? "text-primary" : "text-text-secondary"}`} aria-label="Bookmark">
           <Bookmark size={16} className={bookmarked ? "fill-primary stroke-primary" : ""} />
         </button>
-        <button className="flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-sm font-medium text-text-secondary cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-elevated" aria-label="Share">
+        <button onClick={handleShare} className="flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-sm font-medium text-text-secondary cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-elevated" aria-label="Share">
           <Share2 size={16} />
         </button>
       </div>

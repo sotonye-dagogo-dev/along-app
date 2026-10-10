@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { X, ThumbsUp, MessageCircle } from "lucide-react"
+import { X, ThumbsUp, MessageCircle, Share2 } from "lucide-react"
 import { AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { sharePostLink } from "@/app/lib/services/postShareService"
+import { toastService } from "@/app/lib/services/toastService"
+import { POST_ACTIONS_CONFIG } from "@/app/lib/config/postActions"
 
 interface BookmarkedPost {
   id: string
@@ -72,6 +75,15 @@ export default function BookmarksPage() {
     }
   }
 
+  const shareBookmark = async (postId: string, title: string) => {
+    const outcome = await sharePostLink(postId, title || POST_ACTIONS_CONFIG.shareTitleDefault)
+    if (outcome.ok) {
+      if (outcome.method !== "web-share") toastService.success(POST_ACTIONS_CONFIG.copySuccess)
+    } else {
+      toastService.error(POST_ACTIONS_CONFIG.copyError)
+    }
+  }
+
   return (
     <div className="max-w-[640px] mx-auto px-4">
       <div className="flex items-center justify-between py-4 border-b border-border mb-4">
@@ -132,6 +144,14 @@ export default function BookmarksPage() {
                     </Link>
                   ))}
                   <span>Saved · {getTimeAgo(bookmark.createdAt)}</span>
+                  <button
+                    onClick={() => void shareBookmark(bookmark.id, bookmark.title)}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 radius-pill border border-border bg-transparent text-text-secondary cursor-pointer hover:text-primary hover:border-primary-muted transition-colors duration-fast"
+                    aria-label={`Share ${bookmark.title}`}
+                  >
+                    <Share2 size={12} />
+                    <span className="text-[10px] font-medium">Share</span>
+                  </button>
                 </div>
               </div>
             )

@@ -9,11 +9,26 @@ import {
 } from "lucide-react";
 import { AppProgress } from "./";
 
+export interface TrustBreakdown {
+  community?: number;
+  detail?: number;
+  corroboration?: number;
+  recency?: number;
+  reputation?: number;
+  engagement?: number;
+}
+
 export interface TrustBadgeProps {
   level: "low" | "developing" | "verified" | "trusted";
   score: number;
   size?: "sm" | "default";
   showTooltip?: boolean;
+  /**
+   * Live engine components (see GET /api/posts/[id] `validityBreakdown`).
+   * When provided the tooltip shows real values; otherwise it falls back to
+   * the legacy score-derived placeholders so old call sites keep working.
+   */
+  breakdown?: TrustBreakdown | null;
 }
 
 const TRUST_CONFIG = {
@@ -48,7 +63,9 @@ const METRICS = [
   { label: "Detail", key: "detail" },
   { label: "Corroboration", key: "corroboration" },
   { label: "Recency", key: "recency" },
-];
+  { label: "Reputation", key: "reputation" },
+  { label: "Engagement", key: "engagement" },
+] as const;
 
 /** Estimated tooltip width (matches min-w + padding); used for clamping. */
 const TOOLTIP_WIDTH = 240;
@@ -58,6 +75,7 @@ export function TrustBadge({
   score,
   size = "default",
   showTooltip = true,
+  breakdown = null,
 }: TrustBadgeProps) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
   // Viewport-aware placement: clamped horizontally, flips below the badge
@@ -67,11 +85,36 @@ export function TrustBadge({
   const config = TRUST_CONFIG[level];
   const Icon = config.icon;
 
-  const metricValues = METRICS.map((m, i) => {
+  // Real engine components when the caller ships them (live breakdown from
+  // the detail API); legacy score-derived placeholders otherwise. Reputation
+  // / Engagement rows only appear when real values exist — placeholders never
+  // invent them.
+  const hasLive = !!breakdown && ["community", "detail", "corroboration", "recency"].every(
+    (k) => typeof (breakdown as Record<string, unknown>)[k] === "number"
+  );
+  const visibleMetrics = METRICS.filter((m) => {
+    if (hasLive) {
+      if (m.key === "reputation" || m.key === "engagement") {
+        return typeof (breakdown as Record<string, unknown>)[m.key] === "number";
+      }
+      return true;
+    }
+    return m.key !== "reputation" && m.key !== "engagement";
+  });
+  const metricValues = visibleMetrics.map((m, i) => {
+    if (hasLive) {
+      const v = (breakdown as Record<string, unknown>)[m.key];
+      return {
+        label: m.label,
+        value: Math.min(100, Math.max(0, Math.round(Number(v)))),
+        live: true as const,
+      };
+    }
     const offset = (i - 1.5) * 8;
     return {
       label: m.label,
       value: Math.min(100, Math.max(0, score + offset)),
+      live: false as const,
     };
   });
 
@@ -144,6 +187,9 @@ export function TrustBadge({
         >
           <p className="text-sm font-semibold text-text-primary mb-3">
             Trust Breakdown
+            {metricValues.length > 0 && metricValues[0].live && (
+              <span className="ml-2 text-[10px] font-medium text-text-muted">live</span>
+            )}
           </p>
           <div className="flex flex-col gap-2">
             {metricValues.map((metric) => (

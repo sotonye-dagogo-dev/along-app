@@ -29,6 +29,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             data: type === "LIKE" ? { likes: { decrement: 1 } } : { dislikes: { decrement: 1 } },
           }),
         ]);
+        // Votes feed the community leg of trust — recompute (fire-and-forget).
+        void qstashService.publishValidityRecompute({ postId: id });
         return NextResponse.json({ liked: false, type: null }, { status: 200 });
       } else {
         // Switch from like to dislike or vice versa
@@ -41,6 +43,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
               : { likes: { decrement: 1 }, dislikes: { increment: 1 } },
           }),
         ]);
+        void qstashService.publishValidityRecompute({ postId: id });
         return NextResponse.json({ liked: true, type }, { status: 200 });
       }
     }
@@ -76,6 +79,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       qstashService.publishRewardsAward({ userId: post.userId, actionKey: "RECEIVE_LIKE" });
       qstashService.publishFeedInvalidation({ userIds: [post.userId] });
     }
+    // New vote changes the community leg — recompute trust (fire-and-forget).
+    void qstashService.publishValidityRecompute({ postId: id });
 
     return NextResponse.json({ liked: true, type }, { status: 200 });
   } catch (error) {

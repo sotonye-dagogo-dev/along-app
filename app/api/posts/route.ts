@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { CREATE_POST_SCHEMA } from "@/app/lib/schemas/post";
-import { validityEngine } from "@/app/lib/services/ValidityEngine";
+import { validityEngine, computeRouteDetailScore, computeSimilarityRatio } from "@/app/lib/services/ValidityEngine";
 import { qstashService } from "@/app/lib/services/qstashService";
 import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit";
 import { normalizeRouteSteps } from "@/app/lib/config/routeSteps";
@@ -94,12 +94,57 @@ export async function POST(request: NextRequest) {
 
     // Score first so the insert below is a single atomic write (no
     // create-then-update window where a retry could double-insert).
+    // Canonical scorer (shared with the recompute worker) + real synchronous
+    // corroboration + author reputation at post time — previously create used
+    // `routes.length * 20` with similarity hardcoded to 100, so every fresh
+    // post flashed an optimistic score the worker then overwrote (≈37 → 10).
+    // Best-effort lookups never block the post on failure (fallbacks below).
+    let routeDetailScore = computeRouteDetailScore(routes);
+    if (!Number.isFinite(routeDetailScore)) routeDetailScore = Math.min(100, routes.length * 20);
+    let similarityRatio = 100;
+    let authorFollowerCount = 0;
+    let authorVerified = false;
+    let authorAgeDays = 0;
+    try {
+      const author = await prisma.user.findUnique({
+        where: { id: user.id as string },
+        select: { verified: true, createdAt: true },
+      });
+      authorVerified = author?.verified ?? false;
+      if (author?.createdAt) {
+        authorAgeDays = Math.max(0, (Date.now() - new Date(author.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      }
+      try {
+        authorFollowerCount = await prisma.follow.count({ where: { followingId: user.id as string } });
+      } catch { authorFollowerCount = 0; }
+      if ((tags ?? []).length > 0) {
+        const now = new Date();
+        const overlapping = await prisma.post.count({
+          where: {
+            tags: { hasSome: tags ?? [] },
+            createdAt: {
+              gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+              lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+            },
+          },
+        });
+        similarityRatio = computeSimilarityRatio(overlapping);
+      } else {
+        similarityRatio = 0;
+      }
+    } catch {
+      // Fallbacks preserve the legacy optimistic path on DB failure.
+      similarityRatio = 100;
+    }
     const validityResult = await validityEngine.evaluate({
       likes: 0,
       dislikes: 0,
-      routeDetailScore: routes.length * 20,
-      similarityRatio: 100,
+      routeDetailScore,
+      similarityRatio,
       createdAt: new Date(),
+      authorFollowerCount,
+      authorVerified,
+      authorAgeDays,
     });
 
     let post;

@@ -630,3 +630,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** strict whole-string fare parsing (`parseFareInput`) shared by composer + schema preprocess; validate every visible step (filtering is for previews, never for submit payloads); every submit path surfaces a sanitized first-field message inline + via toast and never clears drafts/closes on failure. Applies to any future free-text-numeric composer field.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 31: local-only handlers + write-once scores behind "works here, dead there" and "stuck at 10"
+- **Symptom:** share icon worked on profile posts but did nothing on feed/search/detail/bookmarks; trust stayed 10 despite new followers and interactions.
+- **Root causes:** (1) share logic lived in one leaf component while the shared card only delegated to an optional callback with no fallback — every new surface had to re-implement sharing and none did; detail's buttons were placeholder stubs; (2) the scorer's input shape excluded author/community growth AND the only recompute trigger was post-create, so stored scores could never move; create-time and worker-time scorers disagreed, masking the freeze behind a flash; (3) the breakdown tooltip rendered synthetic offsets, so no one could see the freeze from the UI.
+- **Fix pattern (reuse):** lift leaf-only behaviour into a zero-dep service + hook the moment a second surface needs it, with a fallback inside the shared component (override prop kept for callers/tests); make scores a function of everything the product claims matters, recompute on every signal that feeds them (fire-and-forget, bounded fan-out), compute honestly at write time (no optimistic-then-overwrite), and render the REAL components in every breakdown UI so staleness is visible instead of hidden. Additive optional inputs preserve legacy scores exactly — prove with arithmetic before changing weights.
+- **Supersedes:** None
+- **Superseded by:** None

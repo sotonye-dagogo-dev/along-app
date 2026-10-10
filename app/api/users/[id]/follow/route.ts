@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { qstashService } from "@/app/lib/services/qstashService";
+
+/**
+ * Enqueue trust recomputes for the followed/unfollowed author's most recent
+ * posts (bounded — follower count feeds the reputation leg, and queuing the
+ * whole back-catalogue would spam the worker on popular authors).
+ * Fire-and-forget; never fails the follow itself.
+ */
+async function enqueueAuthorTrustRefresh(authorId: string): Promise<void> {
+  try {
+    const recent = await prisma.post.findMany({
+      where: { userId: authorId, isArchived: false },
+      select: { id: true },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }).catch(() => [] as { id: string }[]);
+    for (const p of recent) {
+      void qstashService.publishValidityRecompute({ postId: p.id });
+    }
+  } catch {
+    /* non-critical */
+  }
+}
 
 export async function POST(
   _request: NextRequest,
@@ -45,6 +68,8 @@ export async function POST(
       }),
     ]);
 
+    void enqueueAuthorTrustRefresh(id);
+
     return NextResponse.json({ followed: true }, { status: 201 });
   } catch (error) {
     console.error("Follow error:", error);
@@ -84,6 +109,8 @@ export async function DELETE(
         },
       }),
     ]);
+
+    void enqueueAuthorTrustRefresh(id);
 
     return NextResponse.json({ followed: false }, { status: 200 });
   } catch (error) {

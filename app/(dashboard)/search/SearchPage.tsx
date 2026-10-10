@@ -8,6 +8,7 @@ import { PostCard } from "@/app/components/features/posts";
 import { AppEmptyState, PostCardSkeleton } from "@/app/components/ui";
 import { EMPTY_STATES } from "@/app/lib/config";
 import { FollowButton } from "@/app/components/features/suggestions/FollowButton";
+import { usePostShare } from "@/app/hooks/usePostShare";
 
 type Tab = "all" | "posts" | "users";
 
@@ -41,6 +42,7 @@ const TABS: { key: Tab; label: string }[] = [
 
 function SearchContent() {
   const searchParams = useSearchParams();
+  const { sharePost } = usePostShare();
   const initialQ = searchParams.get("q") ?? "";
   const [input, setInput] = useState(initialQ);
   const [query, setQuery] = useState(initialQ);
@@ -223,6 +225,7 @@ function SearchContent() {
               <PostCard
                 key={post.id}
                 post={post as never}
+                onShare={(postId) => void sharePost(postId, (post as { title?: string }).title)}
                 onDeleted={(postId) => setData((prev) => (prev ? { ...prev, posts: prev.posts.filter((p) => p.id !== postId) } : prev))}
                 onRestored={() => {}}
                 onArchivedChanged={(postId, archived) => {
