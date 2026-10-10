@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- P2022-tolerant casts for the additive archive columns */
 function isMissingColumnError(error: unknown): boolean {
@@ -126,6 +127,22 @@ export async function DELETE(request: NextRequest) {
     if (snapshots.length === 0) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
+
+    // ACID-safe media hygiene: tx committed above; destroy orphaned
+    // Cloudinary assets best-effort (never fails the admin delete).
+    try {
+      if (MEDIA_CLEANUP_CONFIG.enabled && MEDIA_CLEANUP_CONFIG.postDeleteCleanupEnabled) {
+        const urls = (snapshots as { images?: unknown }[]).flatMap((s) =>
+          Array.isArray(s.images) ? (s.images as string[]) : []
+        );
+        if (urls.length > 0) {
+          const { cleanupImagesInBackground } = await import(
+            "@/app/lib/services/mediaCleanupService"
+          );
+          cleanupImagesInBackground(urls, { source: "admin-post-delete" });
+        }
+      }
+    } catch { /* non-critical */ }
 
     return NextResponse.json({ success: true, deleted: snapshots.length, snapshots, snapshot: snapshots[0] }, { status: 200 });
   } catch (error) {

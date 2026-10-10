@@ -15,6 +15,7 @@ import {
   buildDeletedUserName,
   buildDeletedEmail,
 } from "@/app/lib/config/accountDeletion";
+import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config/mediaCleanup";
 import { getAppUrl } from "@/app/lib/config/env";
 
 export interface DeletionRequestResult {
@@ -271,6 +272,12 @@ async function finalizeOne(requestId: string, completedBy: string) {
   const anonUserName = buildDeletedUserName(user.id);
   const anonEmail = buildDeletedEmail(user.id);
   const randomSecret = `deleted-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // Capture the pre-anonymization avatar: a legacy Cloudinary avatar URL (if
+  // any) becomes an orphan once nulled below and is purged post-commit.
+  // Post images are INTENTIONALLY retained (policy: anonymised post data kept
+  // for platform integrity — see MEDIA_CLEANUP_CONFIG.retainPostImagesOnAccountFinalize).
+  const legacyAvatarUrl: string | null =
+    typeof user.avatar === "string" && user.avatar.length > 0 ? user.avatar : null;
 
   // Capture interacted post ids BEFORE wiping rows so denormalized
   // counters can be recomputed (ACID for counts, best-effort post-tx).
@@ -335,6 +342,28 @@ async function finalizeOne(requestId: string, completedBy: string) {
       data: { status: "COMPLETED", completedAt: now, completedBy },
     });
   });
+
+  // Media hygiene (ACID-safe, post-commit): purge a legacy Cloudinary avatar
+  // orphan if one existed. Post images are retained by policy. Never fails
+  // finalization — best-effort only.
+  if (
+    legacyAvatarUrl &&
+    MEDIA_CLEANUP_CONFIG.enabled &&
+    MEDIA_CLEANUP_CONFIG.cleanupAvatarOnAccountFinalize
+  ) {
+    try {
+      const { isCloudinaryUrl } = await import("@/app/lib/utils/cloudinaryUrls");
+      if (isCloudinaryUrl(legacyAvatarUrl)) {
+        const { cleanupImagesInBackground } = await import(
+          "@/app/lib/services/mediaCleanupService"
+        );
+        cleanupImagesInBackground([legacyAvatarUrl], {
+          source: "account-avatar",
+          userId: user.id,
+        });
+      }
+    } catch { /* non-critical */ }
+  }
 
   // Counters: likes/bookmarks rows are gone so denormalized counts on
   // affected posts would be stale. Recompute for posts this user interacted

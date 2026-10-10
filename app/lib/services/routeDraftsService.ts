@@ -288,10 +288,34 @@ export const routeDraftsService = {
     return draft;
   },
 
-  deleteDraft(id: string): RouteDraft[] {
+  /**
+   * Delete a draft. ACID-safe media hygiene: the localStorage row is removed
+   * synchronously (source of truth); eagerly-uploaded Cloudinary images are
+   * purged best-effort via POST /api/upload/cleanup, which skips any URL
+   * still referenced by a live post (publish-then-discard is safe).
+   * Pass `{ cleanupAssets: false }` when the draft was just published to skip
+   * the (harmless but wasteful) network call — the server would skip them anyway.
+   */
+  deleteDraft(id: string, opts?: { cleanupAssets?: boolean }): RouteDraft[] {
+    const existing = this.listDrafts().find((d) => d.id === id) ?? null;
     const drafts = this.listDrafts().filter((d) => d.id !== id);
     persist(drafts);
     notifyChanged();
+    try {
+      const wantCleanup = opts?.cleanupAssets !== false;
+      const images = existing?.images ?? [];
+      if (wantCleanup && images.length > 0 && typeof fetch !== "undefined") {
+        void fetch("/api/upload/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ urls: images.slice(0, 10), draftId: id }),
+        }).catch(() => {
+          /* best-effort — draft row is already gone locally */
+        });
+      }
+    } catch {
+      /* never throw from a local delete */
+    }
     return drafts;
   },
 
