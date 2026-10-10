@@ -749,6 +749,69 @@ failed" posting complaint, now root-caused):
 
 ---
 
+## Sidebar share-route "valid post vanished" (no-op submit + void-as-success)
+
+**Symptom:**
+User composes a valid route (Share enabled), taps Share — the modal closes
+as though publishing succeeded and the draft clears, but no post appears on
+feed/explore and nothing shows in admin post management. No console or server
+error is visible.
+
+**Root Cause:**
+Two interlocking gaps (same vanish class as the earlier validation fix,
+new instance):
+1. `DashboardNav.handleShareSubmit` (desktop sidebar Share Route entry point)
+   was a no-op `() => setShowShareModal(false)` returning `void` — it never
+   called `POST /api/posts`. The home-page composer was correct; only the
+   sidebar path dropped posts.
+2. `ShareRouteModal.handleSubmit` (create) and the edit path treated only
+   explicit `false` as failure (`if (result === false)`). A `void`/`undefined`
+   return — exactly what a no-op handler produces — fell through to the
+   success branch: draft deleted, idempotency key rotated, modal closed.
+   `RequestRouteModal` carried the identical `=== false` trap (latent: its
+   only caller returns boolean, so no live loss, but one void handler away
+   from the same vanish).
+
+**Fix Applied:**
+- `DashboardNav`: real async submit mirroring home `submitPost` — strips
+  `clientMutationId` into the `POST_SUBMIT_CONFIG.idempotencyHeader` header,
+  module-level in-flight dedup, safe text-parse, sanitized first-field toast
+  via `firstRouteServerMessage`, `console.error` with status/details,
+  best-effort `feedStream.refresh()` + `router.refresh()` on success, explicit
+  `Promise<boolean>` (true only on `res.ok`).
+- `ShareRouteModal` create + edit paths: only explicit `true` counts as
+  success (`if (result !== true)` / `if (ok !== true)`); void/undefined/missing
+  handler now keeps the modal open with banner, preserves input + draft, never
+  rotates the key. Prop docs updated to state the `true`-on-success contract.
+- `RequestRouteModal`: same `!== true` guard (same error-pattern sweep).
+- FAQ (`faq.ts` + `FAQ_PCM`): new `share-route-validation` entry (Share gating,
+  per-stop location, single-amount fares + range guidance, title/description
+  minima, destination hides fare/vehicle, failure preserves draft) and
+  `share-route-drafts-failure` entry (drafts clear only after server confirms;
+  post then visible on feed/Explore/admin).
+
+**Prevention:**
+- Submit handlers must return an explicit boolean — `void` never means
+  success. Composer success branches must check `!== true`, never
+  `=== false`.
+- Every modal entry point (sidebar, home, FAB `?share=true`, future callers)
+  must wire a real POST handler; a modal rendered with a no-op `onSubmit` is
+  a post-loss bug by construction — verify by searching `ShareRouteModal`
+  usages and confirming each `onSubmit` POSTs.
+- Server 400s keep carrying sanitized `message` + `console.warn`; clients keep
+  input + draft on any non-true result.
+
+**Files Affected:**
+- app/components/ui/DashboardNav.tsx
+- app/components/features/posts/ShareRouteModal.tsx
+- app/components/features/posts/RequestRouteModal.tsx
+- app/lib/config/faq.ts
+
+**Date:** 2026-10-09
+**Status:** Active
+
+---
+
 ## Resolved Errors Archive
 
 > **Section summary:** Errors that have been fully resolved and are unlikely to recur. Kept for reference.

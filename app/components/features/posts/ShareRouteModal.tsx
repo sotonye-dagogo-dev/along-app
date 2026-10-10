@@ -77,7 +77,7 @@ interface ShareRouteModalProps {
   startWithDraftsOpen?: boolean
   /** Edit mode: prefill from this post and PATCH on submit (drafts/response UI hidden). */
   editPost?: EditPost | null
-  /** Handles the edit submit; return false to keep the modal open. */
+  /** Handles the edit submit; must resolve `true` on success — anything else keeps the modal open with input + draft preserved. */
   onEditSubmit?: (postId: string, data: {
     title: string
     description?: string
@@ -105,7 +105,7 @@ interface ShareRouteModalProps {
     waypoints?: { lat: number; lng: number }[]
     /** Idempotency key for this composer session — dedups double-clicks/retries server-side. */
     clientMutationId?: string
-    /** Return false to keep the modal open (e.g. submission failed). */
+    /** Must resolve `true` on success; anything else (false/void/throw) keeps the modal open with input + draft preserved. */
   }) => boolean | void | Promise<boolean | void>
 }
 
@@ -767,7 +767,10 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
           endLng: last?.lng && last !== first ? last.lng : undefined,
           waypoints: waypoints.length > 0 ? waypoints : undefined,
         })
-        if (ok === false) {
+        // Only explicit `true` counts as success: a void/no-op handler must
+        // never clear the composer (previously `void` closed the modal and
+        // the post "vanished" without ever reaching the server).
+        if (ok !== true) {
           // Failed — banner + stay open; draft/input preserved for retry.
           const msg = sanitizeRouteErrorMessage(POST_ACTIONS_CONFIG.editError)
           setFormError(msg)
@@ -816,10 +819,15 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       setIsSubmitting(false)
       return
     }
-    if (result === false) {
-      // Server rejected (toast already carries the sanitized reason from the
-      // submit handler) — banner + stay open, draft preserved for retry.
-      // Draft is NOT cleared and the modal does NOT close on failure.
+    // Only explicit `true` counts as success. A void/no-op submit handler
+    // (or a missing one) must keep the modal open with input + draft
+    // preserved — previously `undefined` cleared the draft and closed the
+    // modal without ever POSTing, so valid posts "vanished".
+    if (result !== true) {
+      // Server rejected or handler failed (toast already carries the
+      // sanitized reason from the submit handler) — banner + stay open,
+      // draft preserved for retry. Draft is NOT cleared and the modal does
+      // NOT close on failure.
       setFormError(
         sanitizeRouteErrorMessage(ROUTE_VALIDATION_CONFIG.formInvalid)
       )

@@ -1,6 +1,6 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useState, useCallback } from "react"
 import dynamic from "next/dynamic"
@@ -29,8 +29,12 @@ const MOBILE_TABS = [
   { label: "Profile", href: "/profile", icon: User },
 ]
 
+/** In-flight POST /api/posts dedup for the sidebar composer (mirrors home). */
+const sidebarInflightKeys = new Set<string>()
+
 export default function DashboardNav() {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, isGuest } = useAuth()
   const { t } = useTranslation()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -50,9 +54,80 @@ export default function DashboardNav() {
 
   const sidebarWidth = sidebarCollapsed ? "w-16" : "w-60"
 
-  const handleShareSubmit = useCallback(() => {
-    setShowShareModal(false)
-  }, [])
+  /**
+   * Real POST handler for the sidebar composer. Previously a no-op that just
+   * closed the modal (returning void), which the composer treated as success
+   * — drafts cleared, modal closed, but nothing ever reached POST /api/posts
+   * (the reported "valid post vanished" bug). Now mirrors home `submitPost`:
+   * POSTs with the idempotency header and returns an explicit boolean so the
+   * modal only clears/closes on `true`.
+   */
+  const handleShareSubmit = useCallback(async (data: {
+    title: string
+    description?: string
+    type?: "ROUTE" | "ROUTE_RESPONSE"
+    quotedPostId?: string
+    routes: unknown[]
+    images?: string[]
+    tags?: string[]
+    startLat?: number
+    startLng?: number
+    endLat?: number
+    endLng?: number
+    waypoints?: { lat: number; lng: number }[]
+    clientMutationId?: string
+  }): Promise<boolean> => {
+    const { clientMutationId, ...body } = data
+    if (clientMutationId && sidebarInflightKeys.has(clientMutationId)) return false
+    if (clientMutationId) sidebarInflightKeys.add(clientMutationId)
+    try {
+      const { POST_SUBMIT_CONFIG } = await import("@/app/lib/config/postSubmit")
+      const { firstRouteServerMessage } = await import("@/app/lib/config/routeValidation")
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(clientMutationId ? { [POST_SUBMIT_CONFIG.idempotencyHeader]: clientMutationId } : {}),
+        },
+        body: JSON.stringify(body),
+      })
+      let payload: { error?: string; message?: string; details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] } } = {}
+      try {
+        const text = await res.text()
+        payload = text ? (JSON.parse(text) as typeof payload) : {}
+      } catch {
+        payload = { error: "Unexpected server response. Please try again." }
+      }
+      if (res.ok) {
+        // Best-effort feed refresh: the sidebar mounts on every dashboard
+        // page, so refresh the router + the shared feed stream (no-op off-home).
+        try {
+          const { feedStream } = await import("@/app/lib/streams/feedStream")
+          await feedStream.refresh()
+        } catch { /* non-critical off-home */ }
+        router.refresh()
+        return true
+      }
+      const { toastService } = await import("@/app/lib/services/toastService")
+      toastService.error(
+        firstRouteServerMessage(
+          payload.details,
+          payload.message ?? payload.error ?? "Failed to post. Please try again."
+        )
+      )
+      console.error("[DashboardNav submitPost] failed", { status: res.status, error: payload.error, details: payload.details })
+      return false
+    } catch {
+      try {
+        const { toastService } = await import("@/app/lib/services/toastService")
+        const { sanitizeRouteErrorMessage } = await import("@/app/lib/config/routeValidation")
+        toastService.error(sanitizeRouteErrorMessage("Network error. Please check your connection and try again."))
+      } catch { /* toast is best-effort */ }
+      return false
+    } finally {
+      if (clientMutationId) sidebarInflightKeys.delete(clientMutationId)
+    }
+  }, [router])
 
   return (
     <>
