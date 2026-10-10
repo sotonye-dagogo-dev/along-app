@@ -5,6 +5,7 @@ import { memoryCache } from "@/app/lib/cache/memoryCache"
 interface FeedPost {
   id: string
   title: string
+  description?: string | null
   routes: unknown
   images: string[]
   tags: string[]
