@@ -9,19 +9,40 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  let post: { title: string; createdAt: Date; user?: { firstName: string; userName: string } | null } | null = null;
+  let post: {
+    title: string;
+    description?: string | null;
+    type?: string | null;
+    images?: string[] | null;
+    createdAt: Date;
+    user?: { firstName: string; userName: string } | null;
+  } | null = null;
 
   try {
     post = await prisma.post.findUnique({
       where: { id },
-      select: { title: true, createdAt: true, user: { select: { firstName: true, userName: true } } },
+      select: {
+        title: true,
+        description: true,
+        type: true,
+        images: true,
+        createdAt: true,
+        user: { select: { firstName: true, userName: true } },
+      },
     });
   } catch {
     // DB unavailable
   }
 
   const sanitizedPost = post
-    ? { title: post.title, createdAt: post.createdAt, user: post.user ?? undefined }
+    ? {
+        title: post.title,
+        description: post.description ?? undefined,
+        type: post.type ?? undefined,
+        images: post.images ?? undefined,
+        createdAt: post.createdAt,
+        user: post.user ?? undefined,
+      }
     : null;
   return buildPostMetadata(sanitizedPost, `/posts/${id}`);
 }

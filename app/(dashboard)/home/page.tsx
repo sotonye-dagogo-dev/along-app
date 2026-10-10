@@ -5,7 +5,7 @@ import { RefreshCw, ClipboardList, History } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useSearchParams } from "next/navigation"
 import { PostCard } from "@/app/components/features/posts"
-import type { RespondToRequest, RouteRequestBody } from "@/app/components/features/posts"
+import type { RespondToRequest, RouteRequestBody, EditRouteRequest } from "@/app/components/features/posts"
 
 const ShareRouteModal = dynamic(() => import("@/app/components/features/posts/ShareRouteModal"), { ssr: false })
 const RequestRouteModal = dynamic(() => import("@/app/components/features/posts/RequestRouteModal"), { ssr: false })
@@ -24,6 +24,8 @@ import { feedStream } from "@/app/lib/streams/feedStream"
 interface FeedPost {
   id: string
   title: string
+  description?: string | null
+  type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE" | string
   routes: unknown
   images: string[]
   tags: string[]
@@ -97,6 +99,7 @@ function HomeContent() {
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [respondTo, setRespondTo] = useState<RespondToRequest | null>(null)
   const [editPost, setEditPost] = useState<FeedPost | null>(null)
+  const [editRequest, setEditRequest] = useState<EditRouteRequest | null>(null)
   const [draftsCount, setDraftsCount] = useState(0)
   const [openDraftsOnShare, setOpenDraftsOnShare] = useState(false)
   const loaderRef = useRef<HTMLDivElement>(null)
@@ -129,6 +132,8 @@ function HomeContent() {
 
   const openComposerForDrafts = useCallback(() => {
     setRespondTo(null)
+    setEditPost(null)
+    setEditRequest(null)
     setOpenDraftsOnShare(true)
     setShowShareModal(true)
   }, [])
@@ -140,16 +145,20 @@ function HomeContent() {
     setShowShareModal(false)
     setRespondTo(null)
     setEditPost(null)
+    setEditRequest(null)
     setOpenDraftsOnShare(false)
   }, [])
 
   const closeRequestModal = useCallback(() => {
     setShowRequestModal(false)
+    setEditRequest(null)
   }, [])
 
   const openRequestFromShare = useCallback(() => {
     setShowShareModal(false)
     setRespondTo(null)
+    setEditPost(null)
+    setEditRequest(null)
     setShowRequestModal(true)
   }, [])
 
@@ -349,12 +358,32 @@ function HomeContent() {
   const handleRespond = (post: { id: string; title: string; tags?: string[]; user?: RespondToRequest["user"] }) => {
     setRespondTo({ id: post.id, title: post.title, tags: post.tags ?? [], user: post.user ?? undefined })
     setEditPost(null)
+    setEditRequest(null)
     setShowShareModal(true)
   }
 
-  /** Owner picked Edit on a card — open the composer prefilled (PATCH on submit). */
+  /** Owner picked Edit on a card — route to the matching composer so a
+   *  ROUTE_REQUEST stays a request (request form) and never loads in the
+   *  route form. Nature is additionally enforced server-side. */
   const handleEditPost = useCallback((post: FeedPost) => {
     setRespondTo(null)
+    if ((post as { type?: string }).type === "ROUTE_REQUEST") {
+      const steps = Array.isArray(post.routes)
+        ? (post.routes as { location?: string; description?: string }[])
+        : []
+      setEditRequest({
+        id: post.id,
+        title: post.title,
+        description: post.description ?? "",
+        routes: steps,
+        tags: post.tags ?? [],
+      })
+      setEditPost(null)
+      setShowShareModal(false)
+      setShowRequestModal(true)
+      return
+    }
+    setEditRequest(null)
     setEditPost(post)
     setShowShareModal(true)
   }, [])
@@ -388,6 +417,7 @@ function HomeContent() {
       if (updated) {
         feedStream.updatePost(postId, {
           title: updated.title,
+          description: updated.description,
           routes: updated.routes,
           images: updated.images,
           tags: updated.tags,
@@ -405,6 +435,15 @@ function HomeContent() {
       return false
     }
   }, [])
+
+  /** Request edit submit — same PATCH path, request-shaped payload (no type). */
+  const handleEditRequestSubmit = useCallback(
+    async (
+      postId: string,
+      data: { title: string; description: string; routes: { location: string }[]; tags: string[] },
+    ): Promise<boolean> => handleEditSubmit(postId, data as unknown as Record<string, unknown>),
+    [handleEditSubmit],
+  )
 
   const initials = user
     ? `${(user.firstName as string)?.[0] ?? ""}${(user.lastName as string)?.[0] ?? ""}`.toUpperCase()
@@ -526,6 +565,8 @@ function HomeContent() {
         isOpen={showRequestModal}
         onClose={closeRequestModal}
         onSubmit={async (data: RouteRequestBody) => submitPost(data)}
+        editRequest={editRequest}
+        onEditSubmit={handleEditRequestSubmit}
       />
     </>
   )
