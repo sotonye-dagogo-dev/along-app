@@ -63,6 +63,7 @@ interface PostCardPost {
     recency?: number
     reputation?: number
     engagement?: number
+    score?: number
   } | null
   isPlatformGen?: boolean
   isArchived?: boolean
@@ -563,7 +564,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             <Share2 size={16} />
           </button>
 
-          {showTrust && <TrustBadge level={trustLevel} score={post.validityScore} size="sm" breakdown={post.validityBreakdown ?? null} />}
+          {showTrust && <TrustBadge level={trustLevel} score={post.validityScore} size="sm" variant="compact" breakdown={post.validityBreakdown ?? null} />}
         </div>
       </div>
     </AppCard>

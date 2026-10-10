@@ -7,6 +7,8 @@ export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
 export { DEFAULT_FEED_CONFIG } from "./feedAlgorithm";
 export { QUALITY_CHECKPOINTS } from "./draftingCoach";
 export { DEFAULT_VALIDITY_CONFIG, VALIDITY_SIGNAL_BOUNDS } from "./validityConfig";
+export { TRUST_DISPLAY_CONFIG, TRUST_BREAKDOWN_KEYS, TRUST_BREAKDOWN_LABELS, trustKeysForVariant, trustTierForScore } from "./trustDisplay";
+export type { TrustBreakdownKey, TrustDisplayVariant } from "./trustDisplay";
 export { AVATAR_STYLES, buildAvatarUrl, getFallbackAvatarUrl } from "./avatar";
 export { FOOTER_CONFIG } from "./footer";
 export { TOAST_CONFIG } from "./toast";

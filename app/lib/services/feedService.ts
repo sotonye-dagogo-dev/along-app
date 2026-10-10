@@ -14,6 +14,15 @@ interface FeedPost {
   bookmarks: number;
   validityScore: number;
   validityTier: string | null;
+  validityBreakdown?: {
+    community?: number;
+    detail?: number;
+    corroboration?: number;
+    recency?: number;
+    reputation?: number;
+    engagement?: number;
+    score?: number;
+  } | null;
   region: string | null;
   totalDistanceKm: number | null;
   estimatedMins: number | null;
@@ -107,14 +116,25 @@ class FeedService {
     const limit = options.limit ?? config.pageSize;
     const cursor = options.cursor;
 
-    // Check Redis cache for non-cursor requests — timeout-guarded, never blocks feed
+    // Check Redis cache for non-cursor requests — timeout-guarded, never blocks feed.
+    // Cached rows are re-enriched with fresh trust below (same canonical
+    // service as the detail view) so cached feeds never disagree with detail.
     if (!cursor) {
       try {
         const { redis } = await import("@/app/lib/db/redis");
         const cacheKey = CACHE_KEYS.feed(userId);
         const cached = await redis.get<{ posts: FeedPost[]; nextCursor: string | null }>(cacheKey);
         if (cached) {
-          return cached;
+          try {
+            const { attachLiveBreakdownsToPosts } = await import(
+              "@/app/lib/services/trustBreakdownService"
+            );
+            const { prisma } = await import("@/app/lib/db/prisma");
+            const fresh = await attachLiveBreakdownsToPosts(prisma, cached.posts as { id: string }[]);
+            return { posts: fresh as FeedPost[], nextCursor: cached.nextCursor };
+          } catch {
+            return cached;
+          }
         }
       } catch {
         // Redis unavailable — fall through to compute
@@ -241,20 +261,35 @@ class FeedService {
       .slice(0, limit);
 
     const posts = scored.map((s) => s.post);
-    const nextCursor = posts.length === limit ? posts[posts.length - 1].id : null;
+
+    // Canonical live trust (same service as detail) — attached BEFORE the
+    // cache write so every feed card carries real components, never the
+    // synthetic score±offset placeholders that disagreed with detail.
+    let trustedPosts = posts;
+    try {
+      const { attachLiveBreakdownsToPosts } = await import(
+        "@/app/lib/services/trustBreakdownService"
+      );
+      trustedPosts = (await attachLiveBreakdownsToPosts(
+        prisma,
+        posts as { id: string }[]
+      )) as FeedPost[];
+    } catch { /* stored rows */ }
+
+    const nextCursor = trustedPosts.length === limit ? trustedPosts[trustedPosts.length - 1].id : null;
 
     // Cache non-cursor results in Redis — never blocks feed on failure
     if (!cursor) {
       try {
         const { redis } = await import("@/app/lib/db/redis");
         const cacheKey = CACHE_KEYS.feed(userId);
-        await redis.set(cacheKey, { posts, nextCursor }, { ex: CACHE_TTL.feed });
+        await redis.set(cacheKey, { posts: trustedPosts, nextCursor }, { ex: CACHE_TTL.feed });
       } catch {
         // Cache write failure is non-critical
       }
     }
 
-    return { posts, nextCursor };
+    return { posts: trustedPosts, nextCursor };
   }
 
   async getPostById(postId: string, userId?: string): Promise<FeedPost | null> {

@@ -37,7 +37,17 @@ export async function GET(request: NextRequest) {
     // canonical key PostCard reads (PROFILE_POSTS_CONFIG.interactionFields).
     const posts = page.map((row) => ({ ...row.post, isBookmarked: true, _isBookmarked: true }));
 
-    return NextResponse.json({ posts, nextCursor }, { status: 200 });
+    // Canonical live trust (same service as feed/detail) so bookmarked
+    // cards carry identical breakdown values. Best-effort, never fails.
+    let trusted = posts;
+    try {
+      const { attachLiveBreakdownsToPosts } = await import(
+        "@/app/lib/services/trustBreakdownService"
+      );
+      trusted = await attachLiveBreakdownsToPosts(prisma, posts);
+    } catch { /* stored rows */ }
+
+    return NextResponse.json({ posts: trusted, nextCursor }, { status: 200 });
   } catch (error) {
     console.error("List bookmarks error:", error);
     const isPrismaKnown = error instanceof Error && ((error as unknown as { code?: string }).code === "P2022" || error.name === "PrismaClientKnownRequestError");

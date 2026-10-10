@@ -375,7 +375,22 @@ export async function GET(request: NextRequest) {
       } catch { /* plain rows */ }
     }
 
-    return NextResponse.json({ posts: enriched, nextCursor }, { status: 200 });
+    // Canonical live trust breakdowns (same service + engine as the detail
+    // view) so feed cards, profile tabs, bookmarks and explore rows carry
+    // the SAME corroboration/detail/community/recency values as the detail
+    // tooltip. Best-effort — failures keep the stored rows.
+    let withTrust = enriched;
+    try {
+      const { attachLiveBreakdownsToPosts } = await import(
+        "@/app/lib/services/trustBreakdownService"
+      );
+      withTrust = await attachLiveBreakdownsToPosts(
+        prisma,
+        enriched as { id: string }[]
+      );
+    } catch { /* stored rows */ }
+
+    return NextResponse.json({ posts: withTrust, nextCursor }, { status: 200 });
   } catch (error) {
     console.error("List posts error:", error);
     if (error instanceof SyntaxError) {

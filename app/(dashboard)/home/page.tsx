@@ -33,6 +33,15 @@ interface FeedPost {
   bookmarks: number
   validityScore: number
   validityTier: string | null
+  validityBreakdown?: {
+    community?: number
+    detail?: number
+    corroboration?: number
+    recency?: number
+    reputation?: number
+    engagement?: number
+    score?: number
+  } | null
   isPlatformGen?: boolean
   createdAt: string
   user: {

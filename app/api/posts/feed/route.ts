@@ -51,7 +51,17 @@ export async function GET(request: NextRequest) {
     const resultPosts = hasMore ? posts.slice(0, limit) : posts;
     const nextCursor = hasMore ? resultPosts[resultPosts.length - 1].id : null;
 
-    return NextResponse.json({ posts: resultPosts, nextCursor }, { status: 200 });
+    // Same canonical live trust as authenticated feeds + detail — guest
+    // cards carry identical breakdown values (best-effort, never fails).
+    try {
+      const { attachLiveBreakdownsToPosts } = await import(
+        "@/app/lib/services/trustBreakdownService"
+      );
+      const withTrust = await attachLiveBreakdownsToPosts(prisma, resultPosts);
+      return NextResponse.json({ posts: withTrust, nextCursor }, { status: 200 });
+    } catch {
+      return NextResponse.json({ posts: resultPosts, nextCursor }, { status: 200 });
+    }
   } catch (error) {
     console.error("Feed error:", error);
     const isPrismaKnown = error instanceof Error && (error.name === "PrismaClientKnownRequestError" || (error as any).code === "P2022");

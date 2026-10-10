@@ -1027,3 +1027,13 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `postShareService.test.ts` (8 cases); `ValidityEngine.test.ts` +9 (dynamic signals, scorers); `TrustBadge.test.tsx` +2 (live rows, placeholder parity).
 **QA:** no node_modules in runner — static verification only (full-scope re-reads, legacy-score arithmetic proofs, misplaced-block repair). Full gate (tsc/jest/build) deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only.
+
+## Sprint 32 (2026-10-10) — Trust breakdown consistency (feed card == detail)
+**Directive:** corroboration (and every shared row) must match between the feed post card and post detail; fewer card rows must still carry identical values. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `lib/services/trustBreakdownService.ts` (canonical single + batched live breakdowns, batched author/follower/report lookups, per-post tag-overlap; never throws; live score/tier overwrite stored rows on reads) + NEW `lib/config/trustDisplay.ts` (compact/full keys, labels, variant keys, tier derivation).
+- `TrustBadge` `variant?` + `breakdown.score?`: number prefers live score, tier re-derived; compact (feed) vs full (detail) share identical values; placeholder fallback only.
+- `PostCard` compact; every read API (list/feed+guest/search/suggestions/bookmarks/detail) attaches the same live object; worker refactored onto the service.
+- Tests: NEW `trustBreakdownConsistency.test.ts` (5 cases); `TrustBadge.test.tsx` +2 (compact parity, live-score preference).
+**QA:** no node_modules in runner — static re-reads only. Full gate (tsc/jest/build) deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only.
