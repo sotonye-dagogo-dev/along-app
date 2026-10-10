@@ -170,6 +170,7 @@ class SearchService {
           } catch {
             return cached;
           }
+        }
       } catch {
         // cache miss / unavailable — fall through to DB
       }
