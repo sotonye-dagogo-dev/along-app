@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-09 (share-route validation: routeValidation edges)
+> - last-updated-by: execute-command 2026-10-10 (Sprint 31 universal share + dynamic trust edges)
 > - last-verified-against-code: 2026-10-09 (routeValidation → modal/schemas/APIs/submits edges verified by re-read; full gate deferred to CI/Vercel, no node_modules)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -151,9 +151,16 @@ SuggestionsService
     → Config: feedAlgorithm
 
 ValidityEngine
-    → PostModel, UserActivityModel, FollowModel (Prisma)
+    → PostModel, UserActivityModel, FollowModel, BugReportModel, UserModel (Prisma)
     → Redis (trust scores)
-    → Config: validityConfig
+    → Config: validityConfig (+ VALIDITY_SIGNAL_BOUNDS)
+    → Triggered by: posts POST (sync), workers/validity-recompute, like/bookmark/comments/[id]/reports/follow routes (fire-and-forget)
+    → Consumed by: TrustBadge (breakdown prop), PostCard, posts/[id] page + GET (validityBreakdown)
+
+PostShareService + usePostShare
+    → Config: postActions (shareLabel/shareTitleDefault/postPath)
+    → Services: toastService (hook only; service is dep-free)
+    → Consumed by: PostCard (fallback), ProfilePostCard, home/page, search/SearchPage, posts/[id]/page, bookmarks/page
 
 DraftingCoachService
     → Config: draftingCoach (rule-based, no DB)

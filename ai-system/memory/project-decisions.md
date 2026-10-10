@@ -661,3 +661,24 @@ The composer sends `waypoints` as intermediates-only and previews all steps, but
 - Any future renderer (feed maps, suggestions, admin previews) must use `buildRoutePinsFromPost` — never hand-roll start/waypoints/end composition.
 - Any future trace consumer must use `useRouteTrace` (or the same estimate→debounced-trace→cache→fallback discipline) so offline/429 behaviour stays uniform.
 - If `waypoints` semantics ever change, the builder (not each call site) is the single migration point.
+
+## Sprint 31: additive trust-signal weights + single share service
+
+**Decision:** Trust bonuses/penalties are additive on top of the unchanged legacy 4-signal base (reputation .15 / engagement .10 / report-pressure .25, bounds in `VALIDITY_SIGNAL_BOUNDS`); share is one zero-dep service + hook with a fallback inside `PostCard`.
+**Date:** 2026-10-10
+**Made by:** AI agent (opencode — execute-command Sprint 31)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Additive (not renormalised) weights keep every legacy score bit-identical when new signals are absent, so no migration, no rescore backfill, and existing tests hold by construction. Follower leg is log-scale saturating at 500 (linear would let one viral author dominate; log keeps 10 followers meaningful and 500 near-max). Report pressure saturates at 4 open reports so a single report dents but cannot nuke. Share fallback lives inside `PostCard` (not each page) so future surfaces inherit working share by default; the `onShare` override is retained for callers/tests.
+
+**Alternatives Considered:**
+- **Renormalise all six weights to sum 1.0**: Rejected — shifts every stored score, invalidates the verified-tier test band, and would need a backfill to avoid visible score jumps on old posts.
+- **Persist `validityComponents` JSON column**: Rejected — needs a migration for what the detail API can already compute live and best-effort; stored score + triggers + live breakdown cover freshness without schema change.
+- **Recompute synchronously in every interaction route**: Rejected — adds write latency to likes/comments; fire-and-forget QStash with best-effort fallbacks keeps interactions fast and never fails them.
+
+**Implications:**
+- Tuning trust = edit `DEFAULT_VALIDITY_CONFIG` / `VALIDITY_SIGNAL_BOUNDS` only; engine code needs no change.
+- Any new post surface must use `usePostShare` (or at minimum render `PostCard`, which self-shares).
+- Any new interaction that should move trust must call `publishValidityRecompute` (bounded for fan-outs like follow).

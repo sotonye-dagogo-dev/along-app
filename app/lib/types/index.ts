@@ -71,6 +71,15 @@ export interface ValidityConfig {
   minScoreForVerified: number;
   minScoreForTrusted: number;
   cacheTtlSeconds: number;
+  // --- Dynamic trust extensions (all optional for backward compatibility;
+  // defaults live in DEFAULT_VALIDITY_CONFIG). Reputation + engagement lift
+  // credible, lived-in posts; sustained reports drag misleading ones down.
+  /** Bonus weight applied to the 0-100 author-reputation sub-score. */
+  reputationWeight?: number;
+  /** Bonus weight applied to the 0-100 engagement-depth sub-score. */
+  engagementWeight?: number;
+  /** Penalty weight applied to the 0-100 report-pressure sub-score. */
+  reportPenaltyWeight?: number;
 }
 
 export interface AvatarConfig {

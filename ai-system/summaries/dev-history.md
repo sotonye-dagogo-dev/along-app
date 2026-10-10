@@ -1018,3 +1018,12 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `routeValidation.test.ts` (13 cases).
 **QA:** no node_modules in runner — targeted `tsc --ignoreConfig --noResolve` zero attributable errors; new suite awaits CI. Full gate deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only.
+
+## Sprint 31 (2026-10-10) — Universal post share + dynamic trust engine
+**Directive:** share button/icon working on posts everywhere (was profile-only); trust score/breakdown dynamic, accurate, responsive to followers + interactions (was frozen at creation value). Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- Share: NEW `lib/services/postShareService.ts` (Web Share → clipboard → legacy, never throws) + NEW `hooks/usePostShare.ts`; `POST_ACTIONS_CONFIG` += share fields; `PostCard` service fallback (override kept); `ProfilePostCard` deduplicated; feed/search/post-detail (both bars)/bookmarks wired.
+- Trust: `ValidityEngine` v2 (optional reputation/engagement/report signals, additive weights, legacy parity); shared `computeRouteDetailScore`/`computeSimilarityRatio`; POST computes similarity + author signals synchronously; worker loads full signals; recompute triggers on like/bookmark/comment/edit/report/follow-unfollow; GET detail ships live `validityBreakdown`; `TrustBadge.breakdown` prop renders real rows with "live" marker, legacy placeholder otherwise.
+- Tests: NEW `postShareService.test.ts` (8 cases); `ValidityEngine.test.ts` +9 (dynamic signals, scorers); `TrustBadge.test.tsx` +2 (live rows, placeholder parity).
+**QA:** no node_modules in runner — static verification only (full-scope re-reads, legacy-score arithmetic proofs, misplaced-block repair). Full gate (tsc/jest/build) deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only.

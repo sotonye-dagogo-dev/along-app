@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 30 profile consistency + audit build fix)
-> - last-verified-against-code: 2026-10-09 (static re-reads; no node_modules in runner — tsc/jest/build deferred to CI/Vercel)
-> - last-synced: 2026-10-09 (Sprint 30 — execute-feature close-out)
+> - last-updated-by: execute-command 2026-10-10 (Sprint 31 universal share + dynamic trust)
+> - last-verified-against-code: 2026-10-10 (static re-reads; no node_modules in runner — tsc/jest/build deferred to CI/Vercel)
+> - last-synced: 2026-10-10 (Sprint 31 — execute-command close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -502,6 +502,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [S] | EmailSecurityPanel Verified pill → `bg-success text-success-text border-success-border` tokens | [x] |
 | [S] | Bookmarks API also returns `_isBookmarked` (canonical key; `isBookmarked` kept) | [x] |
 | [S] | Tests — NEW `profilePosts.test.ts` (5: avatar fields, interaction fields, token pills, cache keys) | [x] |
+
+---
+
+## Sprint 31 — Universal post share + dynamic trust engine (2026-10-10)
+
+> **Section summary:** Share works on every post surface; trust scores recompute on every community signal with a live breakdown.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Shared share service + hook (`postShareService`, `usePostShare`, `POST_ACTIONS_CONFIG` share fields) | [x] |
+| [M] | Wire share into feed, search, post detail (both bars), bookmarks; PostCard fallback; ProfilePostCard dedup | [x] |
+| [L] | ValidityEngine v2 (reputation/engagement/report signals, canonical scorers, legacy parity) | [x] |
+| [M] | Recompute triggers (like/bookmark/comment/edit/report/follow) + live breakdown on GET detail + TrustBadge live rows | [x] |
+| [S] | Tests (postShareService 8, ValidityEngine +9, TrustBadge +2) | [x] |
 
 ---
 

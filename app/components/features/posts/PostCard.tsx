@@ -9,6 +9,9 @@ import { PostMenu, type PostMenuPost } from "@/app/components/features/moderatio
 import { AuthContext } from "@/app/providers/AuthProvider"
 import { useTranslation } from "@/app/providers/I18nProvider"
 import { MODERATION_CONFIG } from "@/app/lib/config"
+import { POST_ACTIONS_CONFIG } from "@/app/lib/config/postActions"
+import { sharePostLink } from "@/app/lib/services/postShareService"
+import { toastService } from "@/app/lib/services/toastService"
 import { buildRoutePinsFromPost } from "@/app/lib/config/routePins"
 import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import type { VehicleType } from "@/app/lib/types"
@@ -53,6 +56,14 @@ interface PostCardPost {
   bookmarks: number
   validityScore: number
   validityTier: string | null
+  validityBreakdown?: {
+    community?: number
+    detail?: number
+    corroboration?: number
+    recency?: number
+    reputation?: number
+    engagement?: number
+  } | null
   isPlatformGen?: boolean
   isArchived?: boolean
   responsesCount?: number
@@ -230,7 +241,22 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
 
   const handleShareClick = () => {
     if (!auth?.requireAuth("share routes")) return
-    onShare?.(post.id)
+    // Explicit override wins (profile tabs pass their own handler); otherwise
+    // fall back to the shared share service so the icon works on every
+    // surface that renders a PostCard (feed, search, suggestions, …).
+    // Previously a missing onShare prop meant a silent no-op.
+    if (onShare) {
+      onShare(post.id)
+      return
+    }
+    void (async () => {
+      const outcome = await sharePostLink(post.id, post.title || POST_ACTIONS_CONFIG.shareTitleDefault)
+      if (outcome.ok) {
+        if (outcome.method !== "web-share") toastService.success(POST_ACTIONS_CONFIG.copySuccess)
+      } else {
+        toastService.error(POST_ACTIONS_CONFIG.copyError)
+      }
+    })()
   }
 
   const handleCommentClick = () => {
@@ -537,7 +563,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             <Share2 size={16} />
           </button>
 
-          {showTrust && <TrustBadge level={trustLevel} score={post.validityScore} size="sm" />}
+          {showTrust && <TrustBadge level={trustLevel} score={post.validityScore} size="sm" breakdown={post.validityBreakdown ?? null} />}
         </div>
       </div>
     </AppCard>

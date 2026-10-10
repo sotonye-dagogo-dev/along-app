@@ -6,7 +6,7 @@ export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, USERNAME_RULE, POST
 export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
 export { DEFAULT_FEED_CONFIG } from "./feedAlgorithm";
 export { QUALITY_CHECKPOINTS } from "./draftingCoach";
-export { DEFAULT_VALIDITY_CONFIG } from "./validityConfig";
+export { DEFAULT_VALIDITY_CONFIG, VALIDITY_SIGNAL_BOUNDS } from "./validityConfig";
 export { AVATAR_STYLES, buildAvatarUrl, getFallbackAvatarUrl } from "./avatar";
 export { FOOTER_CONFIG } from "./footer";
 export { TOAST_CONFIG } from "./toast";

@@ -21,6 +21,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         prisma.bookmark.delete({ where: { id: existing.id } }),
         prisma.post.update({ where: { id }, data: { bookmarks: { decrement: 1 } } }),
       ]);
+      // Bookmarks feed the engagement leg of trust (fire-and-forget).
+      void qstashService.publishValidityRecompute({ postId: id });
       return NextResponse.json({ bookmarked: false }, { status: 200 });
     }
 
@@ -28,6 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       prisma.bookmark.create({ data: { postId: id, userId } }),
       prisma.post.update({ where: { id }, data: { bookmarks: { increment: 1 } } }),
     ]);
+    void qstashService.publishValidityRecompute({ postId: id });
 
     const post = await prisma.post.findUnique({ where: { id }, select: { userId: true } });
     if (post && post.userId !== userId) {
