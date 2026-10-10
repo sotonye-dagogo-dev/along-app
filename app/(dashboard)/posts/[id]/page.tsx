@@ -79,6 +79,7 @@ interface PostDetail {
     recency?: number
     reputation?: number
     engagement?: number
+    score?: number
   } | null
   region: string | null
   totalDistanceKm: number | null

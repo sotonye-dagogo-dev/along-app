@@ -8,6 +8,12 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { AppProgress } from "./";
+import {
+  TRUST_DISPLAY_CONFIG,
+  trustKeysForVariant,
+  trustTierForScore,
+  type TrustDisplayVariant,
+} from "@/app/lib/config/trustDisplay";
 
 export interface TrustBreakdown {
   community?: number;
@@ -16,6 +22,8 @@ export interface TrustBreakdown {
   recency?: number;
   reputation?: number;
   engagement?: number;
+  /** Fresh overall score shipped alongside the components (detail + lists). */
+  score?: number;
 }
 
 export interface TrustBadgeProps {
@@ -24,11 +32,18 @@ export interface TrustBadgeProps {
   size?: "sm" | "default";
   showTooltip?: boolean;
   /**
-   * Live engine components (see GET /api/posts/[id] `validityBreakdown`).
-   * When provided the tooltip shows real values; otherwise it falls back to
-   * the legacy score-derived placeholders so old call sites keep working.
+   * Live engine components (see trustBreakdownService `validityBreakdown` —
+   * shipped by every post read API, not just the detail view). When provided
+   * the tooltip shows real values; otherwise it falls back to the legacy
+   * score-derived placeholders so old call sites keep working.
    */
   breakdown?: TrustBreakdown | null;
+  /**
+   * Display variant — compact surfaces (feed cards) render fewer rows than
+   * full surfaces (post detail), but the shared rows are numerically
+   * identical because both read the same `breakdown` object.
+   */
+  variant?: TrustDisplayVariant;
 }
 
 const TRUST_CONFIG = {
@@ -58,14 +73,10 @@ const TRUST_CONFIG = {
   },
 };
 
-const METRICS = [
-  { label: "Community", key: "community" },
-  { label: "Detail", key: "detail" },
-  { label: "Corroboration", key: "corroboration" },
-  { label: "Recency", key: "recency" },
-  { label: "Reputation", key: "reputation" },
-  { label: "Engagement", key: "engagement" },
-] as const;
+const METRICS = TRUST_DISPLAY_CONFIG.fullKeys.map((key) => ({
+  label: TRUST_DISPLAY_CONFIG.labels[key],
+  key,
+}));
 
 /** Estimated tooltip width (matches min-w + padding); used for clamping. */
 const TOOLTIP_WIDTH = 240;
@@ -76,23 +87,38 @@ export function TrustBadge({
   size = "default",
   showTooltip = true,
   breakdown = null,
+  variant = "full",
 }: TrustBadgeProps) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
   // Viewport-aware placement: clamped horizontally, flips below the badge
   // when there is no room above — the breakdown is always fully readable.
   const [placement, setPlacement] = useState<{ left: number; top?: number; bottom?: number }>({ left: 0 });
+  // The breakdown ships a fresh overall score alongside its components, so
+  // the badge NUMBER stays in lockstep with the tooltip on every surface
+  // (feed card == detail view). Stored-score prop is the fallback.
+  const liveScore = breakdown && typeof breakdown.score === "number" && Number.isFinite(breakdown.score)
+    ? Math.min(100, Math.max(0, Math.round(breakdown.score)))
+    : null;
+  const displayScore = liveScore ?? score;
+  // Re-derive the tier from the displayed score so label + number can never
+  // disagree when live data moves the score past a threshold.
+  const displayLevel = liveScore !== null ? trustTierForScore(liveScore) : level;
   const anchorRef = useRef<HTMLDivElement>(null);
-  const config = TRUST_CONFIG[level];
+  const config = TRUST_CONFIG[displayLevel];
   const Icon = config.icon;
 
   // Real engine components when the caller ships them (live breakdown from
-  // the detail API); legacy score-derived placeholders otherwise. Reputation
-  // / Engagement rows only appear when real values exist — placeholders never
-  // invent them.
+  // every post read API via trustBreakdownService); legacy score-derived
+  // placeholders otherwise. Compact surfaces (feed cards) render the
+  // configured subset — same keys, same values as the full detail view.
+  // Reputation / Engagement rows only appear when real values exist —
+  // placeholders never invent them.
   const hasLive = !!breakdown && ["community", "detail", "corroboration", "recency"].every(
     (k) => typeof (breakdown as Record<string, unknown>)[k] === "number"
   );
+  const allowedKeys = new Set<string>(trustKeysForVariant(variant));
   const visibleMetrics = METRICS.filter((m) => {
+    if (!allowedKeys.has(m.key)) return false;
     if (hasLive) {
       if (m.key === "reputation" || m.key === "engagement") {
         return typeof (breakdown as Record<string, unknown>)[m.key] === "number";
@@ -113,7 +139,7 @@ export function TrustBadge({
     const offset = (i - 1.5) * 8;
     return {
       label: m.label,
-      value: Math.min(100, Math.max(0, score + offset)),
+      value: Math.min(100, Math.max(0, displayScore + offset)),
       live: false as const,
     };
   });
@@ -164,7 +190,7 @@ export function TrustBadge({
     >
       <button
         type="button"
-        aria-label={`Trust score ${score}, ${config.label}. Activate for breakdown.`}
+        aria-label={`Trust score ${displayScore}, ${config.label}. Activate for breakdown.`}
         aria-expanded={tooltipOpen}
         onClick={() => showTooltip && setTooltipOpen((v) => !v)}
         className={`inline-flex items-center gap-1 radius-pill ${config.bg} ${config.text} border-none cursor-pointer font-sans ${
@@ -173,7 +199,7 @@ export function TrustBadge({
       >
         <Icon size={12} />
         <span>{config.label}</span>
-        <span className="font-bold">{score}</span>
+        <span className="font-bold">{displayScore}</span>
       </button>
 
       {showTooltip && tooltipOpen && (

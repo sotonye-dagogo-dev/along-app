@@ -83,6 +83,16 @@ export async function GET(_request: NextRequest) {
       }),
     ]);
 
+    // Canonical live trust for suggested routes (same service as feed/detail)
+    // so carousel scores never disagree with feed/detail. Best-effort.
+    let liveRoutes = routes;
+    try {
+      const { attachLiveBreakdownsToPosts } = await import(
+        "@/app/lib/services/trustBreakdownService"
+      );
+      liveRoutes = await attachLiveBreakdownsToPosts(prisma, routes);
+    } catch { /* stored rows */ }
+
     const payload = {
       routeRequests: routeRequests.map((p) => ({
         id: p.id,
@@ -93,7 +103,7 @@ export async function GET(_request: NextRequest) {
         createdAt: p.createdAt,
         user: p.user,
       })),
-      routes: routes.map((p) => ({
+      routes: liveRoutes.map((p) => ({
         id: p.id,
         title: p.title,
         region: p.region,
@@ -102,6 +112,7 @@ export async function GET(_request: NextRequest) {
         estimatedMins: p.estimatedMins,
         validityScore: p.validityScore,
         validityTier: p.validityTier,
+        validityBreakdown: (p as { validityBreakdown?: unknown }).validityBreakdown ?? null,
         images: p.images.slice(0, 1),
         createdAt: p.createdAt,
         user: p.user,

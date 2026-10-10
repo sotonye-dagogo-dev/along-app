@@ -155,7 +155,12 @@ ValidityEngine
     → Redis (trust scores)
     → Config: validityConfig (+ VALIDITY_SIGNAL_BOUNDS)
     → Triggered by: posts POST (sync), workers/validity-recompute, like/bookmark/comments/[id]/reports/follow routes (fire-and-forget)
-    → Consumed by: TrustBadge (breakdown prop), PostCard, posts/[id] page + GET (validityBreakdown)
+    → Consumed by: trustBreakdownService (canonical live breakdowns), TrustBadge (breakdown prop), PostCard, posts/[id] page + GET (validityBreakdown)
+
+TrustBreakdownService (`app/lib/services/trustBreakdownService.ts` — single + batched live breakdowns, same engine/inputs on every surface)
+    → ValidityEngine (evaluate + canonical scorers), PostModel/FollowModel/BugReportModel/UserModel (Prisma, best-effort)
+    → Config: trustDisplay (compact/full keys, tier derivation)
+    → Consumed by: GET /api/posts (list), GET /api/posts/feed (via feedService + guest path), searchService, GET /api/suggestions, GET /api/bookmarks, GET /api/posts/[id], workers/validity-recompute
 
 PostShareService + usePostShare
     → Config: postActions (shareLabel/shareTitleDefault/postPath)

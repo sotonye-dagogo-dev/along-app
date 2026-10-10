@@ -96,4 +96,31 @@ describe("TrustBadge", () => {
     expect(screen.queryByText("Reputation")).not.toBeInTheDocument();
     expect(screen.queryByText("Engagement")).not.toBeInTheDocument();
   });
+
+  it("compact variant shows the same shared values as the full view", async () => {
+    const user = userEvent.setup();
+    const breakdown = { community: 80, detail: 70, corroboration: 60, recency: 90, reputation: 55, engagement: 40, score: 74 };
+    const { unmount } = render(
+      <TrustBadge level="verified" score={10} showTooltip variant="compact" breakdown={breakdown} />
+    );
+    const badge = screen.getByText("74").closest(".relative");
+    await act(async () => {
+      await user.hover(badge!);
+    });
+    // Shared rows carry the identical engine values (not placeholders).
+    expect(screen.getByText("60%")).toBeInTheDocument();
+    // Compact omits the extended rows while the badge number follows the live score.
+    expect(screen.queryByText("Reputation")).not.toBeInTheDocument();
+    expect(screen.queryByText("Engagement")).not.toBeInTheDocument();
+    unmount();
+  });
+
+  it("prefers the live breakdown score over the stored score prop", () => {
+    render(
+      <TrustBadge level="low" score={10} showTooltip={false} breakdown={{ community: 80, detail: 70, corroboration: 60, recency: 90, score: 72 }} />
+    );
+    // 72 re-derives to Verified, so a stale Low label can never stick.
+    expect(screen.getByText("Verified")).toBeInTheDocument();
+    expect(screen.getByText("72")).toBeInTheDocument();
+  });
 });
