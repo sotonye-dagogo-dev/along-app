@@ -595,6 +595,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   }, [applyDraft])
 
   const deleteDraft = useCallback((id: string) => {
+    // Explicit user discard → server purges orphaned uploads best-effort
+    // (POST /api/upload/cleanup skips URLs still referenced by live posts).
     setDrafts(routeDraftsService.deleteDraft(id))
     setActiveDraftId((prev) => (prev === id ? null : prev))
     toastService.success(ROUTE_DRAFTS_CONFIG.deletedToast)
@@ -834,9 +836,10 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       setIsSubmitting(false)
       return
     }
-    // Upload complete: drop the restored draft (or legacy keys when none was active)
+    // Upload complete: drop the restored draft (or legacy keys when none was active).
+    // Published images now live on the new post — skip the orphan-cleanup call.
     if (activeDraftId) {
-      setDrafts(routeDraftsService.deleteDraft(activeDraftId))
+      setDrafts(routeDraftsService.deleteDraft(activeDraftId, { cleanupAssets: false }))
       setActiveDraftId(null)
     } else {
       routeDraftsService.clearLegacyKeys()

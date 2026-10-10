@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { UPDATE_POST_SCHEMA } from "@/app/lib/schemas/post";
-import { MODERATION_CONFIG } from "@/app/lib/config";
+import { MODERATION_CONFIG, MEDIA_CLEANUP_CONFIG } from "@/app/lib/config";
 import { qstashService } from "@/app/lib/services/qstashService";
 import { normalizeRouteSteps } from "@/app/lib/config/routeSteps";
 import { z } from "zod";
@@ -251,6 +251,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       void qstashService.publishValidityRecompute({ postId: id });
     } catch { /* non-critical */ }
 
+    // Updated-assets hygiene (ACID-safe): DB committed above; removed
+    // Cloudinary images are destroyed best-effort and never fail the edit.
+    try {
+      if (MEDIA_CLEANUP_CONFIG.enabled && MEDIA_CLEANUP_CONFIG.postEditCleanupEnabled) {
+        const { diffRemovedUrls } = await import("@/app/lib/utils/cloudinaryUrls");
+        const removed = diffRemovedUrls(
+          (post as { images?: unknown }).images,
+          (updated as { images?: unknown }).images
+        );
+        if (removed.length > 0) {
+          const { cleanupImagesInBackground } = await import(
+            "@/app/lib/services/mediaCleanupService"
+          );
+          cleanupImagesInBackground(removed, { source: "post-edit", postId: id });
+        }
+      }
+    } catch { /* non-critical */ }
+
     return NextResponse.json({ post: updated }, { status: 200 });
   } catch (error) {
     console.error("Update post error:", error);
@@ -266,7 +284,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const post = await prisma.post.findUnique({ where: { id }, select: { id: true, userId: true } });
+    const post = await prisma.post.findUnique({ where: { id }, select: { id: true, userId: true, images: true } });
     if (!post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
@@ -277,7 +295,18 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     // Single atomic delete — cascades (likes/bookmarks/comments/notifications)
     // are enforced by the Prisma relations, so no partial state survives.
+    // Asset images are captured BEFORE the delete; Cloudinary cleanup runs
+    // AFTER the commit (best-effort, never fails the delete).
+    const orphanCandidates: string[] = Array.isArray(post.images) ? [...post.images] : [];
     await prisma.post.delete({ where: { id } });
+    try {
+      if (MEDIA_CLEANUP_CONFIG.enabled && MEDIA_CLEANUP_CONFIG.postDeleteCleanupEnabled && orphanCandidates.length > 0) {
+        const { cleanupImagesInBackground } = await import(
+          "@/app/lib/services/mediaCleanupService"
+        );
+        cleanupImagesInBackground(orphanCandidates, { source: "post-delete", postId: id });
+      }
+    } catch { /* non-critical */ }
     return NextResponse.json({ message: "Post deleted" }, { status: 200 });
   } catch (error) {
     console.error("Delete post error:", error);

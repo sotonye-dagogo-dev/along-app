@@ -637,3 +637,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** lift leaf-only behaviour into a zero-dep service + hook the moment a second surface needs it, with a fallback inside the shared component (override prop kept for callers/tests); make scores a function of everything the product claims matters, recompute on every signal that feeds them (fire-and-forget, bounded fan-out), compute honestly at write time (no optimistic-then-overwrite), and render the REAL components in every breakdown UI so staleness is visible instead of hidden. Additive optional inputs preserve legacy scores exactly — prove with arithmetic before changing weights.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 33: derived public_ids + post-commit destroys behind "deleted but still billed"
+- **Symptom:** post/draft/account deletes removed DB rows but Cloudinary bytes in `along/posts/*` lived forever — Post.images stores only secure_urls and no delete path ever called destroy.
+- **Root causes:** (1) upload returns secure_url only with no public_id column, so cleanup felt "impossible without a migration" and was never built; (2) external side-effects were assumed to belong inside the DB transaction, so the ACID-safe ordering (commit first, best-effort destroy after, never throw) was never stated as policy.
+- **Fix pattern (reuse):** derive public_id by parsing secure_url (`/upload/(vN/)?<id>.<ext>`) + enforce an `along/*` allowlist, and codify commit-first/best-effort-after as config (`MEDIA_CLEANUP_CONFIG`) with per-flow toggles + a live-post reference guard on the client-discard endpoint (publish-then-discard reuses URLs). Account finalize keeps anonymized post images per retention policy and purges only legacy avatar URLs. Applies to any future external-asset lifecycle (e.g. video, attachments).
+- **Supersedes:** None
+- **Superseded by:** None

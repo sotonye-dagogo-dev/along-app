@@ -1,8 +1,8 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: execute-command 2026-10-10 (Sprint 31 universal share + dynamic trust)
-> - last-verified-against-code: 2026-10-09 (static re-reads incl. routeValidation/config-barrel/modal/submits/APIs; no node_modules in runner — full tsc/jest/build deferred to CI/Vercel)
+> - last-updated-by: execute-command 2026-10-10 (Sprint 33 media cleanup)
+> - last-verified-against-code: 2026-10-10 (static re-reads of all 11 touched files incl. config/service/cleanup-route/delete-paths; no node_modules in runner — full tsc/jest/build deferred to CI/Vercel)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
@@ -239,7 +239,7 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - Two `useRequireAuth` hooks exist: one in `app/hooks/` (router-based redirect) and one in `app/lib/hooks/` (permission check) — potential confusion
 - Blog posts are read from the filesystem at request time (no CMS integration yet)
 - `app/lib/streams/feedStream.ts` now implements RxJS reactive feed with 30s polling
-- Image upload is now Cloudinary-backed via `app/api/upload` (multipart, 5MB/file, 10 files max) — requires CLOUDINARY_* env vars; `next.config.mjs` now allowlists only known image hosts (was wildcard `**`)
+- Image upload is now Cloudinary-backed via `app/api/upload` (multipart, 5MB/file, 10 files max) — requires CLOUDINARY_* env vars; `next.config.mjs` now allowlists only known image hosts (was wildcard `**`); Sprint 33 orphan prevention: `MEDIA_CLEANUP_CONFIG` + `mediaCleanupService` destroy `along/*` assets post-commit (never fails the delete) on post delete (single/admin-bulk/bug-REMOVE_POST), post-edit removed-images diff, and draft discard via `POST /api/upload/cleanup` (skips URLs still referenced by live posts; publish path skips the call); account finalize retains anonymized post images per policy and purges only a legacy Cloudinary avatar URL
 - QStash workers now use cloned request body to avoid double-consume `request.text()` / `request.json()` race (fixed 500 on every worker invocation)
 - Redis layer is now timeout-hardened: `app/lib/db/redis.ts` lazy singleton + `withTimeout(1200ms)`, `otpStore.ts` 800ms fallback to in-memory (cut from 1500ms 2026-10-09 verify-email 504 fix); auth code-send routes (verify-email, otp/resend, register) issue Redis writes in parallel and declare explicit `maxDuration` (30s sends / 15s verifies) instead of the Vercel 10s default; forgot-password email is non-blocking via `waitUntil`
 

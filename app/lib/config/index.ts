@@ -102,3 +102,5 @@ export { DEFAULT_BLOG_CATEGORIES, BLOG_LAYOUT_CONFIG } from "./blog";
 export type { BlogCategory, BlogLayoutConfig } from "./blog";
 export { PROFILE_POSTS_CONFIG } from "./profilePosts";
 export type { ProfilePostsConfig } from "./profilePosts";
+export { MEDIA_CLEANUP_CONFIG } from "./mediaCleanup";
+export type { MediaCleanupConfig, MediaCleanupSource } from "./mediaCleanup";
