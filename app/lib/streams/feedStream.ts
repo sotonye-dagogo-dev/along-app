@@ -114,11 +114,16 @@ export class FeedStream {
     )
   }
 
-    private async fetchFeed(cursorVal?: string): Promise<FeedState> {
+    private async fetchFeed(cursorVal?: string, viewerLocation?: { lat: number; lng: number } | null): Promise<FeedState> {
     try {
       const params = new URLSearchParams()
       if (cursorVal) params.set("cursor", cursorVal)
       params.set("limit", String(LIMIT))
+      // Behind-the-scenes nearby boost — best-effort only, never required.
+      if (viewerLocation && Number.isFinite(viewerLocation.lat) && Number.isFinite(viewerLocation.lng)) {
+        params.set("lat", String(viewerLocation.lat))
+        params.set("lng", String(viewerLocation.lng))
+      }
       const res = await fetch(`/api/posts/feed?${params}`)
       if (!res.ok) return { posts: [], cursor: null, hasMore: false, loading: false }
       let data: { posts?: FeedPost[]; nextCursor?: string | null } = {}
@@ -143,7 +148,7 @@ export class FeedStream {
    * Hydrates from the in-app memory cache when available (instant paint, no
    * skeleton flash), then revalidates only if the cached feed is stale.
    */
-  async loadInitial(userId?: string): Promise<FeedState> {
+  async loadInitial(userId?: string, viewerLocation?: { lat: number; lng: number } | null): Promise<FeedState> {
     this.cacheKey = `feed:stream:${userId ?? "anon"}`
     const cached = memoryCache.get<CachedFeed>(this.cacheKey)
 
@@ -152,7 +157,7 @@ export class FeedStream {
       const ageSec = (Date.now() - cached.fetchedAt) / 1000
       if (ageSec < FEED_FRESH_SEC) return cached.state
       // stale → silent background revalidation, keep showing cached feed
-      const state = await this.fetchFeed()
+      const state = await this.fetchFeed(undefined, viewerLocation)
       if (state.posts.length > 0) {
         this.feedStateSubject.next(state)
         this.persist(state)
@@ -162,17 +167,17 @@ export class FeedStream {
     }
 
     this.feedStateSubject.next({ ...this.feedStateSubject.value, loading: true })
-    const state = await this.fetchFeed()
+    const state = await this.fetchFeed(undefined, viewerLocation)
     this.feedStateSubject.next(state)
     this.persist(state)
     return state
   }
 
-  async loadMore() {
+  async loadMore(viewerLocation?: { lat: number; lng: number } | null) {
     const current = this.feedStateSubject.value
     if (!current.hasMore || current.loading) return
     this.feedStateSubject.next({ ...current, loading: true })
-    const state = await this.fetchFeed(current.cursor ?? undefined)
+    const state = await this.fetchFeed(current.cursor ?? undefined, viewerLocation)
     const merged: FeedState = {
       posts: [...current.posts, ...state.posts],
       cursor: state.cursor,

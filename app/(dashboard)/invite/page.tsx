@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from "react"
 import { Gift, Copy, Check, Trophy, Users, Share2 } from "lucide-react"
 import { AppCard, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { buildInviteUrl } from "@/app/lib/config/inviteConfig"
 import { useTranslation } from "@/app/providers/I18nProvider"
 
 interface InviteData {
@@ -50,7 +51,7 @@ export default function InvitePage() {
     load()
   }, [])
 
-  const inviteUrl = data ? `${window.location.origin}/register?ref=${data.inviteCode}` : ""
+  const inviteUrl = data ? buildInviteUrl(window.location.origin, data.inviteCode) : ""
 
   // Send-credit bonus window: the first `maxInvites` converted invites also
   // earn send points — inviting itself is unlimited (see INVITE_CONFIG).

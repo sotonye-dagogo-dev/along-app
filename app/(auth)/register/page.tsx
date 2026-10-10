@@ -10,7 +10,16 @@ import { toastService } from "@/app/lib/services/toastService"
 function useInviteRef(): string | null {
   const [refCode, setRefCode] = useState<string | null>(null)
   React.useEffect(() => {
-    setRefCode(new URLSearchParams(window.location.search).get("ref"))
+    try {
+      const params = new URLSearchParams(window.location.search)
+      // Canonical ?ref= wins; accept legacy ?referral=/ ?invite= aliases so
+      // hand-typed or older shared links still link the inviter.
+      const raw = params.get("ref") ?? params.get("referral") ?? params.get("invite")
+      const cleaned = raw ? raw.trim().replace(/[\s<>"]/g, "") : ""
+      setRefCode(cleaned.length > 0 ? cleaned : null)
+    } catch {
+      setRefCode(null)
+    }
   }, [])
   return refCode
 }

@@ -44,6 +44,33 @@ interface FeedPost {
 interface FeedOptions {
   cursor?: string;
   limit?: number;
+  /** Optional viewer fix (client lat/lng). Behind-the-scenes nearby boost only; absent = no-op. */
+  viewerLocation?: { lat: number; lng: number } | null;
+}
+
+/** Haversine distance (km) — local copy so the service stays dependency-light. */
+function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+
+/** Resolve effective feed config: admin-tuned SiteConfig wins, hardcoded default is the fallback. */
+async function resolveFeedConfig(): Promise<typeof DEFAULT_FEED_CONFIG> {
+  try {
+    const { getSiteConfig } = await import("@/app/lib/utils/siteConfig");
+    const stored = await getSiteConfig<Partial<typeof DEFAULT_FEED_CONFIG>>("feedAlgorithm", {});
+    if (stored && typeof stored === "object") {
+      return { ...DEFAULT_FEED_CONFIG, ...stored };
+    }
+  } catch {
+    /* config store unavailable — fall through to default */
+  }
+  return DEFAULT_FEED_CONFIG;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Prisma client cast workarounds: optional columns (avatarConfig, isArchived) may be absent on older generated clients; casts keep the P2022 fallback path compiling */
@@ -112,7 +139,7 @@ async function safeFindUniquePost(args: Parameters<typeof prisma.post.findUnique
 
 class FeedService {
   async getFeed(userId: string, options: FeedOptions = {}): Promise<{ posts: FeedPost[]; nextCursor: string | null }> {
-    const config = DEFAULT_FEED_CONFIG;
+    const config = await resolveFeedConfig();
     const limit = options.limit ?? config.pageSize;
     const cursor = options.cursor;
 
@@ -210,13 +237,47 @@ class FeedService {
     // Merge and score posts — include recency bonus and recent fallback
     const postMap = new Map<string, { post: FeedPost; score: number }>();
 
+    // Behind-the-scenes nearby boost: when a viewer fix is available
+    // (explicit query param wins, stored last-known is the fallback), posts
+    // with start coords earn a distance-decayed bonus (50km half-life).
+    // Absent geo = zero bonus, so ordering is unchanged for geo-less viewers.
+    let viewerFix = options.viewerLocation ?? null;
+    if (!viewerFix) {
+      try {
+        const viewer = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { lastKnownLat: true, lastKnownLng: true },
+        });
+        if (
+          viewer &&
+          typeof viewer.lastKnownLat === "number" &&
+          typeof viewer.lastKnownLng === "number" &&
+          Number.isFinite(viewer.lastKnownLat) &&
+          Number.isFinite(viewer.lastKnownLng)
+        ) {
+          viewerFix = { lat: viewer.lastKnownLat, lng: viewer.lastKnownLng };
+        }
+      } catch {
+        /* geo fallback unavailable — proceed without location bonus */
+      }
+    }
+    const locationBonusFor = (p: { startLat?: number | null; startLng?: number | null }): number => {
+      if (!viewerFix || config.locationBonus <= 0) return 0;
+      const sLat = (p as { startLat?: unknown }).startLat;
+      const sLng = (p as { startLng?: unknown }).startLng;
+      if (typeof sLat !== "number" || typeof sLng !== "number") return 0;
+      if (!Number.isFinite(sLat) || !Number.isFinite(sLng)) return 0;
+      const dKm = haversineKm(viewerFix.lat, viewerFix.lng, sLat, sLng);
+      return config.locationBonus * Math.exp(-dKm / 50);
+    };
+
     const addWithScore = (posts: typeof trendingPosts, weight: number, recencyBonus = 0) => {
       for (const p of posts) {
         const existing = postMap.get(p.id);
         // Recency bonus: posts within last 24h get extra 0.05, decaying linearly over 7 days
         const ageHours = (Date.now() - new Date(p.createdAt).getTime()) / 3600000;
         const recency = recencyBonus > 0 ? Math.max(0, recencyBonus * (1 - ageHours / (7 * 24))) : 0;
-        const increment = weight * (p.isPlatformGen ? 0.5 : 1.0) + recency;
+        const increment = weight * (p.isPlatformGen ? 0.5 : 1.0) + recency + locationBonusFor(p);
         if (existing) {
           existing.score += increment;
         } else {
@@ -252,10 +313,15 @@ class FeedService {
       }
     }
 
-    // Sort by score, then by recency as tie-breaker
+    // Sort by score, then live trust, then recency as tie-breakers — trust
+    // stays display-canonical but now also breaks score ties so credible
+    // posts surface first without overriding follow/tag affinity.
     const scored = Array.from(postMap.values())
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
+        const aTrust = typeof a.post.validityScore === "number" ? a.post.validityScore : 0;
+        const bTrust = typeof b.post.validityScore === "number" ? b.post.validityScore : 0;
+        if (bTrust !== aTrust) return bTrust - aTrust;
         return new Date(b.post.createdAt).getTime() - new Date(a.post.createdAt).getTime();
       })
       .slice(0, limit);

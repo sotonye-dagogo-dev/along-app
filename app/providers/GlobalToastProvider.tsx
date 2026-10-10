@@ -47,7 +47,9 @@ export function GlobalToastProvider({ children }: { children: React.ReactNode })
           open={open}
           message={options.message}
           undoLabel={options.undoLabel}
-          onUndo={options.onUndo || (() => {})}
+          // Plain success/error/info toasts carry no undo action — only the
+          // explicit `undo()` path renders the Undo button.
+          onUndo={options.type === "undo" ? (options.onUndo || (() => {})) : options.onUndo}
           onAutoClose={close}
           duration={options.duration ?? TOAST_CONFIG.undoMs}
         />
