@@ -150,6 +150,7 @@ export default function PostDetailPage() {
   const passiveLocation = useUserLocation()
   const mapUserLocation = userLocation ?? passiveLocation
   const [editOpen, setEditOpen] = useState(false)
+  const [respondOpen, setRespondOpen] = useState(false)
 
   const postId = params.id as string
   const ready = !authLoading && Boolean(postId)
@@ -316,6 +317,40 @@ export default function PostDetailPage() {
     editId: string,
     data: { title: string; description: string; routes: { location: string }[]; tags: string[] },
   ): Promise<boolean> => handleEditSubmit(editId, data as unknown as Omit<EditPost, "id">)
+
+  const handleRespond = () => {
+    if (!requireAuth("respond to route requests")) return
+    setRespondOpen(true)
+  }
+
+  const handleRespondSubmit = async (data: Record<string, unknown>): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        try {
+          const payload = await res.json().catch(() => null) as { message?: string; error?: string; details?: { fieldErrors?: Record<string, string[]>; formErrors?: string[] } } | null
+          const { firstRouteServerMessage } = await import("@/app/lib/config/routeValidation")
+          toastService.error(
+            firstRouteServerMessage(payload?.details, payload?.message ?? payload?.error ?? POST_ACTIONS_CONFIG.editError)
+          )
+        } catch {
+          toastService.error(POST_ACTIONS_CONFIG.editError)
+        }
+        return false
+      }
+      setRespondOpen(false)
+      toastService.success("Response shared!")
+      await refreshPost()
+      return true
+    } catch {
+      toastService.error(POST_ACTIONS_CONFIG.editError)
+      return false
+    }
+  }
 
   const routes = useMemo(() =>
     post && Array.isArray(post.routes) ? (post.routes as RouteStep[]) : [],
@@ -718,7 +753,14 @@ export default function PostDetailPage() {
 
       {isRouteRequest && (
         <div className="mb-6">
-          <h3 className="text-base font-semibold mb-3">
+          <button
+            onClick={handleRespond}
+            className="w-full inline-flex items-center justify-center gap-1.5 h-10 px-4 radius-md bg-primary text-white border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-colors duration-fast"
+          >
+            <Reply size={15} />
+            Respond to this request
+          </button>
+          <h3 className="text-base font-semibold mb-3 mt-4">
             Responses <span className="font-normal text-sm text-text-muted">· {responses.length}</span>
           </h3>
           {responses.length === 0 ? (
@@ -790,6 +832,15 @@ export default function PostDetailPage() {
             onEditSubmit={handleEditSubmit}
           />
         )
+      )}
+
+      {isRouteRequest && respondOpen && (
+        <ShareRouteModal
+          isOpen={respondOpen}
+          onClose={() => setRespondOpen(false)}
+          responseTo={post ? { id: post.id, title: post.title, tags: post.tags, user: { userName: post.user.userName, firstName: post.user.firstName, lastName: post.user.lastName } } : null}
+          onSubmit={handleRespondSubmit}
+        />
       )}
     </div>
   )
