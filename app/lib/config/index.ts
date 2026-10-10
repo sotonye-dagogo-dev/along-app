@@ -52,6 +52,8 @@ export type { SiteReview, PlatformReviewItem, ReviewStreamEntry } from "./review
 export { TRANSPORT_INTEGRATION_REGISTRY } from "./mapIntegrations";
 export { MAP_PINS_CONFIG, routePinLabel } from "./mapPins";
 export type { MapPinsConfig } from "./mapPins";
+export { LOCATION_FEEDBACK_CONFIG, locationErrorCopy } from "./locationFeedback";
+export type { LocationFeedbackConfig } from "./locationFeedback";
 export {
   MAP_STACK_CONFIG,
   vectorStyleUrl,

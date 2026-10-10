@@ -14,6 +14,7 @@ import { getMapStyleStack, rasterFallbackDepth } from "@/app/lib/config/mapStack
 import { MAP_PINS_CONFIG } from "@/app/lib/config/mapPins"
 import { MapRoutePin, MapUserDot } from "@/app/components/features/posts/MapPins"
 import { toastService } from "@/app/lib/services/toastService"
+import { LOCATION_FEEDBACK_CONFIG, locationErrorCopy } from "@/app/lib/config/locationFeedback"
 
 const MapView = dynamic(() => import("react-map-gl/maplibre"), { ssr: false })
 const Marker = dynamic(() => import("react-map-gl/maplibre").then((m) => ({ default: m.Marker })), { ssr: false })
@@ -197,19 +198,46 @@ export default function ExplorePage() {
         p.vehicles.some((v) => activeVehicleFilters.includes(v))
       )
     }
+    // Trust tiers are hierarchical: "trusted" (≥80) outranks "verified"
+    // (≥60), so the Verified filter includes both — otherwise verified
+    // users lose their best posts from the filtered view.
     if (showVerified) {
-      result = result.filter((p) => p.validityTier === "verified")
+      result = result.filter((p) => p.validityTier === "verified" || p.validityTier === "trusted")
     }
     if (showTrusted) {
       result = result.filter((p) => p.validityTier === "trusted")
     }
     if (sortBy === "validity") {
-      result = [...result].sort((a, b) => b.validityScore - a.validityScore)
+      // Score first, then engagement depth, then recency — mirrors the feed
+      // tie-break order so Explore and Home agree on what "best" means.
+      result = [...result].sort((a, b) => {
+        if (b.validityScore !== a.validityScore) return b.validityScore - a.validityScore
+        if (b.likes !== a.likes) return b.likes - a.likes
+        if (b.comments !== a.comments) return b.comments - a.comments
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      })
     } else if (sortBy === "recency") {
       result = [...result].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    } else if (sortBy === "nearest") {
+      // Behind-the-scenes location factor: distance-decayed ordering when a
+      // fix is available; falls back to validity order when it isn't.
+      if (userLocation) {
+        const toRad = (d: number) => (d * Math.PI) / 180
+        const distKm = (lat: number, lng: number) => {
+          const dLat = toRad(lat - userLocation.lat)
+          const dLng = toRad(lng - userLocation.lng)
+          const s =
+            Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(userLocation.lat)) * Math.cos(toRad(lat)) * Math.sin(dLng / 2) ** 2
+          return 6371 * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
+        }
+        result = [...result].sort((a, b) => distKm(a.lat, a.lng) - distKm(b.lat, b.lng))
+      } else {
+        result = [...result].sort((a, b) => b.validityScore - a.validityScore)
+      }
     }
     return result
-  }, [pins, searchQuery, activeVehicleFilters, showVerified, showTrusted, sortBy])
+  }, [pins, searchQuery, activeVehicleFilters, showVerified, showTrusted, sortBy, userLocation])
 
   const handleSheetPointerDown = (e: React.PointerEvent) => {
     setDragging(true)
@@ -239,7 +267,7 @@ export default function ExplorePage() {
 
   const handleNearMe = () => {
     if (!("geolocation" in navigator)) {
-      toastService.error("Location isn't available on this device");
+      toastService.error(LOCATION_FEEDBACK_CONFIG.unsupported);
       return;
     }
     setLocating(true);
@@ -255,13 +283,7 @@ export default function ExplorePage() {
       },
       (err) => {
         setLocating(false);
-        if (err.code === err.PERMISSION_DENIED) {
-          toastService.error("Location access denied — enable it to see your pin");
-        } else if (err.code === err.TIMEOUT) {
-          toastService.error("Location timed out — try again");
-        } else {
-          toastService.error("Couldn't get your location");
-        }
+        toastService.error(locationErrorCopy(err.code));
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
     );
@@ -431,6 +453,7 @@ export default function ExplorePage() {
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="h-8 px-2 border border-border radius-sm text-xs font-sans text-text-primary bg-bg-base outline-none">
               <option value="validity">Validity score</option>
               <option value="recency">Recency</option>
+              <option value="nearest">Nearest to me</option>
             </select>
           </div>
           {filteredPins.map((pin) => (

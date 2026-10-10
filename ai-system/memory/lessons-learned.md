@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-09 (share-route silent-coercion lesson)
+> - last-updated-by: execute-command 2026-10-10 (Sprint 34 dead-config + raw-API-page lesson)
 > - last-verified-against-code: 2026-10-09
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -642,5 +642,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** post/draft/account deletes removed DB rows but Cloudinary bytes in `along/posts/*` lived forever — Post.images stores only secure_urls and no delete path ever called destroy.
 - **Root causes:** (1) upload returns secure_url only with no public_id column, so cleanup felt "impossible without a migration" and was never built; (2) external side-effects were assumed to belong inside the DB transaction, so the ACID-safe ordering (commit first, best-effort destroy after, never throw) was never stated as policy.
 - **Fix pattern (reuse):** derive public_id by parsing secure_url (`/upload/(vN/)?<id>.<ext>`) + enforce an `along/*` allowlist, and codify commit-first/best-effort-after as config (`MEDIA_CLEANUP_CONFIG`) with per-flow toggles + a live-post reference guard on the client-discard endpoint (publish-then-discard reuses URLs). Account finalize keeps anonymized post images per retention policy and purges only legacy avatar URLs. Applies to any future external-asset lifecycle (e.g. video, attachments).
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 34: dead config weights + raw-API error pages behind "sound but static" and "landed on an api route"
+- **Symptom:** feed ranking ignored location despite a tuned `locationBonus`, ignored admin tuning despite a seeded SiteConfig key, and ignored trust despite computing it live; denied location toasted on two surfaces but only inlined on navigation; a minority of invitees saw an api route in the address bar.
+- **Root causes:** (1) config values with zero code references (locationBonus) and documented-but-unread store keys (feedAlgorithm) look tunable but change nothing — audit must grep refs, not just read values; (2) error paths on browser-navigated OAuth routes returned JSON, so any refresh/copy during the transient /api window stranded users on a non-page; (3) leaf-duplicated copy strings drifted, hiding which surfaces had feedback and which didn't.
+- **Fix pattern (reuse):** centralize user-facing copy in zero-dep configs consumed by every surface; make ranking additive-bonus-only for new signals (absent = exact-zero, ordering provably unchanged); resolve admin config with hardcoded fallback at call time; redirect (never JSON) on any GET route a browser can display, preserving referral context; add catch-all page redirects for legacy/hand-typed URL shapes. Applies to any future ranking signal or shareable-link flow.
 - **Supersedes:** None
 - **Superseded by:** None

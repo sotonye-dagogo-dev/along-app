@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-command 2026-10-10 (Sprint 33 media cleanup: mediaCleanup config + cloudinaryUrls + mediaCleanupService + upload/cleanup)
-> - last-verified-against-code: 2026-10-10 (53 config files incl. mediaCleanup; QA static-only, no node_modules)
+> - last-updated-by: execute-command 2026-10-10 (Sprint 34 location/feed/invite: locationFeedback config + feed geo bonus + invite helpers + invite/[code])
+> - last-verified-against-code: 2026-10-10 (54 config files incl. locationFeedback; QA static-only, no node_modules)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.

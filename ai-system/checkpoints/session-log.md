@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-command 2026-10-10 (Sprint 31 universal share + dynamic trust)
+> - last-updated-by: execute-command 2026-10-10 (Sprint 34 location/feed/invite)
 > - last-verified-against-code: 2026-10-10
 > - staleness-policy: append-only — never modify past entries
 
@@ -1786,3 +1786,17 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner — URL parser verified via node inline (URL_PARSER_OK); full-scope static re-reads of all 11 touched files (scope/import/type-flow, Prisma has-filter, Record<string,unknown> casts, client/server import boundaries). Full jest/tsc/build deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only; sanitized (no new user copy); ACID preserved (DB tx commits first, Cloudinary strictly post-commit best-effort).
 **Chain:** execute-command → session-log (here) + dev-history + task-queue + update-ai-system deep sync (repo-map, dependency-graph, system-architecture, project-plan below); in-progress.md already clear.
+
+## Session 2026-10-10 — Location toasts + feed/explore soundness + invite-link tightening (execute-command)
+**Directive:** (1) location-denied feedback via toast on Explore/Navigation/Share-Route surfaces (permission already handled by location API); (2) audit + sound feed/Explore ranking incl. behind-the-scenes user-location factor, non-breaking; (3) tighten invite-link flow so no user lands on/shares an api route (minority report), non-breaking. Config/metadata-driven, modular + update-ai-system chain.
+**Audit findings:** Explore explicit Near-me already toasted; ShareRouteModal already toasted via geo.ts; NavigationGuide denied = inline-only, no toast, no retry. GlobalUndoToast rendered a no-op Undo button on plain toasts. Feed: locationBonus (0.15) dead (zero refs), SiteConfig feedAlgorithm seeded but never read (hardcoded DEFAULT), validityScore display-only (score ties ignore trust), Explore default validity vs feed affinity (surfaces disagree), Verified filter excluded Trusted tier. Invites: canonical shape /register?ref= (page route, correct); no leak in copy/share/email; only transient browser-visible /api/auth/google* OAuth navigations return raw JSON on failure (missing code, unconfigured, exchange/userinfo errors, catch-all) — a refreshed/copied bar strands users on an api route with JSON; useInviteRef raw (no trim/aliases); no /invite/[code] catch-all.
+**Implemented:**
+- NEW `lib/config/locationFeedback.ts` (+ barrel): denied/deniedWithTypingHint/timeout/unavailable/unsupported/trackingDenied/trackingUnavailable + locationErrorCode helper; geo.ts + Explore handleNearMe consume it (identical strings, non-breaking).
+- NavigationGuide: toastService.error on unsupported/denied (inline banner kept as primary) + Retry button restarting the watch; copy from LOCATION_FEEDBACK_CONFIG.
+- GlobalUndoToast: onUndo optional, button renders only when an undo action exists; provider passes onUndo only for undo-type (or explicit) toasts — plain error/success/info toasts no longer show a dead Undo button.
+- Feed: resolveFeedConfig() (SiteConfig feedAlgorithm wins, DEFAULT fallback); FeedOptions.viewerLocation?; haversine decay bonus (50km half-life × locationBonus) applied per bucket add, geo-less = exact-zero no-op; sort tie-break score → validityScore → recency. GET /api/posts/feed accepts optional ?lat=&lng= (validated ranges, best-effort). feedStream fetchFeed/loadInitial/loadMore accept optional viewerLocation (all call sites backward-compatible). home/page feeds passive useUserLocation({watch:false}) + one-shot geo revalidation (flag-guarded, failure keeps non-geo order).
+- Explore: Verified filter now includes trusted tier (hierarchy); validity sort adds engagement (likes/comments) + recency tie-breaks matching feed order; NEW "Nearest to me" sort (haversine, falls back to validity without a fix).
+- Invites: inviteConfig += buildInviteUrl + sanitizeInviteCode; invite page uses builder; login/register useInviteRef trimmed + referral/invite aliases; /api/auth/google* failures redirect to /login?error= (+?ref= preserved) instead of JSON (browser never strands on api route); login page renders sanitized ?error= map (oauth_failed/oauth_unconfigured/server_busy/account_exists); NEW /invite/[code] page redirects legacy/hand-typed codes to canonical /register?ref=.
+**QA:** no node_modules in runner — file-presence + import-needle checks (19/19 OK) + brace/paren balance (12/12 zero-delta). Full tsc/jest/build deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only (optional params/props, new config + route, best-effort geo, redirects only on browser navigations).
+**Chain:** execute-command → session-log (here) + dev-history + lessons-learned + system-architecture + dependency-graph + repo-map + update-ai-system (terminal sync, scoped); in-progress.md already clear.

@@ -11,7 +11,17 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Number(searchParams.get("limit")) || 10, 50);
 
     if (user) {
-      const result = await feedService.getFeed(user.id as string, { cursor, limit });
+      // Optional behind-the-scenes nearby boost: ?lat=&lng= are best-effort
+      // only — absent/invalid values leave ranking unchanged.
+      const latRaw = searchParams.get("lat");
+      const lngRaw = searchParams.get("lng");
+      const lat = latRaw !== null ? Number(latRaw) : NaN;
+      const lng = lngRaw !== null ? Number(lngRaw) : NaN;
+      const viewerLocation =
+        Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
+          ? { lat, lng }
+          : undefined;
+      const result = await feedService.getFeed(user.id as string, { cursor, limit, ...(viewerLocation ? { viewerLocation } : {}) });
       return NextResponse.json(result, { status: 200 });
     }
 

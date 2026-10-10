@@ -26,3 +26,20 @@ export const INVITE_CONFIG: InviteConfig = {
   pointsForInviteAccepted: 100,
   leaderboardCacheTtlSeconds: 600,
 };
+
+/**
+ * Canonical invite-link shape (page route, never an /api route).
+ * Central builder so copy/share/email surfaces can never drift into
+ * leaking an API path into the address bar or a shared message.
+ */
+export function buildInviteUrl(origin: string, inviteCode: string): string {
+  const cleanOrigin = (origin || "").replace(/\/+$/, "");
+  return `${cleanOrigin}/register?ref=${encodeURIComponent(inviteCode)}`;
+}
+
+/** Trim + strip whitespace/control chars from a referral code pasted or typed by a user. */
+export function sanitizeInviteCode(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const cleaned = raw.trim().replace(/[\s<>"]/g, "");
+  return cleaned.length > 0 ? cleaned : null;
+}

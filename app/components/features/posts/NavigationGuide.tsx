@@ -4,6 +4,8 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Navigation, ChevronLeft, ChevronRight, MapPin, BadgeDollarSign, X, LocateFixed, AlertTriangle, Compass } from "lucide-react"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
+import { LOCATION_FEEDBACK_CONFIG } from "@/app/lib/config/locationFeedback"
+import { toastService } from "@/app/lib/services/toastService"
 import type { VehicleType } from "@/app/lib/types"
 
 interface RouteStep {
@@ -97,10 +99,20 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
   }, [onUserLocationChange])
 
   // Live geolocation tracking when navigating
+  const watchNonce = useRef(0)
+  const retryWatch = useCallback(() => {
+    watchNonce.current += 1
+    setGeoError(null)
+    setIsNavigating(false)
+    // Restart on next tick so the watch effect re-subscribes cleanly.
+    requestAnimationFrame(() => setIsNavigating(true))
+  }, [])
   useEffect(() => {
     if (!isNavigating) return
     if (!("geolocation" in navigator)) {
-      setGeoError("Geolocation is not supported on this device.")
+      const msg = "Geolocation is not supported on this device."
+      setGeoError(msg)
+      toastService.error(LOCATION_FEEDBACK_CONFIG.unsupported)
       return
     }
     watchIdRef.current = navigator.geolocation.watchPosition(
@@ -126,9 +138,17 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
         }
       },
       (err) => {
-        if (err.code === 1) setGeoError("Location permission denied. Enable it to use live tracking.")
-        else if (err.code === 2) setGeoError("Unable to determine your location.")
-        else setGeoError(err.message ?? "Location error")
+        const msg =
+          err.code === 1
+            ? LOCATION_FEEDBACK_CONFIG.trackingDenied
+            : err.code === 2
+              ? LOCATION_FEEDBACK_CONFIG.trackingUnavailable
+              : (err.message ?? "Location error")
+        setGeoError(msg)
+        // Inline banner stays the primary surface (already rendered below);
+        // the toast covers users whose focus is on the map, matching the
+        // Explore + Share-Route explicit-action feedback pattern.
+        toastService.error(err.code === 1 ? LOCATION_FEEDBACK_CONFIG.denied : msg)
       },
       { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
     )
@@ -186,7 +206,14 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
           {geoError && (
             <div className="mx-3 mt-3 flex items-start gap-2 px-3 py-2 radius-md bg-error-muted border border-error-border text-error-text text-xs leading-relaxed">
               <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-              <span>{geoError}</span>
+              <span className="flex-1">{geoError}</span>
+              <button
+                type="button"
+                onClick={retryWatch}
+                className="shrink-0 px-2 py-1 radius-md text-[11px] font-semibold border border-error-border bg-bg-card text-error-text cursor-pointer hover:bg-bg-elevated transition-colors"
+              >
+                Retry
+              </button>
             </div>
           )}
 

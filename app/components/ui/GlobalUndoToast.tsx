@@ -7,7 +7,7 @@ export interface GlobalUndoToastProps {
   open: boolean;
   message: string;
   undoLabel?: string;
-  onUndo: () => void;
+  onUndo?: () => void;
   onAutoClose: () => void;
   duration?: number;
 }
@@ -39,15 +39,17 @@ export function GlobalUndoToast({
     >
       <div className="p-4 flex items-center gap-3">
         <span className="text-sm flex-1 text-text-primary">{message}</span>
-        <AppButton
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            onUndo();
-          }}
-        >
-          {undoLabel}
-        </AppButton>
+        {onUndo && (
+          <AppButton
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              onUndo();
+            }}
+          >
+            {undoLabel}
+          </AppButton>
+        )}
       </div>
       <div
         className="h-0.5 bg-primary"
