@@ -20,6 +20,7 @@ import { useTranslation } from "@/app/providers/I18nProvider"
 import { useFeedInteractions } from "@/app/hooks/useFeedInteractions"
 import { usePostShare } from "@/app/hooks/usePostShare"
 import { feedStream } from "@/app/lib/streams/feedStream"
+import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
 
 interface FeedPost {
   id: string
@@ -105,6 +106,10 @@ function HomeContent() {
   const loaderRef = useRef<HTMLDivElement>(null)
   const { user, isLoading: authLoading } = useAuth()
   const searchParams = useSearchParams()
+  // Passive fix only (no prompt beyond what the hook already handles):
+  // feeds the behind-the-scenes nearby boost via ?lat=&lng=. Denials stay
+  // silent — ranking simply falls back to the non-geo order.
+  const passiveFix = useUserLocation({ watch: false })
 
   useEffect(() => {
     if (searchParams.get("share") === "true") {
@@ -167,7 +172,7 @@ function HomeContent() {
     let cancelled = false
 
     const init = async () => {
-      const state = await feedStream.loadInitial(user?.id)
+      const state = await feedStream.loadInitial(user?.id, passiveFix)
       if (cancelled) return
       setPosts(state.posts)
       setHasMore(state.hasMore)
@@ -187,6 +192,24 @@ function HomeContent() {
       sub.unsubscribe()
     }
   }, [authLoading, user?.id])
+
+  // One-shot geo revalidation: the passive fix resolves after mount, so the
+  // first load runs without it. Once available, refresh once with ?lat=&lng=
+  // for the nearby boost (best-effort; failures keep the current order).
+  const geoBoostedRef = useRef(false)
+  useEffect(() => {
+    if (!passiveFix || authLoading || geoBoostedRef.current) return
+    geoBoostedRef.current = true
+    void (async () => {
+      try {
+        const state = await feedStream.loadInitial(user?.id, passiveFix)
+        setPosts(state.posts)
+        setHasMore(state.hasMore)
+      } catch {
+        /* keep non-geo order */
+      }
+    })()
+  }, [passiveFix, authLoading, user?.id])
 
   useEffect(() => {
     const sub = feedStream.feedState$.subscribe((state) => {
@@ -259,7 +282,7 @@ function HomeContent() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loading) {
-          feedStream.loadMore()
+          feedStream.loadMore(passiveFix)
         }
       },
       { threshold: 0.1 }

@@ -18,7 +18,26 @@ export default function LoginPage() {
   // the code into Google OAuth `state` so the callback can link the inviter.
   const [refCode, setRefCode] = useState<string | null>(null)
   React.useEffect(() => {
-    setRefCode(new URLSearchParams(window.location.search).get("ref"))
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const raw = params.get("ref") ?? params.get("referral") ?? params.get("invite")
+      const cleaned = raw ? raw.trim().replace(/[\s<>"]/g, "") : ""
+      setRefCode(cleaned.length > 0 ? cleaned : null)
+      // OAuth/API failures land here with ?error= (never a raw /api page).
+      // Sanitized map only — raw query values are never rendered.
+      const errFlag = params.get("error")
+      if (errFlag) {
+        const copy: Record<string, string> = {
+          oauth_failed: "Google sign-in didn't complete. Please try again.",
+          oauth_unconfigured: "Google sign-in isn't available right now. Please use email instead.",
+          server_busy: "Server is busy. Please try again in a moment.",
+          account_exists: "An account with this email already exists. Please sign in instead.",
+        }
+        setError(copy[errFlag] ?? "Sign-in didn't complete. Please try again.")
+      }
+    } catch {
+      setRefCode(null)
+    }
   }, [])
 
   const validate = () => {

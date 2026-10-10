@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-command 2026-10-10 (Sprint 33 media cleanup orphan prevention)
+> - last-updated-by: execute-command 2026-10-10 (Sprint 34 location/feed/invite)
 > - last-verified-against-code: 2026-10-10
 > - staleness-policy: historical entries do not go stale
 
@@ -1048,3 +1048,12 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `mediaCleanup.test.ts` (5 cases).
 **QA:** no node_modules in runner — parser logic verified via node inline (URL_PARSER_OK) + full-scope static re-reads of all 11 touched files. Full gate (tsc/jest/build) deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only (new config/service/route, optional deleteDraft opts, best-effort background cleanup).
+
+## Sprint 34 (2026-10-10) — Location toasts + feed/explore soundness + invite-link tightening
+**Directive:** denied-location toast coverage; sound feed/Explore ranking with behind-the-scenes location factor; invite-link api-route tightening. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- Location: NEW `lib/config/locationFeedback.ts` (central copy + code helper); geo.ts + Explore consume it; NavigationGuide adds denial toast + Retry (inline banner kept); GlobalUndoToast Undo button now conditional (no dead Undo on plain toasts).
+- Feed/Explore: SiteConfig feedAlgorithm honoured (DEFAULT fallback); viewer-location bonus (haversine 50km decay × locationBonus, geo-less = no-op); trust tie-break (score → validityScore → recency); ?lat=&lng feed params; feedStream + home passive-fix one-shot revalidation; Explore Verified⊇Trusted, engagement tie-breaks, NEW Nearest sort.
+- Invites: buildInviteUrl/sanitizeInviteCode; OAuth failures redirect to /login?error= (+ref preserved); login renders sanitized error map; NEW /invite/[code] → canonical /register?ref= redirect.
+**QA:** no node_modules in runner — static checks only (19/19 files, 12/12 balance). Full gate deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only.

@@ -8,10 +8,9 @@ export async function GET(request: Request) {
     const appUrl = getAppUrl();
 
     if (!googleClientId) {
-      return NextResponse.json(
-        { error: "Google OAuth is not configured. Set GOOGLE_CLIENT_ID environment variable." },
-        { status: 500 }
-      );
+      // Browser-visible navigation (never a JSON api-route page): send the
+      // user back to a real page with a sanitized error flag.
+      return NextResponse.redirect(`${appUrl}/login?error=oauth_unconfigured`, { status: 307 });
     }
 
     const url = new URL(request.url);
@@ -33,6 +32,10 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("Google auth error:", error);
     Sentry.captureException(error);
-    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    try {
+      return NextResponse.redirect(`${getAppUrl()}/login?error=oauth_failed`, { status: 307 });
+    } catch {
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    }
   }
 }

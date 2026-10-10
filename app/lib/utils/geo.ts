@@ -48,11 +48,13 @@ export function traceSignature(points: GeoPoint[]): string {
   return points.map((p) => `${p.lat.toFixed(3)},${p.lng.toFixed(3)}`).join(">");
 }
 
+import { LOCATION_FEEDBACK_CONFIG } from "@/app/lib/config/locationFeedback";
+
 /** Resolves the browser geolocation fix. Rejects with a friendly message. */
 export function getCurrentPosition(timeoutMs = 8000): Promise<GeoPoint & { accuracy?: number }> {
   return new Promise((resolve, reject) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      reject(new Error("Location is not available on this device"));
+      reject(new Error(LOCATION_FEEDBACK_CONFIG.unsupported));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -61,8 +63,8 @@ export function getCurrentPosition(timeoutMs = 8000): Promise<GeoPoint & { accur
         reject(
           new Error(
             err.code === err.PERMISSION_DENIED
-              ? "Location permission denied — type the location instead"
-              : "Couldn't get your location — type the location instead"
+              ? LOCATION_FEEDBACK_CONFIG.deniedWithTypingHint
+              : `${LOCATION_FEEDBACK_CONFIG.unavailable} — type the location instead`
           )
         ),
       { enableHighAccuracy: false, timeout: timeoutMs, maximumAge: 60000 }

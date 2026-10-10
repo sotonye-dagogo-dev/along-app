@@ -6,11 +6,22 @@ import { setAuthCookies } from "@/app/lib/utils/cookies";
 import { getAppUrl } from "@/app/lib/config/env";
 
 export async function GET(request: NextRequest) {
+  // All browser-visible failures redirect to a real page route (never a raw
+  // /api JSON page) so a copied or refreshed address bar never strands a
+  // user on an api route. `state=ref:<code>` is preserved where useful.
+  const stateEarly = request.nextUrl.searchParams.get("state");
+  const refEarly =
+    stateEarly && stateEarly !== "link" && stateEarly.startsWith("ref:")
+      ? stateEarly.slice("ref:".length).trim()
+      : null;
+  const refQuery = refEarly ? `?ref=${encodeURIComponent(refEarly)}` : "";
+  const withRef = (page: string, error: string) =>
+    `${getAppUrl()}${page}${refQuery ? `${refQuery}&error=${error}` : `?error=${error}`}`;
   try {
     const code = request.nextUrl.searchParams.get("code");
 
     if (!code) {
-      return NextResponse.json({ error: "Missing authorization code" }, { status: 400 });
+      return NextResponse.redirect(`${getAppUrl()}/login${refQuery ? `${refQuery}&error=oauth_failed` : "?error=oauth_failed"}`, { status: 307 });
     }
 
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -18,10 +29,7 @@ export async function GET(request: NextRequest) {
     const appUrl = getAppUrl();
 
     if (!googleClientId || !googleClientSecret) {
-      return NextResponse.json(
-        { error: "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET." },
-        { status: 500 }
-      );
+      return NextResponse.redirect(withRef("/login", "oauth_unconfigured"), { status: 307 });
     }
 
     const redirectUri = `${appUrl}/api/auth/google/callback`;
@@ -41,10 +49,7 @@ export async function GET(request: NextRequest) {
     const tokenData = await tokenResponse.json();
 
     if (!tokenData.access_token) {
-      return NextResponse.json(
-        { error: "Failed to exchange authorization code", details: tokenData },
-        { status: 400 }
-      );
+      return NextResponse.redirect(withRef("/login", "oauth_failed"), { status: 307 });
     }
 
     const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -54,7 +59,7 @@ export async function GET(request: NextRequest) {
     const userInfo = await userInfoResponse.json();
 
     if (!userInfo.id || !userInfo.email) {
-      return NextResponse.json({ error: "Failed to fetch Google user info" }, { status: 400 });
+      return NextResponse.redirect(withRef("/login", "oauth_failed"), { status: 307 });
     }
 
     const googleId = userInfo.id;
@@ -63,7 +68,7 @@ export async function GET(request: NextRequest) {
     // instead of colliding or forking.
     const email = typeof userInfo.email === "string" ? userInfo.email.trim().toLowerCase() : "";
     if (!email) {
-      return NextResponse.json({ error: "Failed to fetch Google user info" }, { status: 400 });
+      return NextResponse.redirect(withRef("/login", "oauth_failed"), { status: 307 });
     }
     const firstName = userInfo.given_name || "";
     const lastName = userInfo.family_name || "";
@@ -225,9 +230,20 @@ export async function GET(request: NextRequest) {
     Sentry.captureException(error);
     const code = (error as { code?: unknown })?.code;
     const name = (error as { name?: unknown })?.name;
+    // Browser-visible: always land on a real page, never a raw /api JSON
+    // body. DB-overload cases surface a retryable flag the login page
+    // already renders; everything else is a generic failure.
     if (name === "PrismaClientKnownRequestError" || name === "PrismaClientInitializationError" || code === "P2022" || code === "P1001" || code === "P1002") {
-      return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+      try {
+        return NextResponse.redirect(withRef("/login", "server_busy"), { status: 307 });
+      } catch {
+        return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
+      }
     }
-    return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    try {
+      return NextResponse.redirect(withRef("/login", "oauth_failed"), { status: 307 });
+    } catch {
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
+    }
   }
 }
