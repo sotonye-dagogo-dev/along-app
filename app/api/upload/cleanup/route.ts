@@ -38,14 +38,6 @@ export async function POST(request: NextRequest) {
         { status: 200 }
       );
     }
-    const source = parsed.data.source;
-    if (source === "composer-remove" && !MEDIA_CLEANUP_CONFIG.composerRemoveCleanupEnabled) {
-      return NextResponse.json(
-        { ok: true, skipped: true, reason: "composer-remove cleanup disabled" },
-        { status: 200 }
-      );
-    }
-
     let body: unknown;
     try {
       body = await request.json();
@@ -55,6 +47,14 @@ export async function POST(request: NextRequest) {
     const parsed = CLEANUP_SCHEMA.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    const source = parsed.data.source;
+    if (source === "composer-remove" && !MEDIA_CLEANUP_CONFIG.composerRemoveCleanupEnabled) {
+      return NextResponse.json(
+        { ok: true, skipped: true, reason: "composer-remove cleanup disabled" },
+        { status: 200 }
+      );
     }
 
     const cleanable = filterCleanableUrls(
