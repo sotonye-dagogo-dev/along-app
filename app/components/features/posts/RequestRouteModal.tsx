@@ -91,7 +91,9 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
         tags,
         clientMutationId: mutationKey,
       })
-      if (result === false) {
+      // Only explicit `true` counts as success — a void/no-op handler must
+      // never clear the composer (same vanish-class guard as ShareRouteModal).
+      if (result !== true) {
         setSubmitting(false)
         return // failed — keep input, allow retry
       }

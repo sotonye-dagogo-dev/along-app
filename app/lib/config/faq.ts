@@ -51,6 +51,18 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         answer:
           "Yes. Open the menu (⋯) on any of your posts — in the feed, on the post page, or on your profile — and choose Edit, Archive, or Delete. Destructive actions ask for confirmation first and can be undone. Edits may reset the recency component of your post's validity score, and a post's nature (route, request, or response) is always preserved through edits.",
       },
+      {
+        id: "share-route-validation",
+        question: "Why is the Share button disabled, or why did my route not publish?",
+        answer:
+          "The Share button stays disabled until every route step has a location and every fare is a single valid amount. Each stop needs its own location — empty stops block sharing with a highlighted message instead of being silently dropped. Fares must be one amount per leg (numbers only, e.g. 450); ranges like “400-500” are rejected with guidance to enter one amount per leg. Titles need at least 5 characters, and descriptions are optional but need at least 10 characters when provided. The destination (final stop) needs no fare or vehicle — those fields are hidden there by design. If publishing fails (for example, a network error), the modal stays open, your input and saved draft are preserved, and a message explains what to fix — a post only clears from the composer after it has actually been saved, so it can never silently vanish.",
+      },
+      {
+        id: "share-route-drafts-failure",
+        question: "What happens to my draft if sharing fails?",
+        answer:
+          "Nothing is lost. Your composer input stays exactly as it was and any saved draft is kept, so you can fix the highlighted fields and try again. Drafts are only cleared after the server confirms your post was created — at which point it appears in your feed, on Explore, and in post management.",
+      },
     ],
   },
   {
@@ -217,6 +229,16 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     question: "I fit edit or delete post?",
     answer:
       "Yes. Open di menu (⋯) for any of your posts — for feed, for post page, or for your profile — come choose Edit, Archive, or Delete. For di ones wey dey pain body we go first ask you to confam and you fit undo am. Edit fit reset di recency part of your validity score, and di nature of post (route, request, or response) must remain di same even after edits.",
+  },
+  "share-route-validation": {
+    question: "Why Share button take lock, or why my route no publish?",
+    answer:
+      "Di Share button go remain lock until every route step get location and every fare na single correct amount. Each stop need im own location — empty stop go block sharing with highlighted message instead of to just waka comot. Fare must be one amount per leg (numbers only, e.g. 450); range like “400-500” no dey supported — enter one amount per leg. Title need at least 5 characters, and description na optional but e need at least 10 characters if you put am. Di destination (last stop) no need fare or vehicle — we hide dem there on purpose. If to publish fail (e.g. network wahala), di modal go remain open, your input and saved draft go dey kampe, and message go explain wetin to fix — post go only clear from composer after e don truly save, so e no fit take style vanish.",
+  },
+  "share-route-drafts-failure": {
+    question: "Wetin go happen to my draft if sharing fail?",
+    answer:
+      "Nothing go loss. Your composer input go remain as e be and any saved draft go dey, so you fit fix di highlighted fields come try again. Drafts dey only clear after server confam say your post don enter — dat time e go show for your feed, for Explore, and for post management.",
   },
   "map-tracings-pins": {
     question: "How I go take read di maps — tracings and pins?",
