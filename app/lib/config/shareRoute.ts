@@ -22,6 +22,8 @@ export interface ShareRouteModalConfig {
   descriptionPlaceholder: string;
   descriptionHint: string;
   descriptionMinLength: number;
+  /** Accessible label for the per-photo remove button in the composer. */
+  photoRemoveLabel: string;
 }
 
 export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
@@ -37,4 +39,5 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
   descriptionPlaceholder: "Describe the route experience, best time to go, cost tips… (min 10 characters)",
   descriptionHint: "Adds to your Route Quality Score and helps others trust this route.",
   descriptionMinLength: 10,
+  photoRemoveLabel: "Remove photo",
 };
