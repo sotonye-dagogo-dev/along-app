@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: fix-build 2026-10-09 (share-route validation hardening)
-> - last-verified-against-code: 2026-10-09
+> - last-updated-by: execute-command 2026-10-10 (Sprint 33 media cleanup orphan prevention)
+> - last-verified-against-code: 2026-10-10
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1037,3 +1037,14 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `trustBreakdownConsistency.test.ts` (5 cases); `TrustBadge.test.tsx` +2 (compact parity, live-score preference).
 **QA:** no node_modules in runner — static re-reads only. Full gate (tsc/jest/build) deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only.
+
+## Sprint 33 (2026-10-10) — Cloudinary orphan prevention on deletions
+**Directive:** deletion of posts/drafts/accounts must cleanly/safely (ACID) handle updated assets in Cloudinary to avoid orphaned assets and resource waste. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `lib/config/mediaCleanup.ts` (enabled, along/* allowlist, per-flow toggles, account-retain policy, dry-run; env-overridable) + barrel + apiRegistry upload/uploadCleanup entries.
+- NEW `lib/utils/cloudinaryUrls.ts` (pure, client+server safe: host check, public_id extract from secure_url, allowlist filter, edit diff) — no schema migration (Post.images stays String[]).
+- NEW `lib/services/mediaCleanupService.ts` (server-only SDK; post-commit best-effort destroy, never throws, Sentry on failures) + NEW `POST /api/upload/cleanup` (auth, capped, skips URLs still referenced by live posts).
+- Wired: DELETE /api/posts/[id] (pre-read images → post-commit purge), PATCH (removed-images diff), DELETE /api/admin/posts (snapshot images), PATCH /api/admin/bugs REMOVE_POST (pre-tx capture), accountDeletionService.finalizeOne (legacy Cloudinary avatar only; post images retained per Data-Retention policy), routeDraftsService.deleteDraft (fire-and-forget cleanup; publish path passes cleanupAssets:false), ShareRouteModal (publish skips, explicit discard cleans).
+- Tests: NEW `mediaCleanup.test.ts` (5 cases).
+**QA:** no node_modules in runner — parser logic verified via node inline (URL_PARSER_OK) + full-scope static re-reads of all 11 touched files. Full gate (tsc/jest/build) deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only (new config/service/route, optional deleteDraft opts, best-effort background cleanup).

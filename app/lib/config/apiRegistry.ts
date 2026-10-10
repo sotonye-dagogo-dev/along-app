@@ -23,6 +23,8 @@ export const API_REGISTRY: Record<string, ApiEndpoint> = {
   postsBookmark: { path: "/api/posts/[id]/bookmark", methods: ["POST"], auth: true },
   postsComments: { path: "/api/posts/[id]/comments", methods: ["GET", "POST"], auth: false, rateLimit: "comments" },
   postsCommentDetail: { path: "/api/posts/[id]/comments/[commentId]", methods: ["PATCH", "DELETE"], auth: true, rateLimit: "comments" },
+  upload: { path: "/api/upload", methods: ["POST"], auth: true, rateLimit: "posts" },
+  uploadCleanup: { path: "/api/upload/cleanup", methods: ["POST"], auth: true, rateLimit: "posts" },
   reports: { path: "/api/reports", methods: ["POST"], auth: false, rateLimit: "posts" },
   routesTrace: { path: "/api/routes/trace", methods: ["POST"], auth: true, rateLimit: "trace" },
   mapsRoute: { path: "/api/maps/route", methods: ["POST"], auth: false, rateLimit: "maps" },

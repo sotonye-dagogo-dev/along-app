@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-command 2026-10-10 (Sprint 31 universal share + dynamic trust)
+> - last-updated-by: execute-command 2026-10-10 (Sprint 33 media cleanup orphan prevention)
 > - last-verified-against-code: 2026-10-10 (static re-reads; no node_modules in runner — tsc/jest/build deferred to CI/Vercel)
-> - last-synced: 2026-10-10 (Sprint 31 — execute-command close-out)
+> - last-synced: 2026-10-10 (Sprint 33 — execute-command close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -519,6 +519,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 
 ---
 
+## Sprint 33 — Cloudinary orphan prevention on deletions (2026-10-10)
+
+> **Section summary:** Post/draft/account deletions (and post edits) clean up their Cloudinary assets ACID-safely with zero orphan waste.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | `MEDIA_CLEANUP_CONFIG` registry (allowlist, per-flow toggles, account-retain policy, dry-run) + barrel + apiRegistry entries | [x] |
+| [S] | `cloudinaryUrls` pure helpers (host check, public_id extract, allowlist filter, edit diff) | [x] |
+| [M] | `mediaCleanupService` (post-commit best-effort destroy, never throws) + `POST /api/upload/cleanup` (draft-discard with live-post reference guard) | [x] |
+| [M] | Wire delete paths: post DELETE + PATCH removed-diff, admin bulk DELETE, bug REMOVE_POST, account finalize legacy avatar, draft delete (publish skips) | [x] |
+| [S] | Tests — NEW `mediaCleanup.test.ts` (5: config, host, extract, allowlist, diff) | [x] |
+
+---
+
 ## Backlog
 
 > **Section summary:** Known work that needs to be done but hasn't been scheduled yet.
@@ -574,3 +588,4 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 - 0 lint errors, 0 TypeScript errors
 - All quality gates pass: npm run build + npx tsc --noEmit + npm test + npx next lint
 - [x] Sprint 32 (2026-10-10) — trust breakdown consistency (canonical trustBreakdownService single+batched, trustDisplay compact/full config, TrustBadge variant + live-score tier, PostCard compact, all read APIs + worker on the same live object) (trustBreakdownConsistency 5 + TrustBadge +2 suites; full gate deferred to CI — no node_modules in runner)
+- [x] Sprint 33 (2026-10-10) — Cloudinary orphan prevention on deletions (MEDIA_CLEANUP_CONFIG + cloudinaryUrls + mediaCleanupService + upload/cleanup, all delete paths wired ACID-safely) (mediaCleanup 5 suites; full gate deferred to CI — no node_modules in runner)

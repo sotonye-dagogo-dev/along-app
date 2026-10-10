@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -102,6 +103,19 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 });
     }
 
+    // Capture asset URLs BEFORE the tx so post-commit Cloudinary cleanup can
+    // run without a second read (and without blocking the moderation tx).
+    let removedPostImages: string[] = [];
+    if (action === "REMOVE_POST" && report.postId) {
+      try {
+        const doomed = await prisma.post.findUnique({
+          where: { id: report.postId },
+          select: { images: true },
+        });
+        if (doomed && Array.isArray(doomed.images)) removedPostImages = [...doomed.images];
+      } catch { removedPostImages = []; }
+    }
+
     try {
       await prisma.$transaction(async (tx) => {
         if (action === "ARCHIVE_POST" && report.postId) {
@@ -130,6 +144,25 @@ export async function PATCH(request: NextRequest) {
       }
       throw e;
     }
+
+    // ACID-safe media hygiene: tx committed; orphaned Cloudinary assets from
+    // a REMOVE_POST are destroyed best-effort (never fails moderation).
+    try {
+      if (
+        action === "REMOVE_POST" &&
+        MEDIA_CLEANUP_CONFIG.enabled &&
+        MEDIA_CLEANUP_CONFIG.moderationDeleteCleanupEnabled &&
+        removedPostImages.length > 0
+      ) {
+        const { cleanupImagesInBackground } = await import(
+          "@/app/lib/services/mediaCleanupService"
+        );
+        cleanupImagesInBackground(removedPostImages, {
+          source: "bug-remove-post",
+          postId: report.postId ?? undefined,
+        });
+      }
+    } catch { /* non-critical */ }
 
     // Outcome notification to the reporter (non-critical; anonymity kept —
     // message carries no admin or author identity).
