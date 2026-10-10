@@ -20,6 +20,8 @@ import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
 import { draftingCoachService } from "@/app/lib/services/DraftingCoachService"
 import { routeDraftsService, type RouteDraft } from "@/app/lib/services/routeDraftsService"
 import { toastService } from "@/app/lib/services/toastService"
+import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config/mediaCleanup"
+import { cleanupComposerPhotos, decideComposerPhotoCleanup } from "@/app/lib/utils/composerMedia"
 import { estimateRoute, traceSignature, getCurrentPosition, reverseGeocode } from "@/app/lib/utils/geo"
 import { memoryCache } from "@/app/lib/cache/memoryCache"
 import type { VehicleType } from "@/app/lib/types"
@@ -168,6 +170,14 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   const traceSeqRef = useRef(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const geoDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /**
+   * Edit-originals guard: images that shipped with `editPost` belong to a live
+   * post. Removing one in the composer only drops it from the pending edit —
+   * its Cloudinary fate is decided by the PATCH removed-images diff on save,
+   * never by an immediate destroy (the cleanup endpoint would skip it anyway
+   * via its live-post reference guard, but skipping the call saves traffic).
+   */
+  const editOriginalsRef = useRef<Set<string>>(new Set())
 
   const doGeocode = useCallback(async (query: string, stepIndex: number) => {
     if (!query || query.length < 3) {
@@ -500,7 +510,23 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   }
 
   const removeImage = (idx: number) => {
+    const url = images[idx]
+    // Responsive first: drop the thumbnail synchronously so the user never
+    // waits on network. Cloudinary hygiene follows best-effort in background.
     setImages((prev) => prev.filter((_, i) => i !== idx))
+    if (typeof url !== "string" || url.length === 0) return
+    const decision = decideComposerPhotoCleanup(url, {
+      isEditOriginal: editOriginalsRef.current.has(url),
+      cleanupEnabled: MEDIA_CLEANUP_CONFIG.composerRemoveCleanupEnabled,
+    })
+    if (!decision.shouldCleanup) return
+    // Safe by construction: POST /api/upload/cleanup enforces auth, the
+    // along/* folder allowlist, and skips URLs still referenced by any live
+    // post (publish-then-remove races). Failures never surface — the orphan
+    // is harmless and the UI is already correct.
+    void cleanupComposerPhotos([url], {
+      ...(activeDraftId ? { draftId: activeDraftId } : {}),
+    })
   }
 
   const applyDraft = useCallback((draft: RouteDraft) => {
@@ -624,6 +650,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       ])
       setTags(editPost.tags ?? [])
       setImages(editPost.images ?? [])
+      editOriginalsRef.current = new Set(
+        (editPost.images ?? []).filter((u): u is string => typeof u === "string")
+      )
       setActiveDraftId(null)
       setShowDrafts(false)
       setRestoredResponseTo(null)
@@ -634,6 +663,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     // Response mode: prefill from the quoted request, never absorb a normal-route draft.
     // Tags are inherited from the request when the composer has none yet.
     if (effectiveResponseTo) {
+      editOriginalsRef.current = new Set()
       const responseTitle = effectiveResponseTo.title
       const responseTags = effectiveResponseTo.tags ?? []
       setTitle((prev) => prev || `Re: ${responseTitle}`.slice(0, 100))
@@ -647,6 +677,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     const stored = routeDraftsService.listDrafts()
     setDrafts(stored)
     setShowDrafts(Boolean(startWithDraftsOpen && stored.length > 0))
+    // Create mode has no live-post originals — every Cloudinary removal is a
+    // session/draft orphan and safe for immediate background cleanup.
+    editOriginalsRef.current = new Set()
     // Preserve the previous auto-restore UX: when the composer opens empty and
     // drafts exist, load the most recent one so no saved progress is stranded.
     if (stored.length > 0) {
@@ -1184,7 +1217,13 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                     <div key={url + idx} className="relative group radius-md overflow-hidden border border-border bg-bg-elevated">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={url} alt={`Upload ${idx + 1}`} className="w-full h-20 object-cover" />
-                      <button onClick={() => removeImage(idx)} className="absolute top-1 right-1 w-6 h-6 rounded-circle bg-black/60 text-white flex items-center justify-center border-none cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Remove image">
+                      <button
+                        type="button"
+                        onClick={() => removeImage(idx)}
+                        title={SHARE_ROUTE_MODAL_CONFIG.photoRemoveLabel}
+                        aria-label={`${SHARE_ROUTE_MODAL_CONFIG.photoRemoveLabel} ${idx + 1}`}
+                        className="absolute top-1 right-1 w-6 h-6 rounded-circle bg-black/60 text-white flex items-center justify-center border-none cursor-pointer opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                      >
                         <X size={12} />
                       </button>
                     </div>

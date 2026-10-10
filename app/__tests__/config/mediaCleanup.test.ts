@@ -21,6 +21,7 @@ describe("media cleanup: config-driven orphan prevention", () => {
     expect(MEDIA_CLEANUP_CONFIG.postDeleteCleanupEnabled).toBe(true);
     expect(MEDIA_CLEANUP_CONFIG.postEditCleanupEnabled).toBe(true);
     expect(MEDIA_CLEANUP_CONFIG.draftCleanupEnabled).toBe(true);
+    expect(MEDIA_CLEANUP_CONFIG.composerRemoveCleanupEnabled).toBe(true);
     expect(MEDIA_CLEANUP_CONFIG.moderationDeleteCleanupEnabled).toBe(true);
     // Policy: anonymised post images are retained on account finalize.
     expect(MEDIA_CLEANUP_CONFIG.retainPostImagesOnAccountFinalize).toBe(true);
