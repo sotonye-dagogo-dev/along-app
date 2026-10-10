@@ -119,73 +119,48 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       });
     } catch { responses = []; }
 
-    // Live trust breakdown (best-effort, never fails the read): the stored
-    // validityScore can lag behind the latest votes/follows, so the detail
-    // view also ships freshly computed components for an honest tooltip.
-    // Falls back to undefined → UI renders the stored score with the legacy
-    // placeholder breakdown.
+    // Live trust breakdown via the canonical service shared with every list
+    // surface (feed/search/profile/suggestions). Same inputs, same engine,
+    // same numbers — so the feed card and the detail view can never disagree
+    // on corroboration (or any other row). Best-effort, never fails the read.
     let validityBreakdown: Record<string, number> | undefined;
+    let liveScore: number | undefined;
+    let liveTier: string | undefined;
     try {
-      const { validityEngine, computeRouteDetailScore, computeSimilarityRatio } = await import(
-        "@/app/lib/services/ValidityEngine"
+      const { getLiveBreakdownForPost } = await import(
+        "@/app/lib/services/trustBreakdownService"
       );
-      const [author, followerCount, openReports] = await Promise.all([
-        prisma.user.findUnique({
-          where: { id: (post as { userId: string }).userId },
-          select: { verified: true, createdAt: true },
-        }).catch(() => null),
-        prisma.follow.count({ where: { followingId: (post as { userId: string }).userId } }).catch(() => 0),
-        prisma.bugReport.count({
-          where: { postId: id, status: { notIn: ["RESOLVED", "CLOSED"] } },
-        }).catch(() => 0),
-      ]);
-      let liveSimilarity = 0;
-      try {
-        const tags = (post as { tags?: string[] }).tags ?? [];
-        if (tags.length > 0) {
-          const overlapping = await prisma.post.count({
-            where: {
-              id: { not: id },
-              tags: { hasSome: tags },
-              createdAt: {
-                gte: new Date(new Date((post as { createdAt: string }).createdAt).getTime() - 7 * 24 * 60 * 60 * 1000),
-                lte: new Date(new Date((post as { createdAt: string }).createdAt).getTime() + 7 * 24 * 60 * 60 * 1000),
-              },
-            },
-          });
-          liveSimilarity = computeSimilarityRatio(overlapping);
-        }
-      } catch { liveSimilarity = 0; }
-      const live = await validityEngine.evaluate({
-        likes: (post as { likes?: number }).likes ?? 0,
-        dislikes: (post as { dislikes?: number }).dislikes ?? 0,
-        routeDetailScore: computeRouteDetailScore((post as { routes?: unknown }).routes),
-        similarityRatio: liveSimilarity,
-        createdAt: new Date((post as { createdAt: string }).createdAt),
-        authorFollowerCount: followerCount ?? 0,
-        authorVerified: author?.verified ?? false,
-        authorAgeDays: author?.createdAt
-          ? Math.max(0, (Date.now() - new Date(author.createdAt).getTime()) / (1000 * 60 * 60 * 24))
-          : 0,
-        comments: (post as { comments?: number }).comments ?? 0,
-        bookmarks: (post as { bookmarks?: number }).bookmarks ?? 0,
-        views: (post as { views?: number }).views ?? 0,
-        shares: (post as { shares?: number }).shares ?? 0,
-        openReports: openReports ?? 0,
-      });
-      validityBreakdown = {
-        community: live.community,
-        detail: live.detail,
-        corroboration: live.corroboration,
-        recency: live.recency,
-        reputation: live.reputation,
-        engagement: live.engagement,
-        score: live.score,
-      };
+      const live = await getLiveBreakdownForPost(prisma, post);
+      if (live) {
+        validityBreakdown = {
+          community: live.community,
+          detail: live.detail,
+          corroboration: live.corroboration,
+          recency: live.recency,
+          reputation: live.reputation,
+          engagement: live.engagement,
+          score: live.score,
+        };
+        liveScore = live.score;
+        liveTier = live.tier;
+      }
     } catch { validityBreakdown = undefined; }
 
     return NextResponse.json(
-      { post: { ...post, _isLiked, _isBookmarked, responses, responsesCount: responses.length, validityBreakdown } },
+      {
+        post: {
+          ...post,
+          // Live score/tier overwrite the stored row so the badge NUMBER
+          // matches the breakdown on every surface (feed card == detail).
+          ...(liveScore !== undefined ? { validityScore: liveScore } : {}),
+          ...(liveTier !== undefined ? { validityTier: liveTier } : {}),
+          _isLiked,
+          _isBookmarked,
+          responses,
+          responsesCount: responses.length,
+          validityBreakdown,
+        },
+      },
       { status: 200 }
     );
   } catch (error) {

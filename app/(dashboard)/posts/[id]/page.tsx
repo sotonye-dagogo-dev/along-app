@@ -11,6 +11,7 @@ import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import { CommentInput, CommentList } from "@/app/components/features/comments"
 import { LiveNavigationModal } from "@/app/components/features/posts"
 import ShareRouteModal, { type EditPost } from "@/app/components/features/posts/ShareRouteModal"
+import RequestRouteModal, { type EditRouteRequest } from "@/app/components/features/posts/RequestRouteModal"
 import { PostMenu, type PostMenuPost } from "@/app/components/features/moderation"
 import { undoService } from "@/app/lib/services/undoService"
 import { toastService } from "@/app/lib/services/toastService"
@@ -79,6 +80,7 @@ interface PostDetail {
     recency?: number
     reputation?: number
     engagement?: number
+    score?: number
   } | null
   region: string | null
   totalDistanceKm: number | null
@@ -310,6 +312,11 @@ export default function PostDetailPage() {
     }
   }
 
+  const handleEditRequestSubmit = async (
+    editId: string,
+    data: { title: string; description: string; routes: { location: string }[]; tags: string[] },
+  ): Promise<boolean> => handleEditSubmit(editId, data as unknown as Omit<EditPost, "id">)
+
   const routes = useMemo(() =>
     post && Array.isArray(post.routes) ? (post.routes as RouteStep[]) : [],
     [post]
@@ -449,6 +456,19 @@ export default function PostDetailPage() {
         images: post.images,
       }
     : null
+  const editRequest: EditRouteRequest | null =
+    editOpen && isRouteRequest
+      ? {
+          id: post.id,
+          title: post.title,
+          description: post.description ?? "",
+          routes: routes.map((s) => ({
+            ...(s.location ? { location: s.location } : {}),
+            ...(s.description ? { description: s.description } : {}),
+          })),
+          tags: post.tags,
+        }
+      : null
 
   return (
     <div className="max-w-[680px] mx-auto px-4 py-4">
@@ -754,13 +774,22 @@ export default function PostDetailPage() {
         />
       </div>
 
-      {editOpen && (
-        <ShareRouteModal
+      {editOpen && isRouteRequest ? (
+        <RequestRouteModal
           isOpen={editOpen}
           onClose={() => setEditOpen(false)}
-          editPost={editPost}
-          onEditSubmit={handleEditSubmit}
+          editRequest={editRequest}
+          onEditSubmit={handleEditRequestSubmit}
         />
+      ) : (
+        editOpen && (
+          <ShareRouteModal
+            isOpen={editOpen}
+            onClose={() => setEditOpen(false)}
+            editPost={editPost}
+            onEditSubmit={handleEditSubmit}
+          />
+        )
       )}
     </div>
   )

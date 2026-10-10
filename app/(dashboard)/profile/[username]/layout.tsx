@@ -9,12 +9,18 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
-  let profile: { firstName: string; lastName: string; userName: string; bio?: string | null } | null = null;
+  let profile: {
+    firstName: string;
+    lastName: string;
+    userName: string;
+    bio?: string | null;
+    avatar?: string | null;
+  } | null = null;
 
   try {
     profile = await prisma.user.findUnique({
       where: { userName: username },
-      select: { firstName: true, lastName: true, userName: true, bio: true },
+      select: { firstName: true, lastName: true, userName: true, bio: true, avatar: true },
     });
   } catch {
     // DB unavailable

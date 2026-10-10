@@ -573,3 +573,4 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 - 65 static pages generated at build time (up from 49)
 - 0 lint errors, 0 TypeScript errors
 - All quality gates pass: npm run build + npx tsc --noEmit + npm test + npx next lint
+- [x] Sprint 32 (2026-10-10) — trust breakdown consistency (canonical trustBreakdownService single+batched, trustDisplay compact/full config, TrustBadge variant + live-score tier, PostCard compact, all read APIs + worker on the same live object) (trustBreakdownConsistency 5 + TrustBadge +2 suites; full gate deferred to CI — no node_modules in runner)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { ClipboardList, MapPin, Loader2 } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 
@@ -14,11 +14,27 @@ export interface RouteRequestBody {
   clientMutationId?: string
 }
 
+/** An existing ROUTE_REQUEST opened for editing — prefilled, PATCHed, never morphed. */
+export interface EditRouteRequest {
+  id: string
+  title: string
+  description?: string | null
+  routes?: { location?: string; description?: string }[] | unknown
+  tags?: string[]
+}
+
 interface RequestRouteModalProps {
   isOpen: boolean
   onClose: () => void
   /** Return false to keep the modal open (e.g. submission failed). */
   onSubmit?: (data: RouteRequestBody) => boolean | void | Promise<boolean | void>
+  /** Edit mode: prefill from this request and PATCH on submit (nature preserved). */
+  editRequest?: EditRouteRequest | null
+  /** Handles the request edit; must resolve `true` on success. */
+  onEditSubmit?: (
+    postId: string,
+    data: { title: string; description: string; routes: { location: string }[]; tags: string[] },
+  ) => boolean | void | Promise<boolean | void>
 }
 
 const inputClass =
@@ -33,7 +49,8 @@ function newRequestKey(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
-export default function RequestRouteModal({ isOpen, onClose, onSubmit }: RequestRouteModalProps) {
+export default function RequestRouteModal({ isOpen, onClose, onSubmit, editRequest, onEditSubmit }: RequestRouteModalProps) {
+  const isEditing = Boolean(editRequest)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [from, setFrom] = useState("")
@@ -44,6 +61,25 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
   const [showErrors, setShowErrors] = useState(false)
   // One idempotency key per composer session (regenerated after each success).
   const [mutationKey, setMutationKey] = useState(() => newRequestKey())
+
+  // Edit mode prefill: a ROUTE_REQUEST stays a request — fields map back to
+  // the same from/to shape so the edit form matches the create form.
+  useEffect(() => {
+    if (!isOpen) return
+    if (editRequest) {
+      const steps = Array.isArray(editRequest.routes)
+        ? (editRequest.routes as { location?: string }[])
+        : []
+      setTitle(editRequest.title ?? "")
+      setDescription(editRequest.description ?? "")
+      setFrom(steps[0]?.location ?? "")
+      setTo(steps[1]?.location ?? steps[0]?.location ?? "")
+      setTags(Array.isArray(editRequest.tags) ? [...editRequest.tags] : [])
+      setTagInput("")
+      setShowErrors(false)
+      setSubmitting(false)
+    }
+  }, [isOpen, editRequest])
 
   const errors = {
     title: title.trim().length < 5 ? "Title must be at least 5 characters" : null,
@@ -83,6 +119,23 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
     if (!isValid || submitting) return
     setSubmitting(true)
     try {
+      // Edit path: PATCH without `type` so the request nature is immutable
+      // server-side (MODERATION_CONFIG.immutablePostFields backstop).
+      if (isEditing && editRequest) {
+        const result = await onEditSubmit?.(editRequest.id, {
+          title: title.trim(),
+          description: description.trim(),
+          routes: [{ location: from.trim() }, { location: to.trim() }],
+          tags,
+        })
+        if (result !== true) {
+          setSubmitting(false)
+          return // failed — keep input, allow retry
+        }
+        reset()
+        onClose()
+        return
+      }
       const result = await onSubmit?.({
         title: title.trim(),
         description: description.trim(),
@@ -120,9 +173,11 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
               <ClipboardList size={18} />
             </div>
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Request a Route</h2>
+              <h2 className="text-lg font-semibold tracking-tight">{isEditing ? "Edit Route Request" : "Request a Route"}</h2>
               <p className="text-sm text-text-secondary mt-0.5">
-                Ask the community for a route you need
+                {isEditing
+                  ? "Update your request — it stays a request, never a route."
+                  : "Ask the community for a route you need"}
               </p>
             </div>
           </div>
@@ -245,7 +300,7 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit }: Request
             className="inline-flex items-center justify-center gap-2 h-10 px-5 radius-md bg-primary text-white border-none text-sm font-semibold cursor-pointer font-sans hover:bg-primary-light transition-colors duration-fast disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {submitting && <Loader2 size={15} className="animate-spin" aria-hidden />}
-            {submitting ? "Posting…" : "Post Request"}
+            {submitting ? (isEditing ? "Saving…" : "Posting…") : isEditing ? "Save Changes" : "Post Request"}
           </button>
         </div>
       </div>

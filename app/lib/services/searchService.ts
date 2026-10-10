@@ -23,6 +23,15 @@ export interface SearchPostHit {
   images: string[];
   validityScore: number;
   validityTier: string | null;
+  validityBreakdown?: {
+    community?: number;
+    detail?: number;
+    corroboration?: number;
+    recency?: number;
+    reputation?: number;
+    engagement?: number;
+    score?: number;
+  } | null;
   totalDistanceKm: number | null;
   estimatedMins: number | null;
   createdAt: Date;
@@ -139,14 +148,29 @@ class SearchService {
       return { posts: [], users: [], tags: [], nextCursor: null };
     }
 
-    // Read-through cache for first-page queries only (cursor pages bypass cache)
+    // Read-through cache for first-page queries only (cursor pages bypass cache).
+    // Cached post rows are re-enriched with fresh trust (same canonical
+    // service as feed/detail) so cached searches never disagree with detail.
     if (!cursor) {
       try {
         const { redis } = await import("@/app/lib/db/redis");
         const cached = await redis.get<SearchResult>(
           CACHE_KEYS.search(`${type}:${region ?? "-"}:${postType ?? "-"}:${query}`, "unified")
         );
-        if (cached) return cached;
+        if (cached) {
+          try {
+            const { attachLiveBreakdownsToPosts } = await import(
+              "@/app/lib/services/trustBreakdownService"
+            );
+            const fresh = await attachLiveBreakdownsToPosts(
+              prisma,
+              (cached.posts ?? []) as unknown as { id: string }[]
+            );
+            return { ...cached, posts: fresh as unknown as SearchPostHit[] };
+          } catch {
+            return cached;
+          }
+        }
       } catch {
         // cache miss / unavailable — fall through to DB
       }
@@ -203,6 +227,19 @@ class SearchService {
         ? pagePosts[pagePosts.length - 1].id
         : null;
 
+    // Canonical live trust (same service as feed/detail) so search cards
+    // carry identical breakdown values. Best-effort — failures keep rows.
+    let trustedPosts = pagePosts;
+    try {
+      const { attachLiveBreakdownsToPosts } = await import(
+        "@/app/lib/services/trustBreakdownService"
+      );
+      trustedPosts = (await attachLiveBreakdownsToPosts(
+        prisma,
+        pagePosts as unknown as { id: string }[]
+      )) as unknown as SearchPostHit[];
+    } catch { /* stored rows */ }
+
     const users: SearchUserHit[] = (userRows as Array<Record<string, unknown>>).map((u) => ({
       id: u.id as string,
       userName: u.userName as string,
@@ -215,7 +252,7 @@ class SearchService {
 
     // Trending/related tags derived from matched post tags (top 8 by frequency)
     const tagCounts = new Map<string, number>();
-    for (const p of pagePosts) {
+    for (const p of trustedPosts) {
       for (const t of p.tags ?? []) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
     }
     const tags = [...tagCounts.entries()]
@@ -223,7 +260,7 @@ class SearchService {
       .slice(0, 8)
       .map(([tag, count]) => ({ tag, count }));
 
-    const result: SearchResult = { posts: pagePosts, users, tags, nextCursor };
+    const result: SearchResult = { posts: trustedPosts, users, tags, nextCursor };
 
     if (!cursor) {
       try {
