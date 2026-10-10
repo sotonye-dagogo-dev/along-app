@@ -40,7 +40,7 @@ export async function GET(_request: NextRequest) {
 
     // Archived posts never surface as suggestions; P2022 fallback keeps the
     // route working if the moderation migration has not applied yet.
-    const safePostList = async (args: Record<string, unknown>): Promise<Record<string, any>[]> => {
+    const safePostList = async (args: Record<string, unknown>): Promise<Array<{ id: string } & Record<string, any>>> => {
       try {
         return await (prisma.post.findMany as any)({ ...args, where: { ...(args.where as object), isArchived: false } });
       } catch (e) {
