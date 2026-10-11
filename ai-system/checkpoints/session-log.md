@@ -1841,3 +1841,19 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner — re-reads of all 5 touched files, rank helper executed in node (100,100,50,0,0 → 1,1,3,4,4), no dangling `period` refs. Full jest/tsc/build deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs (leaderboard response shape unchanged — `total` now true count; `me` now non-null for ranked viewers outside slice); additive-only.
 **Chain:** fix-build → repair-system (1 entry) + test-results (row) + session-log (here) + sync-context light touch (below) + in-progress.md cleared.
+
+## Session 2026-10-11 — Leaderboard cross-links + auth-link tightening (execute-feature)
+**Directive:** links to the leaderboard page on footer, profile and invite-friends pages; tighten one-auth-means → connect-the-other so it actually works and persists; email & security page reflects and logically works considering connected auth means. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain, with fallbacks/error handling/edge cases.
+**Root causes:** (1) only the dashboard sidebar linked to `/leaderboard` — footer/profile/invite had no path there. (2) `GET /api/auth/link/status` cast `getUserFromRequest()` to include `password`, but the helper's `select` omits `password` entirely — `hasPassword` was always `false`, so password-linking never persisted in the UI (reload showed "Add a password" again) and EmailSecurityPanel never showed Change-password. (3) Google-link redirect flags (`?success=google_linked` / `?error=google_already_linked`) were never rendered on the profile page — silent landings. (4) connected-state copy was hardcoded per panel and could drift.
+**Implemented:**
+- NEW `lib/config/leaderboardLinks.ts` (`LEADERBOARD_LINKS_CONFIG`: canonical `/leaderboard` + footer/profile/invite entries) + barrel export.
+- `footer.ts`: Leaderboard entry in Features column (`footer.leaderboard` i18nKey); `en.json`/`pcm.json` += `footer.leaderboard`, `profile.leaderboard`, `invite.viewLeaderboard` (parity kept).
+- NEW `lib/config/profileQuickLinks.ts` (`PROFILE_QUICK_LINKS_CONFIG`: accountTab/scroll/route kinds, admin-gated) — own-profile quick links render from config (same classes/behaviour, now includes Leaderboard).
+- `invite/page.tsx`: "View full leaderboard →" CTA over the invite-leaderboard card (config href + `tf()` label).
+- `api/auth/link/status`: re-reads `{googleId,password}` from DB per call; returns booleans only (hash never leaves server) — linking now persists and both panels reflect reality after reloads/cross-device changes. `link/password` cast fixed to `{id}` (it already re-fetches DB).
+- NEW `lib/config/authLink.ts` (`AUTH_LINK_STATUS_CONFIG` + `resolveAuthLinkState` + `authLinkStatusCopy`) — AuthLinkPanel (both-connected banner, none-tip) + EmailSecurityPanel (google-stays-linked, google-only/add-first hints, "Connected: Google • Password" line) consume it.
+- `profile/page.tsx`: one-shot effect surfaces `?success=google_linked` / `?error=google_already_linked` via toast, opens the Connected tab, and strips the flags with `history.replaceState`.
+- Tests: NEW `leaderboardAuthLink.test.ts` (5 cases: footer/profile/invite links, state resolution, per-state copy).
+**QA:** no node_modules in runner — re-reads of all 10 touched + 3 new files, locale JSON parsed valid, `ProfileQuickLink` union-extends-interface fixed to intersection type, test predicate typed via `Extract<ProfileQuickLink,…>`. Full jest/tsc/build deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs (status response shape unchanged — booleans only, now truthful); additive-only (new configs, one footer link, one profile link, one invite CTA, one status line, one toast effect).
+**Chain:** execute-feature → in-progress (written + cleared) → session-log (here) → dev-history + task-queue + repo-map + dependency-graph → update-ai-system terminal sync.

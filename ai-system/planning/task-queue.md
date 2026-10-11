@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-command 2026-10-10 (Sprint 33 media cleanup orphan prevention)
-> - last-verified-against-code: 2026-10-10 (static re-reads; no node_modules in runner — tsc/jest/build deferred to CI/Vercel)
-> - last-synced: 2026-10-10 (Sprint 33 — execute-command close-out)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 leaderboard links + auth-link tightening)
+> - last-verified-against-code: 2026-10-11 (static re-reads; no node_modules in runner — tsc/jest/build deferred to CI/Vercel)
+> - last-synced: 2026-10-11 (Sprint 35 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -533,6 +533,22 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 
 ---
 
+## Sprint 35 — Leaderboard cross-links + auth-link tightening (2026-10-11)
+
+> **Section summary:** Every surface reaches the global leaderboard via one canonical config; connecting the second auth method persists and both account panels reflect the true connected state.
+
+| Size | Task | Status |
+|------|------|--------|
+| [S] | `LEADERBOARD_LINKS_CONFIG` registry + barrel export (canonical route + footer/profile/invite entries) | [x] |
+| [S] | Footer Leaderboard link (Features column) + 3 locale keys with en/pcm parity | [x] |
+| [M] | `PROFILE_QUICK_LINKS_CONFIG` registry; own-profile quick links render from config (incl. Leaderboard, admin-gated) | [x] |
+| [S] | Invite page "View full leaderboard" CTA (config href + i18n label) | [x] |
+| [M] | `link/status` re-reads auth methods from DB (booleans only, hash never leaks); profile toasts link results once + cleans URL | [x] |
+| [S] | `AUTH_LINK_STATUS_CONFIG` (+ resolver/copy) consumed by Connected Accounts + Email & Security (connected-methods line, per-state hints) | [x] |
+| [S] | Tests — NEW `leaderboardAuthLink.test.ts` (5: footer/profile/invite links, state resolution, per-state copy) | [x] |
+
+---
+
 ## Backlog
 
 > **Section summary:** Known work that needs to be done but hasn't been scheduled yet.
@@ -589,3 +605,4 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 - All quality gates pass: npm run build + npx tsc --noEmit + npm test + npx next lint
 - [x] Sprint 32 (2026-10-10) — trust breakdown consistency (canonical trustBreakdownService single+batched, trustDisplay compact/full config, TrustBadge variant + live-score tier, PostCard compact, all read APIs + worker on the same live object) (trustBreakdownConsistency 5 + TrustBadge +2 suites; full gate deferred to CI — no node_modules in runner)
 - [x] Sprint 33 (2026-10-10) — Cloudinary orphan prevention on deletions (MEDIA_CLEANUP_CONFIG + cloudinaryUrls + mediaCleanupService + upload/cleanup, all delete paths wired ACID-safely) (mediaCleanup 5 suites; full gate deferred to CI — no node_modules in runner)
+- [x] Sprint 35 (2026-10-11) — Leaderboard cross-links + auth-link tightening (LEADERBOARD_LINKS_CONFIG + PROFILE_QUICK_LINKS_CONFIG + AUTH_LINK_STATUS_CONFIG, link/status DB re-read, profile link-result toasts, invite CTA) (leaderboardAuthLink 5 suites; full gate deferred to CI — no node_modules in runner)

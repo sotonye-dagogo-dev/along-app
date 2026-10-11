@@ -2,8 +2,9 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Camera, Bell, BarChart3, UserPlus, Shield, LogOut, Link2, Trophy, MailCheck, AlertTriangle } from "lucide-react"
+import { Camera, LogOut, Link2, Trophy, MailCheck, AlertTriangle } from "lucide-react"
 import { isAdminRole } from "@/app/lib/config/navigation"
+import { PROFILE_QUICK_LINKS_CONFIG } from "@/app/lib/config/profileQuickLinks"
 import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import dynamic from "next/dynamic"
@@ -97,12 +98,31 @@ export default function OwnProfilePage() {
 
   // Deep link: /profile#reviews (About CTA panel) opens the Reviews tab;
   // ?tab=security (unverified-login + notification CTA) opens Email & Security.
+  // Google account-linking lands here with ?success=google_linked or
+  // ?error=google_already_linked — surface it once, then clean the URL.
   React.useEffect(() => {
     try {
       if (typeof window !== "undefined") {
         if (window.location.hash === "#reviews") setActiveTab("reviews");
-        const tab = new URLSearchParams(window.location.search).get("tab");
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get("tab");
         if (tab === "security") setAccountTab("security");
+        const linked = params.get("success");
+        const linkError = params.get("error");
+        if (linked === "google_linked") {
+          setAccountTab("connected");
+          toastService.success("Google connected — you can now sign in either way.");
+        } else if (linkError === "google_already_linked") {
+          setAccountTab("connected");
+          toastService.error("That Google account is already linked to someone else.");
+        }
+        if (linked || linkError) {
+          params.delete("success");
+          params.delete("error");
+          const qs = params.toString();
+          const next = `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`;
+          window.history.replaceState(null, "", next);
+        }
       }
     } catch { /* ignore */ }
   }, [])
@@ -361,51 +381,36 @@ export default function OwnProfilePage() {
             Quick Links
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 px-1">
-            <a href="#account" onClick={(e) => { e.preventDefault(); setAccountTab("connected"); document.getElementById("account")?.scrollIntoView({ behavior: "smooth" }); }}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0">
-              <Link2 size={18} className="shrink-0" />
-              <span className="truncate">Connected accounts</span>
-            </a>
-            <a href="#account" onClick={(e) => { e.preventDefault(); setAccountTab("points"); document.getElementById("account")?.scrollIntoView({ behavior: "smooth" }); }}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0">
-              <Trophy size={18} className="shrink-0" />
-              <span className="truncate">Profile points</span>
-            </a>
-            <a href="#content" onClick={(e) => { e.preventDefault(); document.getElementById("content")?.scrollIntoView({ behavior: "smooth" }); }}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0">
-              <Bell size={18} className="shrink-0" />
-              <span className="truncate">Jump to posts</span>
-            </a>
-            <Link
-              href="/notifications"
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0"
-            >
-              <Bell size={18} className="shrink-0" />
-              <span className="truncate">Notifications</span>
-            </Link>
-            <Link
-              href="/analytics"
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0"
-            >
-              <BarChart3 size={18} className="shrink-0" />
-              <span className="truncate">Analytics</span>
-            </Link>
-            <Link
-              href="/invite"
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0"
-            >
-              <UserPlus size={18} className="shrink-0" />
-              <span className="truncate">Invite Friends</span>
-            </Link>
-            {isAdminRole(authUser?.role) && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0"
-              >
-                <Shield size={18} className="shrink-0" />
-                <span className="truncate">Admin Dashboard</span>
-              </Link>
-            )}
+            {PROFILE_QUICK_LINKS_CONFIG.filter((l) => !l.adminOnly || isAdminRole(authUser?.role)).map((l) => {
+              const cls =
+                "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors no-underline min-w-0";
+              const Icon = l.icon;
+              const label = <span className="truncate">{l.label}</span>;
+              if (l.kind === "accountTab") {
+                return (
+                  <a key={l.id} href="#account" onClick={(e) => { e.preventDefault(); setAccountTab(l.tab); document.getElementById("account")?.scrollIntoView({ behavior: "smooth" }); }}
+                    className={cls}>
+                    <Icon size={18} className="shrink-0" />
+                    {label}
+                  </a>
+                );
+              }
+              if (l.kind === "scroll") {
+                return (
+                  <a key={l.id} href={`#${l.targetId}`} onClick={(e) => { e.preventDefault(); document.getElementById(l.targetId)?.scrollIntoView({ behavior: "smooth" }); }}
+                    className={cls}>
+                    <Icon size={18} className="shrink-0" />
+                    {label}
+                  </a>
+                );
+              }
+              return (
+                <Link key={l.id} href={l.href} className={cls}>
+                  <Icon size={18} className="shrink-0" />
+                  {label}
+                </Link>
+              );
+            })}
           </div>
         </div>
 

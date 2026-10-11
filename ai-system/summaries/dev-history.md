@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: fix-build 2026-10-11 (photo-remove visibility + expanded-map containment)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 leaderboard links + auth-link tightening)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: historical entries do not go stale
 
@@ -1065,4 +1065,14 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - `mapStack.ts` += `MAP_EXPAND_CONFIG` (+ barrel export): centered overlay, scrim backdrop, `max-w-4xl` panel, `80vh` height, backdrop-click + Escape dismissal, dialog/minimize labels; `RouteMap.tsx` expanded mode renders that contained dialog (shared `mapChrome` fragment, resize + refit on open, focus to Minimize, scroll-lock kept); collapsed root += `max-w-full w-full min-w-0`.
 - Tests: `uxTightening.test.ts` +1 photo-remove case; `mapStack.test.ts` +2 containment cases.
 **QA:** no node_modules in runner — targeted `tsc --ignoreConfig --noResolve` zero attributable errors (noise identical to untouched baseline); full jest/tsc/build deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only.
+
+## Sprint 35 (2026-10-11) — Leaderboard cross-links + auth-link tightening
+**Directive:** leaderboard links on footer/profile/invite; one-auth-means accounts can connect the other and it persists; Email & Security reflects connected means. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `LEADERBOARD_LINKS_CONFIG` + footer Leaderboard link + `PROFILE_QUICK_LINKS_CONFIG` (profile quick links now config-driven, incl. Leaderboard) + invite "View full leaderboard" CTA; 3 locale keys added with en/pcm parity.
+- `GET /api/auth/link/status` re-reads auth methods from DB (booleans only) — fixes always-false `hasPassword` so password-linking persists in UI and Change-password gating works; profile toasts `google_linked`/`google_already_linked` once and cleans the URL.
+- NEW `AUTH_LINK_STATUS_CONFIG` (+ state resolver/copy helper) consumed by Connected Accounts + Email & Security (connected-methods line, per-state hints).
+- Tests: NEW `leaderboardAuthLink.test.ts` (5 cases).
+**QA:** no node_modules in runner — static verification only; full gate deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only.

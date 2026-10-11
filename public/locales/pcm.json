@@ -76,6 +76,7 @@
   "footer.privacy": "Privacy",
   "footer.terms": "Terms",
   "footer.exploreRoutes": "Find Routes",
+  "footer.leaderboard": "Leaderboard",
   "footer.notifications": "Notifications",
   "footer.inviteFriends": "Invite Pals",
   "footer.blog": "Blog",
@@ -178,6 +179,7 @@
 
   "profile.editProfile": "Edit profile",
   "profile.signOut": "Sign out",
+  "profile.leaderboard": "Leaderboard",
   "profile.bioPlaceholder": "Tell community who you be…",
 
   "pwa.collapse": "Reduce am",
@@ -244,6 +246,7 @@
   "invite.noInvites": "Invite never land yet. Na you go first!",
   "invite.copied": "Don copy invite link",
   "invite.yourCode": "Your invite code",
+  "invite.viewLeaderboard": "See full leaderboard",
 
   "reviews.tab": "Reviews",
   "reviews.title": "Wetin People Talk About Platform",
