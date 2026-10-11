@@ -707,3 +707,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** give every gate-critical send the same patient, config-driven budget on BOTH timeout layers (outer race + inner provider timeout must agree); on delivery failure lift the throttle but keep the code (retry-immediate, abuse still capped by the shared rate bucket, response cooldown 0 so client timers agree); one template per purpose across all entry points (flag-driven with fallback). Audit "X blocks its own delivery" hypotheses with a test, not an assumption.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 42: single-row votes need both flags on every read path
+- **Symptom:** feed card correct, detail view wrong — dislike button dead, count stale, active fill missing; comment composer avatar differed from every other surface.
+- **Root causes:** (1) one `Like` row encodes LIKE|DISLIKE but readers only derived `_isLiked` — the second state was unrepresentable downstream, so clients hardcoded `false`; (2) the detail engagement bar was built without wiring the second vote action at all (no `onClick`); (3) toggle endpoints punish wrong payloads silently — sending DISLIKE on unlike *adds* a dislike instead of removing the like; (4) auth context type dropped a field the API already returned, starving all downstream avatar renders.
+- **Fix pattern (reuse):** when one row encodes N states, every read path must derive all N viewer flags (batch, never-throw); every writer must honor toggle-off values and send the repeat-same-type payload; shared caches must mirror the reducer's mutual exclusion; context types must carry every field its API selects (audit type-vs-select drift when adding viewer-derived UI).
+- **Supersedes:** None
+- **Superseded by:** None

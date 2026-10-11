@@ -170,7 +170,7 @@ TrustBreakdownService (`app/lib/services/trustBreakdownService.ts` — single + 
     → Consumed by: GET /api/posts (list), GET /api/posts/feed (via feedService + guest path), searchService, GET /api/suggestions, GET /api/bookmarks, GET /api/posts/[id], workers/validity-recompute, POST /api/posts (create-time score [Sprint 38; + richness context Sprint 40])
 
 PostShareService + usePostShare
-    → Config: postActions (shareLabel/shareTitleDefault/postPath)
+    → Config: postActions (shareLabel/shareTitleDefault/postPath + like/dislike active + icon classes [Sprint 42])
     → Services: toastService (hook only; service is dep-free)
     → Consumed by: PostCard (fallback), ProfilePostCard, home/page, search/SearchPage, posts/[id]/page, bookmarks/page
 

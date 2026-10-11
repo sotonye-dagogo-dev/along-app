@@ -93,6 +93,7 @@ interface PostItem {
   responsesCount?: number
   isArchived?: boolean
   _isLiked?: boolean
+  _isDisliked?: boolean
   _isBookmarked?: boolean
   user: { id?: string; userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null }
 }
@@ -499,6 +500,7 @@ export default function OwnProfilePage() {
                   isArchived: post.isArchived,
                   createdAt: post.createdAt,
                   _isLiked: post._isLiked ?? false,
+                  _isDisliked: (post as { _isDisliked?: boolean })._isDisliked ?? false,
                   // Bookmarks API also sends legacy `isBookmarked`.
                   _isBookmarked: post._isBookmarked ?? (post as unknown as { isBookmarked?: boolean }).isBookmarked ?? false,
                   user: {

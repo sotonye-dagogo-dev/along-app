@@ -71,6 +71,7 @@ interface PostCardPost {
   createdAt: string | Date
   user: PostCardUser
   _isLiked?: boolean
+  _isDisliked?: boolean
   _isBookmarked?: boolean
   totalDistanceKm?: number | null
   estimatedMins?: number | null
@@ -177,7 +178,7 @@ function postCardReducer(state: PostCardState, action: PostCardAction): PostCard
       return {
         liked: action.payload._isLiked ?? false,
         likesCount: action.payload.likes,
-        disliked: false,
+        disliked: action.payload._isDisliked ?? false,
         dislikesCount: action.payload.dislikes,
         bookmarked: action.payload._isBookmarked ?? false,
       }
@@ -191,7 +192,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
   const [state, dispatch] = useReducer(postCardReducer, {
     liked: post._isLiked ?? false,
     likesCount: post.likes,
-    disliked: false,
+    disliked: post._isDisliked ?? false,
     dislikesCount: post.dislikes,
     bookmarked: post._isBookmarked ?? false,
   })
@@ -203,7 +204,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
   useEffect(() => {
     dispatch({ type: "SET_FROM_PROPS", payload: post })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [post._isLiked, post._isBookmarked, post.likes, post.dislikes])
+  }, [post._isLiked, post._isDisliked, post._isBookmarked, post.likes, post.dislikes])
 
   const routes = Array.isArray(post.routes) ? (post.routes as RouteStep[]) : []
   const vehicles = extractVehicles(post.routes)
@@ -522,19 +523,21 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
       <div className="flex items-center gap-1 px-4 py-2 border-t border-border">
         <button
           onClick={(e) => { e.stopPropagation(); handleLike(); }}
-          className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${state.liked ? "liked text-error-text" : ""}`}
+          className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${state.liked ? POST_ACTIONS_CONFIG.likeActiveClass : ""}`}
           aria-label={tf("post.like", "Like")}
+          aria-pressed={state.liked}
         >
-          <Heart size={16} className={state.liked ? "fill-error-text stroke-error-text" : ""} />
+          <Heart size={16} className={state.liked ? POST_ACTIONS_CONFIG.likeIconClass : ""} />
           {state.likesCount > 0 && <span>{formatCount(state.likesCount)}</span>}
         </button>
 
         <button
           onClick={(e) => { e.stopPropagation(); handleDislike(); }}
-          className="flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans"
+          className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${state.disliked ? POST_ACTIONS_CONFIG.dislikeActiveClass : ""}`}
           aria-label={tf("post.dislike", "Dislike")}
+          aria-pressed={state.disliked}
         >
-          <ThumbsDown size={16} />
+          <ThumbsDown size={16} className={state.disliked ? POST_ACTIONS_CONFIG.dislikeIconClass : ""} />
           {state.dislikesCount > 0 && <span>{formatCount(state.dislikesCount)}</span>}
         </button>
 
