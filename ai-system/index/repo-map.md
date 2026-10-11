@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
+> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -55,7 +55,7 @@ along-app/
 │   ├── generated/           → Code-generated files
 │   ├── (auth)/              → Auth pages (login, register, OTP)
 │   ├── (dashboard)/         → Main app (feed, explore, search, profile, leaderboard, marketplace, etc.)
-│   ├── admin/               → Admin dashboard (posts incl. Edit modal [Sprint 37]; audit trail table [Sprint 37])
+│   ├── admin/               → Admin dashboard (period toggle 7/30/90 wired to stats KPIs + chart [Sprint 43]; posts incl. Edit modal [Sprint 37]; user Request/Reverse/Delete-now [Sprint 43]; deletions queue with per-row Reverse/Delete-now [Sprint 43]; audit trail table [Sprint 37])
 │   ├── (public)/            → Landing, about, contact, legal, faq, blog
 │   │   ├── faq/             → FAQ page with categorized Q&A
 │   │   ├── blog/            → Blog listing page

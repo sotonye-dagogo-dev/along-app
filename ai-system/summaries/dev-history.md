@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
+> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1163,3 +1163,14 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `config/dislikeSync` (15 static: config parity, card sync, detail wiring + exclusion + toggle payloads, cache exclusion, profile forwarding, three server enrichments, four avatar wirings) + `profilePosts` interaction-fields +1.
 **QA:** no node_modules in runner (jest/build deferred to CI/Vercel like recent sprints); tsc shows zero errors on any touched symbol (`_isDisliked|dislikeActive|dislikeIcon|likeActiveClass|avatarConfig` grep clean — remaining output is missing-`react`-module cascades on untouched files too); all 30 new-suite assertions grep-verified present verbatim; brace-balance + diff review clean.
 **Compliance:** additive-only, no migration/deps/API removals (optional props/fields; vote API contract unchanged — same toggle endpoint, corrected payloads).
+
+## Sprint 43 (2026-10-11) — Admin destructive user deletion + dashboard period toggle
+**Directive:** keep the 7-day deletion-request flow and add the actual destructive safe deletion (warning + undo per convention); dashboard period toggle like user analytics, wired end-to-end to overview + signups chart. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- `ADMIN_DASHBOARD_PERIODS` + `parseAdminDashboardPeriod` + `ADMIN_USER_DELETION_META` in `lib/config/admin.ts` (barrel re-exported); service += `finalizeSingleRequest` (force-gated), `cancelDeletionRequestById`, `deleteUserNow` (same ACID anonymize pipeline, guards preserved, never throws).
+- `GET /api/admin/stats?period=7|30|90` — windowed signups series, window-vs-previous-window deltas (zero-activity stays flat via existing `pctChange`/`formatDelta` semantics), back-compatible shape (`signups7d` alias, `postsToday`, legacy 7-day deltas on default period).
+- `POST /api/admin/deletions/finalize` += `cancel` (requestId|userId), `finalizeOne` (due-only unless force), `deleteNow` — every new action `logAudit`-audited with self-delete guard.
+- Dashboard `<select>` toggle drives fetch, subtitle, chart title, and posts-card label/value; deletions queue per-row Reverse (confirm + re-request undo) + Delete now (destructive confirm, no fake undo, recovery note); users table per-row Request/Reverse/Delete-now gated on deletion state; bulk copy unified on the shared meta.
+- Tests: `config/admin.test.ts` +3 suites (period parity, parser clamps, deletion copy).
+**QA:** no node_modules in runner (tsc/jest/build deferred to CI/Vercel); node strip-types checks 9/9 green; jest additions mirror them for CI.
+**Compliance:** additive-only, no migration/deps/API removals (new query param optional, new response fields optional, new finalize actions additive).

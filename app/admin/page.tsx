@@ -3,14 +3,17 @@
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { RefreshCw, Users, FileText, Shield, Bug, ChevronUp, ChevronDown, Minus, Eye } from "lucide-react"
-import { formatDelta } from "@/app/lib/config/admin"
+import { formatDelta, ADMIN_DASHBOARD_PERIODS } from "@/app/lib/config/admin"
 
 interface AdminStats {
   totalUsers: number
   postsToday: number
+  postsInPeriod?: number
   avgValidity: number
   openBugs: number
+  period?: number
   signups7d: { date: string; count: number }[]
+  signups?: { date: string; count: number }[]
   topPosts: { id: string; title: string; validityScore: number }[]
   recentUsers?: { id: string; userName: string; firstName: string; lastName: string; email: string; role: string; rewardTier: string; _count: { posts: number }; createdAt: string }[]
   deltas?: { totalUsers: number | null; postsToday: number | null; postsWeek: number | null; avgValidity: number | null; openBugs: number | null }
@@ -20,12 +23,14 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [period, setPeriod] = useState<string>(ADMIN_DASHBOARD_PERIODS.defaultPeriod)
 
-  const load = async () => {
+  const load = async (p?: string) => {
     setLoading(true)
     setError(false)
     try {
-      const res = await fetch("/api/admin/stats")
+      const active = p ?? period
+      const res = await fetch(`/api/admin/stats?period=${encodeURIComponent(active)}`)
       if (res.ok) {
         setStats(await res.json())
       } else {
@@ -34,7 +39,8 @@ export default function AdminDashboard() {
     } catch { setError(true) } finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(period) }, [period])
 
   if (loading) {
     return (
@@ -56,7 +62,7 @@ export default function AdminDashboard() {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4">
         <div className="text-text-muted text-sm">Failed to load dashboard data</div>
-        <button onClick={load} className="px-4 py-2 radius-md bg-primary text-white text-xs font-medium border-none cursor-pointer hover:bg-primary-light transition-colors">
+        <button onClick={() => load()} className="px-4 py-2 radius-md bg-primary text-white text-xs font-medium border-none cursor-pointer hover:bg-primary-light transition-colors">
           Retry
         </button>
       </div>
@@ -67,7 +73,11 @@ export default function AdminDashboard() {
 
   const recentUsers = stats.recentUsers ?? []
   const topPosts = stats.topPosts ?? []
-  const signups7d = stats.signups7d ?? []
+  // `signups` is the canonical period series; `signups7d` is the legacy alias.
+  const signups7d = stats.signups ?? stats.signups7d ?? []
+  const activePeriod = stats.period ?? Number(period) ?? 7
+  const periodLabel = ADMIN_DASHBOARD_PERIODS.options.find((o) => Number(o.value) === activePeriod)?.label ?? `Last ${activePeriod} days`
+  const postsInPeriod = stats.postsInPeriod ?? stats.postsToday
 
   const svgW = 500
   const svgH = 160
@@ -91,7 +101,7 @@ export default function AdminDashboard() {
 
   const cards = [
     { label: "Total Users", value: stats.totalUsers, display: stats.totalUsers.toLocaleString(), delta: stats.deltas?.totalUsers ?? null, icon: <Users size={18} />, bg: "var(--color-primary-muted)", color: "var(--color-primary)" },
-    { label: "Posts Today", value: stats.postsToday, display: stats.postsToday.toLocaleString(), delta: stats.deltas?.postsToday ?? null, icon: <FileText size={18} />, bg: "var(--color-info)", color: "var(--color-info-text)" },
+    { label: activePeriod === 7 ? "Posts Today" : `Posts (${activePeriod}d)`, value: activePeriod === 7 ? stats.postsToday : postsInPeriod, display: (activePeriod === 7 ? stats.postsToday : postsInPeriod).toLocaleString(), delta: stats.deltas?.postsToday ?? null, icon: <FileText size={18} />, bg: "var(--color-info)", color: "var(--color-info-text)" },
     { label: "Avg Validity Score", value: stats.avgValidity, display: stats.avgValidity.toString(), delta: stats.deltas?.avgValidity ?? null, icon: <Shield size={18} />, bg: "var(--color-success)", color: "var(--color-success-text)" },
     { label: "Open Bug Reports", value: stats.openBugs, display: stats.openBugs.toString(), delta: stats.deltas?.openBugs ?? null, icon: <Bug size={18} />, bg: "var(--color-error)", color: "var(--color-error-text)" },
   ]
@@ -101,11 +111,23 @@ export default function AdminDashboard() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-1 min-w-0">
         <div className="min-w-0">
           <h1 className="text-[24px] sm:text-[28px] font-bold tracking-tight truncate">Dashboard</h1>
-          <div className="text-sm text-text-secondary truncate">Admin overview &middot; Last 7 days</div>
+          <div className="text-sm text-text-secondary truncate">Admin overview &middot; {periodLabel}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <label htmlFor="admin-dashboard-period" className="sr-only">Data period</label>
+          <select
+            id="admin-dashboard-period"
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            aria-label="Data period"
+            className="px-3 py-2 radius-md border border-border bg-bg-card text-xs font-medium text-text-secondary hover:text-text-primary cursor-pointer"
+          >
+            {ADMIN_DASHBOARD_PERIODS.options.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
           <button
-            onClick={load}
+            onClick={() => load()}
             className="inline-flex items-center gap-1.5 px-3 py-2 radius-md border border-border bg-bg-card text-xs font-medium text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors duration-fast cursor-pointer"
           >
             <RefreshCw size={14} />
@@ -144,7 +166,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 min-w-0">
         <div className="bg-bg-card border border-border radius-lg p-4 sm:p-5 shadow-md min-w-0 overflow-hidden">
           <div className="flex items-center justify-between mb-4 gap-2 min-w-0">
-            <h3 className="text-base font-semibold truncate">Signups (7 days)</h3>
+            <h3 className="text-base font-semibold truncate">Signups ({activePeriod} days)</h3>
             <Link href="/admin/users" className="text-xs text-primary font-medium cursor-pointer flex items-center gap-1 no-underline shrink-0">
               View all <span>&rarr;</span>
             </Link>

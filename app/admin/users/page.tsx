@@ -5,7 +5,7 @@ import Link from "next/link"
 import { Search, Shield } from "lucide-react"
 import { AppInput } from "@/app/components/ui"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
-import { ADMIN_BULK_SELECT_META } from "@/app/lib/config/admin"
+import { ADMIN_BULK_SELECT_META, ADMIN_USER_DELETION_META } from "@/app/lib/config/admin"
 import { modalService } from "@/app/lib/services/modalService"
 import { toastService } from "@/app/lib/services/toastService"
 import { undoService } from "@/app/lib/services/undoService"
@@ -39,6 +39,7 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("")
   const [bulkBusy, setBulkBusy] = useState(false)
   const [deletionFilter, setDeletionFilter] = useState<string>("all")
+  const [rowDeletionBusy, setRowDeletionBusy] = useState<string | null>(null)
 
   const bulk = useBulkSelection(users, (u) => u.id)
 
@@ -318,9 +319,9 @@ export default function AdminUsersPage() {
     if (ids.length === 0) return
     modalService.confirm({
       title: `Request deletion for ${ids.length} user(s)?`,
-      description: "Accounts + posts are archived immediately and anonymized after the 7-day grace period. Likes/bookmarks are removed; anonymised posts retained. Users can reverse until then.",
+      description: ADMIN_USER_DELETION_META.requestDescription,
       variant: "destructive",
-      confirmLabel: "Request deletion",
+      confirmLabel: ADMIN_USER_DELETION_META.requestConfirmLabel,
       onConfirm: () => {
         modalService.close()
         void (async () => {
@@ -354,6 +355,126 @@ export default function AdminUsersPage() {
     SILVER: "bg-bg-elevated text-text-primary",
     GOLD: "bg-warning text-warning-text",
     PLATINUM: "bg-info text-info-text",
+  }
+
+  /**
+   * Per-user deletion trio (non-breaking additive):
+   * - Request deletion → 7-day grace (reversible, undo toast reverses it).
+   * - Reverse request → restores the archived account.
+   * - Delete now → destructive safe deletion: same anonymize pipeline, grace
+   *   skipped, explicit irreversibility warning, no fake undo (recovery is
+   *   off-platform from backups — see ADMIN_USER_DELETION_META).
+   */
+  const handleRequestDeletion = (u: AdminUser) => {
+    modalService.confirm({
+      title: ADMIN_USER_DELETION_META.requestTitle,
+      description: `${ADMIN_USER_DELETION_META.requestDescription} (@${u.userName}).`,
+      variant: "destructive",
+      confirmLabel: ADMIN_USER_DELETION_META.requestConfirmLabel,
+      onConfirm: () => {
+        modalService.close()
+        void (async () => {
+          setRowDeletionBusy(u.id)
+          try {
+            const res = await fetch("/api/admin/deletions/finalize", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "request", userId: u.id, reason: "admin single-user deletion" }),
+            })
+            const data = await res.json().catch(() => ({})) as { error?: string }
+            if (!res.ok) throw new Error(data.error ?? "Request failed")
+            await load(search || undefined)
+            const undoId = `admin-user-delete-request:${u.id}:${Date.now()}`
+            undoService.register({
+              id: undoId,
+              label: "Undo deletion request",
+              onUndo: () => {
+                void (async () => {
+                  await fetch("/api/admin/deletions/finalize", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "cancel", userId: u.id }),
+                  })
+                  toastService.success(ADMIN_USER_DELETION_META.cancelSuccess)
+                  load(search || undefined)
+                })()
+              },
+            })
+            toastService.undo({
+              message: `${ADMIN_USER_DELETION_META.requestUndoMessage} (@${u.userName})`,
+              undoLabel: ADMIN_USER_DELETION_META.requestUndoLabel,
+              onUndo: () => undoService.execute(undoId),
+            })
+          } catch (e) {
+            toastService.error(e instanceof Error ? e.message : "Deletion request failed")
+          } finally {
+            setRowDeletionBusy(null)
+          }
+        })()
+      },
+    })
+  }
+
+  const handleCancelDeletion = (u: AdminUser) => {
+    modalService.confirm({
+      title: ADMIN_USER_DELETION_META.cancelTitle,
+      description: `${ADMIN_USER_DELETION_META.cancelDescription} (@${u.userName}).`,
+      variant: "sensitive",
+      confirmLabel: ADMIN_USER_DELETION_META.cancelConfirmLabel,
+      onConfirm: () => {
+        modalService.close()
+        void (async () => {
+          setRowDeletionBusy(u.id)
+          try {
+            const res = await fetch("/api/admin/deletions/finalize", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "cancel", userId: u.id }),
+            })
+            const data = await res.json().catch(() => ({})) as { error?: string }
+            if (!res.ok) throw new Error(data.error ?? "Reverse failed")
+            await load(search || undefined)
+            toastService.success(ADMIN_USER_DELETION_META.cancelSuccess)
+          } catch (e) {
+            toastService.error(e instanceof Error ? e.message : "Reverse failed")
+          } finally {
+            setRowDeletionBusy(null)
+          }
+        })()
+      },
+    })
+  }
+
+  const handleDeleteNow = (u: AdminUser) => {
+    modalService.confirm({
+      title: ADMIN_USER_DELETION_META.deleteNowTitle,
+      description: `${ADMIN_USER_DELETION_META.deleteNowDescription} (@${u.userName}, ${u.email}).`,
+      variant: "destructive",
+      confirmLabel: ADMIN_USER_DELETION_META.deleteNowConfirmLabel,
+      onConfirm: () => {
+        modalService.close()
+        void (async () => {
+          setRowDeletionBusy(u.id)
+          try {
+            const res = await fetch("/api/admin/deletions/finalize", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "deleteNow", userId: u.id, reason: "admin immediate deletion" }),
+            })
+            const data = await res.json().catch(() => ({})) as { error?: string }
+            if (!res.ok) throw new Error(data.error ?? "Delete failed")
+            await load(search || undefined)
+            toastService.success(
+              `${ADMIN_USER_DELETION_META.deleteNowSuccess} (@${u.userName}). ${ADMIN_USER_DELETION_META.deleteNowRecoveryNote}`
+            )
+          } catch (e) {
+            toastService.error(e instanceof Error ? e.message : "Delete failed")
+          } finally {
+            setRowDeletionBusy(null)
+          }
+        })()
+      },
+    })
   }
 
   const allSelected = users.length > 0 && users.every((u) => bulk.selected.has(u.id))
@@ -551,6 +672,46 @@ export default function AdminUsersPage() {
                     <Link href={`/profile/${u.userName}`} className="px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary no-underline border border-border hover:text-primary transition-all duration-fast">
                       View
                     </Link>
+                    {!u.isDeleted && !u.deletionScheduledFor && (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleRequestDeletion(u) }}
+                          disabled={rowDeletionBusy === u.id}
+                          title="Request deletion — 7-day grace, reversible (undo available)"
+                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-warning text-warning-text border-none cursor-pointer hover:opacity-80 transition-all duration-fast disabled:opacity-50"
+                        >
+                          {rowDeletionBusy === u.id ? "Working…" : "Request deletion"}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteNow(u) }}
+                          disabled={rowDeletionBusy === u.id}
+                          title="Delete now — skips grace, anonymizes immediately (irreversible in-app)"
+                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-error text-error-text border-none cursor-pointer hover:opacity-80 transition-all duration-fast disabled:opacity-50"
+                        >
+                          {rowDeletionBusy === u.id ? "Working…" : "Delete now"}
+                        </button>
+                      </>
+                    )}
+                    {!u.isDeleted && u.deletionScheduledFor && (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleCancelDeletion(u) }}
+                          disabled={rowDeletionBusy === u.id}
+                          title="Reverse the pending request — restores the account"
+                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-success text-white border-none cursor-pointer hover:opacity-80 transition-all duration-fast disabled:opacity-50"
+                        >
+                          {rowDeletionBusy === u.id ? "Working…" : "Reverse deletion"}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteNow(u) }}
+                          disabled={rowDeletionBusy === u.id}
+                          title="Delete now — skips remaining grace, anonymizes immediately (irreversible in-app)"
+                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-error text-error-text border-none cursor-pointer hover:opacity-80 transition-all duration-fast disabled:opacity-50"
+                        >
+                          {rowDeletionBusy === u.id ? "Working…" : "Delete now"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>
