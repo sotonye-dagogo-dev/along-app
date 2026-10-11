@@ -33,14 +33,16 @@ export function ProfilePostCard({ post, onRemoved }: ProfilePostCardProps) {
   const syncedPost = useMemo(() => {
     try {
       const cached = feedStream.interactionCache$.value.get(post.id) as
-        | { _isLiked?: boolean; _isBookmarked?: boolean; likes?: number }
+        | { _isLiked?: boolean; _isDisliked?: boolean; _isBookmarked?: boolean; likes?: number; dislikes?: number }
         | undefined;
       if (!cached) return post;
       return {
         ...post,
         _isLiked: cached._isLiked ?? (post as { _isLiked?: boolean })._isLiked,
+        _isDisliked: cached._isDisliked ?? (post as { _isDisliked?: boolean })._isDisliked,
         _isBookmarked: cached._isBookmarked ?? (post as { _isBookmarked?: boolean })._isBookmarked,
         likes: cached.likes ?? (post as { likes: number }).likes,
+        dislikes: cached.dislikes ?? (post as { dislikes: number }).dislikes,
       };
     } catch {
       return post;
@@ -67,9 +69,9 @@ export function ProfilePostCard({ post, onRemoved }: ProfilePostCardProps) {
     [],
   )
 
-  const handleDislike = useCallback(async (postId: string) => {
+  const handleDislike = useCallback(async (postId: string, disliked: boolean) => {
     try {
-      feedStream.applyInteraction({ postId, type: "dislike", value: true });
+      feedStream.applyInteraction({ postId, type: "dislike", value: disliked });
     } catch { /* ignore */ }
     try {
       await fetch(`/api/posts/${postId}/like`, {
@@ -117,6 +119,7 @@ export function ProfilePostCard({ post, onRemoved }: ProfilePostCardProps) {
     displayName:
       `${(viewer as { firstName?: string } | null)?.firstName ?? ""} ${(viewer as { lastName?: string } | null)?.lastName ?? ""}`.trim() || "You",
     avatar: (viewer as { avatar?: string } | null)?.avatar ?? null,
+    avatarConfig: (viewer as { avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null } | null)?.avatarConfig ?? null,
   }
 
   return (

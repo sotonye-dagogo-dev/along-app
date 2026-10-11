@@ -1948,3 +1948,12 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** runner has no node_modules — jest/tsc/build deferred to CI/Vercel; node one-liner checks (brace/paren balance, expectation presence, audit-regex behaviour incl. legitimate already-verified short-circuit) all green; existing `registerEmailDispatch` suite assertions preserved.
 **Compliance:** additive-only, no migration, no new deps, no removed APIs.
 **Chain:** execute-feature → session-log (here) → dev-history + lessons-learned + system-architecture → update-ai-system terminal sync.
+
+## Session 2026-10-11 — Dislike parity + comment-avatar consistency (execute-feature)
+**Directive:** comment-box avatar inconsistent with the platform; post-detail dislike dead + count stale while the feed card stays accurate; all dislike appearances need active fill/bg like the like button. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain, with fallbacks/edge cases.
+**Root causes:** (1) auth user type dropped `avatarConfig` (API selects it) and all four comment viewers omitted it — composer fell back to initials for DiceBear users; (2) single-row LIKE|DISLIKE votes never surfaced `_isDisliked` on any read path; PostCard reset `disliked: false` on every props sync; detail dislike button had no `onClick`; home `onLike` mis-sent DISLIKE on unlike and `onDislike` ignored the toggle (re-add instead of remove); (3) active styling existed only for like.
+**Implemented:** server `_isDisliked` on `[id]`/`route`/`feedService` (both paths) + feedStream mutual-exclusion cache + profilePosts flag; PostCard `_isDisliked` seed/sync/deps + config-driven vote classes + `aria-pressed`; detail `handleLike`/`handleDislike` with mutual exclusion, optimistic counts, `!res.ok` rollback; feed toggle-payload corrections (home + ProfilePostCard + profile-tab forwarding); `POST_ACTIONS_CONFIG` like/dislike active classes (warning tokens); `AuthProvider.avatarConfig` + all comment viewers forward it.
+**Tests:** NEW `config/dislikeSync.test.ts` (15) + `profilePosts` +1 assertion.
+**QA:** runner has no node_modules — jest/build deferred to CI/Vercel; tsc zero errors on touched symbols; 30/30 new assertions grep-verified; diff reviewed.
+**Compliance:** additive-only, no migration, no new deps, no removed APIs (vote endpoint contract unchanged).
+**Chain:** execute-feature → in-progress (written + cleared below) → session-log (here) → dev-history + task-queue + project-plan → update-ai-system terminal sync.

@@ -64,6 +64,7 @@ function SearchContent() {
     displayName:
       `${(user as { firstName?: string } | null)?.firstName ?? ""} ${(user as { lastName?: string } | null)?.lastName ?? ""}`.trim() || "You",
     avatar: (user as { avatar?: string } | null)?.avatar ?? null,
+    avatarConfig: (user as { avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null } | null)?.avatarConfig ?? null,
   };
 
   // Debounce typing → committed query (300ms)

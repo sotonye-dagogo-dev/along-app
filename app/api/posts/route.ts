@@ -393,15 +393,18 @@ export async function GET(request: NextRequest) {
       try {
         const ids = (resultPosts as { id: string }[]).map((p) => p.id);
         if (ids.length > 0) {
-          const [likes, bookmarks] = await Promise.all([
+          const [likes, dislikes, bookmarks] = await Promise.all([
             prisma.like.findMany({ where: { postId: { in: ids }, userId: viewerId, type: "LIKE" }, select: { postId: true } }).catch(() => [] as { postId: string }[]),
+            prisma.like.findMany({ where: { postId: { in: ids }, userId: viewerId, type: "DISLIKE" }, select: { postId: true } }).catch(() => [] as { postId: string }[]),
             prisma.bookmark.findMany({ where: { postId: { in: ids }, userId: viewerId }, select: { postId: true } }).catch(() => [] as { postId: string }[]),
           ]);
           const liked = new Set(likes.map((l) => l.postId));
+          const disliked = new Set(dislikes.map((l) => l.postId));
           const saved = new Set(bookmarks.map((b) => b.postId));
           enriched = (resultPosts as Record<string, unknown>[]).map((p) => ({
             ...p,
             _isLiked: liked.has(p.id as string),
+            _isDisliked: disliked.has(p.id as string),
             _isBookmarked: saved.has(p.id as string),
           }));
         }

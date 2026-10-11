@@ -17,7 +17,7 @@ export const PROFILE_POSTS_CONFIG = {
   /** Forward these user fields from API rows into PostCard (never drop). */
   avatarFields: ["avatar", "avatarConfig"] as const,
   /** Interaction fields the list API enriches viewer-scoped. */
-  interactionFields: ["_isLiked", "_isBookmarked"] as const,
+  interactionFields: ["_isLiked", "_isDisliked", "_isBookmarked"] as const,
   /** Design-token pill classes for the Email & Security verified tag. */
   verifiedPillClass:
     "text-[11px] px-2 py-0.5 rounded-full bg-success text-success-text border border-success-border font-semibold",

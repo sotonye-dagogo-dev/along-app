@@ -11,6 +11,8 @@ type User = {
   lastName: string;
   email: string;
   avatar?: string;
+  /** DiceBear/custom avatar config (selected by /api/auth/me; drives AppAvatar). */
+  avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null;
   bio?: string;
   location?: string;
   verified?: boolean;
