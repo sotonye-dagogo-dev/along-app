@@ -39,7 +39,7 @@ export const TRUST_BREAKDOWN_LABELS: Record<TrustBreakdownKey, string> = {
  */
 export const TRUST_BREAKDOWN_DESCRIPTIONS: Record<TrustBreakdownKey, string> = {
   community: "Share of likes vs dislikes on this post.",
-  detail: "How complete the route is — stops, descriptions, distances.",
+  detail: "How complete the route is — stops, descriptions, photos, tags, fares and vehicles.",
   corroboration:
     "Independent agreement: matching routes from other posts (same area, stops, fares, vehicles), likes relative to views, and direct responses.",
   recency: "How fresh the post is — decays over 30 days.",

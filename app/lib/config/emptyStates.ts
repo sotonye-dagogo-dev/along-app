@@ -76,7 +76,9 @@ export const EMPTY_STATES: Record<string, EmptyStateConfig> = {
   error: {
     icon: AlertTriangle,
     title: "Something went wrong",
-    description: "Please try again. If the problem persists, contact support.",
+    // Honest copy (mirrors the error-boundary unreported state): no claim
+    // the team was notified — the reporter files it via “Report a bug”.
+    description: "Please try again. If the problem persists, use “Report a bug” so our team can look into it.",
     actionLabel: "Try Again",
     actionHref: "/",
   },

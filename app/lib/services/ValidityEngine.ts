@@ -1,4 +1,4 @@
-import { CORROBORATION_CONFIG, DEFAULT_VALIDITY_CONFIG, VALIDITY_SIGNAL_BOUNDS } from "@/app/lib/config/validityConfig";
+import { CORROBORATION_CONFIG, DEFAULT_VALIDITY_CONFIG, DETAIL_SCORING_CONFIG, VALIDITY_SIGNAL_BOUNDS } from "@/app/lib/config/validityConfig";
 
 interface ValidityInput {
   likes: number;
@@ -82,6 +82,109 @@ export function computeRouteDetailScore(routes: unknown): number {
 export function computeSimilarityRatio(overlappingPostCount: number): number {
   const n = Number.isFinite(overlappingPostCount) ? Math.max(0, overlappingPostCount) : 0;
   return Math.min(100, Math.round(n * 10));
+}
+
+/** Post-level richness signals the leg scorer cannot see (all optional). */
+export interface PostDetailContext {
+  /** Number of attached photos. */
+  imageCount?: number;
+  /** Number of tags. */
+  tagCount?: number;
+  /** Length (chars) of the general post description. */
+  descriptionLength?: number;
+  /** Non-destination legs naming a vehicle. */
+  vehicleLegs?: number;
+  /** Non-destination legs with a finite fare. */
+  fareLegs?: number;
+  /** Non-destination leg count (denominator for vehicle/fare coverage). */
+  transitLegs?: number;
+  /** Total legs (stops) on the route. */
+  stopCount?: number;
+  /** Legs naming a location. */
+  locationLegs?: number;
+}
+
+/**
+ * Full post-detail scorer: legacy leg base + capped post-richness bonuses
+ * from DETAIL_SCORING_CONFIG (photos, tags, description, vehicle/fare
+ * coverage, stop depth, location coverage) → 0-100.
+ *
+ * `context` omitted (or empty) returns the legacy base EXACTLY, so every
+ * existing caller and test keeps its score; richer posts climb instead of
+ * every composer post freezing at 42.
+ */
+export function computePostDetailScore(routes: unknown, context?: PostDetailContext): number {
+  const base = computeRouteDetailScore(routes);
+  if (!context || typeof context !== "object") return base;
+  const c = DETAIL_SCORING_CONFIG;
+  const count = (v: unknown): number =>
+    typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0;
+  let bonus = 0;
+  bonus += Math.min(c.maxImageBonus, count(context.imageCount) * c.perImage);
+  bonus += Math.min(c.maxTagBonus, count(context.tagCount) * c.perTag);
+  const descLen = count(context.descriptionLength);
+  for (const tier of c.descriptionTiers) {
+    if (descLen >= tier.minLength) {
+      bonus += tier.bonus;
+      break;
+    }
+  }
+  const transit = count(context.transitLegs);
+  if (transit > 0) {
+    const vehicleShare = Math.min(1, count(context.vehicleLegs) / transit);
+    const fareShare = Math.min(1, count(context.fareLegs) / transit);
+    bonus += vehicleShare * c.maxVehicleBonus;
+    bonus += fareShare * c.maxFareBonus;
+  }
+  bonus += Math.min(c.maxStopBonus, Math.max(0, count(context.stopCount) - 2) * c.perExtraStop);
+  const stops = count(context.stopCount);
+  if (stops > 0) {
+    bonus += Math.min(1, count(context.locationLegs) / stops) * c.maxLocationBonus;
+  }
+  return Math.min(100, Math.round(base + bonus));
+}
+
+/**
+ * Derive the richness context from a stored post shape (routes + images +
+ * tags + description). Pure and tolerant — legacy rows with missing fields
+ * contribute 0 for that leg rather than failing the whole score.
+ */
+export function detailContextFromPost(post: {
+  routes?: unknown;
+  images?: unknown;
+  tags?: unknown;
+  description?: unknown;
+}): PostDetailContext {
+  const routes = Array.isArray(post?.routes) ? (post.routes as Record<string, unknown>[]) : [];
+  const images = Array.isArray(post?.images) ? post.images : [];
+  const tags = Array.isArray(post?.tags) ? post.tags : [];
+  const description = typeof post?.description === "string" ? post.description : "";
+  const transit = routes.length > 1 ? routes.slice(0, -1) : routes;
+  let vehicleLegs = 0;
+  let fareLegs = 0;
+  let locationLegs = 0;
+  for (const leg of routes) {
+    if (!leg || typeof leg !== "object") continue;
+    const location = (leg as { location?: unknown }).location;
+    if (typeof location === "string" && location.trim().length > 0) locationLegs++;
+  }
+  for (const leg of transit) {
+    if (!leg || typeof leg !== "object") continue;
+    const vehicle = (leg as { vehicle?: unknown }).vehicle;
+    if (typeof vehicle === "string" && vehicle.trim().length > 0) vehicleLegs++;
+    const fare = (leg as { fare?: unknown }).fare;
+    if (typeof fare === "number" && Number.isFinite(fare)) fareLegs++;
+  }
+  return {
+    imageCount: images.length,
+    tagCount: tags.length,
+    descriptionLength: description.trim().length,
+    vehicleLegs,
+    fareLegs,
+    transitLegs: transit.length,
+    stopCount: routes.length,
+    locationLegs,
+  };
 }
 
 // ---------------------------------------------------------------------------

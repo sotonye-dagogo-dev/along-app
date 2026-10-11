@@ -6,7 +6,7 @@ export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, USERNAME_RULE, POST
 export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
 export { DEFAULT_FEED_CONFIG } from "./feedAlgorithm";
 export { QUALITY_CHECKPOINTS } from "./draftingCoach";
-export { DEFAULT_VALIDITY_CONFIG, VALIDITY_SIGNAL_BOUNDS } from "./validityConfig";
+export { DEFAULT_VALIDITY_CONFIG, VALIDITY_SIGNAL_BOUNDS, DETAIL_SCORING_CONFIG } from "./validityConfig";
 export { TRUST_DISPLAY_CONFIG, TRUST_BREAKDOWN_KEYS, TRUST_BREAKDOWN_LABELS, trustKeysForVariant, trustTierForScore } from "./trustDisplay";
 export type { TrustBreakdownKey, TrustDisplayVariant } from "./trustDisplay";
 export { AVATAR_STYLES, buildAvatarUrl, getFallbackAvatarUrl } from "./avatar";

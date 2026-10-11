@@ -105,7 +105,7 @@ Service Layer (app/lib/services/*)
     → Notification fan-out: posts route (ROUTE_REQUEST/NEW_ROUTE/ROUTE_RESPONSE) + like route (LIKE/DISLIKE) + comments routes (COMMENT/MENTION) → `notificationService.createNotification` (+ `mentionService` extract/diff/resolve) → Prisma Notification + Redis invalidation
     → Referrals (auth-agnostic): register page + login/register Google buttons (`?ref=` → `state=ref:`) → register route + google callback → `referralService` (unlimited linking, send-credit cap via INVITE_CONFIG) → QStash rewards worker
     → Early adopters: `earlyAdopterConfig` SiteConfig row (seeded, admin-editable via /api/admin/config with validation + Redis invalidation) → `earlyAdopterService` (createdAt-asc rank, Redis-cached; `listEarlyAdopters`) → profile badge + admin `?earlyAdopter=true` user filter
-    → Error boundaries: `global-error`/`error` → `errorReportService` (sanitized capture, never throws) → POST /api/bug-reports (category OTHER, `ERROR_REPORTING_CONFIG`) → BugReport rows for admin triage
+    → Error boundaries: `global-error`/`error` → `errorReportService` (sanitized capture + prefill builder + bug-report URL, never throws) → POST /api/bug-reports (category OTHER, `ERROR_REPORTING_CONFIG`) → BugReport rows for admin triage; boundaries also toast the CTA (toastService action slot) + inline prefilled link → `/report-bug` (?title=&description= → initialValues) [Sprint 40]
     → Admin access: `isAdminRole()` (navigation config, case-insensitive) → DashboardNav admin section + AdminShell guard + profile Quick Links
 
 Config Registries (app/lib/config/*)
@@ -158,15 +158,16 @@ SuggestionsService
 ValidityEngine
     → PostModel, UserActivityModel, FollowModel, BugReportModel, UserModel (Prisma)
     → Redis (trust scores)
-    → Config: validityConfig (+ VALIDITY_SIGNAL_BOUNDS, + CORROBORATION_CONFIG [Sprint 38])
+    → Config: validityConfig (+ VALIDITY_SIGNAL_BOUNDS, + CORROBORATION_CONFIG [Sprint 38], + DETAIL_SCORING_CONFIG richness bonuses [Sprint 40])
     → Pure corroboration scorers [Sprint 38]: normalizeCorroborationToken, tagSimilarityScore, geoCorridorScore, routeContentScore (destination-excluded), pairSimilarityScore, endorsementScore, computeCorroborationScore (computeSimilarityRatio kept for compat/fallback)
+    → Pure detail scorers [Sprint 40]: computePostDetailScore (legacy base + capped bonuses; no-context parity) + detailContextFromPost (destination-excluded vehicle/fare; computeRouteDetailScore untouched)
     → Triggered by: posts POST (sync, same helper as reads [Sprint 38]), workers/validity-recompute, like/bookmark/comments/[id]/reports/follow routes (fire-and-forget)
     → Consumed by: trustBreakdownService (canonical live breakdowns), TrustBadge (breakdown prop), PostCard, posts/[id] page + GET (validityBreakdown)
 
 TrustBreakdownService (`app/lib/services/trustBreakdownService.ts` — single + batched live breakdowns, same engine/inputs on every surface)
     → ValidityEngine (evaluate + canonical scorers), PostModel/FollowModel/BugReportModel/UserModel (Prisma, best-effort)
     → Config: trustDisplay (compact/full keys, tier derivation, + TRUST_BREAKDOWN_DESCRIPTIONS tooltip help [Sprint 38]), CORROBORATION_CONFIG (30d window, 0.55/0.25/0.20 blend [Sprint 38])
-    → Consumed by: GET /api/posts (list), GET /api/posts/feed (via feedService + guest path), searchService, GET /api/suggestions, GET /api/bookmarks, GET /api/posts/[id], workers/validity-recompute, POST /api/posts (create-time score [Sprint 38])
+    → Consumed by: GET /api/posts (list), GET /api/posts/feed (via feedService + guest path), searchService, GET /api/suggestions, GET /api/bookmarks, GET /api/posts/[id], workers/validity-recompute, POST /api/posts (create-time score [Sprint 38; + richness context Sprint 40])
 
 PostShareService + usePostShare
     → Config: postActions (shareLabel/shareTitleDefault/postPath)

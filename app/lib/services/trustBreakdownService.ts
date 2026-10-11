@@ -1,11 +1,14 @@
 import {
   validityEngine,
   computeRouteDetailScore,
+  computePostDetailScore,
+  detailContextFromPost,
   computeSimilarityRatio,
   pairSimilarityScore,
   endorsementScore,
   computeCorroborationScore,
   normalizeCorroborationToken,
+  type PostDetailContext,
 } from "@/app/lib/services/ValidityEngine";
 import { CORROBORATION_CONFIG } from "@/app/lib/config/validityConfig";
 
@@ -54,6 +57,10 @@ export type TrustPostLike = Record<string, any> & {
   shares?: number;
   routes?: unknown;
   tags?: string[];
+  // Post-richness fields for the detail leg (all optional — absent legs
+  // contribute 0, so rows without them score exactly as before).
+  images?: unknown;
+  description?: unknown;
   createdAt?: string | Date;
   // Corroboration evidence fields (all optional — absent legs score 0).
   startLat?: number | null;
@@ -106,11 +113,20 @@ export async function evaluateLiveTrust(input: {
    * count applies (backward compatible for existing callers/tests).
    */
   corroborationScore?: number;
+  /**
+   * Post-richness context for the detail leg (photos, tags, description,
+   * vehicle/fare coverage, stops). Omitted → legacy leg-only score, so
+   * existing callers/tests keep their exact numbers.
+   */
+  detailContext?: PostDetailContext;
 }): Promise<LiveTrustBreakdown> {
   const live = await validityEngine.evaluate({
     likes: input.likes,
     dislikes: input.dislikes,
-    routeDetailScore: computeRouteDetailScore(input.routes),
+    routeDetailScore:
+      input.detailContext && typeof input.detailContext === "object"
+        ? computePostDetailScore(input.routes, input.detailContext)
+        : computeRouteDetailScore(input.routes),
     similarityRatio:
       typeof input.corroborationScore === "number" && Number.isFinite(input.corroborationScore)
         ? Math.min(100, Math.max(0, Math.round(input.corroborationScore)))
@@ -294,6 +310,9 @@ export async function getLiveBreakdownForPost(
       openReports: Number(openReports) || 0,
       overlappingPostCount: 0,
       corroborationScore: corroboration,
+      // Post richness (photos, tags, description, vehicles/fares, stops) so
+      // the detail row reflects the whole post, not just the leg text.
+      detailContext: detailContextFromPost(post),
     });
   } catch {
     return null;
@@ -522,6 +541,7 @@ export async function attachLiveBreakdownsToPosts<T extends TrustPostLike>(
             openReports: reportsByPost.get(post.id) ?? 0,
             overlappingPostCount: 0,
             corroborationScore: corroborationScores[i] ?? 0,
+            detailContext: detailContextFromPost(post),
           });
           return {
             ...post,

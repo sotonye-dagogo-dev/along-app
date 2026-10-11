@@ -48,6 +48,87 @@ export interface ErrorReportResult {
 }
 
 /**
+ * Prefilled bug-report draft captured from a client error. Everything is
+ * sanitized (emails/tokens/passwords redacted, path-only, capped) so the
+ * prefill is safe to render in a form, put in a URL, and file as-is. Never
+ * throws — failures yield an empty draft rather than breaking error UI.
+ */
+export interface ErrorReportPrefill {
+  title: string;
+  description: string;
+}
+
+export function buildErrorReportPrefill(
+  error: unknown,
+  context?: ClientErrorContext,
+): ErrorReportPrefill {
+  try {
+    const name =
+      error instanceof Error && error.name ? error.name : "Error";
+    const rawMessage =
+      error instanceof Error ? error.message : "Unknown client error";
+    const rawStack = error instanceof Error ? (error.stack ?? "") : "";
+    const path = currentPath(context?.path);
+    const title = sanitizeErrorText(
+      ERROR_REPORTING_CONFIG.titleTemplate
+        .replace("{name}", name)
+        .replace("{path}", path),
+      ERROR_REPORTING_CONFIG.maxPrefillTitleLength,
+    );
+    const summaryLines = [
+      sanitizeErrorText(
+        rawMessage || "No message",
+        ERROR_REPORTING_CONFIG.maxMessageLength,
+      ),
+      "",
+      `Route: ${path}`,
+      ...(context?.digest ? [`Digest: ${context.digest}`] : []),
+      `When: ${new Date().toISOString()}`,
+      ...(typeof navigator !== "undefined" && navigator.userAgent
+        ? [`Agent: ${navigator.userAgent.slice(0, 200)}`]
+        : []),
+      "",
+      "Stack (sanitized):",
+      sanitizeErrorText(rawStack || "n/a", ERROR_REPORTING_CONFIG.maxStackLength),
+    ];
+    const description = sanitizeErrorText(
+      [
+        ERROR_REPORTING_CONFIG.prefillHeader,
+        "",
+        ERROR_REPORTING_CONFIG.prefillTitle,
+        ...summaryLines,
+      ].join("\n"),
+      ERROR_REPORTING_CONFIG.maxPrefillDescriptionLength,
+    );
+    return {
+      title: title.length > 0 ? title : "Client error",
+      description,
+    };
+  } catch {
+    return { title: "Client error", description: "" };
+  }
+}
+
+/**
+ * Bug-report page URL carrying the sanitized prefill as query params. The
+ * report-bug page reads `?title=` + `?description=` into its form's
+ * initial values (editable — the reporter adds context above/below).
+ */
+export function buildBugReportUrl(prefill: ErrorReportPrefill): string {
+  try {
+    const params = new URLSearchParams();
+    if (prefill?.title) params.set("title", prefill.title);
+    if (prefill?.description) params.set("description", prefill.description);
+    const query = params.toString();
+    return query
+      ? `${ERROR_REPORTING_CONFIG.bugReportPath}?${query}`
+      : ERROR_REPORTING_CONFIG.bugReportPath;
+  } catch {
+    return ERROR_REPORTING_CONFIG.bugReportPath;
+  }
+}
+
+/**
  * File the error as a BugReport. Resolves `{ reported: true }` only when
  * the API persisted the row (HTTP 2xx); any failure resolves
  * `{ reported: false }` so callers render honest copy.

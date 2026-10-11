@@ -88,3 +88,40 @@ export const VALIDITY_SIGNAL_BOUNDS = {
   /** Reports needed to max out report pressure (before the 0-100 cap). */
   reportsForMaxPressure: 4,
 } as const;
+
+/**
+ * Post-richness bonuses for the detail leg of trust (config-driven, pure data).
+ *
+ * Background: the legacy leg scorer (`computeRouteDetailScore`) only reads
+ * per-leg distance/steps/location/description. Composer legs never carry
+ * distance/steps, so every text leg scored 15+15=30 → avg 30 × 1.4 = 42 for
+ * EVERY post, no matter how many photos, tags, stops or fares it had.
+ * These bonuses layer post-level richness (photos, tags, general
+ * description, vehicle/fare coverage, stop depth, location coverage) on top
+ * of that base, additively and capped, so thin posts keep their legacy
+ * score while rich posts climb. All bonuses are 0 when the signal is
+ * absent, so callers that pass no context score EXACTLY as before.
+ */
+export const DETAIL_SCORING_CONFIG = {
+  /** Points per photo, up to `maxImageBonus`. */
+  perImage: 5,
+  maxImageBonus: 20,
+  /** Points per tag, up to `maxTagBonus`. */
+  perTag: 2,
+  maxTagBonus: 10,
+  /** General-description length tiers (chars → bonus), first match wins. */
+  descriptionTiers: [
+    { minLength: 200, bonus: 15 },
+    { minLength: 80, bonus: 10 },
+    { minLength: 20, bonus: 5 },
+  ],
+  /** Share of non-destination legs naming a vehicle → scaled to max. */
+  maxVehicleBonus: 10,
+  /** Share of non-destination legs with a finite fare → scaled to max. */
+  maxFareBonus: 10,
+  /** Extra stops beyond the first two (start + destination). */
+  perExtraStop: 3,
+  maxStopBonus: 9,
+  /** Share of legs naming a location → scaled to max. */
+  maxLocationBonus: 5,
+} as const;
