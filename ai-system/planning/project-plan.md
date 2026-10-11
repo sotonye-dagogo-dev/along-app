@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 leaderboard links + auth-link tightening)
-> - last-verified-against-code: 2026-10-11 (Sprint 35 rows: leaderboardLinks/profileQuickLinks/authLink registries + link/status re-read + invite CTA present in code; static-level verification only — tsc/jest/build deferred to CI, no node_modules; prior Sprint 27 rows: authVerification/pushPrompt registries + useOtpResend + admin PATCH actions present in code; static-level verification only — tsc/jest/build deferred to CI, no node_modules)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 36 response linkage + validation fix)
+> - last-verified-against-code: 2026-10-11 (Sprint 36 rows: validator skip flags + EditPost linkage + quotedPost list include present in code; static-level verification only — tsc/jest/build deferred to CI, no node_modules; prior Sprint 35 rows verified as recorded)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -169,3 +169,4 @@
 - [x] Sprint 33 (2026-10-10) — Cloudinary orphan prevention on deletions (MEDIA_CLEANUP_CONFIG + cloudinaryUrls + mediaCleanupService + upload/cleanup, post/admin/moderation/edit/draft/account-avatar paths wired ACID-safely, posts retained on account finalize per policy) (mediaCleanup 5 suites; full gate deferred to CI — no node_modules in runner)
 - [x] Sprint 34 (2026-10-10) — Location toasts + feed/explore soundness + invite-link tightening (locationFeedback copy/helper, feed SiteConfig + viewer-location bonus + trust tie-break, invite canonical redirects) (full gate deferred to CI — no node_modules in runner)
 - [x] Sprint 35 (2026-10-11) — Leaderboard cross-links + auth-link tightening (LEADERBOARD_LINKS_CONFIG + PROFILE_QUICK_LINKS_CONFIG + AUTH_LINK_STATUS_CONFIG, link/status DB re-read with server-only booleans, profile link-result toasts + URL cleanup, invite CTA, 3 locale keys en/pcm parity) (leaderboardAuthLink 5 suites; full gate deferred to CI — no node_modules in runner)
+- [x] Sprint 36 (2026-10-11) — Response-linkage persistence + composer false-validation fix (EditPost linkage fields + edit-response banner + drafts-in-edit, GET /api/posts quotedPost include, validator destination fare/vehicle skip) (routeValidation +2, routeDrafts +1 suites; full gate deferred to CI — no node_modules in runner)

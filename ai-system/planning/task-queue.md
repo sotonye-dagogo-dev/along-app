@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 leaderboard links + auth-link tightening)
-> - last-verified-against-code: 2026-10-11 (static re-reads; no node_modules in runner — tsc/jest/build deferred to CI/Vercel)
-> - last-synced: 2026-10-11 (Sprint 35 — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 36 response linkage + validation fix)
+> - last-verified-against-code: 2026-10-11 (static re-reads + executed validator in node; no node_modules in runner — tsc/jest/build deferred to CI/Vercel)
+> - last-synced: 2026-10-11 (Sprint 36 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -546,6 +546,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [M] | `link/status` re-reads auth methods from DB (booleans only, hash never leaks); profile toasts link results once + cleans URL | [x] |
 | [S] | `AUTH_LINK_STATUS_CONFIG` (+ resolver/copy) consumed by Connected Accounts + Email & Security (connected-methods line, per-state hints) | [x] |
 | [S] | Tests — NEW `leaderboardAuthLink.test.ts` (5: footer/profile/invite links, state resolution, per-state copy) | [x] |
+
+---
+
+## Sprint 36 — Response-linkage persistence + composer false-validation fix (2026-10-11)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; all additions optional/additive with safe fallbacks). QA: no node_modules in runner — executed the shipped `validateRouteComposer` in node (dest-skip valid, non-dest range still flagged, dest location still required); full jest/tsc/build deferred to CI/Vercel.
+
+| Size | Task | Status |
+|------|------|--------|
+| [M] | Response linkage through edit — `EditPost` carries `type/quotedPostId/quotedPost`, edit-of-response shows banner, PATCH still strips (linkage preserved server-side), callers forward | [x] |
+| [S] | Draft-from-edit linkage — drafts panel + Save Draft available in edit mode, `buildDraftInput` falls back to edit target's linkage | [x] |
+| [M] | False "highlighted fields" fix — `validateRouteComposer` skips hidden destination fare/vehicle (`destinationSkipsFare/Vehicle`), prefill/restore seed no destination `_fareRaw` | [x] |
+| [S] | `GET /api/posts` includes `quotedPost` (profile tabs render Responding-to; P2022 fallback drops it) + `FeedPost` client type | [x] |
+| [S] | Tests — `routeValidation.test.ts` +2 (destination skip, destination location still required), `routeDrafts.test.ts` +1 (response round-trip incl. update-in-place) | [x] |
 
 ---
 

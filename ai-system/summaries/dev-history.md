@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 leaderboard links + auth-link tightening)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 36 response linkage + validation fix)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: historical entries do not go stale
 
@@ -1065,6 +1065,14 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - `mapStack.ts` += `MAP_EXPAND_CONFIG` (+ barrel export): centered overlay, scrim backdrop, `max-w-4xl` panel, `80vh` height, backdrop-click + Escape dismissal, dialog/minimize labels; `RouteMap.tsx` expanded mode renders that contained dialog (shared `mapChrome` fragment, resize + refit on open, focus to Minimize, scroll-lock kept); collapsed root += `max-w-full w-full min-w-0`.
 - Tests: `uxTightening.test.ts` +1 photo-remove case; `mapStack.test.ts` +2 containment cases.
 **QA:** no node_modules in runner — targeted `tsc --ignoreConfig --noResolve` zero attributable errors (noise identical to untouched baseline); full jest/tsc/build deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only.
+
+## Sprint 36 (2026-10-11) — Response-linkage persistence + composer false-validation fix
+**Directive:** edits of response posts and response drafts must keep their linkage; posting after edit→draft→repost-as-response failed with phantom "highlighted fields" errors. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- `routeValidation.ts` destination fare/vehicle skip flags; `ShareRouteModal` edit-response banner + drafts-in-edit with linkage fallback + no destination `_fareRaw` seeding; callers forward linkage; `GET /api/posts` includes `quotedPost`.
+- Tests: `routeValidation.test.ts` +2, `routeDrafts.test.ts` +1.
+**QA:** executed shipped validator in node (3/3 expectations hold); full gate deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only.
 
 ## Sprint 35 (2026-10-11) — Leaderboard cross-links + auth-link tightening

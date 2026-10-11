@@ -491,6 +491,12 @@ export default function PostDetailPage() {
         })),
         tags: post.tags,
         images: post.images,
+        // Response linkage travels into the composer so an edit of a
+        // ROUTE_RESPONSE keeps its "Responding to" banner (and any draft
+        // saved mid-edit keeps it). PATCH never writes these back.
+        ...(post.type ? { type: post.type } : {}),
+        ...(post.quotedPostId ? { quotedPostId: post.quotedPostId } : {}),
+        ...(post.quotedPost ? { quotedPost: post.quotedPost } : {}),
         // Stored coords travel into the composer so untouched stops keep
         // their pins and a description-only edit can't drop the waypoints
         // (which previously rendered as a skipped stop on the map).

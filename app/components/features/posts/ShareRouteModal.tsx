@@ -73,6 +73,21 @@ export interface EditPost {
   endLat?: number | null
   endLng?: number | null
   waypoints?: { lat: number; lng: number }[] | null
+  /**
+   * Response linkage of the post being edited. PATCH keeps `type`/
+   * `quotedPostId` immutable server-side, so the linkage always survives the
+   * edit — carrying it here lets the composer *show* the response banner
+   * while editing and lets a draft saved mid-edit keep the linkage, so an
+   * edit→draft→repost flow never silently drops "Responding to".
+   */
+  type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE" | string
+  quotedPostId?: string | null
+  quotedPost?: {
+    id: string
+    title: string
+    user?: { userName: string; firstName: string; lastName: string }
+    tags?: string[]
+  } | null
 }
 
 interface ShareRouteModalProps {
@@ -133,10 +148,26 @@ const TRACE_DEBOUNCE_MS = 1000
 
 export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, startWithDraftsOpen, onSubmit, editPost, onEditSubmit }: ShareRouteModalProps) {
   const [restoredResponseTo, setRestoredResponseTo] = useState<RespondToRequest | null>(null)
-  /** Prop wins; a restored draft keeps its response linkage when opened without one. */
-  const effectiveResponseTo = responseTo ?? restoredResponseTo
+  /**
+   * Response linkage of the post being edited (ROUTE_RESPONSE only). Derived
+   * from `editPost` — never written back (PATCH keeps type/quotedPostId
+   * immutable), only displayed and carried into drafts saved mid-edit.
+   */
+  const editResponseTo: RespondToRequest | null = useMemo(() => {
+    if (!editPost || editPost.type !== "ROUTE_RESPONSE") return null
+    const id = editPost.quotedPost?.id ?? editPost.quotedPostId ?? null
+    if (!id) return null
+    return {
+      id,
+      title: editPost.quotedPost?.title ?? "Route request",
+      ...(editPost.quotedPost?.user ? { user: editPost.quotedPost.user } : {}),
+      ...(editPost.quotedPost?.tags ? { tags: editPost.quotedPost.tags } : {}),
+    }
+  }, [editPost?.id, editPost?.type, editPost?.quotedPostId, editPost?.quotedPost?.id, editPost?.quotedPost?.title])
+  /** Prop wins; then a restored draft; then the edit target's own linkage. */
+  const effectiveResponseTo = responseTo ?? restoredResponseTo ?? editResponseTo
   const isResponse = Boolean(effectiveResponseTo)
-  /** Edit mode: owner correcting their own post (or admin) — no drafts, no response UI. */
+  /** Edit mode: owner correcting their own post (or admin) — response UI is read-only. */
   const isEditing = Boolean(editPost)
   const [drafts, setDrafts] = useState<RouteDraft[]>([])
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
@@ -560,9 +591,12 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     setDescription(draft.description ?? "")
     if (draft.steps.length >= 2) {
       setSteps(
-        draft.steps.map((s) => ({
+        draft.steps.map((s, i, arr) => ({
           ...s,
-          _fareRaw: typeof s.fare === "number" && s.fare > 0 ? String(s.fare) : "",
+          // Destination fare is hidden in the composer and skipped by
+          // validation — a restored legacy destination fare must not flag an
+          // invisible error. Submit strips it via normalizeRouteSteps anyway.
+          _fareRaw: i === arr.length - 1 ? "" : (typeof s.fare === "number" && s.fare > 0 ? String(s.fare) : ""),
           _geoResults: [],
           _geoLoading: false,
         }))
@@ -660,7 +694,10 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       return
     }
     setSavePromptOpen(false)
-    // Edit mode: prefill from the post, never absorb drafts or response state.
+    // Edit mode: prefill from the post. The post's own response linkage
+    // (editResponseTo) stays visible via the banner below and is carried into
+    // any draft saved mid-edit — the edit itself never rewrites type/
+    // quotedPostId (PATCH strips them), so linkage always survives.
     // Guarded by editInitRef (see above) so parent re-renders with a fresh
     // `editPost` identity never clobber what the user already typed.
     if (editPost) {
@@ -686,12 +723,14 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       if (typeof editPost.endLat === "number" && typeof editPost.endLng === "number") {
         hasEnd = true
       }
-      const rawPrefill = (editPost.routes ?? []).map((s) => ({
+      const rawPrefill = (editPost.routes ?? []).map((s, i, arr) => ({
         location: s.location ?? "",
         description: s.description ?? "",
         vehicle: s.vehicle ?? "",
         fare: typeof s.fare === "number" ? s.fare : 0,
-        _fareRaw: typeof s.fare === "number" && s.fare > 0 ? String(s.fare) : "",
+        // Destination fare input is hidden (ROUTE_STEPS_CONFIG) and skipped
+        // by validation — never seed a raw value the user can't see or fix.
+        _fareRaw: i === arr.length - 1 ? "" : (typeof s.fare === "number" && s.fare > 0 ? String(s.fare) : ""),
         _geoResults: [] as GeoResult[],
         _geoLoading: false,
       }))
@@ -725,6 +764,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       setActiveDraftId(null)
       setShowDrafts(false)
       setRestoredResponseTo(null)
+      // Drafts stay accessible while editing (footer + panel above) — a draft
+      // saved mid-edit carries the edit target's linkage via editResponseTo.
+      setDrafts(routeDraftsService.listDrafts())
       setFieldErrors({ steps: (prefill.length >= 2 ? prefill : []).map(() => ({})) })
       setFormError(null)
       return
@@ -976,7 +1018,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
           )}
         </div>
 
-        {isResponse && effectiveResponseTo && !isEditing && (
+        {isResponse && effectiveResponseTo && (
           <div className="mx-6 mt-4 flex items-start gap-3 px-4 py-3 bg-warning border border-warning-border radius-lg">
             <span className="mt-0.5 text-warning-text shrink-0" aria-hidden>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -987,14 +1029,18 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
             </span>
             <div className="min-w-0">
               <div className="text-[11px] font-semibold tracking-wider uppercase text-text-muted">
-                Replying to{effectiveResponseTo.user ? ` ${effectiveResponseTo.user.firstName} ${effectiveResponseTo.user.lastName}` : ""}&apos;s request
+                {isEditing ? "Editing a response to" : "Replying to"}{effectiveResponseTo.user ? ` ${effectiveResponseTo.user.firstName} ${effectiveResponseTo.user.lastName}` : ""}&apos;s request
               </div>
               <div className="text-sm font-medium text-text-primary truncate">{effectiveResponseTo.title}</div>
+              {isEditing && (
+                <div className="text-[11px] text-text-muted mt-0.5">Response linkage is preserved — saving keeps this reply attached to the request.</div>
+              )}
             </div>
           </div>
         )}
 
-        {!isEditing && (
+        {/* Drafts stay accessible in edit mode too (see footer save) — a
+            draft saved mid-edit carries the edit target's response linkage. */}
         <div className="mx-6 mt-4 border border-border radius-lg bg-bg-elevated">
           <button
             type="button"
@@ -1021,7 +1067,6 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
             </div>
           )}
         </div>
-        )}
 
         <div className="flex flex-col lg:flex-row overflow-y-auto flex-1">
           <div className="flex-1 p-4 sm:p-6 flex flex-col gap-5 overflow-y-auto">
@@ -1412,7 +1457,6 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
         )}
         <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            {!isEditing && (
             <button
               type="button"
               onClick={() => setShowDrafts((open) => !open)}
@@ -1423,11 +1467,13 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
               <History size={14} />
               {ROUTE_DRAFTS_CONFIG.panelToggleLabel} ({drafts.length})
             </button>
-            )}
             <span className="text-xs text-text-muted hidden md:inline truncate">{SHARE_ROUTE_MODAL_CONFIG.actionsNote}</span>
           </div>
           <div className="flex gap-2 ml-auto shrink-0">
-            {!isEditing && (
+            {/* Drafts stay savable while editing too: a draft saved mid-edit
+                carries the edit target's response linkage (buildDraftInput
+                falls back to editResponseTo), so edit→draft→repost never
+                drops "Responding to". The PATCH path itself is untouched. */}
             <button
               onClick={saveDraft}
               disabled={isSubmitting}
@@ -1436,7 +1482,6 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
               <Save size={14} />
               {ROUTE_DRAFTS_CONFIG.saveLabel}
             </button>
-            )}
             <button
               onClick={handleSubmit}
               disabled={!canShare}

@@ -1,13 +1,12 @@
 # In progress — none
 
-No active work. Last session (2026-10-11, execute-feature Sprint 35 leaderboard links + auth-link tightening) is closed:
-footer/profile/invite all link to /leaderboard via LEADERBOARD_LINKS_CONFIG +
-PROFILE_QUICK_LINKS_CONFIG (config-driven, non-breaking); link/status re-reads
-googleId+password from DB so hasPassword persists across reloads (hash never
-leaves server); EmailSecurityPanel + AuthLinkPanel consume AUTH_LINK_STATUS_CONFIG
-copy with connected-methods reflection; profile surfaces ?success=google_linked /
-?error=google_already_linked via toast + URL cleanup; `leaderboardAuthLink.test.ts`
-added (5 cases). QA: no node_modules in runner — targeted static verification
-only (re-reads, locale JSON validity, config-shape review); full jest/tsc/build
-deferred to CI/Vercel. update-ai-system terminal sync done; task-queue,
-session-log, dev-history, repo-map, dependency-graph synced.
+No active work. Last session (2026-10-11, execute-feature Sprint 36 response-linkage persistence + composer false-validation fix) is closed:
+validator skips hidden destination fare/vehicle (`destinationSkipsFare/Vehicle`);
+edit-of-response shows a banner and drafts saved mid-edit carry the linkage
+(`EditPost` linkage fields → `editResponseTo` fallback, PATCH still immutable);
+`GET /api/posts` includes `quotedPost` so profile tabs render Responding-to;
+`routeValidation.test.ts` +2, `routeDrafts.test.ts` +1. QA: shipped validator
+executed in node (3/3 hold); full jest/tsc/build deferred to CI/Vercel (no
+node_modules in runner). update-ai-system terminal sync done; task-queue,
+session-log, dev-history, project-plan, repo-map, dependency-graph,
+system-architecture, repair-system, lessons-learned synced.

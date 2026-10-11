@@ -665,3 +665,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** status routes re-read the authoritative columns from the DB per call and return booleans only (hash never leaves the server); never derive status from a casted session object — if the helper doesn't select it, it isn't there. Any redirect-flag handoff (`?success=`/`?error=`) ships with a one-shot renderer (toast + `history.replaceState` cleanup) on the landing page in the same change. Applies to any future connected-state or verification-status surface.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 36: hidden inputs under validation + linkage-blind edit payloads behind "filled but flagged" and "edit cleared the tag"
+- **Symptom:** Share stayed disabled with "fix the highlighted fields" while every visible field looked filled (after an edit→draft→repost-as-response flow); editing a ROUTE_RESPONSE dropped its "Responding to" tag in the UI even though the DB row kept it.
+- **Root causes:** (1) destination fare/vehicle inputs are hidden by `ROUTE_STEPS_CONFIG`, but `validateRouteComposer` still validated them — legacy values carried by edit prefills/restored drafts flagged invisible errors; (2) `EditPost` had no linkage fields and `GET /api/posts` never included `quotedPost`, so the composer literally could not display the tag and drafts saved mid-edit were unlinkable (drafts UI was edit-gated); (3) prefill seeded `_fareRaw` even for the hidden destination step, manufacturing a raw value the user could never see or fix.
+- **Fix pattern (reuse):** any input hidden by config must also be skipped by validation (mirror the hide rule as skip flags in the validator, zero-dep); edit payloads carry display-only linkage (`type/quotedPostId/quotedPost`) that the server continues to treat as immutable; prefill/restore never seed raw values for hidden inputs (submit still strips via normalize). Applies to any future conditionally-hidden composer field.
+- **Supersedes:** None
+- **Superseded by:** None
