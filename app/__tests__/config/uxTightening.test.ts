@@ -25,6 +25,18 @@ describe("execute-feature: carousel/share-modal/request-trigger/footer configs",
     expect(SHARE_ROUTE_MODAL_CONFIG.formTitle.length).toBeGreaterThan(0);
   });
 
+  it("share modal photo-remove button is always visible and accessible (never hover-only)", () => {
+    expect(SHARE_ROUTE_MODAL_CONFIG.photoRemoveLabel.length).toBeGreaterThan(0);
+    const btnClass = SHARE_ROUTE_MODAL_CONFIG.photoRemoveButtonClass;
+    expect(btnClass).toMatch("opacity-100");
+    expect(btnClass).not.toMatch("opacity-0");
+    expect(btnClass).not.toMatch("group-hover:opacity-100");
+    // Touch-sized target + visible ring/border + keyboard focus treatment.
+    expect(btnClass).toMatch("w-7");
+    expect(btnClass).toMatch("border");
+    expect(btnClass).toMatch("focus-visible:");
+    expect(SHARE_ROUTE_MODAL_CONFIG.photoRemoveIconSize).toBeGreaterThanOrEqual(14);
+  });
   it("share modal exposes the Request? trigger (config-driven)", () => {
     expect(SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger).toBe(true);
   });

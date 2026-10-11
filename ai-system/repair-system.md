@@ -1,8 +1,8 @@
 # Repair System — Error Knowledge Base
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-09 (share-route validation)
-> - last-verified-against-code: 2026-10-09
+> - last-updated-by: fix-build 2026-10-11 (share-modal photo-remove visibility + expanded-map containment)
+> - last-verified-against-code: 2026-10-11
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
 > **Overview:** A living knowledge base of errors encountered during development, their root causes, and how they were fixed. Agents should consult this before diagnosing new errors. Every fixed bug should be logged here to prevent recurrence. This file is pre-populated with known error patterns for the Along tech stack (Next.js 15 + React 19 + Ant Design 5 + Tailwind 4).
@@ -812,8 +812,97 @@ new instance):
 
 ---
 
-## Resolved Errors Archive
+## Share-Modal Photo-Remove Button Invisible (Hover-Only Opacity)
 
+**Symptom:**
+The per-photo remove (X) button in the share-route modal image grid works
+when clicked but is invisible by default — users (especially on touch
+devices, where hover doesn't exist) can't discover it. Keyboard users only
+see it on `focus-visible`, with no persistent affordance.
+
+**Root Cause:**
+The button used `opacity-0 group-hover:opacity-100
+focus-visible:opacity-100`: visible only while hovering the thumbnail (or
+keyboard-focusing the button itself). Touch users never trigger hover, so
+the control is functionally hidden. The hit target was also small (`w-6
+h-6`) with a low-contrast `bg-black/60` + `border-none` treatment.
+
+**Fix Applied:**
+- `app/lib/config/shareRoute.ts` — additive, non-breaking config:
+  `photoRemoveButtonClass` (always `opacity-100`, `w-7 h-7`,
+  `bg-black/70`, `border-white/40` ring, `focus-visible` outline, token
+  classes only) + `photoRemoveIconSize: 14`.
+- `ShareRouteModal.tsx` — button consumes the config class/icon size (with
+  inline fallbacks so older/stale config shapes can't break the render);
+  `title` + indexed `aria-label` from `photoRemoveLabel` unchanged.
+- Tests: `uxTightening.test.ts` asserts `opacity-100` present,
+  `opacity-0`/`group-hover:opacity-100` absent, touch-sized + bordered +
+  focus-visible treatment, icon ≥ 14px.
+
+**Prevention:**
+Never ship hover-only (`opacity-0` + `group-hover:opacity-100`) controls
+for destructive/removal actions — touch users can't hover. Removal buttons
+must be persistently visible (`opacity-100`) with a focus ring; hover/focus
+may only deepen the treatment, never reveal it.
+
+**Files Affected:**
+- app/lib/config/shareRoute.ts
+- app/components/features/posts/ShareRouteModal.tsx
+- app/__tests__/config/uxTightening.test.ts
+
+**Date:** 2026-10-11
+**Status:** Active
+
+---
+
+## Desktop Expanded RouteMap Bleeds Past Its Column Into the Suggestions Rail
+
+**Symptom:**
+On desktop post views, tapping Expand on the route map stretches the map
+far beyond its `max-w-[680px]` column, overlapping the xl suggestions rail
+on the right (and potentially scrolling the page sideways).
+
+**Root Cause:**
+`RouteMap.tsx` expanded mode rendered the same root as `fixed inset-0
+z-50` with inline `width: 100vw; height: 100vh` and no backdrop or width
+cap: a full-bleed viewport layer. `100vw` includes the scrollbar width, so
+it also causes horizontal overflow, and with no scrim the map paints over
+(adjacent to) the suggestions rail instead of presenting as a dialog.
+
+**Fix Applied:**
+- `app/lib/config/mapStack.ts` — new additive `MAP_EXPAND_CONFIG`
+  (exported via the config barrel): centered overlay (`fixed inset-0
+  flex items-center justify-center p-4 sm:p-6`), scrim backdrop,
+  `max-w-4xl` panel cap, `80vh` panel height, backdrop-click + Escape
+  dismissal flags, dialog/minimize labels. Token classes only.
+- `RouteMap.tsx` — expanded mode now renders a contained dialog
+  (`role="dialog" aria-modal`, backdrop click-to-close, Escape handler,
+  body scroll-lock retained, map `resize()` + refit on open, focus moved to
+  Minimize). Shared `mapChrome` fragment keeps canvas/markers/controls
+  identical between inline and dialog modes. Collapsed root gains
+  `max-w-full w-full min-w-0` so it can never bleed on its own.
+- Tests: `mapStack.test.ts` asserts centered overlay + max-width panel +
+  `overflow-hidden`, no `100vw` anywhere, no `100vh` panel height,
+  backdrop/Escape/labels present.
+
+**Prevention:**
+Never expand a map (or any media) with bare `fixed inset-0` + `100vw`/`100vh`
+— always render a centered dialog with a max-width cap, a scrim, and
+Escape/backdrop dismissal. `100vw` includes the scrollbar; prefer
+`inset-0` + flex centering with `w-full max-w-*` panels.
+
+**Files Affected:**
+- app/lib/config/mapStack.ts
+- app/lib/config/index.ts (barrel: `MAP_EXPAND_CONFIG` + `MapExpandConfig`)
+- app/components/features/posts/RouteMap.tsx
+- app/__tests__/config/mapStack.test.ts
+
+**Date:** 2026-10-11
+**Status:** Active
+
+---
+
+## Resolved Errors Archive
 > **Section summary:** Errors that have been fully resolved and are unlikely to recur. Kept for reference.
 
 ### PostCard Crash on Missing Tags/Images
