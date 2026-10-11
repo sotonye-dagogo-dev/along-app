@@ -38,6 +38,7 @@ interface FeedPost {
     avatarConfig: unknown;
   };
   _isLiked?: boolean;
+  _isDisliked?: boolean;
   _isBookmarked?: boolean;
 }
 
@@ -256,10 +257,14 @@ class FeedService {
       }),
     ]);
 
-    // Get user's likes and bookmarks for enrichment
-    const [userLikes, userBookmarks] = await Promise.all([
+    // Get user's likes, dislikes and bookmarks for enrichment
+    const [userLikes, userDislikes, userBookmarks] = await Promise.all([
       prisma.like.findMany({
         where: { userId, type: "LIKE" },
+        select: { postId: true },
+      }),
+      prisma.like.findMany({
+        where: { userId, type: "DISLIKE" },
         select: { postId: true },
       }),
       prisma.bookmark.findMany({
@@ -268,6 +273,7 @@ class FeedService {
       }),
     ]);
     const likedPostIds = new Set(userLikes.map((l) => l.postId));
+    const dislikedPostIds = new Set(userDislikes.map((l) => l.postId));
     const bookmarkedPostIds = new Set(userBookmarks.map((b) => b.postId));
 
     // Merge and score posts — include recency bonus and recent fallback
@@ -321,6 +327,7 @@ class FeedService {
             post: {
               ...p,
               _isLiked: likedPostIds.has(p.id),
+              _isDisliked: dislikedPostIds.has(p.id),
               _isBookmarked: bookmarkedPostIds.has(p.id),
             } as FeedPost,
             score: increment,
@@ -342,7 +349,7 @@ class FeedService {
           const ageHours = (Date.now() - new Date(p.createdAt).getTime()) / 3600000;
           const recency = Math.max(0, 0.08 * (1 - ageHours / (7 * 24)));
           postMap.set(p.id, {
-            post: { ...p, _isLiked: likedPostIds.has(p.id), _isBookmarked: bookmarkedPostIds.has(p.id) } as FeedPost,
+            post: { ...p, _isLiked: likedPostIds.has(p.id), _isDisliked: dislikedPostIds.has(p.id), _isBookmarked: bookmarkedPostIds.has(p.id) } as FeedPost,
             score: 0.15 + recency,
           });
         }
@@ -416,6 +423,7 @@ class FeedService {
     if (!post) return null;
 
     let _isLiked = false;
+    let _isDisliked = false;
     let _isBookmarked = false;
 
     if (userId) {
@@ -424,10 +432,11 @@ class FeedService {
         prisma.bookmark.findUnique({ where: { postId_userId: { postId, userId } } }),
       ]);
       _isLiked = like?.type === "LIKE";
+      _isDisliked = like?.type === "DISLIKE";
       _isBookmarked = !!bookmark;
     }
 
-    return { ...post, _isLiked, _isBookmarked };
+    return { ...post, _isLiked, _isDisliked, _isBookmarked };
   }
 }
 

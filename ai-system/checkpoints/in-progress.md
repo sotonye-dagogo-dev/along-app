@@ -1,17 +1,17 @@
 # In progress — none
 
-No active work. Last session (2026-10-11, execute-feature Sprint 40: trust
-detail-42 fix + error-boundary bug-report CTA + search discoverability) is
-closed:
-NEW DETAIL_SCORING_CONFIG (richness bonuses + caps) + `computePostDetailScore`
-/ `detailContextFromPost` (legacy parity without context) threaded through
-trustBreakdownService single + batched + POST create + validity-recompute
-worker; errorReporting bugReportPath/toast-CTA/prefill scaffolding +
-`buildErrorReportPrefill`/`buildBugReportUrl` with boundary toast (existing
-action slot) + inline prefilled link and report-bug query prefill + hint;
-EMPTY_STATES.error honest copy; NAV_REGISTRY + sidebar user-row search icon +
-footer + profile quick-links Search entries (+ footer.search en/pcm). QA:
-tsc zero errors, jest 57/57 + 478/478, lint exit 0 pre-existing-only, build
-deferred to Vercel. update-ai-system terminal sync done; session-log,
+No active work. Last session (2026-10-11, execute-feature Sprint 42: dislike
+parity + comment-avatar consistency) is closed:
+`_isDisliked` viewer flag E2E (`GET /api/posts/[id]`, `GET /api/posts` batch,
+`feedService.getFeed/getPostById`, `feedStream` mutual-exclusion cache,
+`PROFILE_POSTS_CONFIG.interactionFields`); PostCard seed/sync + config-driven
+like/dislike active classes (`POST_ACTIONS_CONFIG`, warning tokens) +
+`aria-pressed`; post-detail `handleLike`/`handleDislike` (mutual exclusion,
+optimistic counts, `!res.ok` rollback); feed toggle-payload corrections
+(home always-LIKE, toggle-honoring dislike; ProfilePostCard + profile-tab
+forwarding); `AuthProvider.avatarConfig` + all four comment viewers forward
+it. QA: tsc zero on touched symbols, 30/30 assertions grep-verified, NEW
+`config/dislikeSync` (15) + `profilePosts` +1; jest/build deferred to CI (no
+node_modules in runner). update-ai-system terminal sync done; session-log,
 dev-history, project-decisions, lessons-learned, repo-map,
 dependency-graph, system-architecture, project-plan, task-queue synced.

@@ -28,6 +28,7 @@ interface FeedPost {
     avatarConfig?: unknown
   }
   _isLiked?: boolean
+  _isDisliked?: boolean
   _isBookmarked?: boolean
   totalDistanceKm?: number | null
   estimatedMins?: number | null
@@ -211,10 +212,23 @@ export class FeedStream {
   applyInteraction(event: InteractionEvent) {    const cache = this.interactionCache$.value
     const current = cache.get(event.postId) ?? {}
     if (event.type === "like") {
+      // Mutual exclusion mirrors PostCard's reducer: liking clears a prior
+      // dislike (and vice versa) so feed/profile/detail can never disagree.
+      const wasDisliked = current._isDisliked ?? false
       current._isLiked = event.value
       current.likes = (current.likes ?? 0) + (event.value ? 1 : -1)
+      if (event.value && wasDisliked) {
+        current._isDisliked = false
+        current.dislikes = (current.dislikes ?? 0) - 1
+      }
     } else if (event.type === "dislike") {
+      const wasLiked = current._isLiked ?? false
+      current._isDisliked = event.value
       current.dislikes = (current.dislikes ?? 0) + (event.value ? 1 : -1)
+      if (event.value && wasLiked) {
+        current._isLiked = false
+        current.likes = (current.likes ?? 0) - 1
+      }
     } else if (event.type === "bookmark") {
       current._isBookmarked = event.value
     }

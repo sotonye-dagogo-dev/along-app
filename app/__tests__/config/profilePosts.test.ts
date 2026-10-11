@@ -12,6 +12,7 @@ describe("profile posts consistency config", () => {
 
   it("declares viewer-scoped interaction fields", () => {
     expect(PROFILE_POSTS_CONFIG.interactionFields).toContain("_isLiked");
+    expect(PROFILE_POSTS_CONFIG.interactionFields).toContain("_isDisliked");
     expect(PROFILE_POSTS_CONFIG.interactionFields).toContain("_isBookmarked");
   });
 

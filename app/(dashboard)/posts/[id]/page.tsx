@@ -104,6 +104,7 @@ interface PostDetail {
     avatarConfig?: unknown
   }
   _isLiked?: boolean
+  _isDisliked?: boolean
   _isBookmarked?: boolean
 }
 
@@ -173,6 +174,8 @@ export default function PostDetailPage() {
   const comments = commentData?.comments ?? []
   const liked = post?._isLiked ?? false
   const likesCount = post?.likes ?? 0
+  const disliked = post?._isDisliked ?? false
+  const dislikesCount = post?.dislikes ?? 0
   const bookmarked = post?._isBookmarked ?? false
   const loading = authLoading || postLoading || commentsLoading
 
@@ -184,23 +187,67 @@ export default function PostDetailPage() {
 
   const handleLike = async () => {
     if (!post) return
+    if (!requireAuth("like routes")) return
     const newLiked = !liked
-    const prevLiked = post._isLiked ?? false
-    const prevLikes = post.likes
-    mutatePost({ post: { ...post, _isLiked: newLiked, likes: post.likes + (newLiked ? 1 : -1) } })
+    // Mutual exclusion mirrors the feed card reducer + the API switch: a
+    // like clears a prior dislike (and vice versa) so the detail counts can
+    // never diverge from the feed card for the same post.
+    const wasDisliked = post._isDisliked ?? false
+    const prev = { liked: post._isLiked ?? false, likes: post.likes, disliked: wasDisliked, dislikes: post.dislikes }
+    mutatePost({
+      post: {
+        ...post,
+        _isLiked: newLiked,
+        likes: post.likes + (newLiked ? 1 : -1),
+        _isDisliked: newLiked ? false : wasDisliked,
+        dislikes: newLiked && wasDisliked ? post.dislikes - 1 : post.dislikes,
+      },
+    })
     // Like/dislike is intentionally undo-toast-free: a lightweight success
     // note on like, silence on unlike (the heart toggle is its own affordance).
     if (newLiked) {
       toastService.success("Route liked!")
     }
     try {
-      await fetch(`/api/posts/${postId}/like`, {
+      // The vote API toggles on repeat of the same type: LIKE always (an
+      // unlike is a second LIKE that removes it; a switch clears the dislike).
+      const res = await fetch(`/api/posts/${postId}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "LIKE" }),
       })
+      if (!res.ok) throw new Error(`like failed: ${res.status}`)
     } catch {
-      mutatePost({ post: { ...post, _isLiked: prevLiked, likes: prevLikes } })
+      mutatePost({ post: { ...post, _isLiked: prev.liked, likes: prev.likes, _isDisliked: prev.disliked, dislikes: prev.dislikes } })
+    }
+  }
+
+  const handleDislike = async () => {
+    if (!post) return
+    if (!requireAuth("dislike routes")) return
+    const newDisliked = !disliked
+    const wasLiked = post._isLiked ?? false
+    const prev = { liked: wasLiked, likes: post.likes, disliked: post._isDisliked ?? false, dislikes: post.dislikes }
+    mutatePost({
+      post: {
+        ...post,
+        _isDisliked: newDisliked,
+        dislikes: post.dislikes + (newDisliked ? 1 : -1),
+        _isLiked: newDisliked ? false : wasLiked,
+        likes: newDisliked && wasLiked ? post.likes - 1 : post.likes,
+      },
+    })
+    try {
+      // Same toggle semantics as LIKE: repeat DISLIKE removes it.
+      const res = await fetch(`/api/posts/${postId}/like`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "DISLIKE" }),
+      })
+      if (!res.ok) throw new Error(`dislike failed: ${res.status}`)
+    } catch {
+      mutatePost({ post: { ...post, _isLiked: prev.liked, likes: prev.likes, _isDisliked: prev.disliked, dislikes: prev.dislikes } })
+      toastService.error("Failed to dislike route")
     }
   }
 
@@ -712,13 +759,13 @@ export default function PostDetailPage() {
       )}
 
       <div className="flex items-center gap-1 py-3 border-t border-border border-b mb-5">
-        <button onClick={handleLike} className={`flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-elevated ${liked ? "liked text-error-text" : "text-text-secondary"}`} aria-label="Like">
-          <Heart size={16} className={liked ? "fill-error-text stroke-error-text" : ""} />
+        <button onClick={handleLike} className={`flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-elevated ${liked ? POST_ACTIONS_CONFIG.likeActiveClass : "text-text-secondary"}`} aria-label="Like" aria-pressed={liked}>
+          <Heart size={16} className={liked ? POST_ACTIONS_CONFIG.likeIconClass : ""} />
           {likesCount > 0 && <span>{formatCount(likesCount)}</span>}
         </button>
-        <button className="flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-sm font-medium text-text-secondary cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-elevated" aria-label="Dislike">
-          <ThumbsDown size={16} />
-          {post.dislikes > 0 && <span>{formatCount(post.dislikes)}</span>}
+        <button onClick={handleDislike} className={`flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-elevated ${disliked ? POST_ACTIONS_CONFIG.dislikeActiveClass : "text-text-secondary"}`} aria-label="Dislike" aria-pressed={disliked}>
+          <ThumbsDown size={16} className={disliked ? POST_ACTIONS_CONFIG.dislikeIconClass : ""} />
+          {dislikesCount > 0 && <span>{formatCount(dislikesCount)}</span>}
         </button>
         <button className="flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-sm font-medium text-text-secondary cursor-pointer font-sans transition-colors duration-fast hover:bg-bg-elevated" aria-label="Comment">
           <MessageCircle size={16} />
@@ -833,6 +880,7 @@ export default function PostDetailPage() {
           userName={currentUser ? currentUser.userName : "guest"}
           displayName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Guest"}
           avatar={currentUser?.avatar ?? null}
+          avatarConfig={currentUser?.avatarConfig ?? null}
           onSubmit={handleComment}
         />
         <CommentList

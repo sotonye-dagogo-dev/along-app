@@ -57,6 +57,7 @@ interface FeedPost {
     avatarConfig?: unknown
   }
   _isLiked?: boolean
+  _isDisliked?: boolean
   _isBookmarked?: boolean
   quotedPostId?: string | null
   quotedPost?: {
@@ -327,19 +328,24 @@ function HomeContent() {
     displayName:
       `${(user as { firstName?: string } | null)?.firstName ?? ""} ${(user as { lastName?: string } | null)?.lastName ?? ""}`.trim() || "You",
     avatar: (user as { avatar?: string } | null)?.avatar ?? null,
+    avatarConfig: (user as { avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null } | null)?.avatarConfig ?? null,
   }
 
   const { handleLike, handleDislike, handleBookmark } = useFeedInteractions({
     onLike: async (postId, liked) => {
       feedStream.applyInteraction({ postId, type: "like", value: liked })
+      // The vote API toggles on repeat of the same type: always send LIKE
+      // here (an unlike is a second LIKE that removes it; a switch clears a
+      // prior dislike). Sending DISLIKE on unlike would wrongly add one.
       await fetch(`/api/posts/${postId}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: liked ? "LIKE" : "DISLIKE" }),
+        body: JSON.stringify({ type: "LIKE" }),
       })
     },
-    onDislike: async (postId) => {
-      feedStream.applyInteraction({ postId, type: "dislike", value: true })
+    onDislike: async (postId, disliked) => {
+      // Honor the toggle: repeat DISLIKE removes it (same toggle semantics).
+      feedStream.applyInteraction({ postId, type: "dislike", value: disliked })
       await fetch(`/api/posts/${postId}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

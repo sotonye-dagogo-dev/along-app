@@ -87,6 +87,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     } catch { /* ignore */ }
 
     let _isLiked = false;
+    let _isDisliked = false;
     let _isBookmarked = false;
 
     if (user) {
@@ -95,6 +96,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         prisma.bookmark.findUnique({ where: { postId_userId: { postId: id, userId: user.id as string } } }),
       ]);
       _isLiked = like?.type === "LIKE";
+      _isDisliked = like?.type === "DISLIKE";
       _isBookmarked = !!bookmark;
     }
 
@@ -176,6 +178,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           ...(liveScore !== undefined ? { validityScore: liveScore } : {}),
           ...(liveTier !== undefined ? { validityTier: liveTier } : {}),
           _isLiked,
+          _isDisliked,
           _isBookmarked,
           responses,
           responsesCount: responses.length,

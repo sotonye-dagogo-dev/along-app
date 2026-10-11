@@ -26,6 +26,13 @@ export interface PostActionsConfig {
   reportReasons: { value: string; label: string }[];
   /** Bug-report category used when filing a post report (must exist in the API allow-list). */
   reportCategory: string;
+  // --- Like / dislike active styling (parity: disliked fills just like liked
+  // fills). Design-token classes so both themes stay readable; UIs read these
+  // instead of hardcoding color classes per surface.
+  likeActiveClass: string;
+  likeIconClass: string;
+  dislikeActiveClass: string;
+  dislikeIconClass: string;
   // --- Post/comment management (owner + admin), all destructive actions go
   // through the global confirm modal + global undo toast (see
   // postModerationService). Labels/copy live here so UI stays metadata-driven.
@@ -89,6 +96,10 @@ export const POST_ACTIONS_CONFIG: PostActionsConfig = {
     { value: "other", label: "Something else" },
   ],
   reportCategory: "OTHER",
+  likeActiveClass: "liked text-error-text",
+  likeIconClass: "fill-error-text stroke-error-text",
+  dislikeActiveClass: "disliked text-warning-text bg-warning",
+  dislikeIconClass: "fill-warning-text stroke-warning-text",
   editLabel: "Edit",
   deleteLabel: "Delete",
   archiveLabel: "Archive",

@@ -78,6 +78,7 @@ interface PostItem {
   quotedPost?: QuotedPostRef | null
   responsesCount?: number
   _isLiked?: boolean
+  _isDisliked?: boolean
   _isBookmarked?: boolean
   user: { id?: string; userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null }
 }
@@ -368,6 +369,7 @@ export default function OtherProfilePage() {
                   responsesCount: post.responsesCount ?? 0,
                   createdAt: post.createdAt,
                   _isLiked: post._isLiked ?? false,
+                  _isDisliked: (post as { _isDisliked?: boolean })._isDisliked ?? false,
                   _isBookmarked: post._isBookmarked ?? false,
                   user: {
                     id: post.user.id ?? profile.id,
