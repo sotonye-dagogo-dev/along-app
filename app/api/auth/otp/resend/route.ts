@@ -3,8 +3,9 @@ import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { hashPassword } from "@/app/lib/utils/security";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
-import { setOtp, setSendCooldown, getSendCooldownRemaining } from "@/app/lib/services/otpStore";
-import { AUTH_VERIFICATION_CONFIG, cooldownKeyFor } from "@/app/lib/config/authVerification";
+import { setOtp, setSendCooldown, getSendCooldownRemaining, clearSendCooldown } from "@/app/lib/services/otpStore";
+import { AUTH_VERIFICATION_CONFIG, REGISTER_EMAIL_DISPATCH_CONFIG, cooldownKeyFor } from "@/app/lib/config/authVerification";
+import { getAppUrl } from "@/app/lib/config/env";
 
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
@@ -84,34 +85,54 @@ export async function POST(request: NextRequest) {
 
     // Non-blocking send — tightly observed, never a false-positive:
     // the response reports the real delivery outcome once known.
+    // Template parity (config-driven): the OTP screen resend delivers the
+    // same verifyEmail template (OTP + one-tap link) as register and the
+    // profile trigger, so every verify mail shares one shape; falls back to
+    // the otp-only template when verifyEmail is missing/disabled.
+    // Patient budget matches register (cold starts must not read as "no
+    // mail"); on delivery failure the issuance cooldown is lifted so the
+    // next tap isn't a 429 for a mail that never left the server.
     let delivered = false;
     let sendReason: string | undefined;
     try {
-      const { sendOtpEmail } = await import("@/app/lib/services/emailService");
-      const result = await sendOtpEmail(email, otp);
+      const { sendOtpEmail, sendVerifyEmail } = await import("@/app/lib/services/emailService");
+      const appUrl = getAppUrl();
+      const verifyLink = `${appUrl}/verify-email?email=${encodeURIComponent(email)}`;
+      const firstName = (user as { firstName?: string }).firstName || "traveller";
+      const result = REGISTER_EMAIL_DISPATCH_CONFIG.resendUseVerifyTemplate
+        ? await sendVerifyEmail(email, firstName, otp, verifyLink, REGISTER_EMAIL_DISPATCH_CONFIG.otpTimeoutMs)
+        : await sendOtpEmail(email, otp, REGISTER_EMAIL_DISPATCH_CONFIG.otpTimeoutMs);
       delivered = result.sent;
       sendReason = result.sent ? undefined : result.reason;
       if (!result.sent) {
         console.error(`[OTP RESEND] failed for ${email}: ${result.reason}`);
         Sentry.captureMessage(`OTP resend failed for ${email}: ${result.reason}`, "warning");
+        if (REGISTER_EMAIL_DISPATCH_CONFIG.clearCooldownOnFailure) {
+          try { await clearSendCooldown(cooldownKey); } catch { /* best-effort */ }
+        }
       }
       if (process.env.NODE_ENV !== "production") console.log(`[DEV] OTP for ${email}: ${otp}`);
     } catch (e) {
       console.error("[OTP RESEND] failed", e);
       Sentry.captureException(e);
       sendReason = "Email service error — code saved, delivery uncertain.";
+      if (REGISTER_EMAIL_DISPATCH_CONFIG.clearCooldownOnFailure) {
+        try { await clearSendCooldown(cooldownKey); } catch { /* best-effort */ }
+      }
       if (process.env.NODE_ENV !== "production") console.log(`[DEV] OTP for ${email}: ${otp}`);
     }
 
     // 200 either way (the code IS valid) but the payload is honest about
     // delivery so the UI can say "check spam / wait for the timer".
+    // Cooldown is 0 when delivery failed so the client timer offers an
+    // immediate retry instead of a wait for a mail that never sent.
     return NextResponse.json(
       {
         message: delivered ? "Code sent — use the newest email." : AUTH_VERIFICATION_CONFIG.copy.sendFailed,
         sent: delivered,
         ...(sendReason ? { reason: sendReason } : {}),
         expiresIn: AUTH_VERIFICATION_CONFIG.otpTtlSeconds,
-        cooldown: AUTH_VERIFICATION_CONFIG.resendCooldownSeconds,
+        cooldown: delivered ? AUTH_VERIFICATION_CONFIG.resendCooldownSeconds : 0,
         invalidatesPrevious: true,
       },
       { status: 200 }

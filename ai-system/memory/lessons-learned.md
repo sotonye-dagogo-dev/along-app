@@ -700,3 +700,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** score what the product claims matters (photos/tags/description/vehicles/fares/stops) as additive capped bonuses over an untouched legacy base — no-context callers prove parity arithmetically; pair every auto-filed report with a sanitized prefill + URL builder + toast/inline CTAs that reuse existing slots (toast action, form initialValues) instead of new component APIs; verify page reachability by grepping registries (nav/footer/quick-links), not by assuming adjacent features link it.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 41: patient trigger vs racy signup — same template, different budgets
+- **Symptom:** signup verify mails never arrived while the profile "resend" flow delivered every time; users blamed unverified-status blocking.
+- **Root causes:** (1) register raced each mail against 6s outer / 5s inner timeouts while the profile trigger awaited one send with no outer race — cold starts timed out on signup, delivered on profile, same template both sides; (2) every failed send left the 60s issuance cooldown in place, so the retry for a mail that never left read as "wasn't sent any" (429); (3) the OTP-screen resend used the otp-only template while register/profile used verifyEmail (OTP + link) — three shapes for one purpose.
+- **Fix pattern (reuse):** give every gate-critical send the same patient, config-driven budget on BOTH timeout layers (outer race + inner provider timeout must agree); on delivery failure lift the throttle but keep the code (retry-immediate, abuse still capped by the shared rate bucket, response cooldown 0 so client timers agree); one template per purpose across all entry points (flag-driven with fallback). Audit "X blocks its own delivery" hypotheses with a test, not an assumption.
+- **Supersedes:** None
+- **Superseded by:** None

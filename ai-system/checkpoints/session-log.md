@@ -1934,3 +1934,17 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** `tsc --noEmit` zero errors; full jest 57/57 suites, 478/478 tests (was 461/461); `next lint` exit 0, warnings pre-existing-only (zero findings in touched files). Build deferred to Vercel (as before; needs secrets).
 **Compliance:** additive-only, no migration, no new deps, no removed APIs (`evaluateLiveTrust`/`computePostDetailScore` optional params; list shapes gain live detail via existing fields; toast shape unchanged — CTA reuses the action slot).
 **Chain:** execute-feature → in-progress (written + cleared below) → session-log (here) → dev-history + task-queue → update-ai-system terminal sync.
+
+## Session 2026-10-11 — Signup verify-email delivery parity + failure fallback (execute-feature)
+**Directive:** persistent signup verify-mail non-delivery (profile flow works); audit the unverified-blocking hypothesis; preserve profile fallback for edge cases only. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain, with fallbacks/edge cases.
+**Root causes:** (1) budget asymmetry — register's 6s outer / 5s inner double-race vs the profile trigger's patient single await (maxDuration=30): cold starts dropped signup mails, delivered profile ones, identical template; (2) failed sends kept the 60s issuance cooldown, turning retries into 429s ("wasn't sent any"); (3) otp/resend sent otp-only while register/trigger sent verifyEmail (OTP + link).
+**Implemented:**
+- `otpStore.ts` += `clearSendCooldown` (redis + memory additive; hash untouched).
+- `authVerification.ts`: `REGISTER_EMAIL_DISPATCH_CONFIG` otp 15s / welcome 10s + `clearCooldownOnFailure` + `resendUseVerifyTemplate`.
+- `emailService.ts`: `sendEmail({timeoutMs})` + optional timeout on otp/welcome/verify sends (defaults unchanged, otp-fallback kept).
+- Register: threads budgets, lifts cooldown + returns `cooldown: 0` on delivery failure (honest `sent`/`reason` kept); audit note that no unverified gate exists on the path.
+- `otp/resend`: sends verifyEmail template (flag-driven) with patient budget + same failure fallback; `verify-email` POST: same budget + fallback.
+- Tests: NEW `config/signupVerifyDelivery.test.ts` (7 incl. no-unverified-gate audit).
+**QA:** runner has no node_modules — jest/tsc/build deferred to CI/Vercel; node one-liner checks (brace/paren balance, expectation presence, audit-regex behaviour incl. legitimate already-verified short-circuit) all green; existing `registerEmailDispatch` suite assertions preserved.
+**Compliance:** additive-only, no migration, no new deps, no removed APIs.
+**Chain:** execute-feature → session-log (here) → dev-history + lessons-learned + system-architecture → update-ai-system terminal sync.
