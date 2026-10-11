@@ -20,6 +20,14 @@ import { LOCATION_FEEDBACK_CONFIG, locationErrorCopy } from "@/app/lib/config/lo
 const MapView = dynamic(() => import("react-map-gl/maplibre"), { ssr: false })
 const Marker = dynamic(() => import("react-map-gl/maplibre").then((m) => ({ default: m.Marker })), { ssr: false })
 
+interface ExploreCardUser {
+  userName: string
+  firstName: string
+  lastName: string
+  avatar?: string | null
+  avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null
+}
+
 interface PostPin {
   id: string
   title: string
@@ -33,7 +41,7 @@ interface PostPin {
   validityTier: string | null
   region: string | null
   createdAt: string
-  user: { userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: unknown }
+  user: ExploreCardUser
 }
 
 function getTimeAgo(date: string): string {
@@ -61,7 +69,7 @@ interface ExploreApiPost {
   region: string | null
   routes?: unknown
   createdAt: string
-  user: { userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: unknown }
+  user: ExploreCardUser
 }
 
 export default function ExplorePage() {

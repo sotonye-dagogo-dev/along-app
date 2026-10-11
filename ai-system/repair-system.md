@@ -1,7 +1,7 @@
 # Repair System — Error Knowledge Base
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-11 (photo-remove hardening + expanded-map portal + edit-prefill guard + avatar consistency)
+> - last-updated-by: fix-build 2026-10-11 (explore avatarConfig type + leaderboard competition ranking)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
@@ -1019,6 +1019,72 @@ renderer; audit with a `firstName[0]` grep.
 - app/(public)/about/AboutPageClient.tsx
 - app/api/reviews/route.ts
 - app/lib/config/reviews.ts
+
+**Date:** 2026-10-11
+**Status:** Active
+
+---
+
+## Explore Build Type Error — `avatarConfig: unknown` vs `ExplorePinCardUser` + Leaderboard Misranking
+
+**Symptom:**
+1. Vercel build fails at type-check: `./app/(dashboard)/explore/page.tsx:465:15
+   Type error: Type '{ userName: string; ... avatarConfig?: unknown }' is not
+   assignable to type 'ExplorePinCardUser'` (avatarConfig `unknown` vs
+   `{ style: string; ... } | null | undefined`). Same latent mismatch at the
+   mobile bottom-sheet usage.
+2. Leaderboard "doesn't always accurately place users based on their points":
+   tied users get different ranks, ranks go stale for up to 10 min after
+   earning points, viewers outside the top-500 slice get no rank, `total`
+   caps at the slice size, and dead All-time/Month/Week buttons imply
+   period filtering the API never implements (fetch doesn't even send it).
+
+**Root Cause:**
+1. `PostPin` / `ExploreApiPost` in `explore/page.tsx` typed `avatarConfig`
+   as `unknown` (Prisma Json passthrough), while `ExplorePinCardUser`
+   requires the concrete AvatarConfig shape. Structural mismatch at both
+   `<ExplorePinCard user={pin.user}>` call sites.
+2. Leaderboard: (a) `rank = index + 1` gives sequential ranks to tied
+   point totals — placement disagrees with points by construction;
+   (b) ranks baked into the cached payload, and `rewardsService.awardPoints`
+   (the single points write path) never invalidated `CACHE_KEYS.leaderboard()`
+   (600s TTL), so fresh earnings didn't move anyone until expiry;
+   (c) `take: 500` slice used as both board and `total`, with `me = null`
+   for anyone below the slice; (d) period selector UI with no API support.
+
+**Fix Applied:**
+- `explore/page.tsx`: shared `ExploreCardUser` interface with the exact
+  `avatarConfig?: { style: string; seed?: string; flip?: boolean;
+  backgroundColor?: string } | null` shape; `PostPin` + `ExploreApiPost`
+  consume it (structurally identical to `ExplorePinCardUser`).
+- `app/api/leaderboard/route.ts`: `assignCompetitionRanks` helper
+  (standard competition ranking 1,2,2,4 — equal points share rank);
+  cache stores UNRANKED rows, ranks recomputed on every read (cached path
+  re-sorts points desc + createdAt asc, same tie-break as the DB query);
+  true `total` via `prisma.user.count`; viewer outside the slice gets
+  `rank = 1 + count(ahead)` (more points, or same points + earlier
+  createdAt); zero-point-inclusive `where: { isDeleted: false }` kept.
+- `rewardsService.awardPoints`: best-effort `redis.del(CACHE_KEYS.leaderboard())`
+  after the award transaction (failure keeps the TTL fallback, never blocks).
+- `leaderboard/page.tsx`: removed the dead period selector (API is all-time;
+  buttons implied filtering that never happened). Podium + jump-to-rank kept.
+- `leaderboard.test.ts`: added `count`/`findUnique`/`del` mocks (new code
+  path needs them) + new tie-rank case (100,100,50 → 1,1,3).
+
+**Prevention:**
+- Never type a Prisma Json passthrough as `unknown` when the consumer
+  needs a concrete shape — declare the shared shape once and reuse it.
+- Leaderboard ranks must be DERIVED (points → rank via helper), never
+  stored/baked; any new points write path must invalidate the board cache;
+  any new board filter UI must have a matching API param (grep the fetch
+  URL before shipping selector buttons).
+
+**Files Affected:**
+- app/(dashboard)/explore/page.tsx
+- app/api/leaderboard/route.ts
+- app/lib/services/rewardsService.ts
+- app/(dashboard)/leaderboard/page.tsx
+- app/__tests__/api/leaderboard.test.ts
 
 **Date:** 2026-10-11
 **Status:** Active
