@@ -722,3 +722,14 @@ Showing Archive/Delete to admins on other users' posts leaks moderation affordan
 **Implications:**
 - New surfaces that need comments use `PostCommentsModal` (viewer + postId + title); no new comment UI.
 - Explore search tuning = `EXPLORE_SEARCH_CONFIG` only; comment tuning = `COMMENTS_CONFIG` only.
+
+## Sprint 40: richness-bonused detail, prefilled error CTAs, registry-verified search links
+**Decision:** Detail = untouched legacy leg base + capped `DETAIL_SCORING_CONFIG` richness bonuses (photos/tags/description/vehicle/fare/stops/locations), threaded through service single + batched paths + create + worker via `detailContextFromPost`; error boundaries pair every auto-filed report with a sanitized prefill (`buildErrorReportPrefill`/`buildBugReportUrl`) surfaced through the EXISTING toast action slot + an inline link, with `/report-bug` hydrating `?title=&description=` into `initialValues`; search reachability is asserted in registries (nav + footer + profile quick-links + sidebar user-row icon), with mobile bottom tabs deliberately unchanged.
+**Alternatives Considered:**
+- **Reweighting the 0.35/0.35/0.20/0.10 base or rewriting the leg scorer**: Rejected — the weights are fine; the bug was the scorer's blindness to post-level richness. Additive bonuses preserve legacy scores exactly when context is absent (proven by test), while a rewrite would have shifted every stored score.
+- **New toast action API / new report-form component**: Rejected — `ToastOptions.onUndo + undoLabel` already renders an action button on any toast type, and `ConfigDrivenForm` already accepts `initialValues`; reusing both keeps the change additive with zero component API churn.
+- **Adding Search to the mobile bottom tabs**: Rejected — 6 items + center FAB breaks the 5-tab layout; the footer (rendered on mobile) + explore suggestions + sidebar carry mobile reachability without layout risk.
+**Implications:**
+- Tuning detail = editing `DETAIL_SCORING_CONFIG` only; engine stays pure, service stays the only DB reader.
+- Any new error surface must offer the same prefilled CTA (prefill builder + URL + `ERROR_REPORTING_CONFIG` copy) — never a static "notified" string.
+- Any new top-level page needs registry entries (nav and/or footer and/or quick-links) plus a searchLinks-style test, or it is unreachable by construction.

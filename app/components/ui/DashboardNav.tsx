@@ -8,7 +8,7 @@ import {
   Home, Compass, MapPin, Bell, User,
   Shield, ShieldCheck,
   PanelLeftClose, PanelRight,
-  Settings, Navigation,
+  Settings, Navigation, Search,
 } from "lucide-react"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useTranslation } from "@/app/providers/I18nProvider"
@@ -292,17 +292,28 @@ export default function DashboardNav() {
           )}
         </nav>
 
-        {/* Sidebar User Section */}
-        <div className={`flex items-center py-4 border-t border-border ${sidebarCollapsed ? "justify-center px-2 gap-1" : "gap-2.5 px-5"}`}>
+        {/* Sidebar User Section (+ search shortcut beside the avatar so the
+            search page stays one tap away without costing a nav row). */}
+        <div className={`flex items-center py-4 border-t border-border ${sidebarCollapsed ? "flex-col justify-center px-2 gap-2.5" : "gap-2.5 px-5"}`}>
           {isGuest ? (
-            <Link
-              href="/login"
-              className={`flex items-center gap-2 text-sm font-medium text-primary hover:underline ${sidebarCollapsed ? "flex-col gap-1" : ""}`}
-              title={sidebarCollapsed ? t("nav.signIn") : undefined}
-            >
-              <User className="w-5 h-5 shrink-0" />
-              {!sidebarCollapsed && <span>{t("nav.signIn")}</span>}
-            </Link>
+            <>
+              <Link
+                href="/login"
+                className={`flex items-center gap-2 text-sm font-medium text-primary hover:underline ${sidebarCollapsed ? "flex-col gap-1" : "min-w-0 flex-1"}`}
+                title={sidebarCollapsed ? t("nav.signIn") : undefined}
+              >
+                <User className="w-5 h-5 shrink-0" />
+                {!sidebarCollapsed && <span>{t("nav.signIn")}</span>}
+              </Link>
+              <Link
+                href="/search"
+                aria-label="Search"
+                title="Search"
+                className="grid place-items-center w-8 h-8 rounded-lg text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors shrink-0"
+              >
+                <Search className="w-5 h-5" />
+              </Link>
+            </>
           ) : (
             <>
               <Link
@@ -325,6 +336,14 @@ export default function DashboardNav() {
                     )}
                   </div>
                 )}
+              </Link>
+              <Link
+                href="/search"
+                aria-label="Search"
+                title="Search"
+                className="grid place-items-center w-8 h-8 rounded-lg text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-colors shrink-0"
+              >
+                <Search className="w-5 h-5" />
               </Link>
             </>
           )}

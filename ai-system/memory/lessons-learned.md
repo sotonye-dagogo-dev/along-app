@@ -693,3 +693,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** any transparent-text overlay sets `caretColor` explicitly from config; every user face renders through `AppAvatar` (fallback is its job, not callers'); one shared modal component per interaction, reused at every call site; file-content assertions must target code-only markers (or keep history prose free of asserted substrings), and cache tests assert deep equality when enrichment is intended. Pre-existing red suites get fixed when the directive owns them — recorded, not scope-crept.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 40: leg-only detail scorer behind "every post is 42%" + CTA-less boundaries + unreachable search
+- **Symptom:** posts with 5 photos, 4 tags, long descriptions and full fares all showed detail 42%; error pages auto-logged but offered no report path; /search existed but had no nav/footer/profile entry.
+- **Root causes:** (1) the detail scorer read only per-leg distance/steps/location/description while the composer never produces distance/steps — every leg collapsed to 15+15=30 → ×1.4 = 42, and the service/create paths never passed post-level richness at all; (2) boundaries filed reports but exposed no toast CTA, no prefill builder, and the report form read no query params — each half existed without the other; (3) search links were assumed present because explore has a search input, but the input filters the map while /search is a separate page nobody linked.
+- **Fix pattern (reuse):** score what the product claims matters (photos/tags/description/vehicles/fares/stops) as additive capped bonuses over an untouched legacy base — no-context callers prove parity arithmetically; pair every auto-filed report with a sanitized prefill + URL builder + toast/inline CTAs that reuse existing slots (toast action, form initialValues) instead of new component APIs; verify page reachability by grepping registries (nav/footer/quick-links), not by assuming adjacent features link it.
+- **Supersedes:** None
+- **Superseded by:** None

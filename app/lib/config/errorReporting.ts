@@ -11,6 +11,8 @@ export const ERROR_REPORTING_CONFIG = {
   category: "OTHER",
   /** POST target — anonymous reports allowed (reporterId stays null). */
   endpoint: "/api/bug-reports",
+  /** Page hosting the bug-report form (prefilled via ?title=&description=). */
+  bugReportPath: "/report-bug",
   /** Title template — `{name}` + `{path}` interpolated, truncated to fit. */
   titleTemplate: "Client error: {name} on {path}",
   /** Hard caps so payloads always satisfy API validation (1–200 / 1–10000). */
@@ -18,12 +20,33 @@ export const ERROR_REPORTING_CONFIG = {
   maxDescriptionLength: 8000,
   maxStackLength: 3000,
   maxMessageLength: 500,
+  /** Query-param caps so the prefilled bug-report URL stays shareable. */
+  maxPrefillTitleLength: 120,
+  maxPrefillDescriptionLength: 4000,
   /** Copy states so boundaries never claim a notification that didn't happen. */
   copy: {
     pending: "Logging this error for our team…",
     reported: "Our team has been notified — this error was logged for review.",
     unreported: "Please try again. If it keeps happening, use “Report a bug” so our team can look into it.",
   },
+  /**
+   * Toast CTA raised by error boundaries alongside the inline status copy.
+   * Fired through the existing toastService action slot (undoLabel + onUndo
+   * → routes to the prefilled bug-report page), so no toast shape changes.
+   */
+  toast: {
+    message: "Something went wrong. Tap to report it with the details filled in.",
+    actionLabel: "Report a bug",
+  },
+  /** CTA label rendered inline on the error surfaces. */
+  reportCtaLabel: "Report a bug",
+  /**
+   * Prefill scaffolding for the bug-report description. `{summary}` is the
+   * sanitized error capture; the hints invite the reporter to add their own
+   * context above or below it without wiping the capture.
+   */
+  prefillHeader: "You can add your own details above or below the auto-filled summary — please keep the summary so our team has context.",
+  prefillTitle: "Auto-filled error summary (from the app — keep it, and add your notes above or below):",
 } as const;
 
 /** Patterns scrubbed from messages/stacks/metadata before any network send. */

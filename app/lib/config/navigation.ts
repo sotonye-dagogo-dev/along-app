@@ -1,5 +1,5 @@
 import {
-  Home, Compass, Bookmark, Bell, User, BarChart3,
+  Home, Compass, Search, Bookmark, Bell, User, BarChart3,
   UserPlus, Shield, ShieldCheck, Trophy,
 } from "lucide-react";
 import type { NavItem } from "@/app/lib/types";
@@ -7,6 +7,10 @@ import type { NavItem } from "@/app/lib/types";
 export const NAV_REGISTRY: NavItem[] = [
   { label: "Home", href: "/home", icon: Home, section: "main" },
   { label: "Explore", href: "/explore", icon: Compass, section: "main" },
+  // Dedicated search page (also reachable from the footer, profile quick
+  // links, and the sidebar user-row icon) so it stays discoverable outside
+  // the explore suggestions dropdown.
+  { label: "Search", href: "/search", icon: Search, section: "main" },
   { label: "Bookmarks", href: "/bookmarks", icon: Bookmark, section: "main" },
   { label: "Notifications", href: "/notifications", icon: Bell, section: "main" },
   { label: "Profile", href: "/profile", icon: User, section: "main" },

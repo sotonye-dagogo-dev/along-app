@@ -1129,3 +1129,13 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - All 3 pre-existing red suites fixed (comment-prose assertions reworded; cache test asserts deep equality + empty-page fast path); NEW `commentTightening` (10) + `exploreSearchExpansion` (6) suites.
 **QA:** tsc zero errors; jest 54/54 suites 461/461 (was 443/446); lint pre-existing-only; `npm run build` clean.
 **Compliance:** additive-only, no migration/deps/API removals.
+
+## Sprint 40 (2026-10-11) — Trust detail-42 fix + error-boundary bug-report CTA + search discoverability
+**Directive:** every post shows detail 42% regardless of richness; error boundary should toast a bug-report CTA with sanitized prefilled report (editable above/below) + same behaviour on any "team notified" surface (audit first); search links in top bar/footer/profile. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `DETAIL_SCORING_CONFIG` (image/tag/description/vehicle/fare/stop/location bonuses, all capped, 0-when-absent); `computePostDetailScore` + `detailContextFromPost` in ValidityEngine (legacy scorer untouched; no-context returns base exactly); service single + batched paths + POST create + recompute worker all reuse it (reads == writes, no flash); detail tooltip copy names the richer inputs.
+- `ERROR_REPORTING_CONFIG` (bugReportPath, prefill caps, toast CTA copy, prefill scaffolding) + `buildErrorReportPrefill`/`buildBugReportUrl` (sanitized, capped, never-throws); boundaries toast the CTA via the existing toast action slot + render an inline prefilled "Report a bug" link; `/report-bug` prefills `?title=&description=` into `initialValues` with an editable-prefill note; `EMPTY_STATES.error` mirrors the honest unreported copy. Audit: `not-found.tsx` correctly out of scope (no error claim).
+- Search: `NAV_REGISTRY` entry (sidebar), sidebar user-row search icon (guest + authed, collapsed-safe), footer Features link + profile quick-link (`footer.search` en/pcm); mobile bottom tabs intentionally unchanged (5-tab + FAB layout; footer + explore carry mobile).
+- Tests: NEW `detailScoring` (8) + `errorReportPrefill` (6) + `searchLinks` (3).
+**QA:** tsc zero errors; jest 57/57 suites 478/478 (was 461/461); `next lint` exit 0, warnings pre-existing-only, zero findings in touched files; build deferred to Vercel.
+**Compliance:** additive-only, no migration/deps/API removals (optional params; toast shape reused).

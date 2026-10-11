@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { CREATE_POST_SCHEMA } from "@/app/lib/schemas/post";
-import { validityEngine, computeRouteDetailScore } from "@/app/lib/services/ValidityEngine";
+import { validityEngine, computeRouteDetailScore, computePostDetailScore, detailContextFromPost } from "@/app/lib/services/ValidityEngine";
 import { qstashService } from "@/app/lib/services/qstashService";
 import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit";
 import { normalizeRouteSteps } from "@/app/lib/config/routeSteps";
@@ -100,7 +100,14 @@ export async function POST(request: NextRequest) {
     // votes yet, so endorsement/response legs are 0 — the score matches what
     // the worker recomputes instead of flashing an optimistic value.
     // Best-effort lookups never block the post on failure (fallbacks below).
-    let routeDetailScore = computeRouteDetailScore(routes);
+    // Detail covers the whole post (stops + photos + tags + description +
+    // vehicles/fares) — the same context the read paths derive — so rich
+    // posts no longer freeze at the leg-text-only 42.
+    let routeDetailScore = computePostDetailScore(
+      routes,
+      detailContextFromPost({ routes, images: images ?? [], tags: tags ?? [], description: description ?? null })
+    );
+    if (!Number.isFinite(routeDetailScore)) routeDetailScore = computeRouteDetailScore(routes);
     if (!Number.isFinite(routeDetailScore)) routeDetailScore = Math.min(100, routes.length * 20);
     let similarityRatio = 0;
     let authorFollowerCount = 0;
