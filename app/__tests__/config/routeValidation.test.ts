@@ -80,6 +80,33 @@ describe("validateRouteComposer", () => {
     expect(v.title).toBe(ROUTE_VALIDATION_CONFIG.titleTooShort);
     expect(v.description).toBe(ROUTE_VALIDATION_CONFIG.descriptionTooShort);
   });
+
+  it("skips destination fare/vehicle (hidden inputs never block Share)", () => {
+    // Legacy destination fare/vehicle (e.g. carried by an edit prefill or a
+    // restored draft) must not flag an invisible error while every visible
+    // field looks filled.
+    expect(ROUTE_VALIDATION_CONFIG.destinationSkipsFare).toBe(true);
+    expect(ROUTE_VALIDATION_CONFIG.destinationSkipsVehicle).toBe(true);
+    const v = validateRouteComposer({
+      title: "Marina to Yaba via Obalende",
+      steps: [
+        { location: "Marina", vehicle: "bus", fare: 300, fareRaw: "300" },
+        { location: "Yaba", vehicle: "spaceship", fare: 999, fareRaw: "400-500" },
+      ],
+    });
+    expect(v.valid).toBe(true);
+    expect(v.steps[1]?.fare).toBeUndefined();
+    expect(v.steps[1]?.vehicle).toBeUndefined();
+  });
+
+  it("still requires the destination location", () => {
+    const v = validateRouteComposer({
+      title: "Marina to Yaba via Obalende",
+      steps: [{ location: "Marina" }, { location: "" }],
+    });
+    expect(v.valid).toBe(false);
+    expect(v.steps[1]?.location).toBe(ROUTE_VALIDATION_CONFIG.locationRequired);
+  });
 });
 
 describe("sanitize + server message mapping", () => {

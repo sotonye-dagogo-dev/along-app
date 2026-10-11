@@ -323,6 +323,18 @@ export async function GET(request: NextRequest) {
         user: {
           select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
         },
+        // Response linkage for ROUTE_RESPONSE rows so profile tabs (and any
+        // card built from this list) render the "Responding to" block and
+        // edit flows can forward it. Additive — plain rows otherwise.
+        quotedPost: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            createdAt: true,
+            user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" as const },
     };
@@ -333,8 +345,9 @@ export async function GET(request: NextRequest) {
     } catch (e) {
       const isP2022 = e instanceof Error && ((e as unknown as { code?: string }).code === "P2022" || e.name === "PrismaClientKnownRequestError");
       if (isP2022) {
-        // Strip additive columns (avatarConfig select, isArchived filter) so
-        // reads keep working if the moderation migration has not applied yet.
+        // Strip additive columns (avatarConfig select, isArchived filter,
+        // quotedPost include) so reads keep working if the moderation or
+        // route-request migrations have not applied yet.
         const { isArchived: _drop, ...restWhere } = (fetchArgs as { where?: Record<string, unknown> }).where ?? {};
         void _drop;
         const fallbackArgs = {

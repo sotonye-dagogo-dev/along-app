@@ -87,4 +87,34 @@ describe("execute-feature: route drafts library (config-driven, restorable)", ()
     expect(migrated).toHaveLength(1);
     expect(migrated[0].title).toBe("Legacy draft");
   });
+
+  it("persists response linkage (edit→draft→repost never drops Responding-to)", () => {
+    installMemoryStorage();
+    // A draft saved mid-edit of a ROUTE_RESPONSE carries the edit target's
+    // linkage (ShareRouteModal falls back to editResponseTo) — the service
+    // must round-trip it, including through update-in-place.
+    const saved = routeDraftsService.saveDraft({
+      title: "Re: Need Marina to Yaba",
+      steps: [
+        { location: "Marina", description: "", vehicle: "bus", fare: 500 },
+        { location: "Yaba", description: "", vehicle: "", fare: 0 },
+      ],
+      tags: ["lagos"],
+      images: [],
+      responseTo: { id: "req_123", title: "Need Marina to Yaba", tags: ["lagos"] },
+    });
+    expect(saved?.responseTo?.id).toBe("req_123");
+    const restored = routeDraftsService.getDraft(saved!.id);
+    expect(restored?.responseTo?.title).toBe("Need Marina to Yaba");
+    expect(restored?.responseTo?.tags).toEqual(["lagos"]);
+    const updated = routeDraftsService.updateDraft(saved!.id, {
+      title: "Re: Need Marina to Yaba (edited)",
+      steps: saved!.steps,
+      tags: ["lagos"],
+      images: [],
+      responseTo: saved!.responseTo,
+    });
+    expect(updated?.responseTo?.id).toBe("req_123");
+    expect(ROUTE_DRAFTS_CONFIG.responseBadgeLabel("Need Marina to Yaba")).toMatch("Need Marina to Yaba");
+  });
 });
