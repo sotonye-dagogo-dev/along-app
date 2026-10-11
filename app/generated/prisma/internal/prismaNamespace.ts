@@ -400,7 +400,9 @@ export const ModelName = {
   AnalyticsEvent: 'AnalyticsEvent',
   EmailLog: 'EmailLog',
   PasswordResetToken: 'PasswordResetToken',
+  EmailOtpToken: 'EmailOtpToken',
   PushSubscription: 'PushSubscription',
+  AuditLog: 'AuditLog',
   AccountDeletionRequest: 'AccountDeletionRequest'
 } as const
 
@@ -417,7 +419,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "follow" | "post" | "comment" | "like" | "bookmark" | "notification" | "notificationRecipient" | "userActivity" | "siteConfig" | "bugReport" | "contactSubmission" | "userReview" | "analyticsEvent" | "emailLog" | "passwordResetToken" | "pushSubscription" | "accountDeletionRequest"
+    modelProps: "user" | "follow" | "post" | "comment" | "like" | "bookmark" | "notification" | "notificationRecipient" | "userActivity" | "siteConfig" | "bugReport" | "contactSubmission" | "userReview" | "analyticsEvent" | "emailLog" | "passwordResetToken" | "emailOtpToken" | "pushSubscription" | "auditLog" | "accountDeletionRequest"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1605,6 +1607,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    EmailOtpToken: {
+      payload: Prisma.$EmailOtpTokenPayload<ExtArgs>
+      fields: Prisma.EmailOtpTokenFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EmailOtpTokenFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EmailOtpTokenFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload>
+        }
+        findFirst: {
+          args: Prisma.EmailOtpTokenFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EmailOtpTokenFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload>
+        }
+        findMany: {
+          args: Prisma.EmailOtpTokenFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload>[]
+        }
+        create: {
+          args: Prisma.EmailOtpTokenCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload>
+        }
+        createMany: {
+          args: Prisma.EmailOtpTokenCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EmailOtpTokenCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload>[]
+        }
+        delete: {
+          args: Prisma.EmailOtpTokenDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload>
+        }
+        update: {
+          args: Prisma.EmailOtpTokenUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload>
+        }
+        deleteMany: {
+          args: Prisma.EmailOtpTokenDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EmailOtpTokenUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EmailOtpTokenUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload>[]
+        }
+        upsert: {
+          args: Prisma.EmailOtpTokenUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EmailOtpTokenPayload>
+        }
+        aggregate: {
+          args: Prisma.EmailOtpTokenAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEmailOtpToken>
+        }
+        groupBy: {
+          args: Prisma.EmailOtpTokenGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EmailOtpTokenGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EmailOtpTokenCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EmailOtpTokenCountAggregateOutputType> | number
+        }
+      }
+    }
     PushSubscription: {
       payload: Prisma.$PushSubscriptionPayload<ExtArgs>
       fields: Prisma.PushSubscriptionFieldRefs
@@ -1676,6 +1752,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.PushSubscriptionCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.PushSubscriptionCountAggregateOutputType> | number
+        }
+      }
+    }
+    AuditLog: {
+      payload: Prisma.$AuditLogPayload<ExtArgs>
+      fields: Prisma.AuditLogFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AuditLogFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AuditLogFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        findFirst: {
+          args: Prisma.AuditLogFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AuditLogFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        findMany: {
+          args: Prisma.AuditLogFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>[]
+        }
+        create: {
+          args: Prisma.AuditLogCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        createMany: {
+          args: Prisma.AuditLogCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AuditLogCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>[]
+        }
+        delete: {
+          args: Prisma.AuditLogDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        update: {
+          args: Prisma.AuditLogUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        deleteMany: {
+          args: Prisma.AuditLogDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AuditLogUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AuditLogUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>[]
+        }
+        upsert: {
+          args: Prisma.AuditLogUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuditLogPayload>
+        }
+        aggregate: {
+          args: Prisma.AuditLogAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAuditLog>
+        }
+        groupBy: {
+          args: Prisma.AuditLogGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuditLogGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AuditLogCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuditLogCountAggregateOutputType> | number
         }
       }
     }
@@ -2036,6 +2186,19 @@ export const PasswordResetTokenScalarFieldEnum = {
 export type PasswordResetTokenScalarFieldEnum = (typeof PasswordResetTokenScalarFieldEnum)[keyof typeof PasswordResetTokenScalarFieldEnum]
 
 
+export const EmailOtpTokenScalarFieldEnum = {
+  id: 'id',
+  email: 'email',
+  purpose: 'purpose',
+  userId: 'userId',
+  otpHash: 'otpHash',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type EmailOtpTokenScalarFieldEnum = (typeof EmailOtpTokenScalarFieldEnum)[keyof typeof EmailOtpTokenScalarFieldEnum]
+
+
 export const PushSubscriptionScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -2046,6 +2209,19 @@ export const PushSubscriptionScalarFieldEnum = {
 } as const
 
 export type PushSubscriptionScalarFieldEnum = (typeof PushSubscriptionScalarFieldEnum)[keyof typeof PushSubscriptionScalarFieldEnum]
+
+
+export const AuditLogScalarFieldEnum = {
+  id: 'id',
+  actorId: 'actorId',
+  action: 'action',
+  entity: 'entity',
+  entityId: 'entityId',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
 
 
 export const AccountDeletionRequestScalarFieldEnum = {
@@ -2447,7 +2623,9 @@ export type GlobalOmitConfig = {
   analyticsEvent?: Prisma.AnalyticsEventOmit
   emailLog?: Prisma.EmailLogOmit
   passwordResetToken?: Prisma.PasswordResetTokenOmit
+  emailOtpToken?: Prisma.EmailOtpTokenOmit
   pushSubscription?: Prisma.PushSubscriptionOmit
+  auditLog?: Prisma.AuditLogOmit
   accountDeletionRequest?: Prisma.AccountDeletionRequestOmit
 }
 

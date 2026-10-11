@@ -1,12 +1,16 @@
 # In progress — none
 
-No active work. Last session (2026-10-11, execute-feature Sprint 36 response-linkage persistence + composer false-validation fix) is closed:
-validator skips hidden destination fare/vehicle (`destinationSkipsFare/Vehicle`);
-edit-of-response shows a banner and drafts saved mid-edit carry the linkage
-(`EditPost` linkage fields → `editResponseTo` fallback, PATCH still immutable);
-`GET /api/posts` includes `quotedPost` so profile tabs render Responding-to;
-`routeValidation.test.ts` +2, `routeDrafts.test.ts` +1. QA: shipped validator
-executed in node (3/3 hold); full jest/tsc/build deferred to CI/Vercel (no
-node_modules in runner). update-ai-system terminal sync done; task-queue,
-session-log, dev-history, project-plan, repo-map, dependency-graph,
-system-architecture, repair-system, lessons-learned synced.
+No active work. Last session (2026-10-11, execute-feature Sprint 37 owner-only
+post menu + admin edit with audit + friendly audit trail) is closed:
+PostMenu Edit/Archive/Delete owner-only (admins see Copy link + Report on
+others' posts; moderation via /admin/posts); new audited PUT /api/admin/posts
+(title/description/tags, nature-preserving) + logAudit on admin PATCH/DELETE
+and admin-not-owner /api/posts/[id] mutations; /admin/posts Edit modal
+(AppModal/AppInput/AppTextarea/AppButton); /admin/audit rebuilt on
+AppTable/AppTag/AppCard/AppEmptyState driven by NEW AUDIT_DISPLAY_CONFIG with
+sanitization; trustBreakdownService return-type widening; NEW audit (6) +
+PostMenu (4) tests. QA: tsc zero errors, build passes, jest 436/439 (3
+pre-existing failures verified identical at HEAD), lint pre-existing-only.
+update-ai-system terminal sync done; task-queue, session-log, dev-history,
+project-decisions, lessons-learned, repo-map, dependency-graph,
+system-architecture synced.
