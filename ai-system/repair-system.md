@@ -1,7 +1,7 @@
 # Repair System — Error Knowledge Base
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-11 (share-modal photo-remove visibility + expanded-map containment)
+> - last-updated-by: fix-build 2026-10-11 (photo-remove hardening + expanded-map portal + edit-prefill guard + avatar consistency)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
@@ -838,6 +838,11 @@ h-6`) with a low-contrast `bg-black/60` + `border-none` treatment.
 - Tests: `uxTightening.test.ts` asserts `opacity-100` present,
   `opacity-0`/`group-hover:opacity-100` absent, touch-sized + bordered +
   focus-visible treatment, icon ≥ 14px.
+- Follow-up hardening (button still reported invisible): class bumped to
+  `z-10` (paints above the thumbnail — previously no stacking order, so
+  the image could cover it), `bg-black/85` + `border-white/60` + `ring-2
+  ring-white/80` halo for contrast on any photo, `visible` alongside
+  `opacity-100`; test extended to assert `z-10` + `ring-`.
 
 **Prevention:**
 Never ship hover-only (`opacity-0` + `group-hover:opacity-100`) controls
@@ -896,6 +901,124 @@ Escape/backdrop dismissal. `100vw` includes the scrollbar; prefer
 - app/lib/config/index.ts (barrel: `MAP_EXPAND_CONFIG` + `MapExpandConfig`)
 - app/components/features/posts/RouteMap.tsx
 - app/__tests__/config/mapStack.test.ts
+
+**Follow-up hardening (same symptom re-reported after the contained-dialog fix):**
+- `RouteMap.tsx` — expanded dialog now renders via `createPortal` to
+  `document.body` (SSR-safe inline fallback). A `fixed` overlay nested
+  inside a transformed/filtered ancestor (cards, `backdrop-blur` panels)
+  positions against that ancestor, not the viewport — that containing-block
+  capture is what let the dialog drift right over the suggestions rail on
+  desktop post views. The portal keeps it viewport-centered on every
+  surface. Panel also carries `maxWidth: min(56rem, calc(100vw - 2rem))`
+  inline so it can never exceed the viewport even where the Tailwind
+  `max-w-4xl` class is delayed by CDN chunking.
+
+**Date:** 2026-10-11
+**Status:** Active
+
+---
+
+## Route Edit Restores Original Values (Prefill Wipes In-Progress Input)
+
+**Symptom:**
+Editing a route (location or description) appears to accept input, but on
+save the old values come back — the edit feature is non-operational.
+Related: posts whose `routes` list intermediate stops sometimes render a
+map that skips a stop (start → destination), even though the definition
+lists it.
+
+**Root Cause:**
+Two coupled defects in the edit path:
+1. `ShareRouteModal`'s edit-prefill `useEffect` depended on the `editPost`
+   object identity, and the post-detail parent builds `editPost` inline on
+   every render — so any parent re-render re-ran the effect and reset
+   title/steps/tags/images to the originals, wiping what the user typed.
+2. `EditPost` carried no coordinates (no per-step `lat`/`lng`, no
+   `start/end/waypoints`), and `handleGeoInput` kept stale `lat`/`lng`
+   while the location text changed. A description-only edit therefore
+   recomputed waypoints from coord-less steps (dropping the stored
+   waypoints on PATCH), and a retyped-but-unpicked location saved the OLD
+   fix under the NEW label — the map then misses/skips that stop.
+
+**Fix Applied:**
+- `ShareRouteModal.tsx` — `EditPost` gains optional per-step `lat`/`lng`
+  plus `startLat/startLng/endLat/endLng/waypoints`; prefill re-attaches
+  them (index-aligned `[start, ...waypoints, end]` when counts match,
+  ends-recovery otherwise); an `editInitRef` (keyed by post id, reset on
+  close) makes prefill run once per opened post so later parent renders
+  never clobber input; `handleGeoInput` clears the step's `lat`/`lng` on
+  manual text change so a fresh pick or the submit-time fallback geocode
+  always resolves the current label.
+- `app/(dashboard)/posts/[id]/page.tsx` — `editPost` now forwards the
+  stored `start/end/waypoints`; the legacy backfill trigger widened from
+  "exactly 2 pins" to "fewer pins than `routes` steps" (still bounded to
+  ≤5 intermediate geocodes), so partially-stored rows also rebuild the
+  full origin → stop(s) → destination sequence.
+- Home feed edit path (`FeedPost` already carries coords, stable state
+  identity) benefits from the same guard with no changes needed.
+
+**Prevention:**
+Never key a prefill/reset effect on an inline-built object — depend on a
+stable id (or memoize at the call site) and guard with an init ref.
+Coordinate-carrying payloads must travel end-to-end (type → prefill →
+submit → PATCH); dropping them at any hop silently desyncs labels from
+pins. Manual text edits must invalidate picked fixes.
+
+**Files Affected:**
+- app/components/features/posts/ShareRouteModal.tsx
+- app/(dashboard)/posts/[id]/page.tsx
+
+**Date:** 2026-10-11
+**Status:** Active
+
+---
+
+## User Avatars Replaced by Initials on Explore / Popups / Reviews
+
+**Symptom:**
+Explore cards, the explore pin popup, post-detail author/responses, the
+profile Reviews list and the About reviews carousel render hand-rolled
+initials circles even though the APIs already select `avatar`, ignoring
+the user's actual avatar / DiceBear config.
+
+**Root Cause:**
+Those surfaces never threaded the avatar fields through: `ExplorePinCard`
+props and the explore `PostPin`/`ExploreApiPost` user shapes omitted
+`avatar`/`avatarConfig` (dropped from the API-selected user), the popup
+and detail/responses/About/ReviewsPanel templates hardcoded
+`firstName[0]` divs instead of the shared `AppAvatar`, and the reviews
+API `REVIEWER_SELECT` omitted `avatarConfig`.
+
+**Fix Applied:**
+- `ExplorePinCard.tsx` — user gains optional `avatar`/`avatarConfig`;
+  initials div replaced with `AppAvatar` (size 24, profile-linked).
+- `app/(dashboard)/explore/page.tsx` — pin/API user types carry the
+  avatar fields through the pins memo into cards; popup initials replaced
+  with `AppAvatar` (size 32, profile-linked).
+- `app/(dashboard)/posts/[id]/page.tsx` — author header uses `AppAvatar`
+  (size 40, profile-linked); response rows use `AppAvatar` (size 32,
+  `linkToProfile={false}` to avoid nested anchors inside the row link).
+- `app/api/reviews/route.ts` — `REVIEWER_SELECT` += `avatarConfig`;
+  `app/lib/config/reviews.ts` — `PlatformReviewItem.reviewer` += optional
+  `avatarConfig`.
+- `ReviewsPanel.tsx` + `AboutPageClient.tsx` ReviewCard — initials divs
+  replaced with `AppAvatar` (size 32, profile-linked); dead `initialsOf`
+  helper removed.
+
+**Prevention:**
+Any surface that renders a user must consume `AppAvatar`/`AppUserLabel`
+— never hand-roll initials. When extending a user select, thread
+`avatar` + `avatarConfig` through every intermediate type to the
+renderer; audit with a `firstName[0]` grep.
+
+**Files Affected:**
+- app/components/features/explore/ExplorePinCard.tsx
+- app/(dashboard)/explore/page.tsx
+- app/(dashboard)/posts/[id]/page.tsx
+- app/components/features/reviews/ReviewsPanel.tsx
+- app/(public)/about/AboutPageClient.tsx
+- app/api/reviews/route.ts
+- app/lib/config/reviews.ts
 
 **Date:** 2026-10-11
 **Status:** Active

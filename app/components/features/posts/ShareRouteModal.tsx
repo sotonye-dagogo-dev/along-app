@@ -64,9 +64,15 @@ export interface EditPost {
   id: string
   title: string
   description?: string | null
-  routes: { location?: string; description?: string; vehicle?: string; fare?: number }[]
+  routes: { location?: string; description?: string; vehicle?: string; fare?: number; lat?: number; lng?: number }[]
   tags?: string[]
   images?: string[]
+  /** Stored coords so edits keep the pinned stops (see prefill below). */
+  startLat?: number | null
+  startLng?: number | null
+  endLat?: number | null
+  endLng?: number | null
+  waypoints?: { lat: number; lng: number }[] | null
 }
 
 interface ShareRouteModalProps {
@@ -178,6 +184,14 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
    * via its live-post reference guard, but skipping the call saves traffic).
    */
   const editOriginalsRef = useRef<Set<string>>(new Set())
+  /**
+   * Edit-prefill guard: the parent builds `editPost` inline, so its object
+   * identity changes on every parent render. Re-prefilling on identity
+   * change would wipe the user's in-progress keystrokes and restore the
+   * original values (the reported "edits don't persist" bug). Prefill once
+   * per opened post id; later renders for the same id leave user input alone.
+   */
+  const editInitRef = useRef<string | null>(null)
 
   const doGeocode = useCallback(async (query: string, stepIndex: number) => {
     if (!query || query.length < 3) {
@@ -217,7 +231,19 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   }, [])
 
   const handleGeoInput = (index: number, value: string) => {
-    updateStep(index, "location", value)
+    // Typing a new location invalidates the previously picked/geocoded fix —
+    // keeping stale lat/lng would pin the map (and the saved waypoints) to
+    // the OLD place under the NEW label. Clearing forces a fresh pick or the
+    // submit-time fallback geocode, so labels and pins can never disagree.
+    setSteps((prev) => {
+      const next = [...prev]
+      const s = { ...next[index] }
+      delete s.lat
+      delete s.lng
+      s.location = value
+      next[index] = s
+      return next
+    })
     clearStepError(index, "location")
     if (geoDebounceRef.current) clearTimeout(geoDebounceRef.current)
     geoDebounceRef.current = setTimeout(() => doGeocode(value, index), 400)
@@ -629,13 +655,38 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   }, [])
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) {
+      editInitRef.current = null
+      return
+    }
     setSavePromptOpen(false)
     // Edit mode: prefill from the post, never absorb drafts or response state.
+    // Guarded by editInitRef (see above) so parent re-renders with a fresh
+    // `editPost` identity never clobber what the user already typed.
     if (editPost) {
+      if (editInitRef.current === editPost.id) return
+      editInitRef.current = editPost.id
       setTitle(editPost.title ?? "")
       setDescription(editPost.description ?? "")
-      const prefill = (editPost.routes ?? []).map((s) => ({
+      // Re-attach stored coords so untouched stops keep their pins and the
+      // saved waypoints survive a description-only edit. Aligned by index
+      // when [start, ...waypoints, end] matches the step count; otherwise
+      // first/last steps still recover their ends.
+      const coordLine: { lat: number; lng: number }[] = []
+      if (typeof editPost.startLat === "number" && typeof editPost.startLng === "number") {
+        coordLine.push({ lat: editPost.startLat, lng: editPost.startLng })
+      }
+      const storedWps = Array.isArray(editPost.waypoints) ? editPost.waypoints : []
+      for (const w of storedWps) {
+        if (w && typeof w.lat === "number" && typeof w.lng === "number") {
+          coordLine.push({ lat: w.lat, lng: w.lng })
+        }
+      }
+      let hasEnd = false
+      if (typeof editPost.endLat === "number" && typeof editPost.endLng === "number") {
+        hasEnd = true
+      }
+      const rawPrefill = (editPost.routes ?? []).map((s) => ({
         location: s.location ?? "",
         description: s.description ?? "",
         vehicle: s.vehicle ?? "",
@@ -644,6 +695,24 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
         _geoResults: [] as GeoResult[],
         _geoLoading: false,
       }))
+      const prefill = rawPrefill.map((s, i) => {
+        // Per-step fix (fresh geocode picks) wins; stored line is fallback.
+        const stepLat = (editPost.routes[i] as { lat?: unknown }).lat
+        const stepLng = (editPost.routes[i] as { lng?: unknown }).lng
+        if (typeof stepLat === "number" && typeof stepLng === "number") {
+          return { ...s, lat: stepLat, lng: stepLng }
+        }
+        if (coordLine.length === rawPrefill.length) {
+          return { ...s, lat: coordLine[i].lat, lng: coordLine[i].lng }
+        }
+        if (i === 0 && coordLine.length > 0) {
+          return { ...s, lat: coordLine[0].lat, lng: coordLine[0].lng }
+        }
+        if (hasEnd && i === rawPrefill.length - 1 && rawPrefill.length > 1) {
+          return { ...s, lat: editPost.endLat as number, lng: editPost.endLng as number }
+        }
+        return s
+      })
       setSteps(prefill.length >= 2 ? prefill : [
         { location: "", description: "", vehicle: "bus", fare: 0, _fareRaw: "", _geoResults: [], _geoLoading: false },
         { location: "", description: "", vehicle: "", fare: 0, _fareRaw: "", _geoResults: [], _geoLoading: false },
@@ -1222,7 +1291,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                         onClick={() => removeImage(idx)}
                         title={SHARE_ROUTE_MODAL_CONFIG.photoRemoveLabel}
                         aria-label={`${SHARE_ROUTE_MODAL_CONFIG.photoRemoveLabel} ${idx + 1}`}
-                        className={SHARE_ROUTE_MODAL_CONFIG.photoRemoveButtonClass ?? "absolute top-1 right-1 w-7 h-7 rounded-circle bg-black/70 text-white flex items-center justify-center border border-white/40 cursor-pointer shadow-md opacity-100"}
+                        className={SHARE_ROUTE_MODAL_CONFIG.photoRemoveButtonClass ?? "absolute top-1 right-1 z-10 w-7 h-7 rounded-circle bg-black/85 text-white flex items-center justify-center border border-white/60 ring-2 ring-white/80 cursor-pointer shadow-md opacity-100 visible"}
                       >
                         <X size={SHARE_ROUTE_MODAL_CONFIG.photoRemoveIconSize ?? 14} />
                       </button>

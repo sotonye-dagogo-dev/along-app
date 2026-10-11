@@ -1,7 +1,7 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-11 (share-modal photo-remove visibility + expanded-map containment, static-only — no node_modules)
+> - last-updated-by: fix-build 2026-10-11 (photo-remove hardening + expanded-map portal + edit-prefill guard + avatar consistency, static-only — no node_modules)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: overwritten on every test run — always current
 
@@ -60,6 +60,7 @@
 
 | Date | Passed | Failed | Notes |
 |------|--------|--------|-------|
+| 2026-10-11 | — | — | Fix-build hardening round (photo-remove z-10/ring, expanded-map createPortal, edit-prefill id guard + coord carry, AppAvatar on explore/popup/detail/reviews/About): no node_modules in runner, full jest/tsc/build not runnable; verified via full re-reads of all 10 touched files (scope/indent/type-flow, AvatarConfig shape match, AppAvatar size literals valid, no nested-anchor except pre-existing explore-card pattern, effect deps unchanged + eslint-disable retained, test expects match new class literals), cross-file grep (single ShareRouteModalConfig literal, EditPost coords optional-additive, REVIEWER_SELECT additive); extended `uxTightening.test.ts` (+2 z-10/ring expects) awaits CI — Vercel build to confirm |
 | 2026-10-11 | — | — | Fix-build photo-remove visibility + expanded-map containment: no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --ignoreConfig --noResolve` on mapStack/shareRoute/RouteMap/ShareRouteModal/tests (zero syntax errors, zero TS2305/TS2339/TS2322/TS2551/TS1xxx attributable — remaining noise is missing-module/JSX-runtime/implicit-any from absent node_modules, identical on untouched MapPins baseline), cross-file grep (single ShareRouteModalConfig literal, MAP_EXPAND_CONFIG barrel export, all 3 ShareRouteModal mounts unaffected); extended suites `uxTightening.test.ts` (+1 photo-remove case) + `mapStack.test.ts` (+2 containment cases) await CI — Vercel build to confirm |
 | 2026-10-10 | — | — | Execute-command Sprint 31 universal share + dynamic trust: no node_modules in runner, full jest/tsc/build not runnable; verified via full-scope static re-reads (all 22 touched files: scope/indent/type-flow, Prisma delegate + enum-literal consistency with existing code, closure ordering), legacy-score arithmetic proofs (61.5→verified, 100→trusted, 0-vote→developing/low unchanged), new suites `postShareService.test.ts` (8) + ValidityEngine dynamic/scorer (+9) + TrustBadge live (+2) await CI; one misplaced-block regression (breakdown insert landed in PATCH catch) caught and repaired by re-read — Vercel build to confirm |
 | 2026-10-09 | — | — | Fix-build sidebar share-route vanish: no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --noResolve` on DashboardNav/ShareRouteModal/RequestRouteModal/faq (zero attributable errors — only missing-module/JSX-runtime noise from absent node_modules, identical on untouched files; faq.ts fully clean), usage grep (all 3 ShareRouteModal mounts now POST-backed; RequestRouteModal caller returns boolean) — Vercel build to confirm |

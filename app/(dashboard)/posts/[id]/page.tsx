@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, Maximize2, MapPin, Navigation, ClipboardList, Reply, Archive } from "lucide-react"
-import { AppCard, TrustBadge, VehicleChip, AppEmptyState, ImageLightbox } from "@/app/components/ui"
+import { AppCard, TrustBadge, VehicleChip, AppEmptyState, ImageLightbox, AppAvatar } from "@/app/components/ui"
 import { VEHICLE_REGISTRY, EMPTY_STATES, MODERATION_CONFIG, POST_ACTIONS_CONFIG } from "@/app/lib/config"
 import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import { CommentInput, CommentList } from "@/app/components/features/comments"
@@ -357,7 +357,6 @@ export default function PostDetailPage() {
     [post]
   )
   const trustLevel = (post?.validityTier as "low" | "developing" | "verified" | "trusted") ?? "developing"
-  const initials = post ? `${post.user.firstName[0]}${post.user.lastName[0]}`.toUpperCase() : ""
 
   const baseRoutePins: RoutePin[] = useMemo(() => {
     // Canonical builder: origin + intermediate waypoints + destination in
@@ -373,16 +372,19 @@ export default function PostDetailPage() {
       waypoints: post.waypoints,
     }) as RoutePin[]
   }, [post])
-  // Legacy backfill: rows stored before waypoints were persisted carry only
-  // start/end coords even though `routes` lists intermediate stops. Geocode
-  // the missing stop labels (bounded, best-effort, cached by the geocode
-  // proxy) so those posts render every stop instead of skipping to the
-  // destination. New posts already carry waypoints, so this stays idle.
+  // Legacy/partial backfill: rows stored before waypoints were persisted —
+  // or edits saved while a stop had no fix — carry fewer pins than the
+  // `routes` definition lists. Geocode the intermediate stop labels
+  // (bounded, best-effort, cached by the geocode proxy) and rebuild the full
+  // origin → stop(s) → destination sequence, so every defined stop renders
+  // instead of the map silently skipping to the destination. Posts whose
+  // pins already match their steps stay idle (no extra requests).
   const [backfilledPins, setBackfilledPins] = useState<RoutePin[] | null>(null)
   useEffect(() => {
     let cancelled = false
     setBackfilledPins(null)
-    if (!post || baseRoutePins.length !== 2 || routes.length <= 2) return
+    if (!post || baseRoutePins.length >= routes.length) return
+    if (baseRoutePins.length < 2 || routes.length <= 2) return
     const missing = routes.slice(1, -1).filter((s) => s.location?.trim())
     if (missing.length === 0 || missing.length > 5) return
     ;(async () => {
@@ -489,6 +491,14 @@ export default function PostDetailPage() {
         })),
         tags: post.tags,
         images: post.images,
+        // Stored coords travel into the composer so untouched stops keep
+        // their pins and a description-only edit can't drop the waypoints
+        // (which previously rendered as a skipped stop on the map).
+        ...(post.startLat != null ? { startLat: post.startLat } : {}),
+        ...(post.startLng != null ? { startLng: post.startLng } : {}),
+        ...(post.endLat != null ? { endLat: post.endLat } : {}),
+        ...(post.endLng != null ? { endLng: post.endLng } : {}),
+        ...(post.waypoints ? { waypoints: post.waypoints } : {}),
       }
     : null
   const editRequest: EditRouteRequest | null =
@@ -582,9 +592,13 @@ export default function PostDetailPage() {
       )}
 
       <div className="flex items-center gap-2.5 mb-3">
-        <Link href={`/profile/${post.user.userName}`} onClick={(e) => e.stopPropagation()} className="w-10 h-10 rounded-circle bg-primary-muted flex items-center justify-center text-sm font-bold text-primary shrink-0 no-underline">
-          {initials}
-        </Link>
+        <AppAvatar
+          src={post.user.avatar ?? undefined}
+          alt={`${post.user.firstName} ${post.user.lastName}`}
+          size={40}
+          config={post.user.avatarConfig as { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | undefined}
+          userName={post.user.userName}
+        />
         <div>
           <Link href={`/profile/${post.user.userName}`} onClick={(e) => e.stopPropagation()} className="text-sm font-semibold text-text-primary no-underline hover:underline">
             {post.user.firstName} {post.user.lastName}
@@ -775,9 +789,13 @@ export default function PostDetailPage() {
                   href={`/posts/${r.id}`}
                   className="flex gap-2.5 py-3 border-b border-border last:border-b-0 no-underline"
                 >
-                  <span className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                    {(r.user.firstName[0] ?? "")}{(r.user.lastName[0] ?? "")}
-                  </span>
+                  <AppAvatar
+                    src={r.user.avatar ?? undefined}
+                    alt={`${r.user.firstName} ${r.user.lastName}`}
+                    size={32}
+                    userName={r.user.userName}
+                    linkToProfile={false}
+                  />
                   <span className="flex-1 min-w-0">
                     <span className="block text-sm font-semibold text-text-primary">
                       {r.user.firstName} {r.user.lastName}

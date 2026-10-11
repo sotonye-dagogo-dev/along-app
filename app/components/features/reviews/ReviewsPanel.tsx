@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Star, Loader2 } from "lucide-react";
+import { AppAvatar } from "@/app/components/ui";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useTranslation } from "@/app/providers/I18nProvider";
 import { toastService } from "@/app/lib/services/toastService";
@@ -11,10 +12,6 @@ import { REVIEWS_CONFIG, reviewAuthorName, type PlatformReviewItem } from "@/app
 
 interface MineResponse {
   reviews: PlatformReviewItem[];
-}
-
-function initialsOf(name: string): string {
-  return name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase() || "?";
 }
 
 /**
@@ -211,9 +208,13 @@ export function ReviewsPanel({ showList = true, showForm = true, authorId }: { s
               return (
                 <div key={r.id} className="bg-bg-card border border-border rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <div className="w-8 h-8 rounded-full bg-primary-muted text-primary flex items-center justify-center text-[11px] font-bold shrink-0">
-                      {initialsOf(name)}
-                    </div>
+                    <AppAvatar
+                      src={r.reviewer.avatar ?? undefined}
+                      alt={name}
+                      size={32}
+                      config={(r.reviewer.avatarConfig ?? undefined) as { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | undefined}
+                      userName={r.reviewer.userName}
+                    />
                     <div className="min-w-0">
                       <div className="text-xs font-semibold truncate">{name}</div>
                       <div className="flex gap-0.5" aria-label={`${r.rating} out of 5 stars`}>
