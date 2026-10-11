@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { undoService } from "@/app/lib/services/undoService"
 import { toastService } from "@/app/lib/services/toastService"
 
@@ -11,6 +12,7 @@ interface UseFeedInteractionsOptions {
 }
 
 export function useFeedInteractions(options: UseFeedInteractionsOptions = {}) {
+  const router = useRouter()
   const handleLike = useCallback(async (postId: string, liked: boolean) => {
     if (liked) {
       toastService.success("Route liked!")
@@ -58,9 +60,12 @@ export function useFeedInteractions(options: UseFeedInteractionsOptions = {}) {
     }
   }, [options])
 
+  // Fallback only: surfaces that render PostCard without their own comment
+  // modal (i.e. not home/profile/search) soft-navigate client-side instead of
+  // the old full-page reload. Prefer PostCommentsModal.
   const handleComment = useCallback((postId: string) => {
-    window.location.href = `/posts/${postId}`
-  }, [])
+    router.push(`/posts/${postId}`)
+  }, [router])
 
   return {
     handleLike,

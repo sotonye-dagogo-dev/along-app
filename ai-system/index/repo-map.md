@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -91,7 +91,7 @@ along-app/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
 │   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
-│   │   └── features/        → Domain-specific components (comments, posts incl. LiveNavigationModal floating map+guide overlay [Sprint 28], RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel (restore/update/delete)/ShareRouteModal edit mode + draft update-vs-new prompt, MapPins [MapRoutePin/MapUserDot anchor-stable], moderation [PostMenu owner-only Edit/Archive/Delete (Sprint 37), ReportDialog], profile [RewardsPanel, EarlyAdopterBadge, AuthLinkPanel, EmailSecurityPanel (verify/change-email/change-password, gated)], reviews [ReviewsPanel form+list+FAQ (own + read-only author-scoped)] [Sprint 25], explore, suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
+│   │   └── features/        → Domain-specific components (comments [CommentInput caret-explicit + AppAvatar, CommentList AppAvatar rows, PostCommentsModal shared feed/profile/search/detail (Sprint 39)], posts incl. LiveNavigationModal floating map+guide overlay [Sprint 28], RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel (restore/update/delete)/ShareRouteModal edit mode + draft update-vs-new prompt, MapPins [MapRoutePin/MapUserDot anchor-stable], moderation [PostMenu owner-only Edit/Archive/Delete (Sprint 37), ReportDialog], profile [RewardsPanel, EarlyAdopterBadge, AuthLinkPanel, EmailSecurityPanel (verify/change-email/change-password, gated)], reviews [ReviewsPanel form+list+FAQ (own + read-only author-scoped)] [Sprint 25], explore [ExploreSearchInput unified suggestions + recents (Sprint 39)], suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
 │   │   ├── services/        → 27 service modules (corroboration evidence blend single+batched + create-path reuse [Sprint 38], mediaCleanup ACID-safe Cloudinary orphan purge [Sprint 33], trustBreakdown canonical single+batched live breakdowns [Sprint 32], postShare universal Web-Share→clipboard→legacy [Sprint 31], mapProxy keyless trace/geocode/reverse, earlyAdopter rank/status/list, errorReport sanitized bug filing, feed, search, routeDrafts, postModeration, mention, referral, notification, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)
 │   │   ├── cache/           → Client memoryCache (TTL Map, prefix invalidation, never-throw)

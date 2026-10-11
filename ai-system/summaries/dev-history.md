@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1117,4 +1117,15 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Other trust factors audited, unchanged (all real signals; dynamic legs additive/capped).
 - Tests: NEW `services/corroboration.test.ts` (8).
 **QA:** tsc zero errors; trust suites 43/43; full jest 443/446 with 3 pre-existing failures verified identical at HEAD; lint pre-existing-only.
+**Compliance:** additive-only, no migration/deps/API removals.
+
+## Sprint 39 (2026-10-11) — Comment tightening + feed modal parity + explore search expansion + test close-out
+**Directive:** invisible comment caret; comment avatar inconsistency; feed comment icon full-page nav vs profile modal; explore search for users + general posts with suggestions + recents; resolve all failing tests (incl. 3 pre-existing). Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `COMMENTS_CONFIG` + `EXPLORE_SEARCH_CONFIG` (+ recent helpers) exported from config index.
+- Caret: explicit `var(--color-primary)` inline (overlay trick kept, `caret-current` removed); avatars: `AppAvatar` in composer/list/mentions/search rows; detail page passes real `userName` (fixes profile links).
+- NEW shared `PostCommentsModal`; feed/profile/search/detail all use it; hook fallback soft-navigates via router.
+- NEW `ExploreSearchInput`: unified-search suggestions (routes incl. requests + people + tags) + localStorage recents + full-search footer; explore filter untouched; pick centres/opens pin or routes to post.
+- All 3 pre-existing red suites fixed (comment-prose assertions reworded; cache test asserts deep equality + empty-page fast path); NEW `commentTightening` (10) + `exploreSearchExpansion` (6) suites.
+**QA:** tsc zero errors; jest 54/54 suites 461/461 (was 443/446); lint pre-existing-only; `npm run build` clean.
 **Compliance:** additive-only, no migration/deps/API removals.

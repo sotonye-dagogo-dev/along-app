@@ -686,3 +686,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** when a shared component degrades gracefully, audit prop-forwarding at every call site (not the component); keep trust math in pure, unit-tested engine functions with config weights, and DB evidence in one best-effort service with per-leg fallbacks — scores stay explainable and reads never fail because of trust.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 39: transparent-overlay carets, initials-div avatars, and tests that assert on prose
+- **Symptom:** comment box caret invisible (only textbox platform-wide); comment avatars differed from every other surface; feed comment icon reloaded the page while profile opened a modal; 3 red suites nobody owned.
+- **Root causes:** (1) `caret-current` inside a `text-transparent` overlay inherits transparency — caret-color must be explicit whenever text is intentionally transparent; (2) comments hand-rolled initials divs instead of the shared `AppAvatar`, and one caller passed a display name as `userName`, breaking both avatar and profile link; (3) feed wired `onComment` to `window.location.href` while profile built an inline modal — no shared modal existed; (4) file-content tests matched history comments (`sendInBackground`/`globalThis`/`void send…` in prose) and asserted reference equality on a service that re-enriches cached rows (new object by design).
+- **Fix pattern (reuse):** any transparent-text overlay sets `caretColor` explicitly from config; every user face renders through `AppAvatar` (fallback is its job, not callers'); one shared modal component per interaction, reused at every call site; file-content assertions must target code-only markers (or keep history prose free of asserted substrings), and cache tests assert deep equality when enrichment is intended. Pre-existing red suites get fixed when the directive owns them — recorded, not scope-crept.
+- **Supersedes:** None
+- **Superseded by:** None

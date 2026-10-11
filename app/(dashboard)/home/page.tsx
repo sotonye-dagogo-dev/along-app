@@ -5,6 +5,7 @@ import { RefreshCw, ClipboardList, History } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useSearchParams } from "next/navigation"
 import { PostCard } from "@/app/components/features/posts"
+import { PostCommentsModal } from "@/app/components/features/comments"
 import type { RespondToRequest, RouteRequestBody, EditRouteRequest } from "@/app/components/features/posts"
 
 const ShareRouteModal = dynamic(() => import("@/app/components/features/posts/ShareRouteModal"), { ssr: false })
@@ -110,6 +111,9 @@ function HomeContent() {
   const [editRequest, setEditRequest] = useState<EditRouteRequest | null>(null)
   const [draftsCount, setDraftsCount] = useState(0)
   const [openDraftsOnShare, setOpenDraftsOnShare] = useState(false)
+  // Feed comment modal (parity with profile tabs): the comment icon opens the
+  // shared modal with a routing link to the full post, never a full-page nav.
+  const [commentPostId, setCommentPostId] = useState<string | null>(null)
   const loaderRef = useRef<HTMLDivElement>(null)
   const { user, isLoading: authLoading } = useAuth()
   const searchParams = useSearchParams()
@@ -306,7 +310,26 @@ function HomeContent() {
 
   const { sharePost } = usePostShare()
 
-  const { handleLike, handleDislike, handleBookmark, handleComment } = useFeedInteractions({
+  // Modal-first comment flow: same shared modal as profile tabs (composer +
+  // list + expand-post link). Replaces the old full-page post navigation so
+  // scrolling position and feed state survive the interaction.
+  const openFeedComments = useCallback((postId: string) => {
+    setCommentPostId(postId)
+  }, [])
+
+  const handleFeedCommentPosted = useCallback((postId: string) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, comments: (p.comments ?? 0) + 1 } : p)))
+  }, [])
+
+  const commentPost = commentPostId ? posts.find((p) => p.id === commentPostId) ?? null : null
+  const commentViewer = {
+    userName: (user as { userName?: string } | null)?.userName ?? "guest",
+    displayName:
+      `${(user as { firstName?: string } | null)?.firstName ?? ""} ${(user as { lastName?: string } | null)?.lastName ?? ""}`.trim() || "You",
+    avatar: (user as { avatar?: string } | null)?.avatar ?? null,
+  }
+
+  const { handleLike, handleDislike, handleBookmark } = useFeedInteractions({
     onLike: async (postId, liked) => {
       feedStream.applyInteraction({ postId, type: "like", value: liked })
       await fetch(`/api/posts/${postId}/like`, {
@@ -546,7 +569,7 @@ function HomeContent() {
               onDislike={handleDislike}
               onBookmark={handleBookmark}
               onShare={(postId) => void sharePost(postId, post.title)}
-              onComment={handleComment}
+              onComment={openFeedComments}
               onRespond={handleRespond}
               onEdit={handleEditPost as never}
               onDeleted={(postId) => feedStream.removePost(postId)}
@@ -597,6 +620,15 @@ function HomeContent() {
         onSubmit={async (data: RouteRequestBody) => submitPost(data)}
         editRequest={editRequest}
         onEditSubmit={handleEditRequestSubmit}
+      />
+
+      <PostCommentsModal
+        open={commentPostId !== null}
+        postId={commentPostId}
+        postTitle={commentPost?.title}
+        viewer={commentViewer}
+        onClose={() => setCommentPostId(null)}
+        onCommentPosted={handleFeedCommentPosted}
       />
     </>
   )
