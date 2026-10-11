@@ -179,6 +179,24 @@ export async function getLiveBreakdownForPost(
 }
 
 /**
+ * Fields attached to each post by attachLiveBreakdownsToPosts. Partial
+ * because the per-post evaluation is best-effort — a failing post keeps its
+ * stored shape with none of these set.
+ */
+export interface LiveBreakdownAttachment {
+  validityScore: number;
+  validityTier: LiveTrustBreakdown["tier"];
+  validityBreakdown: {
+    community: number;
+    detail: number;
+    corroboration: number;
+    recency: number;
+    reputation: number;
+    engagement: number;
+    score: number;
+  };
+}
+/**
  * Batched live breakdowns for list surfaces (feed, search, profile tabs,
  * explore). Same per-post computation as the detail path — same inputs,
  * same engine, same numbers — with batched author/follower/report lookups
@@ -188,7 +206,7 @@ export async function getLiveBreakdownForPost(
 export async function attachLiveBreakdownsToPosts<T extends TrustPostLike>(
   prisma: PrismaLike,
   posts: T[]
-): Promise<T[]> {
+): Promise<Array<T & Partial<LiveBreakdownAttachment>>> {
   if (!Array.isArray(posts) || posts.length === 0) return posts;
   try {
     const now = Date.now();

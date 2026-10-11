@@ -98,10 +98,20 @@ export type EmailLog = Prisma.EmailLogModel
  */
 export type PasswordResetToken = Prisma.PasswordResetTokenModel
 /**
+ * Model EmailOtpToken
+ * 
+ */
+export type EmailOtpToken = Prisma.EmailOtpTokenModel
+/**
  * Model PushSubscription
  * 
  */
 export type PushSubscription = Prisma.PushSubscriptionModel
+/**
+ * Model AuditLog
+ * 
+ */
+export type AuditLog = Prisma.AuditLogModel
 /**
  * Model AccountDeletionRequest
  * 

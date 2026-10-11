@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Trash2, Archive, ArchiveRestore, Flag } from "lucide-react"
+import { Trash2, Archive, ArchiveRestore, Flag, Pencil } from "lucide-react"
 import { modalService } from "@/app/lib/services/modalService"
 import { toastService } from "@/app/lib/services/toastService"
 import { undoService } from "@/app/lib/services/undoService"
+import { AppModal, AppInput, AppTextarea, AppButton } from "@/app/components/ui"
 import { POST_ACTIONS_CONFIG, MODERATION_CONFIG } from "@/app/lib/config"
 import { ADMIN_BULK_SELECT_META } from "@/app/lib/config/admin"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
@@ -13,6 +14,8 @@ import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 interface AdminPost {
   id: string
   title: string
+  description?: string | null
+  tags?: string[]
   type?: string
   validityScore: number
   validityTier: string | null
@@ -36,6 +39,13 @@ export default function AdminPostsPage() {
   const [loading, setLoading] = useState(true)
   const [bulkBusy, setBulkBusy] = useState(false)
   const bulk = useBulkSelection(posts, (p) => p.id)
+  // Admin edit state — title/description/tags only (nature-preserving, see PUT /api/admin/posts).
+  const [editing, setEditing] = useState<AdminPost | null>(null)
+  const [editTitle, setEditTitle] = useState("")
+  const [editDescription, setEditDescription] = useState("")
+  const [editTags, setEditTags] = useState("")
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -196,8 +206,55 @@ export default function AdminPostsPage() {
     })()
   }
 
-  const handleArchiveToggle = (post: AdminPost) => {
-    const archiving = !post.isArchived
+  const openEdit = (post: AdminPost) => {
+    setEditing(post)
+    setEditTitle(post.title ?? "")
+    setEditDescription(post.description ?? "")
+    setEditTags(Array.isArray(post.tags) ? post.tags.join(", ") : "")
+    setEditError(null)
+  }
+
+  const saveEdit = () => {
+    if (!editing || editSaving) return
+    const title = editTitle.trim()
+    if (title.length < 3 || title.length > 200) {
+      setEditError("Title must be 3–200 characters.")
+      return
+    }
+    if (editDescription.length > 5000) {
+      setEditError("Description must be under 5000 characters.")
+      return
+    }
+    const tags = editTags.split(",").map((t) => t.trim().slice(0, 40)).filter(Boolean).slice(0, 10)
+    setEditSaving(true)
+    setEditError(null)
+    void (async () => {
+      try {
+        const res = await fetch("/api/admin/posts", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postId: editing.id,
+            title,
+            description: editDescription.trim(),
+            tags,
+          }),
+        })
+        const payload = await res.json().catch(() => null)
+        if (!res.ok) throw new Error((payload as { error?: string } | null)?.error || "Request failed")
+        setPosts((prev) => prev.map((p) => (p.id === editing.id ? { ...p, title, description: editDescription.trim() || null, tags } : p)))
+        setEditing(null)
+        toastService.success(POST_ACTIONS_CONFIG.editSuccess)
+      } catch (err) {
+        console.error("[AdminError]", err)
+        setEditError(POST_ACTIONS_CONFIG.editError)
+      } finally {
+        setEditSaving(false)
+      }
+    })()
+  }
+
+  const handleArchiveToggle = (post: AdminPost) => {    const archiving = !post.isArchived
     modalService.confirm({
       title: archiving ? MODERATION_CONFIG.adminConfirmArchiveTitle : POST_ACTIONS_CONFIG.unarchiveTitle,
       description: archiving ? MODERATION_CONFIG.adminConfirmArchiveDescription : POST_ACTIONS_CONFIG.unarchiveDescription,
@@ -321,6 +378,14 @@ export default function AdminPostsPage() {
                 <td className="px-4 py-3 border-b border-border whitespace-nowrap">
                   <span className="inline-flex items-center gap-1.5 flex-wrap">
                     <button
+                      onClick={() => openEdit(p)}
+                      aria-label={`Edit ${p.title}`}
+                      className="inline-flex items-center gap-1 px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border cursor-pointer hover:border-primary-muted hover:text-primary transition-all duration-fast"
+                    >
+                      <Pencil size={10} />
+                      Edit
+                    </button>
+                    <button
                       onClick={() => handleArchiveToggle(p)}
                       className="inline-flex items-center gap-1 px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border cursor-pointer hover:border-primary-muted hover:text-primary transition-all duration-fast"
                     >
@@ -341,6 +406,50 @@ export default function AdminPostsPage() {
           </tbody>
         </table>
       </div>
+
+      <AppModal
+        open={editing !== null}
+        onClose={() => (editSaving ? undefined : setEditing(null))}
+        title="Edit post"
+        subtitle={editing ? `Correcting "${editing.title.slice(0, 60)}" — title, description and tags only. Route content and post type are never changed.` : undefined}
+        footer={
+          <>
+            <AppButton variant="ghost" onClick={() => setEditing(null)} disabled={editSaving}>
+              Cancel
+            </AppButton>
+            <AppButton variant="primary" onClick={saveEdit} loading={editSaving}>
+              Save changes
+            </AppButton>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <AppInput
+            label="Title"
+            value={editTitle}
+            maxLength={200}
+            onChange={(e) => setEditTitle(e.target.value)}
+            placeholder="Post title"
+          />
+          <AppTextarea
+            label="Description"
+            value={editDescription}
+            rows={4}
+            maxLength={5000}
+            onChange={(e) => setEditDescription(e.target.value)}
+            placeholder="Optional description"
+          />
+          <AppInput
+            label="Tags (comma separated, up to 10)"
+            value={editTags}
+            onChange={(e) => setEditTags(e.target.value)}
+            placeholder="e.g. lekki, traffic, morning"
+          />
+          {editError && (
+            <p className="text-xs text-error-text" role="alert">{editError}</p>
+          )}
+        </div>
+      </AppModal>
     </div>
   )
 }

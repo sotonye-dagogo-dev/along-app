@@ -1,8 +1,8 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 25 reviews + i18n + PWA decisions)
-> - last-verified-against-code: 2026-10-09
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 owner-only menu + dashboard moderation + audited mutations)
+> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -682,3 +682,23 @@ Additive (not renormalised) weights keep every legacy score bit-identical when n
 - Tuning trust = edit `DEFAULT_VALIDITY_CONFIG` / `VALIDITY_SIGNAL_BOUNDS` only; engine code needs no change.
 - Any new post surface must use `usePostShare` (or at minimum render `PostCard`, which self-shares).
 - Any new interaction that should move trust must call `publishValidityRecompute` (bounded for fan-outs like follow).
+
+## Sprint 37: owner-only post menu, dashboard-based admin moderation, audited admin mutations
+
+**Decision:** Post management in public surfaces is gated by ownership alone; admins moderate exclusively from `/admin/posts` (now with Edit); every admin post mutation is audit-logged; the audit trail is a config-driven friendly table.
+**Date:** 2026-10-11
+**Made by:** AI agent (opencode — execute-feature Sprint 37)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Showing Archive/Delete to admins on other users' posts leaks moderation affordances into the public UI and confuses role boundaries — an admin browsing the feed should see what any viewer sees. Concentrating moderation on `/admin/posts` keeps one audited surface (confirm modal + undo + audit log) instead of two divergent ones. Owner self-edits/archives stay unaudited (noise); only admin-not-owner mutations log, keeping the trail meaningful.
+
+**Alternatives Considered:**
+- **Keep admin Archive/Delete in PostMenu, add admin Edit there too**: Rejected — preserves the reported bug (admins seeing destructive actions on others' posts) and splits moderation across two surfaces with different audit coverage.
+- **Audit owner self-actions as well**: Rejected — floods the trail with routine self-management; admin accountability is the trail's purpose.
+- **Bespoke audit table markup**: Rejected — `AppTable`/`AppTag`/`AppCard` already encode sorting/selection/empty/loading states; config-driven labels keep future entities/actions metadata-only.
+
+**Implications:**
+- Any new post-management affordance in public UI must be owner-gated in `PostMenu` (handlers must also no-op without ownership).
+- Any new admin mutation route must `void logAudit(...)` fire-and-forget; new audit entities/actions need only `AUDIT_DISPLAY_CONFIG` entries to render.

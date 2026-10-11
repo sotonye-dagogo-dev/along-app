@@ -114,3 +114,11 @@ export { PROFILE_POSTS_CONFIG } from "./profilePosts";
 export type { ProfilePostsConfig } from "./profilePosts";
 export { MEDIA_CLEANUP_CONFIG } from "./mediaCleanup";
 export type { MediaCleanupConfig, MediaCleanupSource } from "./mediaCleanup";
+export {
+  AUDIT_DISPLAY_CONFIG,
+  sanitizeAuditText,
+  sanitizeAuditDetails,
+  auditEntityMeta,
+  auditActionMeta,
+} from "./audit";
+export type { AuditDisplayConfig, AuditEntityMeta, AuditActionMeta, AuditDetailChip, AuditTagVariant } from "./audit";

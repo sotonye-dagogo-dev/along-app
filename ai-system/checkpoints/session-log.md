@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-command 2026-10-10 (Sprint 34 location/feed/invite)
-> - last-verified-against-code: 2026-10-10
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 37)
+> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -1878,3 +1878,10 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner — executed the shipped `validateRouteComposer` in node (dest-skip valid `[{},{}]`, non-dest `400-500` still flagged, empty dest location still required); re-reads of all 6 touched files (banner/panel/footer JSX balance, memo deps, P2022 fallback include override, test expects match new config); drafts-service node import blocked by `@/` alias (jest-resolvable, deferred). Full jest/tsc/build deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs (list shape additive-only: +`quotedPost`; validator strictly loosens destination-only cases; modal shows previously-hidden UI in edit mode); additive-only.
 **Chain:** execute-feature → in-progress (written + cleared) → session-log (here) → dev-history + task-queue + system-architecture → update-ai-system terminal sync.
+
+## Session 2026-10-11 — Owner-only post menu + admin edit with audit + friendly audit trail (execute-feature)
+**Directive:** post menu must not expose archive/delete to non-posters (admin saw them on others' posts); admin post actions gain editing, audit-logged; audit log UI more user-friendly with sanitization + table UI via reusable universal components. Config/metadata-driven, modular, non-breaking + update-ai-system chain, with fallbacks/error handling/edge cases.
+**Implemented:** `PostMenu` owner-only Edit/Archive/Delete (admin = viewer Copy link + Report; defence-in-depth handler guards; `viewerRole` prop retained); new audited `PUT /api/admin/posts` (title/description/tags, validated, nature-preserving) + `logAudit` on admin PATCH/DELETE + admin-not-owner mutations in `PATCH/DELETE /api/posts/[id]`; `/admin/posts` Edit button + `AppModal` form; NEW `AUDIT_DISPLAY_CONFIG` (+ pure sanitizers/meta resolvers) and `/admin/audit` rebuilt on `AppTable`/`AppTag`/`AppCard`/`AppEmptyState`/`AppSelect`/`AppInput`/`AppButton`; `attachLiveBreakdownsToPosts` return-type widening (`T & Partial<LiveBreakdownAttachment>`); NEW `config/audit.test.ts` (6) + `components/PostMenu.test.tsx` (4).
+**QA:** tsc zero errors; `npm run build` passes; jest 436/439 (3 pre-existing failures in untouched suites, verified identical at HEAD via stash); lint errors pre-existing-only, zero in touched files.
+**Compliance:** additive-only, no migration/deps/API removals.
+**Chain:** execute-feature → in-progress (written + cleared) → session-log (here) → dev-history + task-queue + repo-map + dependency-graph + system-architecture → update-ai-system terminal sync.

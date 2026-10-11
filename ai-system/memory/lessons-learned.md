@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 session-select vs status-source lesson)
-> - last-verified-against-code: 2026-10-11
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 return-type + stash-verified baseline lesson)
+> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -670,5 +670,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** Share stayed disabled with "fix the highlighted fields" while every visible field looked filled (after an edit→draft→repost-as-response flow); editing a ROUTE_RESPONSE dropped its "Responding to" tag in the UI even though the DB row kept it.
 - **Root causes:** (1) destination fare/vehicle inputs are hidden by `ROUTE_STEPS_CONFIG`, but `validateRouteComposer` still validated them — legacy values carried by edit prefills/restored drafts flagged invisible errors; (2) `EditPost` had no linkage fields and `GET /api/posts` never included `quotedPost`, so the composer literally could not display the tag and drafts saved mid-edit were unlinkable (drafts UI was edit-gated); (3) prefill seeded `_fareRaw` even for the hidden destination step, manufacturing a raw value the user could never see or fix.
 - **Fix pattern (reuse):** any input hidden by config must also be skipped by validation (mirror the hide rule as skip flags in the validator, zero-dep); edit payloads carry display-only linkage (`type/quotedPostId/quotedPost`) that the server continues to treat as immutable; prefill/restore never seed raw values for hidden inputs (submit still strips via normalize). Applies to any future conditionally-hidden composer field.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 37: service return types that lie + stash-verified pre-existing failures
+- **Symptom:** `tsc` failed in `trustBreakdownConsistency.test.ts` (`validityBreakdown`/`validityScore`/`validityTier` "do not exist") even though the runtime attaches all three; plus 3 jest failures in `searchService`/`registerEmailDispatch` and lint errors in untouched files.
+- **Root causes:** (1) `attachLiveBreakdownsToPosts` declared `Promise<T[]>` while spreading attached fields onto each row — the generic erased what the function guarantees; (2) unrelated suites assert on auth/search file contents untouched by this sprint.
+- **Fix pattern (reuse):** widen the service return to `T & Partial<Attachment>` (additive, all call sites keep compiling, failures stay expressible via Partial); verify pre-existing status with `git stash -u` + re-run rather than assuming — stash must include untracked files or new-file errors pollute the baseline. Leave unrelated red suites to their owners; record as residual risk in the session log instead of scope-creeping into auth/search code.
 - **Supersedes:** None
 - **Superseded by:** None

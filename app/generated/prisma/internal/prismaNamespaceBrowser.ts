@@ -67,7 +67,9 @@ export const ModelName = {
   AnalyticsEvent: 'AnalyticsEvent',
   EmailLog: 'EmailLog',
   PasswordResetToken: 'PasswordResetToken',
+  EmailOtpToken: 'EmailOtpToken',
   PushSubscription: 'PushSubscription',
+  AuditLog: 'AuditLog',
   AccountDeletionRequest: 'AccountDeletionRequest'
 } as const
 
@@ -331,6 +333,19 @@ export const PasswordResetTokenScalarFieldEnum = {
 export type PasswordResetTokenScalarFieldEnum = (typeof PasswordResetTokenScalarFieldEnum)[keyof typeof PasswordResetTokenScalarFieldEnum]
 
 
+export const EmailOtpTokenScalarFieldEnum = {
+  id: 'id',
+  email: 'email',
+  purpose: 'purpose',
+  userId: 'userId',
+  otpHash: 'otpHash',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt'
+} as const
+
+export type EmailOtpTokenScalarFieldEnum = (typeof EmailOtpTokenScalarFieldEnum)[keyof typeof EmailOtpTokenScalarFieldEnum]
+
+
 export const PushSubscriptionScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -341,6 +356,19 @@ export const PushSubscriptionScalarFieldEnum = {
 } as const
 
 export type PushSubscriptionScalarFieldEnum = (typeof PushSubscriptionScalarFieldEnum)[keyof typeof PushSubscriptionScalarFieldEnum]
+
+
+export const AuditLogScalarFieldEnum = {
+  id: 'id',
+  actorId: 'actorId',
+  action: 'action',
+  entity: 'entity',
+  entityId: 'entityId',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type AuditLogScalarFieldEnum = (typeof AuditLogScalarFieldEnum)[keyof typeof AuditLogScalarFieldEnum]
 
 
 export const AccountDeletionRequestScalarFieldEnum = {

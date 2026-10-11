@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 36 response linkage + validation fix)
-> - last-verified-against-code: 2026-10-11 (static re-reads + executed validator in node; no node_modules in runner — tsc/jest/build deferred to CI/Vercel)
-> - last-synced: 2026-10-11 (Sprint 36 — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 owner-only post menu + admin edit/audit + friendly audit trail)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + build passes + jest 436/439 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
+> - last-synced: 2026-10-11 (Sprint 37 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
