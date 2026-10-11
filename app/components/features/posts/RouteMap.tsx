@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Navigation, Clock, DollarSign, Crosshair, Maximize2, Minimize2 } from 'lucide-react'
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
@@ -432,8 +433,13 @@ function RouteMap({
   // Expanded mode is a contained centered dialog (backdrop + max-width
   // panel), never a full-bleed 100vw layer — so it cannot spill past its
   // column into the desktop suggestions rail or scroll the page sideways.
+  // Portalled to document.body: `fixed` inside a transformed/filtered
+  // ancestor (cards, backdrop-blur panels) positions against that ancestor
+  // instead of the viewport, which is how the dialog used to drift right
+  // over the suggestions rail on desktop post views. The portal keeps it
+  // viewport-centered everywhere; SSR/edge fallback renders inline.
   if (expanded) {
-    return (
+    const dialog = (
       <div
         className={MAP_EXPAND_CONFIG.overlayClass}
         role="dialog"
@@ -448,12 +454,16 @@ function RouteMap({
         <div
           ref={containerRef}
           className={`${MAP_EXPAND_CONFIG.panelMaxWidthClass} ${MAP_EXPAND_CONFIG.panelClass} ${isDark ? "dark-map" : ""}`}
-          style={{ height: MAP_EXPAND_CONFIG.panelHeight }}
+          style={{ height: MAP_EXPAND_CONFIG.panelHeight, maxWidth: "min(56rem, calc(100vw - 2rem))" }}
         >
           {mapChrome}
         </div>
       </div>
     )
+    if (typeof document !== "undefined" && document.body) {
+      return createPortal(dialog, document.body)
+    }
+    return dialog
   }
 
   return (

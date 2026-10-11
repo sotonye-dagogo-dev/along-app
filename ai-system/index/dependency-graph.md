@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-11 (verified — no new import edges: MAP_EXPAND_CONFIG reuses the existing mapStack import in RouteMap; photoRemove fields reuse the existing shareRoute import in ShareRouteModal)
+> - last-updated-by: fix-build 2026-10-11 hardening (new edges: RouteMap → react-dom/createPortal; ExplorePinCard/explore/posts-detail/ReviewsPanel/About → ui/AppAvatar barrel (pre-existing module); reviews API → avatarConfig select; ShareRouteModal editInitRef internal only)
 > - last-verified-against-code: 2026-10-11 (grep-verified; full gate deferred to CI/Vercel, no node_modules)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 

@@ -35,6 +35,10 @@ describe("execute-feature: carousel/share-modal/request-trigger/footer configs",
     expect(btnClass).toMatch("w-7");
     expect(btnClass).toMatch("border");
     expect(btnClass).toMatch("focus-visible:");
+    // Above the thumbnail (not buried under the image) with a halo ring so
+    // the control reads on any photo, light or dark.
+    expect(btnClass).toMatch("z-10");
+    expect(btnClass).toMatch("ring-");
     expect(SHARE_ROUTE_MODAL_CONFIG.photoRemoveIconSize).toBeGreaterThanOrEqual(14);
   });
   it("share modal exposes the Request? trigger (config-driven)", () => {

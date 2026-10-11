@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { MapPin, Heart } from "lucide-react"
+import { AppAvatar } from "@/app/components/ui"
 
 function formatCount(n: number): string {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
@@ -13,6 +14,8 @@ interface ExplorePinCardUser {
   userName: string
   firstName: string
   lastName: string
+  avatar?: string | null
+  avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null
 }
 
 export interface ExplorePinCardProps {
@@ -33,11 +36,13 @@ export function ExplorePinCard({ id, title, user, validityScore, validityTier, t
       className="bg-bg-card border border-border radius-lg p-3 cursor-pointer transition-shadow duration-base hover:shadow-md no-underline block"
     >
       <div className="flex items-center gap-1.5 mb-1.5">
-        <Link href={`/profile/${user.userName}`} onClick={(e) => e.stopPropagation()} className="no-underline">
-          <div className="w-6 h-6 rounded-circle bg-primary-muted flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-            {user.firstName[0]}{user.lastName[0]}
-          </div>
-        </Link>
+        <AppAvatar
+          src={user.avatar ?? undefined}
+          alt={`${user.firstName} ${user.lastName}`}
+          size={24}
+          config={(user.avatarConfig ?? undefined) as { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | undefined}
+          userName={user.userName}
+        />
         <Link href={`/profile/${user.userName}`} onClick={(e) => e.stopPropagation()} className="text-xs font-semibold text-text-primary flex-1 no-underline hover:underline">
           {user.firstName} {user.lastName}
         </Link>

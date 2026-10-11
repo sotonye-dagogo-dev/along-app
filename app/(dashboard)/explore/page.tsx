@@ -13,6 +13,7 @@ import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
 import { getMapStyleStack, rasterFallbackDepth } from "@/app/lib/config/mapStack"
 import { MAP_PINS_CONFIG } from "@/app/lib/config/mapPins"
 import { MapRoutePin, MapUserDot } from "@/app/components/features/posts/MapPins"
+import { AppAvatar } from "@/app/components/ui"
 import { toastService } from "@/app/lib/services/toastService"
 import { LOCATION_FEEDBACK_CONFIG, locationErrorCopy } from "@/app/lib/config/locationFeedback"
 
@@ -32,7 +33,7 @@ interface PostPin {
   validityTier: string | null
   region: string | null
   createdAt: string
-  user: { userName: string; firstName: string; lastName: string }
+  user: { userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: unknown }
 }
 
 function getTimeAgo(date: string): string {
@@ -60,7 +61,7 @@ interface ExploreApiPost {
   region: string | null
   routes?: unknown
   createdAt: string
-  user: { userName: string; firstName: string; lastName: string }
+  user: { userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: unknown }
 }
 
 export default function ExplorePage() {
@@ -489,11 +490,13 @@ export default function ExplorePage() {
           style={{ top: "200px", left: "420px" }}
         >
           <div className="flex items-center gap-2 mb-2">
-            <Link href={`/profile/${selectedPin.user.userName}`} className="no-underline">
-              <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                {selectedPin.user.firstName[0]}{selectedPin.user.lastName[0]}
-              </div>
-            </Link>
+            <AppAvatar
+              src={selectedPin.user.avatar ?? undefined}
+              alt={`${selectedPin.user.firstName} ${selectedPin.user.lastName}`}
+              size={32}
+              config={selectedPin.user.avatarConfig as { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | undefined}
+              userName={selectedPin.user.userName}
+            />
             <div>
               <Link href={`/profile/${selectedPin.user.userName}`} className="text-xs font-semibold no-underline hover:underline text-text-primary">{selectedPin.user.firstName} {selectedPin.user.lastName}</Link>
               <Link href={`/profile/${selectedPin.user.userName}`} className="text-[11px] text-text-secondary no-underline hover:underline block">@{selectedPin.user.userName} · {getTimeAgo(selectedPin.createdAt)}</Link>

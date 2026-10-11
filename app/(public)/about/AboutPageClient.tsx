@@ -8,6 +8,7 @@ import type { PlatformReviewItem } from "@/app/lib/config";
 import { useTranslation } from "@/app/providers/I18nProvider";
 import { useAuth } from "@/app/hooks/useAuth";
 import { EndlessCarousel } from "@/app/components/features/suggestions/EndlessCarousel";
+import { AppAvatar } from "@/app/components/ui";
 
 export default function AboutPageClient() {
   const { tf } = useTranslation();
@@ -210,7 +211,6 @@ export default function AboutPageClient() {
 function ReviewCard({ review: r }: { review: PlatformReviewItem }) {
   const { tf } = useTranslation();
   const name = reviewAuthorName(r.reviewer);
-  const initials = name.split(/\s+/).map((p) => p[0]).join("").slice(0, 2).toUpperCase() || "?";
   return (
     <div className="w-[280px] sm:w-[320px] glass rounded-2xl p-7 shrink-0">
       <div className="flex gap-0.5 mb-3" aria-label={`${r.rating} out of 5 stars`}>
@@ -228,9 +228,13 @@ function ReviewCard({ review: r }: { review: PlatformReviewItem }) {
         </div>
       )}
       <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 bg-primary-muted text-primary">
-          {initials}
-        </div>
+        <AppAvatar
+          src={r.reviewer.avatar ?? undefined}
+          alt={name}
+          size={32}
+          config={(r.reviewer.avatarConfig ?? undefined) as { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | undefined}
+          userName={r.reviewer.userName}
+        />
         <div>
           <div className="text-xs font-semibold">{name}</div>
           <div className="text-[11px] text-text-muted">@{r.reviewer.userName || "deleted-user"}</div>
