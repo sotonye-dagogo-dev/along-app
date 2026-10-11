@@ -75,6 +75,7 @@ const TRUST_CONFIG = {
 
 const METRICS = TRUST_DISPLAY_CONFIG.fullKeys.map((key) => ({
   label: TRUST_DISPLAY_CONFIG.labels[key],
+  description: TRUST_DISPLAY_CONFIG.descriptions[key],
   key,
 }));
 
@@ -132,6 +133,7 @@ export function TrustBadge({
       const v = (breakdown as Record<string, unknown>)[m.key];
       return {
         label: m.label,
+        description: m.description,
         value: Math.min(100, Math.max(0, Math.round(Number(v)))),
         live: true as const,
       };
@@ -139,6 +141,7 @@ export function TrustBadge({
     const offset = (i - 1.5) * 8;
     return {
       label: m.label,
+      description: m.description,
       value: Math.min(100, Math.max(0, displayScore + offset)),
       live: false as const,
     };
@@ -219,7 +222,7 @@ export function TrustBadge({
           </p>
           <div className="flex flex-col gap-2">
             {metricValues.map((metric) => (
-              <div key={metric.label} className="flex items-center gap-2">
+              <div key={metric.label} className="flex items-center gap-2" title={metric.description}>
                 <span className="text-xs text-text-secondary w-24 shrink-0">
                   {metric.label}
                 </span>

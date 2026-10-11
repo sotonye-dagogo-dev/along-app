@@ -830,7 +830,9 @@ export default function PostDetailPage() {
           Comments <span className="font-normal text-sm text-text-muted">· {comments.length}</span>
         </h3>
         <CommentInput
-          userName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "User"}
+          userName={currentUser ? currentUser.userName : "guest"}
+          displayName={currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : "Guest"}
+          avatar={currentUser?.avatar ?? null}
           onSubmit={handleComment}
         />
         <CommentList

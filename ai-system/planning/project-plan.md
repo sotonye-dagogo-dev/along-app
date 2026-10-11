@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 36 response linkage + validation fix)
-> - last-verified-against-code: 2026-10-11 (Sprint 36 rows: validator skip flags + EditPost linkage + quotedPost list include present in code; static-level verification only — tsc/jest/build deferred to CI, no node_modules; prior Sprint 35 rows verified as recorded)
+> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -79,7 +79,7 @@
 - [x] ValidityEngine for route verification scoring (`app/lib/services/ValidityEngine.ts`)
 - [x] DraftingCoach for post quality guidance (`app/lib/services/DraftingCoachService.ts`)
 - [x] TrustBadge component for verified reporters (`app/components/ui/TrustBadge.tsx`)
-- [x] Search — unified posts + users + tags search (`GET /api/search`, `searchService.ts`, `/search` page; contains/insensitive queries + Redis cache, no migration needed; 2026-10-08)
+- [x] Search — unified posts + users + tags search (`GET /api/search`, `searchService.ts`, `/search` page; contains/insensitive queries + Redis cache, no migration needed; 2026-10-08). Sprint 39: explore search expansion — `ExploreSearchInput` suggestions (routes incl. requests + people + tags) + localStorage recents + full-search footer over untouched client filter (`EXPLORE_SEARCH_CONFIG`); shared `PostCommentsModal` on feed/profile/search/detail (`COMMENTS_CONFIG`); 3 pre-existing red suites fixed, jest 461/461 (2026-10-11)
 - [x] Map integration with route polyline rendering (`app/components/features/posts/RouteMap.tsx`, `app/lib/services/routeTracingService.ts`, `app/api/routes/trace/`)
 - [x] Route requests E2E — PostType enum, quotedPost self-relation, RequestRouteModal, Respond CTA + quote block, /api/suggestions (Sprint 7, 2026-10-07/08)
 - [ ] Clustering for dense map markers (supercluster dependency listed but not wired)
@@ -170,3 +170,6 @@
 - [x] Sprint 34 (2026-10-10) — Location toasts + feed/explore soundness + invite-link tightening (locationFeedback copy/helper, feed SiteConfig + viewer-location bonus + trust tie-break, invite canonical redirects) (full gate deferred to CI — no node_modules in runner)
 - [x] Sprint 35 (2026-10-11) — Leaderboard cross-links + auth-link tightening (LEADERBOARD_LINKS_CONFIG + PROFILE_QUICK_LINKS_CONFIG + AUTH_LINK_STATUS_CONFIG, link/status DB re-read with server-only booleans, profile link-result toasts + URL cleanup, invite CTA, 3 locale keys en/pcm parity) (leaderboardAuthLink 5 suites; full gate deferred to CI — no node_modules in runner)
 - [x] Sprint 36 (2026-10-11) — Response-linkage persistence + composer false-validation fix (EditPost linkage fields + edit-response banner + drafts-in-edit, GET /api/posts quotedPost include, validator destination fare/vehicle skip) (routeValidation +2, routeDrafts +1 suites; full gate deferred to CI — no node_modules in runner)
+- [x] Sprint 37 (2026-10-11) — Owner-only post menu + admin edit with audit + friendly audit trail (PostMenu owner-gated, PUT /api/admin/posts nature-preserving edit, logAudit on admin mutations, AUDIT_DISPLAY_CONFIG + rebuilt /admin/audit) (audit 6 + PostMenu 4 suites; tsc zero + build passes + jest 436/439 pre-existing-only in-runner)
+- [x] Sprint 38 (2026-10-11) — Profile post parity + corroboration tightening (PostItem forwards validityBreakdown/quotedPostId/quotedPost/responsesCount; CORROBORATION_CONFIG evidence blend + pure engine scorers + single/batched/create-path reuse; TRUST_BREAKDOWN_DESCRIPTIONS tooltip help) (corroboration 8 suites; tsc zero + jest 443/446 pre-existing-only in-runner, build deferred to Vercel)
+- [x] Sprint 39 (2026-10-11) — Trust detail-42 fix (DETAIL_SCORING_CONFIG richness bonuses + computePostDetailScore/detailContextFromPost, service single+batched + create + worker reuse) + error-boundary bug-report CTA (prefill builder + URL, toast action-slot CTA + inline link, report-bug query prefill + hint, EMPTY_STATES.error honest copy) + search discoverability (NAV_REGISTRY + sidebar user-row icon + footer + profile quick-links + footer.search en/pcm) (detailScoring 8 + errorReportPrefill 6 + searchLinks 3 suites; tsc zero + jest 478/478 + lint clean in-runner, build deferred to Vercel)

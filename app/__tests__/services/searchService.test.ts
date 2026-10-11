@@ -63,7 +63,22 @@ describe("searchService.search", () => {
     const cached = { posts: [], users: [], tags: [], nextCursor: null };
     mockRedis.get.mockResolvedValueOnce(cached);
     const res = await searchService.search({ query: "yaba" });
-    expect(res).toBe(cached);
+    // Deep equality (not reference): cached pages are re-enriched with live
+    // trust before return, so non-empty pages are new objects by design.
+    expect(res).toEqual(cached);
+    expect(mockPost.findMany).not.toHaveBeenCalled();
+  });
+
+  it("re-enriches non-empty cached pages without hitting the post table", async () => {
+    const cached = {
+      posts: [{ id: "p1", title: "A", tags: ["yaba"], user: { id: "u1" } }],
+      users: [],
+      tags: [{ tag: "yaba", count: 1 }],
+      nextCursor: null,
+    };
+    mockRedis.get.mockResolvedValueOnce(cached);
+    const res = await searchService.search({ query: "yaba" });
+    expect(res.posts).toHaveLength(1);
     expect(mockPost.findMany).not.toHaveBeenCalled();
   });
 

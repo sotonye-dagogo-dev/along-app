@@ -6,7 +6,7 @@ export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, USERNAME_RULE, POST
 export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
 export { DEFAULT_FEED_CONFIG } from "./feedAlgorithm";
 export { QUALITY_CHECKPOINTS } from "./draftingCoach";
-export { DEFAULT_VALIDITY_CONFIG, VALIDITY_SIGNAL_BOUNDS } from "./validityConfig";
+export { DEFAULT_VALIDITY_CONFIG, VALIDITY_SIGNAL_BOUNDS, DETAIL_SCORING_CONFIG } from "./validityConfig";
 export { TRUST_DISPLAY_CONFIG, TRUST_BREAKDOWN_KEYS, TRUST_BREAKDOWN_LABELS, trustKeysForVariant, trustTierForScore } from "./trustDisplay";
 export type { TrustBreakdownKey, TrustDisplayVariant } from "./trustDisplay";
 export { AVATAR_STYLES, buildAvatarUrl, getFallbackAvatarUrl } from "./avatar";
@@ -110,6 +110,14 @@ export { DEFAULT_BLOG_CATEGORIES, BLOG_LAYOUT_CONFIG } from "./blog";
 export type { BlogCategory, BlogLayoutConfig } from "./blog";
 export { EXPLORE_PIN_POPUP_CONFIG } from "./explore";
 export type { ExplorePinPopupConfig } from "./explore";
+export { COMMENTS_CONFIG } from "./comments";
+export type { CommentsConfig } from "./comments";
+export {
+  EXPLORE_SEARCH_CONFIG,
+  loadRecentSearches,
+  saveRecentSearch,
+  clearRecentSearches,
+} from "./exploreSearch";
 export { PROFILE_POSTS_CONFIG } from "./profilePosts";
 export type { ProfilePostsConfig } from "./profilePosts";
 export { MEDIA_CLEANUP_CONFIG } from "./mediaCleanup";

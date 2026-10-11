@@ -200,8 +200,8 @@ export async function POST(request: NextRequest) {
       ).catch(() => {}),
     ]);
 
-    // Awaited email dispatch — the previous fire-and-forget
-    // (`void sendInBackground()` / `globalThis.waitUntil`, which does not
+    // Awaited email dispatch — the previous detached background pattern
+    // (unawaited send plus a runtime-global wait handle, which does not
     // exist on the Vercel/Next runtime) let serverless freeze the function
     // the moment the response returned, silently dropping the OTP mail while
     // awaited flows (forgot-password, resend, verify-email trigger) delivered

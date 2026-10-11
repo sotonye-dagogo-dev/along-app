@@ -1,8 +1,10 @@
 "use client"
 
-import Link from "next/link"
 import { useState, useRef, useCallback, useEffect } from "react"
 import { Send } from "lucide-react"
+import { AppAvatar } from "@/app/components/ui/AppAvatar"
+import { COMMENTS_CONFIG } from "@/app/lib/config/comments"
+import type { AvatarConfig } from "@/app/lib/types"
 
 interface MentionUser {
   id: string
@@ -10,14 +12,20 @@ interface MentionUser {
   firstName: string
   lastName: string
   avatar?: string | null
+  avatarConfig?: AvatarConfig | null
 }
 
 interface CommentInputProps {
   userName: string
   onSubmit: (text: string) => void
+  /** Viewer avatar — optional for backward compat; falls back to AppAvatar initial. */
+  avatar?: string | null
+  avatarConfig?: AvatarConfig | null
+  /** Full display name for the avatar alt text (defaults to userName). */
+  displayName?: string
 }
 
-export default function CommentInput({ userName, onSubmit }: CommentInputProps) {
+export default function CommentInput({ userName, onSubmit, avatar, avatarConfig, displayName }: CommentInputProps) {
   const [text, setText] = useState("")
   const [mentionQuery, setMentionQuery] = useState("")
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([])
@@ -61,8 +69,8 @@ export default function CommentInput({ userName, onSubmit }: CommentInputProps) 
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (mentionQuery.length >= 1) {
-      debounceRef.current = setTimeout(() => searchUsers(mentionQuery), 200)
+    if (mentionQuery.length >= COMMENTS_CONFIG.mentionMinChars) {
+      debounceRef.current = setTimeout(() => searchUsers(mentionQuery), COMMENTS_CONFIG.mentionDebounceMs)
     } else {
       setMentionResults([])
     }
@@ -139,13 +147,6 @@ export default function CommentInput({ userName, onSubmit }: CommentInputProps) 
     }
   }
 
-  const initials = userName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
-
   const highlightedHtml = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -158,11 +159,13 @@ export default function CommentInput({ userName, onSubmit }: CommentInputProps) 
 
   return (
     <div className="flex items-start gap-2.5 mb-4 relative">
-      <Link href={`/profile/${userName}`} className="no-underline">
-        <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-xs font-bold text-primary shrink-0">
-          {initials}
-        </div>
-      </Link>
+      <AppAvatar
+        src={avatar ?? undefined}
+        alt={displayName ?? userName}
+        size={COMMENTS_CONFIG.avatarSize}
+        config={avatarConfig ?? undefined}
+        userName={userName}
+      />
       <div className="flex-1 flex flex-col gap-1.5 relative">
         <div className="relative">
           <div
@@ -177,8 +180,11 @@ export default function CommentInput({ userName, onSubmit }: CommentInputProps) 
             onKeyDown={handleKeyDown}
             onInput={handleInput}
             onClick={(e) => detectMention(text, e.currentTarget.selectionStart)}
-            placeholder="Add a comment... (use @ to mention)"
-            className="w-full min-h-[60px] px-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none resize-none bg-transparent text-transparent caret-current transition-colors duration-fast focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted absolute inset-0"
+            placeholder={COMMENTS_CONFIG.composerPlaceholder}
+            aria-label={COMMENTS_CONFIG.composerAriaLabel}
+            maxLength={COMMENTS_CONFIG.maxLength}
+            style={{ caretColor: COMMENTS_CONFIG.caretColor }}
+            className={`w-full min-h-[60px] px-3 py-2.5 border border-border radius-sm text-sm font-sans outline-none resize-none bg-transparent text-transparent transition-colors duration-fast focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted absolute inset-0 ${COMMENTS_CONFIG.selectionClass}`}
           />
         </div>
         {mentionResults.length > 0 && (
@@ -191,9 +197,13 @@ export default function CommentInput({ userName, onSubmit }: CommentInputProps) 
                   i === mentionIndex ? "bg-bg-elevated" : "hover:bg-bg-elevated"
                 }`}
               >
-                <div className="w-6 h-6 rounded-circle bg-primary-muted flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
-                  {u.firstName[0]}{u.lastName[0]}
-                </div>
+                <AppAvatar
+                  src={u.avatar ?? undefined}
+                  alt={`${u.firstName} ${u.lastName}`}
+                  size={COMMENTS_CONFIG.mentionAvatarSize}
+                  config={(u.avatarConfig ?? undefined) as AvatarConfig | undefined}
+                  linkToProfile={false}
+                />
                 <span className="font-medium text-text-primary">@{u.userName}</span>
                 <span className="text-text-muted">{u.firstName} {u.lastName}</span>
               </button>

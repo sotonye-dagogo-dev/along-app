@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { CREATE_POST_SCHEMA } from "@/app/lib/schemas/post";
-import { validityEngine, computeRouteDetailScore, computeSimilarityRatio } from "@/app/lib/services/ValidityEngine";
+import { validityEngine, computeRouteDetailScore, computePostDetailScore, detailContextFromPost } from "@/app/lib/services/ValidityEngine";
 import { qstashService } from "@/app/lib/services/qstashService";
 import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit";
 import { normalizeRouteSteps } from "@/app/lib/config/routeSteps";
@@ -94,14 +94,22 @@ export async function POST(request: NextRequest) {
 
     // Score first so the insert below is a single atomic write (no
     // create-then-update window where a retry could double-insert).
-    // Canonical scorer (shared with the recompute worker) + real synchronous
-    // corroboration + author reputation at post time — previously create used
-    // `routes.length * 20` with similarity hardcoded to 100, so every fresh
-    // post flashed an optimistic score the worker then overwrote (≈37 → 10).
+    // Canonical scorer (shared with the recompute worker) + the SAME live
+    // corroboration evidence the read paths use (tag/geo/route blend over
+    // ±windowDays) + author reputation at post time. A fresh post has no
+    // votes yet, so endorsement/response legs are 0 — the score matches what
+    // the worker recomputes instead of flashing an optimistic value.
     // Best-effort lookups never block the post on failure (fallbacks below).
-    let routeDetailScore = computeRouteDetailScore(routes);
+    // Detail covers the whole post (stops + photos + tags + description +
+    // vehicles/fares) — the same context the read paths derive — so rich
+    // posts no longer freeze at the leg-text-only 42.
+    let routeDetailScore = computePostDetailScore(
+      routes,
+      detailContextFromPost({ routes, images: images ?? [], tags: tags ?? [], description: description ?? null })
+    );
+    if (!Number.isFinite(routeDetailScore)) routeDetailScore = computeRouteDetailScore(routes);
     if (!Number.isFinite(routeDetailScore)) routeDetailScore = Math.min(100, routes.length * 20);
-    let similarityRatio = 100;
+    let similarityRatio = 0;
     let authorFollowerCount = 0;
     let authorVerified = false;
     let authorAgeDays = 0;
@@ -117,24 +125,36 @@ export async function POST(request: NextRequest) {
       try {
         authorFollowerCount = await prisma.follow.count({ where: { followingId: user.id as string } });
       } catch { authorFollowerCount = 0; }
-      if ((tags ?? []).length > 0) {
-        const now = new Date();
-        const overlapping = await prisma.post.count({
-          where: {
-            tags: { hasSome: tags ?? [] },
-            createdAt: {
-              gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-              lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
-            },
+      try {
+        const { computeCorroborationForPost } = await import(
+          "@/app/lib/services/trustBreakdownService"
+        );
+        similarityRatio = await computeCorroborationForPost(
+          prisma,
+          {
+            id: "",
+            likes: 0,
+            dislikes: 0,
+            views: 0,
+            routes,
+            tags: tags ?? [],
+            createdAt: new Date(),
+            startLat: startLat ?? null,
+            startLng: startLng ?? null,
+            endLat: endLat ?? null,
+            endLng: endLng ?? null,
+            region: region ?? null,
+            type,
+            quotedPostId: quotedPostId ?? null,
           },
-        });
-        similarityRatio = computeSimilarityRatio(overlapping);
-      } else {
+          new Date()
+        );
+      } catch {
         similarityRatio = 0;
       }
     } catch {
-      // Fallbacks preserve the legacy optimistic path on DB failure.
-      similarityRatio = 100;
+      // Fallbacks keep scoring honest on DB failure (no optimistic flash).
+      similarityRatio = 0;
     }
     const validityResult = await validityEngine.evaluate({
       likes: 0,

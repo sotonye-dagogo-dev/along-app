@@ -1,8 +1,8 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 owner-only menu + dashboard moderation + audited mutations)
-> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -702,3 +702,34 @@ Showing Archive/Delete to admins on other users' posts leaks moderation affordan
 **Implications:**
 - Any new post-management affordance in public UI must be owner-gated in `PostMenu` (handlers must also no-op without ownership).
 - Any new admin mutation route must `void logAudit(...)` fire-and-forget; new audit entities/actions need only `AUDIT_DISPLAY_CONFIG` entries to render.
+
+## Sprint 38: corroboration as a three-leg evidence blend, profile parity by forwarding
+**Decision:** Corroboration = 0.55 route-evidence (best pair similarity × coverage) + 0.25 endorsement (approval × vote/views confidence) + 0.20 response linkage, all under `CORROBORATION_CONFIG`; profile tabs reach parity by forwarding API-shipped fields rather than new endpoints or a second card component.
+**Alternatives Considered:**
+- **Keep tag-exact N×10, just widen window/lowercase**: Rejected — still zero for tagless posts and ignores geo/routes/likes/views/responses, the exact signals the platform actually records.
+- **New profile card component**: Rejected — `ProfilePostCard`→`PostCard` already renders everything when given the fields; the bug was field-stripping in the page mapping, fixed additively.
+- **Changing base weights (0.35/0.35/0.20/0.10) or other sub-scores**: Rejected — audit found all other factors already driven by real signals; only corroboration's input was degenerate, so only its input changed.
+**Implications:**
+- Tuning trust = editing `CORROBORATION_CONFIG`/`VALIDITY_SIGNAL_BOUNDS` only; engine stays pure, service stays the only DB reader.
+- Any new list surface must forward `quotedPost/quotedPostId/validityBreakdown/responsesCount` or it silently degrades (marker hidden, badge placeholders) — no error is raised.
+
+## Sprint 39: one shared comment modal, additive explore suggestions, AppAvatar everywhere in comments
+**Decision:** A single `PostCommentsModal` (config title/expand/loading copy) serves feed, profile tabs, search, and detail; explore search gains an additive `ExploreSearchInput` dropdown (unified `/api/search` + localStorage recents) over the untouched client filter; all comment faces render via `AppAvatar`; caret color is explicit config, not `currentColor`.
+**Alternatives Considered:**
+- **Duplicate the profile modal markup into feed/search**: Rejected — two copies already drifted (feed navigated, profile modal'd); one component keeps behaviour identical by construction.
+- **New explore search endpoint or replacing the client filter**: Rejected — `/api/search` already covers posts+users+tags and the map filter works offline; the dropdown is additive with silent fallback, so offline/rate-limited degrades to today's behaviour.
+- **Passing avatar URLs as plain img/initials in comments**: Rejected — `AppAvatar` already encodes upload/DiceBear/fallback + profile linking; hand-rolled divs re-created the inconsistency.
+**Implications:**
+- New surfaces that need comments use `PostCommentsModal` (viewer + postId + title); no new comment UI.
+- Explore search tuning = `EXPLORE_SEARCH_CONFIG` only; comment tuning = `COMMENTS_CONFIG` only.
+
+## Sprint 40: richness-bonused detail, prefilled error CTAs, registry-verified search links
+**Decision:** Detail = untouched legacy leg base + capped `DETAIL_SCORING_CONFIG` richness bonuses (photos/tags/description/vehicle/fare/stops/locations), threaded through service single + batched paths + create + worker via `detailContextFromPost`; error boundaries pair every auto-filed report with a sanitized prefill (`buildErrorReportPrefill`/`buildBugReportUrl`) surfaced through the EXISTING toast action slot + an inline link, with `/report-bug` hydrating `?title=&description=` into `initialValues`; search reachability is asserted in registries (nav + footer + profile quick-links + sidebar user-row icon), with mobile bottom tabs deliberately unchanged.
+**Alternatives Considered:**
+- **Reweighting the 0.35/0.35/0.20/0.10 base or rewriting the leg scorer**: Rejected — the weights are fine; the bug was the scorer's blindness to post-level richness. Additive bonuses preserve legacy scores exactly when context is absent (proven by test), while a rewrite would have shifted every stored score.
+- **New toast action API / new report-form component**: Rejected — `ToastOptions.onUndo + undoLabel` already renders an action button on any toast type, and `ConfigDrivenForm` already accepts `initialValues`; reusing both keeps the change additive with zero component API churn.
+- **Adding Search to the mobile bottom tabs**: Rejected — 6 items + center FAB breaks the 5-tab layout; the footer (rendered on mobile) + explore suggestions + sidebar carry mobile reachability without layout risk.
+**Implications:**
+- Tuning detail = editing `DETAIL_SCORING_CONFIG` only; engine stays pure, service stays the only DB reader.
+- Any new error surface must offer the same prefilled CTA (prefill builder + URL + `ERROR_REPORTING_CONFIG` copy) — never a static "notified" string.
+- Any new top-level page needs registry entries (nav and/or footer and/or quick-links) plus a searchLinks-style test, or it is unreachable by construction.

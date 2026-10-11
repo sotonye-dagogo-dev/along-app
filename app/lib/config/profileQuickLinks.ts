@@ -1,4 +1,4 @@
-import { Link2, Trophy, Bell, BarChart3, UserPlus, Shield, LayoutList } from "lucide-react";
+import { Link2, Trophy, Bell, BarChart3, UserPlus, Shield, LayoutList, Search } from "lucide-react";
 import { LEADERBOARD_LINKS_CONFIG } from "@/app/lib/config/leaderboardLinks";
 
 export type ProfileQuickLinkKind =
@@ -36,5 +36,6 @@ export const PROFILE_QUICK_LINKS_CONFIG: ProfileQuickLink[] = [
     href: LEADERBOARD_LINKS_CONFIG.profileQuickLink.href,
   },
   { id: "invite", label: "Invite Friends", icon: UserPlus, kind: "route", href: "/invite" },
+  { id: "search", label: "Search", i18nKey: "footer.search", icon: Search, kind: "route", href: "/search" },
   { id: "admin", label: "Admin Dashboard", icon: Shield, kind: "route", href: "/admin", adminOnly: true },
 ];

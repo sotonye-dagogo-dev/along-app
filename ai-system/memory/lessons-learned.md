@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 return-type + stash-verified baseline lesson)
-> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -677,5 +677,26 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** `tsc` failed in `trustBreakdownConsistency.test.ts` (`validityBreakdown`/`validityScore`/`validityTier` "do not exist") even though the runtime attaches all three; plus 3 jest failures in `searchService`/`registerEmailDispatch` and lint errors in untouched files.
 - **Root causes:** (1) `attachLiveBreakdownsToPosts` declared `Promise<T[]>` while spreading attached fields onto each row — the generic erased what the function guarantees; (2) unrelated suites assert on auth/search file contents untouched by this sprint.
 - **Fix pattern (reuse):** widen the service return to `T & Partial<Attachment>` (additive, all call sites keep compiling, failures stay expressible via Partial); verify pre-existing status with `git stash -u` + re-run rather than assuming — stash must include untracked files or new-file errors pollute the baseline. Leave unrelated red suites to their owners; record as residual risk in the session log instead of scope-creeping into auth/search code.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 38: degraded-but-rendering UI hides data bugs + pure-scorer trust changes
+- **Symptom:** profile posts "looked fine" but missed the response marker and showed legacy trust numbers — no error anywhere, because `PostCard`/`TrustBadge` degrade gracefully on absent props.
+- **Root causes:** (1) page-level minimal projections stripped fields the shared card needs; graceful fallbacks made the loss invisible except by side-by-side comparison with feed; (2) corroboration's exact-tag ±7d count was near-degenerate on real data (case, tagless posts, short window).
+- **Fix pattern (reuse):** when a shared component degrades gracefully, audit prop-forwarding at every call site (not the component); keep trust math in pure, unit-tested engine functions with config weights, and DB evidence in one best-effort service with per-leg fallbacks — scores stay explainable and reads never fail because of trust.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 39: transparent-overlay carets, initials-div avatars, and tests that assert on prose
+- **Symptom:** comment box caret invisible (only textbox platform-wide); comment avatars differed from every other surface; feed comment icon reloaded the page while profile opened a modal; 3 red suites nobody owned.
+- **Root causes:** (1) `caret-current` inside a `text-transparent` overlay inherits transparency — caret-color must be explicit whenever text is intentionally transparent; (2) comments hand-rolled initials divs instead of the shared `AppAvatar`, and one caller passed a display name as `userName`, breaking both avatar and profile link; (3) feed wired `onComment` to `window.location.href` while profile built an inline modal — no shared modal existed; (4) file-content tests matched history comments (`sendInBackground`/`globalThis`/`void send…` in prose) and asserted reference equality on a service that re-enriches cached rows (new object by design).
+- **Fix pattern (reuse):** any transparent-text overlay sets `caretColor` explicitly from config; every user face renders through `AppAvatar` (fallback is its job, not callers'); one shared modal component per interaction, reused at every call site; file-content assertions must target code-only markers (or keep history prose free of asserted substrings), and cache tests assert deep equality when enrichment is intended. Pre-existing red suites get fixed when the directive owns them — recorded, not scope-crept.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 40: leg-only detail scorer behind "every post is 42%" + CTA-less boundaries + unreachable search
+- **Symptom:** posts with 5 photos, 4 tags, long descriptions and full fares all showed detail 42%; error pages auto-logged but offered no report path; /search existed but had no nav/footer/profile entry.
+- **Root causes:** (1) the detail scorer read only per-leg distance/steps/location/description while the composer never produces distance/steps — every leg collapsed to 15+15=30 → ×1.4 = 42, and the service/create paths never passed post-level richness at all; (2) boundaries filed reports but exposed no toast CTA, no prefill builder, and the report form read no query params — each half existed without the other; (3) search links were assumed present because explore has a search input, but the input filters the map while /search is a separate page nobody linked.
+- **Fix pattern (reuse):** score what the product claims matters (photos/tags/description/vehicles/fares/stops) as additive capped bonuses over an untouched legacy base — no-context callers prove parity arithmetically; pair every auto-filed report with a sanitized prefill + URL builder + toast/inline CTAs that reuse existing slots (toast action, form initialValues) instead of new component APIs; verify page reachability by grepping registries (nav/footer/quick-links), not by assuming adjacent features link it.
 - **Supersedes:** None
 - **Superseded by:** None

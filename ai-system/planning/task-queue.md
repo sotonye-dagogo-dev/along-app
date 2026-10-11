@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 owner-only post menu + admin edit/audit + friendly audit trail)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + build passes + jest 436/439 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
-> - last-synced: 2026-10-11 (Sprint 37 — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
+> - last-synced: 2026-10-11 (comment tightening + feed modal + explore search + test close-out — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -563,6 +563,33 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 
 ---
 
+## Sprint 38 — Profile post parity + corroboration tightening (2026-10-11)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; all additions optional/additive with safe fallbacks). QA: tsc zero errors + jest 443/446 (3 pre-existing failures verified identical at HEAD) + lint pre-existing-only; build deferred to Vercel.
+
+| Size | Task | Status |
+|------|------|--------|
+| [S] | Profile parity — `PostItem` (own + `[username]`) forwards `validityBreakdown/quotedPostId/quotedPost/responsesCount`; tabs render Responding-to marker + live compact badge as in feed | [x] |
+| [M] | Corroboration evidence blend — `CORROBORATION_CONFIG` + pure engine scorers (tag Jaccard, geo corridor, route content with destination exclusion, endorsement, coverage-scaled blend); service single + batched paths share one pool; create path reuses helper (no optimistic flash) | [x] |
+| [S] | Clarity — `TRUST_BREAKDOWN_DESCRIPTIONS` registry rendered as tooltip help on every TrustBadge row | [x] |
+| [S] | Other trust factors audited, unchanged (all real signals; dynamic legs additive/capped) | [x] |
+| [S] | Tests — NEW `services/corroboration.test.ts` (8: normalization, tag, geo, destination-exclusion, pair, endorsement, blend/coverage/cap/clamp) | [x] |
+
+---
+
+## Sprint 39 — Comment tightening + feed modal parity + explore search expansion + test close-out (2026-10-11)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; all additions optional/additive with safe fallbacks). QA: tsc zero errors + jest 461/461 (54/54 suites, incl. 3 formerly pre-existing now fixed) + lint pre-existing-only + `npm run build` clean.
+
+| Size | Task | Status |
+|------|------|--------|
+| [S] | Caret + avatars — explicit `COMMENTS_CONFIG.caretColor` (overlay trick kept); `AppAvatar` in composer/list/mentions/search rows; detail passes real `userName` | [x] |
+| [M] | Shared `PostCommentsModal` — feed opens modal (count increments, no nav) instead of full-page reload; profile refactored onto it; search + detail wired; hook fallback soft-navigates | [x] |
+| [M] | Explore search expansion — NEW `ExploreSearchInput` (unified suggestions: routes/requests + people + tags; recents; full-search footer) over untouched client filter; pick centres/opens pin | [x] |
+| [S] | Failing tests — all 3 pre-existing fixed (prose-assertion reword + cache deep-equality + empty fast path); NEW `commentTightening` (10) + `exploreSearchExpansion` (6) suites | [x] |
+
+---
+
 ## Backlog
 
 > **Section summary:** Known work that needs to be done but hasn't been scheduled yet.
@@ -620,3 +647,5 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 - [x] Sprint 32 (2026-10-10) — trust breakdown consistency (canonical trustBreakdownService single+batched, trustDisplay compact/full config, TrustBadge variant + live-score tier, PostCard compact, all read APIs + worker on the same live object) (trustBreakdownConsistency 5 + TrustBadge +2 suites; full gate deferred to CI — no node_modules in runner)
 - [x] Sprint 33 (2026-10-10) — Cloudinary orphan prevention on deletions (MEDIA_CLEANUP_CONFIG + cloudinaryUrls + mediaCleanupService + upload/cleanup, all delete paths wired ACID-safely) (mediaCleanup 5 suites; full gate deferred to CI — no node_modules in runner)
 - [x] Sprint 35 (2026-10-11) — Leaderboard cross-links + auth-link tightening (LEADERBOARD_LINKS_CONFIG + PROFILE_QUICK_LINKS_CONFIG + AUTH_LINK_STATUS_CONFIG, link/status DB re-read, profile link-result toasts, invite CTA) (leaderboardAuthLink 5 suites; full gate deferred to CI — no node_modules in runner)
+- [x] Sprint 39 (2026-10-11) — Comment tightening + feed modal parity + explore search expansion + failing-test close-out (COMMENTS_CONFIG + EXPLORE_SEARCH_CONFIG + PostCommentsModal + ExploreSearchInput; AppAvatar in comments; 3 pre-existing red suites fixed) (commentTightening 10 + exploreSearchExpansion 6 suites; full gate green in-runner: tsc 0, jest 461/461, build clean)
+- [x] Sprint 40 (2026-10-11) — Trust detail-42 fix (DETAIL_SCORING_CONFIG + computePostDetailScore/detailContextFromPost; service single+batched + create + worker reuse) + error-boundary bug-report CTA (prefill builder + URL, toast action-slot CTA + inline link, report-bug query prefill, EMPTY_STATES.error honest copy) + search discoverability (NAV_REGISTRY + sidebar user-row icon + footer + profile quick-links + footer.search en/pcm) (detailScoring 8 + errorReportPrefill 6 + searchLinks 3 suites; full gate green in-runner: tsc 0, jest 478/478, lint clean)

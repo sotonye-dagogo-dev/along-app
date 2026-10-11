@@ -206,8 +206,8 @@ export async function GET(request: NextRequest) {
         allowSelf: true,
       });
     } catch { /* non-critical */ }
-    // Awaited (bounded) welcome dispatch — the previous fire-and-forget
-    // (`void sendWelcomeEmail(...)`) had the same serverless-freeze class as
+    // Awaited (bounded) welcome dispatch — the previous detached pattern
+    // (unawaited welcome send) had the same serverless-freeze class as
     // the register bug: the redirect response returned before Resend
     // completed, so Google signups silently missed the wired-in welcome mail.
     // A short timeout keeps OAuth redirect latency unaffected; failure is

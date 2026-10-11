@@ -1,8 +1,16 @@
 import {
   validityEngine,
   computeRouteDetailScore,
+  computePostDetailScore,
+  detailContextFromPost,
   computeSimilarityRatio,
+  pairSimilarityScore,
+  endorsementScore,
+  computeCorroborationScore,
+  normalizeCorroborationToken,
+  type PostDetailContext,
 } from "@/app/lib/services/ValidityEngine";
+import { CORROBORATION_CONFIG } from "@/app/lib/config/validityConfig";
 
 /**
  * Canonical live trust-breakdown service — the single source of truth every
@@ -15,6 +23,13 @@ import {
  * row) therefore disagreed between the feed and the detail view for the
  * same post. Every list API now attaches the SAME live object the detail
  * view ships, so shared rows are numerically identical everywhere.
+ *
+ * Corroboration blend (see CORROBORATION_CONFIG): normalized tag overlap +
+ * geo corridor (start/end proximity + region) + route-content agreement
+ * (stops/vehicle/fare-band, destination legs excluded) + endorsement
+ * (likes/dislikes relative to views) + explicit ROUTE_RESPONSE linkage.
+ * Every leg is best-effort — a failing lookup degrades that leg to 0, never
+ * the whole read.
  */
 
 export interface LiveTrustBreakdown {
@@ -42,10 +57,23 @@ export type TrustPostLike = Record<string, any> & {
   shares?: number;
   routes?: unknown;
   tags?: string[];
+  // Post-richness fields for the detail leg (all optional — absent legs
+  // contribute 0, so rows without them score exactly as before).
+  images?: unknown;
+  description?: unknown;
   createdAt?: string | Date;
+  // Corroboration evidence fields (all optional — absent legs score 0).
+  startLat?: number | null;
+  startLng?: number | null;
+  endLat?: number | null;
+  endLng?: number | null;
+  region?: string | null;
+  type?: string;
+  quotedPostId?: string | null;
 };
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const CORROBORATION_WINDOW_MS =
+  CORROBORATION_CONFIG.windowDays * 24 * 60 * 60 * 1000;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PrismaLike = any;
@@ -79,12 +107,30 @@ export async function evaluateLiveTrust(input: {
   shares: number;
   openReports: number;
   overlappingPostCount: number;
+  /**
+   * Tightened corroboration (0-100) from computeCorroborationForPost. When
+   * provided it is used directly; otherwise the legacy N*10 tag-overlap
+   * count applies (backward compatible for existing callers/tests).
+   */
+  corroborationScore?: number;
+  /**
+   * Post-richness context for the detail leg (photos, tags, description,
+   * vehicle/fare coverage, stops). Omitted → legacy leg-only score, so
+   * existing callers/tests keep their exact numbers.
+   */
+  detailContext?: PostDetailContext;
 }): Promise<LiveTrustBreakdown> {
   const live = await validityEngine.evaluate({
     likes: input.likes,
     dislikes: input.dislikes,
-    routeDetailScore: computeRouteDetailScore(input.routes),
-    similarityRatio: computeSimilarityRatio(input.overlappingPostCount),
+    routeDetailScore:
+      input.detailContext && typeof input.detailContext === "object"
+        ? computePostDetailScore(input.routes, input.detailContext)
+        : computeRouteDetailScore(input.routes),
+    similarityRatio:
+      typeof input.corroborationScore === "number" && Number.isFinite(input.corroborationScore)
+        ? Math.min(100, Math.max(0, Math.round(input.corroborationScore)))
+        : computeSimilarityRatio(input.overlappingPostCount),
     createdAt: input.createdAt,
     authorFollowerCount: input.authorFollowerCount,
     authorVerified: input.authorVerified,
@@ -107,28 +153,119 @@ export async function evaluateLiveTrust(input: {
   };
 }
 
-async function countOverlappingPosts(
+/**
+ * Corroboration evidence for ONE post → 0-100 (see CORROBORATION_CONFIG).
+ *
+ * Three legs, each best-effort and independent:
+ * 1. routeEvidence — candidate posts in ±windowDays are pair-scored
+ *    (normalized tags + geo corridor + stop/vehicle/fare agreement);
+ *    matches above threshold scale the best similarity by coverage.
+ * 2. endorsement — the post's own likes/dislikes relative to views, so a
+ *    liked post never sits at a permanent zero even before a matching
+ *    route exists.
+ * 3. responseLinkage — explicit ROUTE_RESPONSE rows quoting this post (or,
+ *    for a response, siblings quoting the same request).
+ *
+ * Replaces the old tag-exact ±7d `N*10` count, which sat at zero whenever
+ * tags were absent, cased differently, or older than a week — even for
+ * identical itineraries. The legacy `computeSimilarityRatio` count is kept
+ * as the last-resort fallback when candidate rows can't be read.
+ */
+export async function computeCorroborationForPost(
   prisma: PrismaLike,
   post: TrustPostLike,
   createdAt: Date
 ): Promise<number> {
+  const endorsement = endorsementScore({
+    likes: Number(post.likes) || 0,
+    dislikes: Number(post.dislikes) || 0,
+    views: Number(post.views) || 0,
+  });
+
+  // Explicit response linkage (cheap counts, best-effort).
+  let responseCount = 0;
   try {
-    const tags = Array.isArray(post.tags) ? post.tags : [];
-    if (tags.length === 0) return 0;
-    const overlapping = await prisma.post.count({
-      where: {
-        id: { not: post.id },
-        tags: { hasSome: tags },
-        createdAt: {
-          gte: new Date(createdAt.getTime() - SEVEN_DAYS_MS),
-          lte: new Date(createdAt.getTime() + SEVEN_DAYS_MS),
-        },
-      },
-    });
-    return Number.isFinite(overlapping) ? overlapping : 0;
+    if (prisma?.post?.count && typeof prisma.post.count === "function") {
+      const direct = await prisma.post.count({
+        where: { quotedPostId: post.id, type: "ROUTE_RESPONSE" },
+      });
+      responseCount += Number.isFinite(direct) ? direct : 0;
+      const quotedId = typeof post.quotedPostId === "string" ? post.quotedPostId : null;
+      if (post.type === "ROUTE_RESPONSE" && quotedId) {
+        const siblings = await prisma.post.count({
+          where: { quotedPostId: quotedId, id: { not: post.id } },
+        });
+        responseCount += Number.isFinite(siblings) ? siblings : 0;
+      }
+    }
   } catch {
-    return 0;
+    responseCount = 0;
   }
+
+  // Route evidence from comparable posts in the window.
+  let bestSimilarity = 0;
+  let matchCount = 0;
+  try {
+    if (prisma?.post?.findMany && typeof prisma.post.findMany === "function") {
+      const candidates = await prisma.post.findMany({
+        where: {
+          id: { not: post.id },
+          createdAt: {
+            gte: new Date(createdAt.getTime() - CORROBORATION_WINDOW_MS),
+            lte: new Date(createdAt.getTime() + CORROBORATION_WINDOW_MS),
+          },
+        },
+        select: {
+          tags: true,
+          routes: true,
+          startLat: true,
+          startLng: true,
+          endLat: true,
+          endLng: true,
+          region: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take: CORROBORATION_CONFIG.maxCandidates,
+      });
+      const rows = Array.isArray(candidates) ? candidates : [];
+      for (const candidate of rows) {
+        const similarity = pairSimilarityScore(post, candidate ?? {});
+        if (similarity > bestSimilarity) bestSimilarity = similarity;
+        if (similarity >= CORROBORATION_CONFIG.matchThreshold) matchCount++;
+      }
+    } else if (prisma?.post?.count && typeof prisma.post.count === "function") {
+      // Last resort (candidate rows unreadable): legacy tag-overlap count
+      // treated as moderate-strength matches.
+      const tags = (Array.isArray(post.tags) ? post.tags : [])
+        .map(normalizeCorroborationToken)
+        .filter(Boolean);
+      if (tags.length > 0) {
+        const overlapping = await prisma.post.count({
+          where: {
+            id: { not: post.id },
+            tags: { hasSome: tags },
+            createdAt: {
+              gte: new Date(createdAt.getTime() - CORROBORATION_WINDOW_MS),
+              lte: new Date(createdAt.getTime() + CORROBORATION_WINDOW_MS),
+            },
+          },
+        });
+        if (Number.isFinite(overlapping) && overlapping > 0) {
+          matchCount = overlapping;
+          bestSimilarity = Math.min(100, computeSimilarityRatio(overlapping) + 20);
+        }
+      }
+    }
+  } catch {
+    // Keep whatever legs already resolved — never fail the read.
+  }
+
+  return computeCorroborationScore({
+    bestSimilarity,
+    matchCount,
+    endorsement,
+    responseCount,
+  });
 }
 
 /**
@@ -142,7 +279,7 @@ export async function getLiveBreakdownForPost(
   try {
     const createdAt = toDate(post.createdAt, new Date());
     const userId = typeof post.userId === "string" ? post.userId : null;
-    const [author, followerCount, openReports, overlapping] = await Promise.all([
+    const [author, followerCount, openReports, corroboration] = await Promise.all([
       userId
         ? prisma.user
             .findUnique({ where: { id: userId }, select: { verified: true, createdAt: true } })
@@ -152,7 +289,7 @@ export async function getLiveBreakdownForPost(
       prisma.bugReport
         .count({ where: { postId: post.id, status: { notIn: ["RESOLVED", "CLOSED"] } } })
         .catch(() => 0),
-      countOverlappingPosts(prisma, post, createdAt),
+      computeCorroborationForPost(prisma, post, createdAt),
     ]);
     const authorCreatedAt = author?.createdAt ? toDate(author.createdAt, createdAt) : null;
     return evaluateLiveTrust({
@@ -171,7 +308,11 @@ export async function getLiveBreakdownForPost(
       views: Number(post.views) || 0,
       shares: Number(post.shares) || 0,
       openReports: Number(openReports) || 0,
-      overlappingPostCount: overlapping,
+      overlappingPostCount: 0,
+      corroborationScore: corroboration,
+      // Post richness (photos, tags, description, vehicles/fares, stops) so
+      // the detail row reflects the whole post, not just the leg text.
+      detailContext: detailContextFromPost(post),
     });
   } catch {
     return null;
@@ -195,6 +336,127 @@ export interface LiveBreakdownAttachment {
     engagement: number;
     score: number;
   };
+}
+/**
+ * Batched corroboration for list surfaces. Uses ONE shared candidate pool
+ * (union of every post's ±window) plus grouped response counts, then scores
+ * per post in memory with the same pair scorers as the single path — same
+ * inputs, same engine, same numbers. Falls back to per-post evaluation when
+ * the batched reads are unavailable (or fail), so results stay identical to
+ * the detail path either way.
+ */
+async function computeBatchedCorroboration<T extends TrustPostLike>(
+  prisma: PrismaLike,
+  posts: T[],
+  now: number
+): Promise<number[]> {
+  const perPostFallback = async (): Promise<number[]> =>
+    Promise.all(
+      posts.map((p) => computeCorroborationForPost(prisma, p, toDate(p.createdAt, new Date(now))))
+    );
+  try {
+    const canPool =
+      prisma?.post?.findMany && typeof prisma.post.findMany === "function" &&
+      prisma?.post?.groupBy && typeof prisma.post.groupBy === "function";
+    if (!canPool) return perPostFallback();
+
+    const postIds = posts.map((p) => p.id);
+    const createdAts = posts.map((p) => toDate(p.createdAt, new Date(now)).getTime());
+    const poolGte = new Date(Math.min(...createdAts) - CORROBORATION_WINDOW_MS);
+    const poolLte = new Date(Math.max(...createdAts) + CORROBORATION_WINDOW_MS);
+    const quotedIds = [
+      ...new Set(
+        posts
+          .map((p) => (typeof p.quotedPostId === "string" ? p.quotedPostId : null))
+          .filter((id): id is string => !!id)
+      ),
+    ];
+
+    const [pool, childGroups, siblingGroups] = await Promise.all([
+      prisma.post
+        .findMany({
+          where: { createdAt: { gte: poolGte, lte: poolLte } },
+          select: {
+            id: true,
+            createdAt: true,
+            tags: true,
+            routes: true,
+            startLat: true,
+            startLng: true,
+            endLat: true,
+            endLng: true,
+            region: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: Math.min(1000, CORROBORATION_CONFIG.maxCandidates * Math.max(1, posts.length)),
+        })
+        .catch(() => []),
+      prisma.post
+        .groupBy({
+          by: ["quotedPostId"],
+          where: { quotedPostId: { in: postIds }, type: "ROUTE_RESPONSE" },
+          _count: { quotedPostId: true },
+        })
+        .catch(() => []),
+      quotedIds.length > 0
+        ? prisma.post
+            .groupBy({
+              by: ["quotedPostId"],
+              where: { quotedPostId: { in: quotedIds } },
+              _count: { quotedPostId: true },
+            })
+            .catch(() => [])
+        : Promise.resolve([]),
+    ]);
+
+    const childrenByPost = new Map<string, number>();
+    for (const g of (childGroups ?? []) as { quotedPostId?: string | null; _count?: { quotedPostId?: number } }[]) {
+      if (g?.quotedPostId) childrenByPost.set(g.quotedPostId, Number(g._count?.quotedPostId) || 0);
+    }
+    const quotesByRequest = new Map<string, number>();
+    for (const g of (siblingGroups ?? []) as { quotedPostId?: string | null; _count?: { quotedPostId?: number } }[]) {
+      if (g?.quotedPostId) quotesByRequest.set(g.quotedPostId, Number(g._count?.quotedPostId) || 0);
+    }
+    const poolRows = Array.isArray(pool) ? pool : [];
+
+    return posts.map((post) => {
+      try {
+        const createdAt = toDate(post.createdAt, new Date(now));
+        const gte = createdAt.getTime() - CORROBORATION_WINDOW_MS;
+        const lte = createdAt.getTime() + CORROBORATION_WINDOW_MS;
+        let bestSimilarity = 0;
+        let matchCount = 0;
+        for (const candidate of poolRows as (TrustPostLike & { id?: string; createdAt?: unknown })[]) {
+          if (!candidate || candidate.id === post.id) continue;
+          const candidateTime = toDate(candidate.createdAt, createdAt).getTime();
+          if (candidateTime < gte || candidateTime > lte) continue;
+          const similarity = pairSimilarityScore(post, candidate);
+          if (similarity > bestSimilarity) bestSimilarity = similarity;
+          if (similarity >= CORROBORATION_CONFIG.matchThreshold) matchCount++;
+        }
+        let responseCount = childrenByPost.get(post.id) ?? 0;
+        const quotedId = typeof post.quotedPostId === "string" ? post.quotedPostId : null;
+        if (post.type === "ROUTE_RESPONSE" && quotedId) {
+          // Sibling responses to the same request (minus self).
+          responseCount += Math.max(0, (quotesByRequest.get(quotedId) ?? 0) - 1);
+        }
+        return computeCorroborationScore({
+          bestSimilarity,
+          matchCount,
+          endorsement: endorsementScore({
+            likes: Number(post.likes) || 0,
+            dislikes: Number(post.dislikes) || 0,
+            views: Number(post.views) || 0,
+          }),
+          responseCount,
+        });
+      } catch {
+        return 0;
+      }
+    });
+  } catch {
+    return perPostFallback();
+  }
 }
 /**
  * Batched live breakdowns for list surfaces (feed, search, profile tabs,
@@ -248,11 +510,11 @@ export async function attachLiveBreakdownsToPosts<T extends TrustPostLike>(
       if (g?.postId) reportsByPost.set(g.postId, Number(g._count?.postId) || 0);
     }
 
-    // Corroboration leg per post (tag overlap ±7 days, self excluded) —
-    // identical query shape to the detail path.
-    const overlappingCounts = await Promise.all(
-      posts.map((p) => countOverlappingPosts(prisma, p, toDate(p.createdAt, new Date(now))))
-    );
+    // Corroboration evidence per post (route/tag/geo blend + endorsement +
+    // response linkage) — identical computation to the detail path. One
+    // shared candidate pool covers the whole list so this stays at a
+    // constant handful of queries instead of N per-post lookups.
+    const corroborationScores = await computeBatchedCorroboration(prisma, posts, now);
 
     return await Promise.all(
       posts.map(async (post, i) => {
@@ -277,7 +539,9 @@ export async function attachLiveBreakdownsToPosts<T extends TrustPostLike>(
             views: Number(post.views) || 0,
             shares: Number(post.shares) || 0,
             openReports: reportsByPost.get(post.id) ?? 0,
-            overlappingPostCount: overlappingCounts[i] ?? 0,
+            overlappingPostCount: 0,
+            corroborationScore: corroborationScores[i] ?? 0,
+            detailContext: detailContextFromPost(post),
           });
           return {
             ...post,

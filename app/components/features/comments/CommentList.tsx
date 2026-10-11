@@ -3,8 +3,9 @@
 import Link from "next/link"
 import { useState } from "react"
 import { Trash2, Pencil, Flag, Check, X } from "lucide-react"
-import { AppEmptyState } from "@/app/components/ui"
+import { AppEmptyState, AppAvatar } from "@/app/components/ui"
 import { EMPTY_STATES, POST_ACTIONS_CONFIG } from "@/app/lib/config"
+import { COMMENTS_CONFIG } from "@/app/lib/config/comments"
 import { commentParser } from "@/app/lib/utils/commentParser"
 import { useAuth } from "@/app/hooks/useAuth"
 import { toastService } from "@/app/lib/services/toastService"
@@ -128,20 +129,19 @@ export default function CommentList({ comments, postId, onDeleted, onUpdated, on
   return (
     <div>
       {comments.map((comment) => {
-        const initials = `${comment.user.firstName[0]}${comment.user.lastName[0]}`.toUpperCase()
         const isOwner = currentUser?.id === comment.user.id
         const canModerate = isOwner || isAdmin
         const editing = editingId === comment.id
 
         return (
           <div key={comment.id} className="flex gap-2.5 py-3 border-b border-border last:border-b-0">
-            <Link
-              href={`/profile/${comment.user.userName}`}
-              onClick={(e) => e.stopPropagation()}
-              className="w-8 h-8 rounded-circle bg-bg-elevated flex items-center justify-center text-xs font-bold text-text-secondary shrink-0 no-underline"
-            >
-              {initials}
-            </Link>
+            <AppAvatar
+              src={comment.user.avatar ?? undefined}
+              alt={`${comment.user.firstName} ${comment.user.lastName}`}
+              size={COMMENTS_CONFIG.avatarSize}
+              config={comment.user.avatarConfig as { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | undefined}
+              userName={comment.user.userName}
+            />
             <div className="flex-1 min-w-0">
               <Link
                 href={`/profile/${comment.user.userName}`}

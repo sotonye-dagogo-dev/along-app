@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
         routes: true,
         createdAt: true,
         tags: true,
+        images: true,
+        description: true,
       },
     });
 
@@ -57,6 +59,8 @@ export async function POST(request: NextRequest) {
       shares: post.shares,
       routes: post.routes,
       tags: post.tags,
+      images: (post as { images?: unknown }).images ?? [],
+      description: (post as { description?: unknown }).description ?? null,
       createdAt: post.createdAt,
     });
 

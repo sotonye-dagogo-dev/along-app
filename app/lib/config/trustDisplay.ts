@@ -30,12 +30,30 @@ export const TRUST_BREAKDOWN_LABELS: Record<TrustBreakdownKey, string> = {
   engagement: "Engagement",
 };
 
+/**
+ * What drives each metric — rendered as tooltip help on every TrustBadge
+ * row (title attribute) so users can see why a value reads the way it does.
+ * Corroboration blends independent agreement signals: matching routes from
+ * other posts (same corridor, stops, fares, vehicles), likes vs dislikes
+ * relative to views, and explicit responses to the route.
+ */
+export const TRUST_BREAKDOWN_DESCRIPTIONS: Record<TrustBreakdownKey, string> = {
+  community: "Share of likes vs dislikes on this post.",
+  detail: "How complete the route is — stops, descriptions, photos, tags, fares and vehicles.",
+  corroboration:
+    "Independent agreement: matching routes from other posts (same area, stops, fares, vehicles), likes relative to views, and direct responses.",
+  recency: "How fresh the post is — decays over 30 days.",
+  reputation: "Poster credibility — followers, verification, account age.",
+  engagement: "Depth of interaction — comments, bookmarks, views, shares.",
+};
+
 export const TRUST_DISPLAY_CONFIG = {
   /** Rows shown on compact surfaces (feed PostCard, explore, search). */
   compactKeys: ["community", "detail", "corroboration", "recency"] as TrustBreakdownKey[],
   /** Rows shown on full surfaces (post detail). Values are identical. */
   fullKeys: [...TRUST_BREAKDOWN_KEYS] as TrustBreakdownKey[],
   labels: TRUST_BREAKDOWN_LABELS,
+  descriptions: TRUST_BREAKDOWN_DESCRIPTIONS,
 } as const;
 
 export type TrustDisplayVariant = "compact" | "full";
