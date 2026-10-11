@@ -1139,3 +1139,24 @@ Never derive status from a casted session/helper object — if the query doesn't
 
 **Date:** 2026-10-11
 **Status:** Active
+
+## Hidden Destination Inputs Validated (Phantom "Highlighted Fields" Block)
+
+**Symptom:**
+Share blocked with "fix the highlighted fields" while every visible field looked filled — hit after edit→draft→repost-as-response flows carrying legacy destination fare/vehicle values.
+
+**Root Cause:**
+`ROUTE_STEPS_CONFIG` hides the destination fare/vehicle inputs, but `validateRouteComposer` still validated every step's fare/vehicle. Edit prefills seeded `_fareRaw` even for the hidden destination step, so an invisible error disabled Share with no visible field to fix.
+
+**Fix Applied:**
+`ROUTE_VALIDATION_CONFIG.destinationSkipsFare/destinationSkipsVehicle` (default true, zero-dep mirror of the hide rule); validator skips fare/vehicle on the final step (location still required). Prefill/restore seed no destination `_fareRaw`. Stored data unchanged — submit still strips via `normalizeRouteSteps`.
+
+**Prevention:**
+Any input hidden by config must also be skipped by validation — mirror hide rules as skip flags in the validator. Never seed raw values for hidden inputs.
+
+**Files Affected:**
+- `app/lib/config/routeValidation.ts`
+- `app/components/features/posts/ShareRouteModal.tsx`
+
+**Date:** 2026-10-11
+**Status:** Active

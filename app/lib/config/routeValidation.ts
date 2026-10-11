@@ -33,6 +33,15 @@ export interface RouteValidationConfig {
   submitBlocked: string;
   /** Max length for any sanitized message shown to users. */
   maxMessageLength: number;
+  /**
+   * Destination rule mirror (see `routeSteps.ts` ROUTE_STEPS_CONFIG): the final
+   * step IS the destination, so its fare/vehicle inputs are hidden in the
+   * composer. Hidden inputs must never block Share — validation skips them
+   * (submit still strips via `normalizeRouteSteps`). Mirrored here (not
+   * imported) to keep this registry zero-dep.
+   */
+  destinationSkipsFare: boolean;
+  destinationSkipsVehicle: boolean;
 }
 
 export const ROUTE_VALIDATION_CONFIG: RouteValidationConfig = {
@@ -60,6 +69,8 @@ export const ROUTE_VALIDATION_CONFIG: RouteValidationConfig = {
   formInvalid: "Please fix the highlighted fields before sharing.",
   submitBlocked: "This route isn\u2019t ready to share yet.",
   maxMessageLength: 200,
+  destinationSkipsFare: true,
+  destinationSkipsVehicle: true,
 };
 
 export interface FareParseResult {
@@ -172,20 +183,29 @@ export function validateRouteComposer(input: {
     const loc = (s.location ?? "").trim();
     if (loc.length === 0) steps[i].location = cfg.locationRequired;
     else if (loc.length > cfg.locationMax) steps[i].location = cfg.locationTooLong;
+    // Destination rule: the final step's fare/vehicle inputs are hidden in
+    // the composer (ROUTE_STEPS_CONFIG), so they are never validated here —
+    // a legacy destination fare/vehicle (e.g. carried by an edit prefill or a
+    // restored draft) must not flag an invisible error that blocks Share
+    // while every visible field looks filled. Submit still strips via
+    // `normalizeRouteSteps`, so skipping here changes no stored data.
+    const isDestination = input.steps.length > 0 && i === input.steps.length - 1;
+    const skipFare = isDestination && cfg.destinationSkipsFare;
+    const skipVehicle = isDestination && cfg.destinationSkipsVehicle;
     const raw = s.fareRaw !== undefined ? s.fareRaw : s.fare !== undefined ? String(s.fare) : "";
     // Destination fare is hidden/stripped elsewhere; validate only when the
     // composer actually carries a fare value for this step.
-    if (String(raw).trim().length > 0) {
+    if (!skipFare && String(raw).trim().length > 0) {
       const parsed = parseFareInput(raw);
       if (!parsed.ok && parsed.error) steps[i].fare = parsed.error;
       else if (s.fare !== undefined && !(s.fare >= 0 && Number.isFinite(s.fare))) {
         steps[i].fare = cfg.fareInvalid;
       }
-    } else if (typeof s.fare === "number" && !(s.fare >= 0 && Number.isFinite(s.fare))) {
+    } else if (!skipFare && typeof s.fare === "number" && !(s.fare >= 0 && Number.isFinite(s.fare))) {
       steps[i].fare = cfg.fareInvalid;
     }
     const v = (s.vehicle ?? "").trim();
-    if (v && !KNOWN_VEHICLES.has(v)) steps[i].vehicle = cfg.vehicleInvalid;
+    if (!skipVehicle && v && !KNOWN_VEHICLES.has(v)) steps[i].vehicle = cfg.vehicleInvalid;
   });
 
   const locatedCount = input.steps.filter(

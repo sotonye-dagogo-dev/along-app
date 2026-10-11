@@ -57,6 +57,13 @@ interface FeedPost {
   }
   _isLiked?: boolean
   _isBookmarked?: boolean
+  quotedPostId?: string | null
+  quotedPost?: {
+    id: string
+    title: string
+    user?: { userName: string; firstName: string; lastName: string }
+    tags?: string[]
+  } | null
   totalDistanceKm?: number | null
   estimatedMins?: number | null
   region?: string | null
