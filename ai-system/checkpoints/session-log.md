@@ -1828,3 +1828,16 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner — full re-reads of all 10 touched files (scope/indent/type-flow, AvatarConfig shape, AppAvatar size literals 24/32/40 valid, effect deps + eslint-disable intact, class literals match new test expects), cross-file grep (single config literal, additive-only EditPost/reviewer shapes). Full jest/tsc/build deferred to CI/Vercel.
 **Compliance:** no migration, no new deps (`react-dom` already ships with Next), no removed APIs; additive-only (optional fields, portal branch, guarded prefill, bounded backfill).
 **Chain:** fix-build → repair-system (2 new entries + 2 follow-up notes) + test-results (row) + session-log (here) + sync-context light touch (below) + in-progress.md cleared.
+
+## Session 2026-10-11 — Fix-build: explore type error + leaderboard accuracy (fix-build)
+**Directive:** leaderboard doesn't always accurately place users based on points — tighten it; plus resolve the Vercel build type error (`explore/page.tsx:465 avatarConfig unknown` vs `ExplorePinCardUser`).
+**Root causes:** (1) `PostPin`/`ExploreApiPost` typed `avatarConfig` as `unknown` while `ExplorePinCardUser` needs the concrete AvatarConfig shape — structural mismatch at both card call sites. (2) Leaderboard: `rank = index+1` split ties by array position; ranks baked into the 600s-TTL cache with no invalidation on `awardPoints` (single write path); `take:500` slice doubled as `total` with `me=null` below the slice; dead All-time/Month/Week selector with no API backing (fetch never sent period).
+**Implemented:**
+- `explore/page.tsx`: shared `ExploreCardUser` with the exact AvatarConfig shape; `PostPin` + `ExploreApiPost` consume it.
+- `api/leaderboard/route.ts`: `assignCompetitionRanks` (1,2,2,4 — ties share rank); cache holds UNRANKED rows, ranks recomputed per read (cached path re-sorts points desc + createdAt asc); true `total` via `count`; out-of-slice viewer rank via count-ahead (`rank = ahead + 1`); zero-point-inclusive kept.
+- `rewardsService.awardPoints`: best-effort `redis.del(leaderboard)` post-transaction (TTL fallback preserved, never blocks).
+- `leaderboard/page.tsx`: dead period selector removed (all-time board); podium + jump-to-rank kept.
+- `leaderboard.test.ts`: `count`/`findUnique`/`del` mocks + tie-rank case (100,100,50 → 1,1,3).
+**QA:** no node_modules in runner — re-reads of all 5 touched files, rank helper executed in node (100,100,50,0,0 → 1,1,3,4,4), no dangling `period` refs. Full jest/tsc/build deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs (leaderboard response shape unchanged — `total` now true count; `me` now non-null for ranked viewers outside slice); additive-only.
+**Chain:** fix-build → repair-system (1 entry) + test-results (row) + session-log (here) + sync-context light touch (below) + in-progress.md cleared.

@@ -3,23 +3,26 @@
  *
  * Sprint 14: the global leaderboard includes every user — there is no
  * points floor, so zero-point users appear (ranked below earners).
+ * Fix-build 2026-10-11: competition ranking (ties share rank), true
+ * total via count, viewer-rank fallback outside the top-500 slice.
  */
 import { GET } from "@/app/api/leaderboard/route"
 
 jest.mock("@/app/lib/db/prisma", () => ({
   prisma: {
-    user: { findMany: jest.fn() },
+    user: { findMany: jest.fn(), count: jest.fn(), findUnique: jest.fn() },
   },
 }))
 jest.mock("@/app/lib/utils/auth", () => ({ getUserFromRequest: jest.fn() }))
 jest.mock("@/app/lib/db/redis", () => ({
-  redis: { get: jest.fn().mockResolvedValue(null), set: jest.fn() },
+  redis: { get: jest.fn().mockResolvedValue(null), set: jest.fn(), del: jest.fn() },
 }))
 
 import { prisma } from "@/app/lib/db/prisma"
 import { getUserFromRequest } from "@/app/lib/utils/auth"
 
 const mockFindMany = (prisma.user as unknown as { findMany: jest.Mock }).findMany
+const mockCount = (prisma.user as unknown as { count: jest.Mock }).count
 const mockAuth = getUserFromRequest as jest.Mock
 
 beforeEach(() => {
@@ -33,14 +36,17 @@ describe("GET /api/leaderboard", () => {
       {
         id: "u1", firstName: "Ama", lastName: "Boat", userName: "ama",
         avatar: null, rewardPoints: 120, rewardTier: "BRONZE",
+        createdAt: new Date("2026-01-01"),
         _count: { posts: 2, followers: 1 },
       },
       {
         id: "u2", firstName: "Kofi", lastName: "Men", userName: "kofi",
         avatar: null, rewardPoints: 0, rewardTier: "BRONZE",
+        createdAt: new Date("2026-02-01"),
         _count: { posts: 0, followers: 0 },
       },
     ])
+    mockCount.mockResolvedValue(2)
 
     const res = await GET({ url: "http://localhost/api/leaderboard" } as never)
     expect(res.status).toBe(200)
@@ -58,6 +64,37 @@ describe("GET /api/leaderboard", () => {
     expect(body.page).toBe(1)
     expect(body.total).toBe(2)
     expect(body.me).toMatchObject({ id: "u1", rank: 1 })
+  })
+
+  it("gives tied users the same competition rank", async () => {
+    mockAuth.mockResolvedValue({ id: "u1" })
+    mockFindMany.mockResolvedValue([
+      {
+        id: "u1", firstName: "Ama", lastName: "Boat", userName: "ama",
+        avatar: null, rewardPoints: 100, rewardTier: "BRONZE",
+        createdAt: new Date("2026-01-01"),
+        _count: { posts: 1, followers: 0 },
+      },
+      {
+        id: "u2", firstName: "Kofi", lastName: "Men", userName: "kofi",
+        avatar: null, rewardPoints: 100, rewardTier: "BRONZE",
+        createdAt: new Date("2026-02-01"),
+        _count: { posts: 1, followers: 0 },
+      },
+      {
+        id: "u3", firstName: "Zed", lastName: "Lee", userName: "zed",
+        avatar: null, rewardPoints: 50, rewardTier: "BRONZE",
+        createdAt: new Date("2026-03-01"),
+        _count: { posts: 0, followers: 0 },
+      },
+    ])
+    mockCount.mockResolvedValue(3)
+
+    const res = await GET({ url: "http://localhost/api/leaderboard" } as never)
+    const body = await res.json()
+    expect(body.leaderboard[0].rank).toBe(1)
+    expect(body.leaderboard[1].rank).toBe(1)
+    expect(body.leaderboard[2].rank).toBe(3)
   })
 
   it("returns 401 when unauthenticated", async () => {

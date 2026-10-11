@@ -41,7 +41,6 @@ export default function LeaderboardPage() {
   const { tf } = useTranslation()
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState<"all" | "month" | "week">("all")
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -67,7 +66,7 @@ export default function LeaderboardPage() {
       }
     }
     load()
-  }, [period, page])
+  }, [page])
 
   // Jump to my rank: fetch the page holding my rank, then highlight my row.
   const jumpToMyRank = async () => {
@@ -85,23 +84,6 @@ export default function LeaderboardPage() {
         <h1 className="text-xl font-bold text-text-primary">{tf("leaderboard.title", "Leaderboard")}</h1>
       </div>
       <p className="text-sm text-text-muted mb-5">{tf("leaderboard.subtitle", "Top contributors ranked by reward points")}</p>
-
-      {/* Period selector */}
-      <div className="flex items-center gap-2 mb-5">
-        {(["all", "month", "week"] as const).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            className={`px-3 py-1.5 radius-pill text-xs font-medium border font-sans cursor-pointer transition-all duration-fast ${
-              period === p
-                ? "bg-primary text-white border-primary"
-                : "bg-bg-card text-text-secondary border-border hover:border-primary-muted"
-            }`}
-          >
-            {p === "all" ? "All time" : p === "month" ? "This month" : "This week"}
-          </button>
-        ))}
-      </div>
 
       {/* Own rank + jump (large boards) */}
       {!loading && me && (
