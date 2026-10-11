@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-11 (hover-only controls + full-bleed dialog lesson)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 session-select vs status-source lesson)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -656,5 +656,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** a working remove button nobody could see (especially on touch); an expanded map that painted over the adjacent suggestions rail.
 - **Root causes:** (1) `opacity-0` + `group-hover:opacity-100` gates discovery on hover, which touch devices never fire — the control is hidden for a whole input modality; (2) `fixed inset-0` + `100vw/100vh` with no max-width cap or scrim is a layer, not a dialog — and `100vw` includes the scrollbar, so it also scrolls sideways.
 - **Fix pattern (reuse):** removal/destructive actions are persistently visible (`opacity-100`); hover/focus only deepen, never reveal; touch-size targets (≥28px) with focus rings. Expansions render as centered dialogs (`inset-0` flex center + `w-full max-w-*` panel + scrim + Escape/backdrop close + resize/refit on open); never `100vw` — prefer `inset-0` wrappers with capped panels. Both behind zero-dep config so copy/classes stay tunable. Applies to any future thumbnail-grid action or fullscreen-capable viewer.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 35: session-helper selects are not status sources behind "linked but the UI forgot"
+- **Symptom:** password-linking succeeded at the API (DB updated, success toast shown) but after reload the panel showed "Add a password" again and Email & Security never offered Change-password — linking looked non-persistent.
+- **Root causes:** (1) `getUserFromRequest()` deliberately selects a safe subset (no `password` hash), but `GET /api/auth/link/status` cast the result to include `password` and derived `hasPassword` from a field that was always `undefined` — a type-cast lie the compiler could not catch because the helper returns `Record<string, unknown>`; (2) redirect result flags (`?success=`/`?error=`) had no renderer on the landing page, so link outcomes were silent.
+- **Fix pattern (reuse):** status routes re-read the authoritative columns from the DB per call and return booleans only (hash never leaves the server); never derive status from a casted session object — if the helper doesn't select it, it isn't there. Any redirect-flag handoff (`?success=`/`?error=`) ships with a one-shot renderer (toast + `history.replaceState` cleanup) on the landing page in the same change. Applies to any future connected-state or verification-status surface.
 - **Supersedes:** None
 - **Superseded by:** None

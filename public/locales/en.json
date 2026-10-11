@@ -76,6 +76,7 @@
   "footer.privacy": "Privacy Policy",
   "footer.terms": "Terms of Service",
   "footer.exploreRoutes": "Explore Routes",
+  "footer.leaderboard": "Leaderboard",
   "footer.notifications": "Notifications",
   "footer.inviteFriends": "Invite Friends",
   "footer.blog": "Blog",
@@ -178,6 +179,7 @@
 
   "profile.editProfile": "Edit profile",
   "profile.signOut": "Sign out",
+  "profile.leaderboard": "Leaderboard",
   "profile.bioPlaceholder": "Tell the community about yourself…",
 
   "pwa.collapse": "Minimize",
@@ -244,6 +246,7 @@
   "invite.noInvites": "No invites yet. Be the first!",
   "invite.copied": "Invite link copied",
   "invite.yourCode": "Your invite code",
+  "invite.viewLeaderboard": "View full leaderboard",
 
   "reviews.tab": "Reviews",
   "reviews.title": "Platform reviews",

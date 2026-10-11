@@ -5,6 +5,7 @@ import { AppButton, AppAlert } from "@/app/components/ui";
 import { toastService } from "@/app/lib/services/toastService";
 import { useOtpResend, formatCooldown } from "@/app/lib/hooks/useOtpResend";
 import { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES } from "@/app/lib/config/authVerification";
+import { AUTH_LINK_STATUS_CONFIG } from "@/app/lib/config/authLink";
 import { PROFILE_POSTS_CONFIG } from "@/app/lib/config/profilePosts";
 import { MailCheck, MailPlus, KeyRound } from "lucide-react";
 
@@ -104,7 +105,13 @@ export function EmailSecurityPanel({ onChanged }: Props) {
         {verified === false && <span className={PROFILE_POSTS_CONFIG.unverifiedPillClass}>Unverified</span>}
       </div>
       {error && <AppAlert variant="error" className="mb-3" dismissible onDismiss={() => setError(null)}>{error}</AppAlert>}
-      {email && <p className="text-xs text-text-muted mb-3 font-mono truncate">{email}</p>}
+      {email && <p className="text-xs text-text-muted mb-1 font-mono truncate">{email}</p>}
+      {status && (
+        <p className="text-[11px] text-text-muted mb-3">
+          Connected: {[status.hasGoogle ? "Google" : null, status.hasPassword ? "Password" : null].filter(Boolean).join(" • ") || "None"}
+          {status.hasGoogle && status.hasPassword ? ` — ${AUTH_LINK_STATUS_CONFIG.bothConnected}` : ""}
+        </p>
+      )}
 
       <div className="flex flex-col gap-3">
         {showVerify && (
@@ -185,11 +192,11 @@ export function EmailSecurityPanel({ onChanged }: Props) {
                 <AppButton type="submit" size="sm" loading={busy === "pw"}>Update</AppButton>
               </div>
             </form>
-            {status?.hasGoogle && <p className="text-[11px] text-text-muted">Google sign-in stays linked — either method works.</p>}
+            {status?.hasGoogle && <p className="text-[11px] text-text-muted">{AUTH_LINK_STATUS_CONFIG.googleStaysLinked}</p>}
           </div>
         ) : (
           <p className="text-[11px] text-text-muted px-1">
-            {status?.hasGoogle ? "Signed in with Google only — add a password in Connected Accounts to enable email sign-in." : "Add a password in Connected Accounts, then you can change it here."}
+            {status?.hasGoogle ? AUTH_LINK_STATUS_CONFIG.googleOnly : AUTH_LINK_STATUS_CONFIG.addPasswordFirst}
           </p>
         )}
       </div>

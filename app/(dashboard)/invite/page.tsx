@@ -6,6 +6,7 @@ import { Gift, Copy, Check, Trophy, Users, Share2 } from "lucide-react"
 import { AppCard, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { buildInviteUrl } from "@/app/lib/config/inviteConfig"
+import { LEADERBOARD_LINKS_CONFIG } from "@/app/lib/config/leaderboardLinks"
 import { useTranslation } from "@/app/providers/I18nProvider"
 
 interface InviteData {
@@ -148,9 +149,17 @@ export default function InvitePage() {
       </AppCard>
 
       <AppCard className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy size={18} className="text-warning-text" />
-          <h2 className="text-base font-semibold">Leaderboard</h2>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <Trophy size={18} className="text-warning-text" />
+            <h2 className="text-base font-semibold">Leaderboard</h2>
+          </div>
+          <Link
+            href={LEADERBOARD_LINKS_CONFIG.inviteCta.href}
+            className="text-xs font-semibold text-primary no-underline hover:underline shrink-0"
+          >
+            {tf("invite.viewLeaderboard", LEADERBOARD_LINKS_CONFIG.inviteCta.label)} →
+          </Link>
         </div>
         {leaderboard.length === 0 ? (
           <div className="text-sm text-text-muted text-center py-4">{tf("invite.noInvites", "No invites yet. Be the first!")}</div>
