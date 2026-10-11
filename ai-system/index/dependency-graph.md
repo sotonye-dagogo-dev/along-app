@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-command 2026-10-10 (Sprint 34 location/feed/invite edges)
-> - last-verified-against-code: 2026-10-10 (mediaCleanup → post/admin/bug/account/draft edges verified by re-read; full gate deferred to CI/Vercel, no node_modules)
+> - last-updated-by: fix-build 2026-10-11 (verified — no new import edges: MAP_EXPAND_CONFIG reuses the existing mapStack import in RouteMap; photoRemove fields reuse the existing shareRoute import in ShareRouteModal)
+> - last-verified-against-code: 2026-10-11 (grep-verified; full gate deferred to CI/Vercel, no node_modules)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.

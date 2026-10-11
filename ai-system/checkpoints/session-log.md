@@ -1800,3 +1800,16 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner — file-presence + import-needle checks (19/19 OK) + brace/paren balance (12/12 zero-delta). Full tsc/jest/build deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only (optional params/props, new config + route, best-effort geo, redirects only on browser navigations).
 **Chain:** execute-command → session-log (here) + dev-history + lessons-learned + system-architecture + dependency-graph + repo-map + update-ai-system (terminal sync, scoped); in-progress.md already clear.
+
+## Session 2026-10-11 — Share-modal photo-remove visibility + expanded-map containment (fix-build)
+**Directive:** (1) image-removal button in the share route modal works but is invisible — not accessible; (2) desktop post-view expanded map spills past its container into the right suggestions rail. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain, with fallbacks/error handling/edge cases.
+**Root causes:** (1) remove button used `opacity-0 group-hover:opacity-100 focus-visible:opacity-100` — hover-only reveal; touch users never hover, keyboard users get no persistent affordance; small `w-6 h-6` + `bg-black/60 border-none` low contrast. (2) expanded RouteMap rendered `fixed inset-0 z-50` + inline `100vw/100vh`, no backdrop/cap — full-bleed layer; `100vw` includes scrollbar (horizontal overflow) and paints over the xl suggestions rail instead of dialoging.
+**Implemented:**
+- `shareRoute.ts` += `photoRemoveButtonClass` (always `opacity-100`, `w-7 h-7`, `bg-black/70`, `border-white/40`, focus-visible outline, token classes only) + `photoRemoveIconSize: 14` (additive, non-breaking).
+- `ShareRouteModal.tsx` photo-remove button consumes config (inline fallbacks; title + indexed aria-label unchanged).
+- `mapStack.ts` += `MAP_EXPAND_CONFIG` (+ barrel export): centered overlay, scrim backdrop, `max-w-4xl` panel, `80vh` height, backdrop-click + Escape dismissal, dialog/minimize labels.
+- `RouteMap.tsx`: expanded = contained dialog (`role=dialog aria-modal`, backdrop close, Escape, scroll-lock kept, resize+refit on open, focus to Minimize); shared `mapChrome` fragment keeps inline/dialog identical; collapsed root += `max-w-full w-full min-w-0`.
+- Tests: `uxTightening.test.ts` +1 (opacity-100 present, opacity-0/group-hover absent, touch size, border, focus-visible, icon ≥14); `mapStack.test.ts` +2 (centered max-width panel, no 100vw/100vh bleed, backdrop/Escape/labels).
+**QA:** no node_modules in runner — targeted `tsc --ignoreConfig --noResolve` on all 6 touched files: zero syntax errors, zero TS2305/TS2339/TS2322/TS2551/TS1xxx attributable (remaining noise = missing-module/JSX-runtime/implicit-any from absent node_modules, identical on untouched MapPins baseline); grep confirms single config literal + barrel export. Full jest/tsc/build deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only (optional config fields, conditional dialog branch, best-effort resize with try/catch).
+**Chain:** fix-build → repair-system (2 entries) + test-results (row) + session-log (here) + sync-context (below) + update-ai-system terminal sync; in-progress.md cleared.

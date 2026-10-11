@@ -189,3 +189,45 @@ export function hasMapboxKey(): boolean {
     process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
   );
 }
+
+/**
+ * Expanded-map overlay configuration (config-driven, zero app deps).
+ *
+ * The expanded map renders as a contained centered dialog (backdrop +
+ * max-width panel) instead of a full-bleed `fixed inset-0 w-100vw` layer,
+ * so it can never spill past its column into the desktop suggestions rail
+ * or cause horizontal overflow (`100vw` includes the scrollbar). Design
+ * tokens only — no hardcoded hex.
+ */
+export interface MapExpandConfig {
+  /** Overlay wrapper: fixed, centered, padded — never full-bleed. */
+  overlayClass: string;
+  /** Clickable scrim behind the panel (closes on click when enabled). */
+  backdropClass: string;
+  /** Panel width cap — keeps the dialog inside the viewport on desktop. */
+  panelMaxWidthClass: string;
+  /** Panel height (CSS height for the map panel, e.g. "80vh"). */
+  panelHeight: string;
+  /** Panel chrome: rounded, card surface, clipped map canvas. */
+  panelClass: string;
+  /** Clicking the backdrop closes the expanded map. */
+  closeOnBackdropClick: boolean;
+  /** Pressing Escape closes the expanded map. */
+  closeOnEscape: boolean;
+  /** Accessible name for the expanded dialog + minimize action. */
+  dialogLabel: string;
+  minimizeLabel: string;
+}
+
+export const MAP_EXPAND_CONFIG: MapExpandConfig = {
+  overlayClass: "fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6",
+  backdropClass: "absolute inset-0 bg-black/60 backdrop-blur-sm",
+  panelMaxWidthClass: "max-w-4xl",
+  panelHeight: "80vh",
+  panelClass:
+    "relative w-full overflow-hidden radius-lg bg-bg-card border border-border shadow-lg",
+  closeOnBackdropClick: true,
+  closeOnEscape: true,
+  dialogLabel: "Expanded route map",
+  minimizeLabel: "Minimize map",
+};

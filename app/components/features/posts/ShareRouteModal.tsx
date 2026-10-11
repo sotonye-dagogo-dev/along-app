@@ -1222,9 +1222,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                         onClick={() => removeImage(idx)}
                         title={SHARE_ROUTE_MODAL_CONFIG.photoRemoveLabel}
                         aria-label={`${SHARE_ROUTE_MODAL_CONFIG.photoRemoveLabel} ${idx + 1}`}
-                        className="absolute top-1 right-1 w-6 h-6 rounded-circle bg-black/60 text-white flex items-center justify-center border-none cursor-pointer opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+                        className={SHARE_ROUTE_MODAL_CONFIG.photoRemoveButtonClass ?? "absolute top-1 right-1 w-7 h-7 rounded-circle bg-black/70 text-white flex items-center justify-center border border-white/40 cursor-pointer shadow-md opacity-100"}
                       >
-                        <X size={12} />
+                        <X size={SHARE_ROUTE_MODAL_CONFIG.photoRemoveIconSize ?? 14} />
                       </button>
                     </div>
                   ))}

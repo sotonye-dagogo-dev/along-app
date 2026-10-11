@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-command 2026-10-10 (Sprint 34 dead-config + raw-API-page lesson)
-> - last-verified-against-code: 2026-10-09
+> - last-updated-by: fix-build 2026-10-11 (hover-only controls + full-bleed dialog lesson)
+> - last-verified-against-code: 2026-10-11
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -649,5 +649,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** feed ranking ignored location despite a tuned `locationBonus`, ignored admin tuning despite a seeded SiteConfig key, and ignored trust despite computing it live; denied location toasted on two surfaces but only inlined on navigation; a minority of invitees saw an api route in the address bar.
 - **Root causes:** (1) config values with zero code references (locationBonus) and documented-but-unread store keys (feedAlgorithm) look tunable but change nothing — audit must grep refs, not just read values; (2) error paths on browser-navigated OAuth routes returned JSON, so any refresh/copy during the transient /api window stranded users on a non-page; (3) leaf-duplicated copy strings drifted, hiding which surfaces had feedback and which didn't.
 - **Fix pattern (reuse):** centralize user-facing copy in zero-dep configs consumed by every surface; make ranking additive-bonus-only for new signals (absent = exact-zero, ordering provably unchanged); resolve admin config with hardcoded fallback at call time; redirect (never JSON) on any GET route a browser can display, preserving referral context; add catch-all page redirects for legacy/hand-typed URL shapes. Applies to any future ranking signal or shareable-link flow.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Fix-build 2026-10-11: hover-only controls + full-bleed dialogs behind "works but invisible" and "map ate the sidebar"
+- **Symptom:** a working remove button nobody could see (especially on touch); an expanded map that painted over the adjacent suggestions rail.
+- **Root causes:** (1) `opacity-0` + `group-hover:opacity-100` gates discovery on hover, which touch devices never fire — the control is hidden for a whole input modality; (2) `fixed inset-0` + `100vw/100vh` with no max-width cap or scrim is a layer, not a dialog — and `100vw` includes the scrollbar, so it also scrolls sideways.
+- **Fix pattern (reuse):** removal/destructive actions are persistently visible (`opacity-100`); hover/focus only deepen, never reveal; touch-size targets (≥28px) with focus rings. Expansions render as centered dialogs (`inset-0` flex center + `w-full max-w-*` panel + scrim + Escape/backdrop close + resize/refit on open); never `100vw` — prefer `inset-0` wrappers with capped panels. Both behind zero-dep config so copy/classes stay tunable. Applies to any future thumbnail-grid action or fullscreen-capable viewer.
 - **Supersedes:** None
 - **Superseded by:** None
