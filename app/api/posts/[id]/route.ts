@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               title: true,
               type: true,
               createdAt: true,
-              user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } },
+              user: { select: { ...AUTHOR_SELECT } },
             },
           },
         },
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
               title: true,
               type: true,
               createdAt: true,
-              user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } },
+              user: { select: { ...AUTHOR_SELECT_FALLBACK } },
             },
           },
         },
@@ -101,22 +101,42 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // comment-like entries with links when the request is viewed expanded.
     let responses: any[] = [];
     try {
-      responses = await (prisma.post.findMany as any)({
-        where: { quotedPostId: id },
-        select: {
-          id: true,
-          title: true,
-          type: true,
-          createdAt: true,
-          likes: true,
-          comments: true,
-          validityScore: true,
-          validityTier: true,
-          user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      });
+      try {
+        responses = await (prisma.post.findMany as any)({
+          where: { quotedPostId: id },
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            createdAt: true,
+            likes: true,
+            comments: true,
+            validityScore: true,
+            validityTier: true,
+            user: { select: { ...AUTHOR_SELECT } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+        });
+      } catch (e) {
+        if (!isMissingColumnError(e)) throw e;
+        responses = await (prisma.post.findMany as any)({
+          where: { quotedPostId: id },
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            createdAt: true,
+            likes: true,
+            comments: true,
+            validityScore: true,
+            validityTier: true,
+            user: { select: { ...AUTHOR_SELECT_FALLBACK } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+        });
+      }
     } catch { responses = []; }
 
     // Live trust breakdown via the canonical service shared with every list

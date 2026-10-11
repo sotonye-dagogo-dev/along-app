@@ -48,6 +48,7 @@ interface PostResponse {
     firstName: string
     lastName: string
     avatar?: string | null
+    avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null
   }
 }
 
@@ -799,6 +800,7 @@ export default function PostDetailPage() {
                     src={r.user.avatar ?? undefined}
                     alt={`${r.user.firstName} ${r.user.lastName}`}
                     size={32}
+                    config={r.user.avatarConfig as { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | undefined}
                     userName={r.user.userName}
                     linkToProfile={false}
                   />
