@@ -1,8 +1,8 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 owner-only menu + dashboard moderation + audited mutations)
-> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -702,3 +702,13 @@ Showing Archive/Delete to admins on other users' posts leaks moderation affordan
 **Implications:**
 - Any new post-management affordance in public UI must be owner-gated in `PostMenu` (handlers must also no-op without ownership).
 - Any new admin mutation route must `void logAudit(...)` fire-and-forget; new audit entities/actions need only `AUDIT_DISPLAY_CONFIG` entries to render.
+
+## Sprint 38: corroboration as a three-leg evidence blend, profile parity by forwarding
+**Decision:** Corroboration = 0.55 route-evidence (best pair similarity × coverage) + 0.25 endorsement (approval × vote/views confidence) + 0.20 response linkage, all under `CORROBORATION_CONFIG`; profile tabs reach parity by forwarding API-shipped fields rather than new endpoints or a second card component.
+**Alternatives Considered:**
+- **Keep tag-exact N×10, just widen window/lowercase**: Rejected — still zero for tagless posts and ignores geo/routes/likes/views/responses, the exact signals the platform actually records.
+- **New profile card component**: Rejected — `ProfilePostCard`→`PostCard` already renders everything when given the fields; the bug was field-stripping in the page mapping, fixed additively.
+- **Changing base weights (0.35/0.35/0.20/0.10) or other sub-scores**: Rejected — audit found all other factors already driven by real signals; only corroboration's input was degenerate, so only its input changed.
+**Implications:**
+- Tuning trust = editing `CORROBORATION_CONFIG`/`VALIDITY_SIGNAL_BOUNDS` only; engine stays pure, service stays the only DB reader.
+- Any new list surface must forward `quotedPost/quotedPostId/validityBreakdown/responsesCount` or it silently degrades (marker hidden, badge placeholders) — no error is raised.

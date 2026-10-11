@@ -51,6 +51,14 @@ interface ProfileData {
   } | null
 }
 
+interface QuotedPostRef {
+  id: string
+  title: string
+  type?: string
+  createdAt?: string | Date
+  user?: { id: string; userName: string; firstName: string; lastName: string; avatar?: string | null }
+}
+
 interface PostItem {
   id: string
   title: string
@@ -64,8 +72,25 @@ interface PostItem {
   bookmarks?: number
   validityScore?: number
   validityTier?: string | null
+  // Live engine components attached by GET /api/posts (same object the feed
+  // cards read). Forwarded so profile tabs render the updated TrustBadge
+  // instead of degrading to legacy score-derived placeholders.
+  validityBreakdown?: {
+    community?: number
+    detail?: number
+    corroboration?: number
+    recency?: number
+    reputation?: number
+    engagement?: number
+    score?: number
+  } | null
   createdAt: string
   type?: "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE"
+  // Response linkage attached by GET /api/posts — drives the "Responding to"
+  // marker in PostCard (same as feed). Dropped rows can never show it.
+  quotedPostId?: string | null
+  quotedPost?: QuotedPostRef | null
+  responsesCount?: number
   isArchived?: boolean
   _isLiked?: boolean
   _isBookmarked?: boolean
@@ -467,6 +492,10 @@ export default function OwnProfilePage() {
                   bookmarks: post.bookmarks ?? 0,
                   validityScore: post.validityScore ?? 0,
                   validityTier: post.validityTier ?? null,
+                  validityBreakdown: post.validityBreakdown ?? null,
+                  quotedPostId: post.quotedPostId ?? null,
+                  quotedPost: post.quotedPost ?? null,
+                  responsesCount: post.responsesCount ?? 0,
                   isArchived: post.isArchived,
                   createdAt: post.createdAt,
                   _isLiked: post._isLiked ?? false,

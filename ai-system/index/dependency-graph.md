@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 37: new edges — PostMenu owner-only, /admin/posts PUT edit, logAudit on admin mutations, /admin/audit → AUDIT_DISPLAY_CONFIG + AppTable/AppTag)
-> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -153,14 +153,15 @@ SuggestionsService
 ValidityEngine
     → PostModel, UserActivityModel, FollowModel, BugReportModel, UserModel (Prisma)
     → Redis (trust scores)
-    → Config: validityConfig (+ VALIDITY_SIGNAL_BOUNDS)
-    → Triggered by: posts POST (sync), workers/validity-recompute, like/bookmark/comments/[id]/reports/follow routes (fire-and-forget)
+    → Config: validityConfig (+ VALIDITY_SIGNAL_BOUNDS, + CORROBORATION_CONFIG [Sprint 38])
+    → Pure corroboration scorers [Sprint 38]: normalizeCorroborationToken, tagSimilarityScore, geoCorridorScore, routeContentScore (destination-excluded), pairSimilarityScore, endorsementScore, computeCorroborationScore (computeSimilarityRatio kept for compat/fallback)
+    → Triggered by: posts POST (sync, same helper as reads [Sprint 38]), workers/validity-recompute, like/bookmark/comments/[id]/reports/follow routes (fire-and-forget)
     → Consumed by: trustBreakdownService (canonical live breakdowns), TrustBadge (breakdown prop), PostCard, posts/[id] page + GET (validityBreakdown)
 
 TrustBreakdownService (`app/lib/services/trustBreakdownService.ts` — single + batched live breakdowns, same engine/inputs on every surface)
     → ValidityEngine (evaluate + canonical scorers), PostModel/FollowModel/BugReportModel/UserModel (Prisma, best-effort)
-    → Config: trustDisplay (compact/full keys, tier derivation)
-    → Consumed by: GET /api/posts (list), GET /api/posts/feed (via feedService + guest path), searchService, GET /api/suggestions, GET /api/bookmarks, GET /api/posts/[id], workers/validity-recompute
+    → Config: trustDisplay (compact/full keys, tier derivation, + TRUST_BREAKDOWN_DESCRIPTIONS tooltip help [Sprint 38]), CORROBORATION_CONFIG (30d window, 0.55/0.25/0.20 blend [Sprint 38])
+    → Consumed by: GET /api/posts (list), GET /api/posts/feed (via feedService + guest path), searchService, GET /api/suggestions, GET /api/bookmarks, GET /api/posts/[id], workers/validity-recompute, POST /api/posts (create-time score [Sprint 38])
 
 PostShareService + usePostShare
     → Config: postActions (shareLabel/shareTitleDefault/postPath)

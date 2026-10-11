@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 owner-only menu + admin edit/audit + friendly audit trail)
-> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1108,3 +1108,13 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `config/audit.test.ts` (6) + NEW `components/PostMenu.test.tsx` (4: owner/admin/viewer/archived visibility).
 **QA:** `npx tsc --noEmit` zero errors (baseline had 5 in untouched trustBreakdown test + prisma-client staleness; verified pre-existing via `git stash -u`); `npm run build` passes; jest 436/439 — 3 failures in `searchService` + `registerEmailDispatch` verified identical at clean HEAD (pre-existing, unrelated); `next lint` errors only in untouched files, zero findings in touched files.
 **Compliance:** no migration, no new deps, no removed APIs (PostMenu props unchanged; admin list shape unchanged — description/tags already returned; PUT is new); additive-only.
+
+## Sprint 38 (2026-10-11) — Profile post parity + corroboration tightening
+**Directive:** profile posts consistent with platform (response marker + current trust badge); explain + tighten corroboration (and review other trust factors); config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- Profile `PostItem` (own + `[username]`) forwards `validityBreakdown/quotedPostId/quotedPost/responsesCount` — tabs now render the "Responding to" marker and live compact TrustBadge exactly as feed cards.
+- NEW `CORROBORATION_CONFIG` (window 30d, blend 0.55/0.25/0.20, geo radius 8km, fare band ±25%, response 25pts cap 60); pure engine scorers (tag Jaccard, geo corridor, route content with destination exclusion, endorsement from likes/dislikes vs views, coverage-scaled blend); service single + batched paths share one candidate pool; create path reuses the same helper (no optimistic flash); `TRUST_BREAKDOWN_DESCRIPTIONS` tooltip help.
+- Other trust factors audited, unchanged (all real signals; dynamic legs additive/capped).
+- Tests: NEW `services/corroboration.test.ts` (8).
+**QA:** tsc zero errors; trust suites 43/43; full jest 443/446 with 3 pre-existing failures verified identical at HEAD; lint pre-existing-only.
+**Compliance:** additive-only, no migration/deps/API removals.
