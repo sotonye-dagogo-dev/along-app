@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { parseAdminDashboardPeriod } from "@/app/lib/config/admin";
 
 function pctChange(current: number, previous: number): number | null {
   if (previous === 0) {
@@ -12,18 +13,30 @@ function pctChange(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromRequest();
     if (!user || (user.role !== "ADMIN" && user.role !== "MODERATOR")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    // Period-aware overview (mirrors the user-analytics 7/30/90 toggle):
+    // the signups chart buckets every day in the window, and KPI deltas
+    // compare the window against the previous equal-length window so a
+    // zero-activity period never renders a bogus up/down trend.
+    const { searchParams } = new URL(request.url);
+    const periodDays = parseAdminDashboardPeriod(searchParams.get("period"));
+
     const now = new Date();
     const todayStart = new Date(now);
     todayStart.setHours(0, 0, 0, 0);
     const yesterdayStart = new Date(todayStart.getTime() - 86400000);
 
+    const windowStart = new Date(todayStart.getTime() - (periodDays - 1) * 86400000);
+    const prevWindowStart = new Date(windowStart.getTime() - periodDays * 86400000);
+    const prevWindowEnd = windowStart;
+
+    // Legacy 7-day anchors kept so default-period deltas match prior behaviour.
     const weekStart = new Date(todayStart.getTime() - 6 * 86400000);
     const prevWeekStart = new Date(todayStart.getTime() - 13 * 86400000);
     const prevWeekEnd = new Date(todayStart.getTime() - 7 * 86400000);
@@ -35,11 +48,17 @@ export async function GET() {
       postsYesterday,
       postsThisWeek,
       postsPrevWeek,
+      postsInPeriod,
+      postsPrevPeriod,
+      usersInPeriod,
+      usersPrevPeriod,
       openBugs,
       openBugsPrev,
       avgValidityAgg,
       avgValidityPrevAgg,
-      signups7d,
+      avgValidityPeriodAgg,
+      avgValidityPrevPeriodAgg,
+      signupsSeries,
       topPosts,
       recentUsers,
     ] = await Promise.all([
@@ -49,6 +68,10 @@ export async function GET() {
       prisma.post.count({ where: { createdAt: { gte: yesterdayStart, lt: todayStart } } }),
       prisma.post.count({ where: { createdAt: { gte: weekStart } } }),
       prisma.post.count({ where: { createdAt: { gte: prevWeekStart, lt: prevWeekEnd } } }),
+      prisma.post.count({ where: { createdAt: { gte: windowStart } } }),
+      prisma.post.count({ where: { createdAt: { gte: prevWindowStart, lt: prevWindowEnd } } }),
+      prisma.user.count({ where: { createdAt: { gte: windowStart } } }),
+      prisma.user.count({ where: { createdAt: { gte: prevWindowStart, lt: prevWindowEnd } } }),
       prisma.bugReport.count({ where: { status: { notIn: ["RESOLVED", "CLOSED"] } } }),
       prisma.bugReport.count({
         where: { status: { notIn: ["RESOLVED", "CLOSED"] }, createdAt: { lt: weekStart } },
@@ -58,14 +81,21 @@ export async function GET() {
         _avg: { validityScore: true },
         where: { createdAt: { lt: weekStart } },
       }),
+      prisma.post.aggregate({
+        _avg: { validityScore: true },
+        where: { createdAt: { gte: windowStart } },
+      }),
+      prisma.post.aggregate({
+        _avg: { validityScore: true },
+        where: { createdAt: { gte: prevWindowStart, lt: prevWindowEnd } },
+      }),
       (async () => {
-        const sevenDaysAgo = new Date(todayStart.getTime() - 6 * 86400000);
         const recentUsers = await prisma.user.findMany({
-          where: { createdAt: { gte: sevenDaysAgo } },
+          where: { createdAt: { gte: windowStart } },
           select: { createdAt: true },
         });
         const days = [];
-        for (let i = 6; i >= 0; i--) {
+        for (let i = periodDays - 1; i >= 0; i--) {
           const start = new Date(todayStart.getTime() - i * 86400000);
           const end = new Date(start.getTime() + 86400000);
           const count = recentUsers.filter(u => u.createdAt >= start && u.createdAt < end).length;
@@ -97,27 +127,53 @@ export async function GET() {
 
     const avgValidity = Math.round((avgValidityAgg._avg.validityScore ?? 0) * 10) / 10;
     const avgValidityPrev = Math.round((avgValidityPrevAgg._avg.validityScore ?? 0) * 10) / 10;
+    const avgValidityPeriod = Math.round((avgValidityPeriodAgg._avg.validityScore ?? 0) * 10) / 10;
+    const avgValidityPrevPeriod = Math.round((avgValidityPrevPeriodAgg._avg.validityScore ?? 0) * 10) / 10;
+
+    // Period-relative deltas: window vs previous equal window. Zero activity
+    // on both sides → flat 0 (never a phantom trend); new-from-zero → null
+    // ("No data") via pctChange.
+    const periodDeltas = {
+      totalUsers: pctChange(usersInPeriod, usersPrevPeriod),
+      postsToday: pctChange(postsInPeriod, postsPrevPeriod),
+      postsWeek: pctChange(postsInPeriod, postsPrevPeriod),
+      avgValidity: pctChange(avgValidityPeriod, avgValidityPrevPeriod),
+      openBugs: openBugs === 0 ? 0 : pctChange(openBugs, openBugsPrev),
+    };
+    const legacyDeltas = {
+      totalUsers: pctChange(totalUsers, prevTotalUsers),
+      postsToday: pctChange(postsToday, postsYesterday),
+      postsWeek: pctChange(postsThisWeek, postsPrevWeek),
+      avgValidity: pctChange(avgValidity, avgValidityPrev),
+      openBugs: openBugs === 0 ? 0 : pctChange(openBugs, openBugsPrev),
+    };
 
     return NextResponse.json({
       totalUsers,
       postsToday,
+      postsInPeriod,
       avgValidity,
+      avgValidityPeriod,
       openBugs,
-      signups7d,
+      period: periodDays,
+      // `signups` is canonical; `signups7d` kept so older dashboard builds
+      // and any external consumers keep working (non-breaking alias).
+      signups: signupsSeries,
+      signups7d: signupsSeries,
       topPosts: topPosts.map(p => ({ id: p.id, title: p.title, validityScore: p.validityScore })),
       recentUsers,
-      deltas: {
-        totalUsers: pctChange(totalUsers, prevTotalUsers),
-        postsToday: pctChange(postsToday, postsYesterday),
-        postsWeek: pctChange(postsThisWeek, postsPrevWeek),
-        avgValidity: pctChange(avgValidity, avgValidityPrev),
-        openBugs: openBugs === 0 ? 0 : pctChange(openBugs, openBugsPrev),
-      },
+      deltas: periodDays === 7 ? legacyDeltas : periodDeltas,
       previous: {
         totalUsers7dAgo: prevTotalUsers,
         postsYesterday,
         avgValidityPrev,
         openBugsPrev,
+        usersInPeriod,
+        usersPrevPeriod,
+        postsInPeriod,
+        postsPrevPeriod,
+        avgValidityPeriod,
+        avgValidityPrevPeriod,
       },
     }, { status: 200 });
   } catch (error) {

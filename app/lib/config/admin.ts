@@ -39,6 +39,74 @@ export const ADMIN_BULK_SELECT_META = {
 
 export type AdminBulkActionId = (typeof ADMIN_BULK_SELECT_META.actions)[number];
 
+/**
+ * Dashboard data-period toggle — mirrors the user analytics period selector
+ * (7/30/90 days) so overview KPIs + signups chart actualize end-to-end.
+ * `GET /api/admin/stats?period=` accepts these values; default keeps the
+ * legacy 7-day view.
+ */
+export const ADMIN_DASHBOARD_PERIODS = {
+  options: [
+    { value: "7", label: "Last 7 days", days: 7 },
+    { value: "30", label: "Last 30 days", days: 30 },
+    { value: "90", label: "Last 90 days", days: 90 },
+  ],
+  defaultPeriod: "7",
+  /** Clamp guard for the stats API (mirrors analytics 365-day ceiling). */
+  minDays: 7,
+  maxDays: 90,
+} as const;
+
+export type AdminDashboardPeriod =
+  (typeof ADMIN_DASHBOARD_PERIODS.options)[number]["value"];
+
+/** Normalize a raw ?period= query value to a supported day count. */
+export function parseAdminDashboardPeriod(raw: string | null): number {
+  const n = Number.parseInt(raw ?? "", 10);
+  if (!Number.isFinite(n)) {
+    const fallback = ADMIN_DASHBOARD_PERIODS.options.find(
+      (o) => o.value === ADMIN_DASHBOARD_PERIODS.defaultPeriod
+    );
+    return fallback?.days ?? 7;
+  }
+  if (n <= 7) return 7;
+  if (n <= 30) return 30;
+  return 90;
+}
+
+/**
+ * Admin user-deletion copy + behaviour — keeps the 7-day grace request flow
+ * and adds the destructive safe path (immediate finalize through the same
+ * anonymize pipeline). All UI strings live here so warnings/undo/recovery
+ * copy stays consistent across the users table + deletions queue.
+ */
+export const ADMIN_USER_DELETION_META = {
+  requestTitle: "Request deletion?",
+  requestDescription:
+    "The account and its posts are archived immediately and anonymized after the 7-day grace period. Likes and bookmarks are removed; anonymised posts are retained. The user can reverse until then — reversal restores everything.",
+  requestConfirmLabel: "Request deletion",
+  requestSuccess: "Deletion requested — 7-day grace started",
+  requestUndoMessage: "Deletion request started (7-day grace)",
+  requestUndoLabel: "Undo",
+  cancelTitle: "Reverse this deletion request?",
+  cancelDescription:
+    "The account and its posts are restored from the archive. The user is notified in-app (no email, per anti-abuse policy).",
+  cancelConfirmLabel: "Reverse request",
+  cancelSuccess: "Deletion request reversed — account restored",
+  cancelReRequestLabel: "Re-request",
+  deleteNowTitle: "Delete this account now?",
+  deleteNowDescription:
+    "This skips the 7-day grace and anonymizes the account immediately through the same safe pipeline (posts retained anonymised; likes, bookmarks, follows and push subscriptions removed). This cannot be undone in-app — recovery within 30 days is only possible off-platform from database backups.",
+  deleteNowConfirmLabel: "Delete now",
+  deleteNowSuccess: "Account deleted and anonymized",
+  deleteNowRecoveryNote:
+    "Recovery within 30 days is handled off-platform from backups — contact the original email.",
+  bulkDeleteNowTitle: "Delete selected accounts now?",
+  selfDeleteGuard: "Use your profile to delete your own account",
+  lastAdminGuard:
+    "Last admin cannot be deleted — promote another admin first",
+} as const;
+
 /** Site-config field editor kinds for non-programmer admins (no raw JSON). */
 export type SiteConfigFieldKind = "text" | "number" | "boolean" | "json";
 

@@ -1,8 +1,8 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
+> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -734,3 +734,13 @@ Showing Archive/Delete to admins on other users' posts leaks moderation affordan
 - Any new error surface must offer the same prefilled CTA (prefill builder + URL + `ERROR_REPORTING_CONFIG` copy) — never a static "notified" string.
 - Any new top-level page needs registry entries (nav and/or footer and/or quick-links) plus a searchLinks-style test, or it is unreachable by construction.
 - **Dislike active styling (Sprint 42)**: warning-token pairing (`text-warning-text` + `fill-warning-text` + `bg-warning`) for the active dislike state, mirroring the like state's error-token pairing. Alternatives (primary tint, error reuse) rejected — primary implies endorsement, error reuse would make like/dislike indistinguishable; warning reads as "downvote" in both themes without `text-white` contrast failures. Lives in `POST_ACTIONS_CONFIG` (`dislikeActiveClass/dislikeIconClass`) so future vote-style changes are config edits.
+
+## Sprint 43: destructive admin user deletion through the grace pipeline + honest undo boundaries
+**Decision:** The 7-day grace request flow is kept untouched; the destructive path (`finalizeOne{force:true}` / `deleteNow`) runs the SAME anonymize transaction (archive → anonymize PII, retain anonymised posts, wipe likes/bookmarks/follows/push, recompute counters, final email to the snapshotted address) with the due-date check skipped. Undo is offered only where reversal exists (request → cancel; cancel → re-request); the force path gets an explicit irreversibility warning + 30-day backup-recovery note and NO undo toast. All new actions are `logAudit`-audited; per-request/per-user actions supplement (never replace) the bulk finalize-due trigger.
+**Alternatives Considered:**
+- **True hard-delete (drop user + post rows)**: Rejected — policy retains anonymised post data for platform integrity, and hard deletes would cascade unpredictably; anonymize-in-place keeps ids stable for reviews/posts.
+- **Undo for the force path via snapshot-restore**: Rejected — restoring wiped PII (email/username/password) from a client snapshot would be a fabrication risk and a uniqueness minefield; the honest contract is warning + audit + off-platform backup recovery.
+- **Replacing the grace flow with immediate-only deletion**: Rejected — users rely on the 7-day reversal window; admins get both paths and choose per case.
+**Implications:**
+- Any future destructive admin action must follow the same pattern: shared config copy, confirm modal, undo only when a real reversal path exists, audit log entry, recovery note when irreversible.
+- Tuning deletion = editing `ADMIN_USER_DELETION_META` + `ACCOUNT_DELETION_CONFIG` only; the service stays the only writer.

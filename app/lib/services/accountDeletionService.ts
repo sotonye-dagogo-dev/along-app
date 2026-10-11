@@ -236,6 +236,13 @@ export async function cancelAccountDeletion(userId: string): Promise<DeletionReq
 
 export interface FinalizeResult { processed: number; ids: string[] }
 
+export interface SingleFinalizeResult {
+  ok: boolean;
+  error?: string;
+  requestId?: string;
+  forced?: boolean;
+}
+
 /**
  * Finalize due requests: anonymize PII, clear personalized rows, send the
  * final email to the snapshotted address. Idempotent per request id.
@@ -404,5 +411,113 @@ async function finalizeOne(requestId: string, completedBy: string) {
     }
   } catch (e) {
     console.error("[accountDeletion] completion side-effects failed:", e);
+  }
+}
+
+/**
+ * Admin: finalize ONE request by id through the same safe anonymize pipeline.
+ * Without `force`, only due (scheduledFor <= now) requests finalize — the
+ * cron invariant. With `force: true` ("Delete now") the grace wait is skipped
+ * but every other safety holds (ACID tx, anonymize-not-drop, counters,
+ * final email to the snapshotted address, audit by caller). Irreversible
+ * in-app: recovery is off-platform from backups (see gracePeriodDays /
+ * backupRecoveryDays in ACCOUNT_DELETION_CONFIG).
+ */
+export async function finalizeSingleRequest(
+  requestId: string,
+  completedBy: string,
+  opts?: { force?: boolean }
+): Promise<SingleFinalizeResult> {
+  try {
+    const req = await prisma.accountDeletionRequest.findUnique({
+      where: { id: requestId },
+    });
+    if (!req) return { ok: false, error: "Deletion request not found" };
+    if (req.status !== "PENDING")
+      return { ok: false, error: `Request is ${req.status.toLowerCase()} — nothing to finalize` };
+    if (!opts?.force && new Date(req.scheduledFor).getTime() > Date.now()) {
+      return { ok: false, error: "Request is still in its grace period — reverse it or finalize with force" };
+    }
+    await finalizeOne(req.id, completedBy);
+    return { ok: true, requestId: req.id, forced: opts?.force === true };
+  } catch (e) {
+    console.error("[accountDeletion] finalizeSingle failed:", e);
+    Sentry.captureException(e);
+    return { ok: false, error: "Failed to finalize deletion request" };
+  }
+}
+
+/**
+ * Admin: reverse ONE pending request by request id (same tx as the
+ * user-facing cancel, plus an audit-friendly result). In-app only
+ * notification, no email (anti-abuse policy shared with cancelAccountDeletion).
+ */
+export async function cancelDeletionRequestById(
+  requestId: string
+): Promise<DeletionRequestResult> {
+  try {
+    const req = await prisma.accountDeletionRequest.findUnique({
+      where: { id: requestId },
+    });
+    if (!req) return { ok: false, error: "Deletion request not found" };
+    if (req.status !== "PENDING")
+      return { ok: false, error: `Request is ${req.status.toLowerCase()} — nothing to reverse` };
+    return await cancelAccountDeletion(req.userId);
+  } catch (e) {
+    console.error("[accountDeletion] cancelById failed:", e);
+    Sentry.captureException(e);
+    return { ok: false, error: "Failed to reverse deletion request" };
+  }
+}
+
+export interface DeleteNowResult extends DeletionRequestResult {
+  requestId?: string;
+  /** True when the account was anonymized immediately (no grace wait). */
+  finalized?: boolean;
+}
+
+/**
+ * Admin: destructive safe deletion for a single user — request (if none
+ * pending) then force-finalize through the SAME pipeline as the cron.
+ * Guards: unknown user, already-deleted, self-delete (caller must block with
+ * ADMIN_USER_DELETION_META.selfDeleteGuard), last-admin. Never throws —
+ * returns `{ ok, error }` for sanitized API feedback.
+ */
+export async function deleteUserNow(
+  userId: string,
+  reason: string | undefined,
+  completedBy: string
+): Promise<DeleteNowResult> {
+  try {
+    const target = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, isDeleted: true, role: true },
+    });
+    if (!target) return { ok: false, error: "User not found" };
+    if (target.isDeleted) return { ok: false, error: "Account already deleted" };
+    if (target.role === "ADMIN") {
+      const adminCount = await prisma.user.count({
+        where: { role: "ADMIN", isDeleted: false },
+      });
+      if (adminCount <= 1)
+        return { ok: false, error: "Last admin cannot be deleted — promote another admin first" };
+    }
+    let pending = await prisma.accountDeletionRequest.findFirst({
+      where: { userId, status: "PENDING" },
+      orderBy: { requestedAt: "desc" },
+    });
+    let requestId = pending?.id;
+    if (!pending) {
+      const created = await requestAccountDeletion(userId, reason);
+      if (!created.ok) return { ok: false, error: created.error ?? "Failed to start deletion" };
+      requestId = created.requestId;
+    }
+    if (!requestId) return { ok: false, error: "Failed to start deletion" };
+    await finalizeOne(requestId, completedBy);
+    return { ok: true, requestId, finalized: true };
+  } catch (e) {
+    console.error("[accountDeletion] deleteNow failed:", e);
+    Sentry.captureException(e);
+    return { ok: false, error: "Failed to delete account" };
   }
 }

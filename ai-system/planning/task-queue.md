@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
-> - last-synced: 2026-10-11 (comment tightening + feed modal + explore search + test close-out — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
+> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-synced: 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -650,3 +650,4 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 - [x] Sprint 39 (2026-10-11) — Comment tightening + feed modal parity + explore search expansion + failing-test close-out (COMMENTS_CONFIG + EXPLORE_SEARCH_CONFIG + PostCommentsModal + ExploreSearchInput; AppAvatar in comments; 3 pre-existing red suites fixed) (commentTightening 10 + exploreSearchExpansion 6 suites; full gate green in-runner: tsc 0, jest 461/461, build clean)
 - [x] Sprint 40 (2026-10-11) — Trust detail-42 fix (DETAIL_SCORING_CONFIG + computePostDetailScore/detailContextFromPost; service single+batched + create + worker reuse) + error-boundary bug-report CTA (prefill builder + URL, toast action-slot CTA + inline link, report-bug query prefill, EMPTY_STATES.error honest copy) + search discoverability (NAV_REGISTRY + sidebar user-row icon + footer + profile quick-links + footer.search en/pcm) (detailScoring 8 + errorReportPrefill 6 + searchLinks 3 suites; full gate green in-runner: tsc 0, jest 478/478, lint clean)
 - [x] Sprint 42 (2026-10-11) — Dislike parity + comment-avatar consistency (`_isDisliked` viewer flag E2E on detail/list/feed paths + feedStream mutual-exclusion cache; PostCard seed/sync + config-driven dislike fill; post-detail handleDislike + counts + rollback; feed toggle-payload corrections; avatarConfig on auth user + all comment viewers) (dislikeSync 15 + profilePosts +1 suites; tsc zero new-errors + 30/30 assertions grep-verified in-runner, jest/build deferred to CI — no node_modules in runner)
+- [x] Sprint 43 (2026-10-11) — Admin destructive user deletion (grace request kept + per-request Reverse/Delete-now in deletions queue + per-user Request/Reverse/Delete-now in users table, same anonymize pipeline, confirm + undo where reversible, irreversibility warning + backup-recovery note where not, all audited) + dashboard period toggle (7/30/90 wired end-to-end to KPIs + signups chart) (admin +3 suites; node strip-types 9/9 in-runner, tsc/jest/build deferred to CI — no node_modules in runner)

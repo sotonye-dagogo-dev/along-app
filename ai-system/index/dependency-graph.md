@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
+> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -230,6 +230,18 @@ EmailService
 OtpStore / ResetTokenStore
     → Redis via shared wrapper (1.5s timeout, in-memory Map fallback)
     → PasswordResetToken (Prisma, durable DB tokens — survives Redis loss; fixed Sept 29 "link expired" bug)
+
+AccountDeletionService (`app/lib/services/accountDeletionService.ts` — request → 7-day grace → finalize; ACID tx, anonymize-in-place, best-effort side-effects)
+    → Config: accountDeletion (grace/retention/backup windows, anon identity) + admin (`ADMIN_USER_DELETION_META` copy/guards [Sprint 43])
+    → Prisma: AccountDeletionRequest + User/Post/Like/Bookmark/Follow/PushSubscription (tx) + counters recompute + EmailOtpStore mirror
+    → Exports: requestAccountDeletion / cancelAccountDeletion / finalizeDueDeletions / finalizeSingleRequest (force-gated) / cancelDeletionRequestById / deleteUserNow (request-if-needed + force-finalize) [Sprint 43]
+    → Consumed by: profile AccountDeletionPanel, POST /api/account/deletion/*, POST /api/admin/deletions/finalize (`request`/`cancel`/`finalizeOne`/`deleteNow`/`finalizeDue`, all audited [Sprint 43]), cron finalize worker
+    → Admin UI: `app/admin/deletions/` (queue + per-row Reverse/Delete-now) + `app/admin/users/` (per-user Request/Reverse/Delete-now + bulk request) → confirm modal (modalService) + undo toast (undoService) only where reversible [Sprint 43]
+
+AdminStats (`app/api/admin/stats` — period-aware overview [Sprint 43])
+    → Config: admin (`ADMIN_DASHBOARD_PERIODS` + `parseAdminDashboardPeriod` 7/30/90 clamp)
+    → Prisma (batched): user/post/bug counts + validity aggregates + windowed signup series
+    → Consumed by: `app/admin/page.tsx` (period `<select>` drives fetch + cards + signups chart + labels)
 
 PushSubscriptionService
     → PushSubscriptionModel (Prisma)
