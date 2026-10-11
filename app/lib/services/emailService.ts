@@ -71,8 +71,14 @@ export async function sendEmail(options: {
   text: string;
   type: string;
   metadata?: Record<string, unknown>;
+  /**
+   * Per-send Resend budget (additive, non-breaking). Defaults to the shared
+   * 5s; gate-critical verify sends pass a patient budget from
+   * REGISTER_EMAIL_DISPATCH_CONFIG so cold starts don't read as "no mail".
+   */
+  timeoutMs?: number;
 }) {
-  const { to, subject, html, text, type, metadata } = options;
+  const { to, subject, html, text, type, metadata, timeoutMs } = options;
   const resend = await getResend();
 
   if (!resend) {
@@ -103,7 +109,8 @@ export async function sendEmail(options: {
         subject,
         html,
         text,
-      })
+      }),
+      timeoutMs ?? EMAIL_SEND_TIMEOUT_MS
     );
 
     if (error) {
@@ -125,7 +132,7 @@ export async function sendEmail(options: {
   }
 }
 
-export async function sendOtpEmail(to: string, otp: string) {
+export async function sendOtpEmail(to: string, otp: string, timeoutMs?: number) {
   if (!(await isTemplateEnabled("otp"))) {
     await logEmail({ to, subject: "[disabled] otp", type: "otp", status: "skipped", error: "template disabled" });
     return { sent: false, reason: "template disabled" };
@@ -147,10 +154,11 @@ export async function sendOtpEmail(to: string, otp: string) {
     text: renderEmailText(template, vars),
     type: "otp",
     metadata: {},
+    ...(timeoutMs ? { timeoutMs } : {}),
   });
 }
 
-export async function sendWelcomeEmail(to: string, firstName: string) {
+export async function sendWelcomeEmail(to: string, firstName: string, timeoutMs?: number) {
   if (!(await isTemplateEnabled("welcome"))) {
     await logEmail({ to, subject: "[disabled] welcome", type: "welcome", status: "skipped", error: "template disabled" });
     return { sent: false, reason: "template disabled" };
@@ -173,16 +181,17 @@ export async function sendWelcomeEmail(to: string, firstName: string) {
     text: renderEmailText(template, vars),
     type: "welcome",
     metadata: { firstName: vars.firstName },
+    ...(timeoutMs ? { timeoutMs } : {}),
   });
 }
 
-export async function sendVerifyEmail(to: string, firstName: string, otp: string, verifyLink: string) {
+export async function sendVerifyEmail(to: string, firstName: string, otp: string, verifyLink: string, timeoutMs?: number) {
   if (!(await isTemplateEnabled("verifyEmail"))) {
     await logEmail({ to, subject: "[disabled] verifyEmail", type: "verifyEmail", status: "skipped", error: "template disabled" });
     return { sent: false, reason: "template disabled" };
   }
   const template = await findTemplate("verifyEmail");
-  if (!template) return sendOtpEmail(to, otp);
+  if (!template) return sendOtpEmail(to, otp, timeoutMs);
   const vars = {
     firstName: sanitizeVarText(firstName, 80) || "traveller",
     otp: sanitizeVarText(otp, 12),
@@ -195,6 +204,7 @@ export async function sendVerifyEmail(to: string, firstName: string, otp: string
     html: renderEmailHtml(template, vars),
     text: renderEmailText(template, vars),
     type: "verifyEmail",
+    ...(timeoutMs ? { timeoutMs } : {}),
   });
 }
 

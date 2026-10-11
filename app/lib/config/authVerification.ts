@@ -89,12 +89,33 @@ export interface RegisterEmailDispatchConfig {
   welcomeTimeoutMs: number;
   /** Send the verifyEmail template (OTP + link) instead of the otp-only one. */
   useVerifyTemplate: boolean;
+  /**
+   * When true, code-send routes clear the per-email cooldown when delivery
+   * FAILS (provider timeout / disabled template) so the user can retry
+   * immediately. The saved code stays valid; abuse stays capped by the
+   * shared auth rate bucket. Success still starts the normal cooldown.
+   */
+  clearCooldownOnFailure: boolean;
+  /**
+   * The OTP-screen resend endpoint (`/api/auth/otp/resend`) sends the same
+   * verifyEmail template (OTP + one-tap link) as register and the profile
+   * trigger, so every verify mail the user ever sees shares one shape.
+   * `sendVerifyEmail` falls back to the otp-only template when verifyEmail
+   * is missing/disabled — non-breaking.
+   */
+  resendUseVerifyTemplate: boolean;
 }
 
 export const REGISTER_EMAIL_DISPATCH_CONFIG: RegisterEmailDispatchConfig = {
-  otpTimeoutMs: 6000,
-  welcomeTimeoutMs: 6000,
+  // Patient budgets: the profile verify-email trigger (single send, no outer
+  // race, maxDuration=30) consistently delivered while register's 6s/5s
+  // double-race timed out on cold starts — matching the "signup gets nothing,
+  // profile resend works" report. Parallel wall-time max(15,10)=15s < 30s.
+  otpTimeoutMs: 15000,
+  welcomeTimeoutMs: 10000,
   useVerifyTemplate: true,
+  clearCooldownOnFailure: true,
+  resendUseVerifyTemplate: true,
 };
 
 /** Welcome-mail dispatch budget for the Google OAuth callback (redirect path). */
