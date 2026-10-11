@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 36 response linkage + validation fix)
-> - last-verified-against-code: 2026-10-11
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 owner-only menu + admin edit/audit + friendly audit trail)
+> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1096,3 +1096,15 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `registerEmailDispatch.test.ts` (6 file-presence cases).
 **QA:** no node_modules in runner — re-reads of all touched files, static predicate checks (no sendInBackground/globalThis/void-send remains on register; sent flag + verify link present); full jest/tsc/build deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs (register 201 shape additive-only: +sent/reason/welcomeSent/invalidatesPrevious); additive-only.
+
+## Sprint 37 (2026-10-11) — Owner-only post menu + admin edit with audit + friendly audit trail
+**Directive:** post menu must not expose archive/delete to non-posters (incl. admins); admin post actions gain editing, audit-logged; audit log UI becomes user-friendly with sanitization + universal table/tag components. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- `PostMenu.tsx`: Edit/Archive/Delete render for owners only; admins viewing others' posts see Copy link + Report like any viewer (handlers additionally no-op without ownership; `viewerRole` kept for call-site compat). Admin moderation lives on `/admin/posts`.
+- `PUT /api/admin/posts` (new): title/description/tags only, validated, nature-preserving by construction; PATCH/DELETE now `logAudit` (`post.archive`/`post.restore`/`post.delete`); `PATCH/DELETE /api/posts/[id]` audit admin-not-owner mutations (`post.edit`/`post.archive`/`post.restore`/`post.delete`).
+- `/admin/posts`: Edit button + `AppModal` form (`AppInput`/`AppTextarea`/`AppButton`, inline + toast errors, audited save).
+- NEW `lib/config/audit.ts` (`AUDIT_DISPLAY_CONFIG` + `sanitizeAuditText`/`sanitizeAuditDetails`/`auditEntityMeta`/`auditActionMeta`, zero-dep, never-throw); `/admin/audit` rebuilt on `AppTable`/`AppTag`/`AppCard`/`AppEmptyState`/`AppSelect`/`AppInput`/`AppButton` with sanitized actor/detail/date cells and capped chips + collapsible full JSON.
+- Service type fix: `attachLiveBreakdownsToPosts` returns `T & Partial<LiveBreakdownAttachment>` (was `T[]` while attaching score/tier/breakdown) — additive, all callers unaffected.
+- Tests: NEW `config/audit.test.ts` (6) + NEW `components/PostMenu.test.tsx` (4: owner/admin/viewer/archived visibility).
+**QA:** `npx tsc --noEmit` zero errors (baseline had 5 in untouched trustBreakdown test + prisma-client staleness; verified pre-existing via `git stash -u`); `npm run build` passes; jest 436/439 — 3 failures in `searchService` + `registerEmailDispatch` verified identical at clean HEAD (pre-existing, unrelated); `next lint` errors only in untouched files, zero findings in touched files.
+**Compliance:** no migration, no new deps, no removed APIs (PostMenu props unchanged; admin list shape unchanged — description/tags already returned; PUT is new); additive-only.

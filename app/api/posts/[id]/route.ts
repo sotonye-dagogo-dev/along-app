@@ -3,6 +3,7 @@ import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { UPDATE_POST_SCHEMA } from "@/app/lib/schemas/post";
 import { MODERATION_CONFIG, MEDIA_CLEANUP_CONFIG } from "@/app/lib/config";
+import { logAudit } from "@/app/lib/services/auditService";
 import { qstashService } from "@/app/lib/services/qstashService";
 import { normalizeRouteSteps } from "@/app/lib/config/routeSteps";
 import { z } from "zod";
@@ -218,6 +219,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           data: { isArchived: archiveParsed.data.isArchived, archivedAt: archiveParsed.data.isArchived ? new Date() : null },
           include: { user: { select: { ...AUTHOR_SELECT_FALLBACK } } },
         });
+        // Admin archive/restore via this endpoint is audited (owner self-archives are not).
+        if (admin && !owner) {
+          void logAudit({
+            actorId: (user as any).id ?? null,
+            action: archiveParsed.data.isArchived ? "post.archive" : "post.restore",
+            entity: "post",
+            entityId: id,
+            metadata: { via: "post-endpoint" },
+          });
+        }
         return NextResponse.json({ post: updated }, { status: 200 });
       } catch (e) {
         if (isMissingColumnError(e)) {
@@ -265,6 +276,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         },
       },
     });
+
+    // Admin content corrections are audited (owner self-edits are not).
+    if (admin && !owner) {
+      void logAudit({
+        actorId: (user as any).id ?? null,
+        action: "post.edit",
+        entity: "post",
+        entityId: id,
+        metadata: {
+          title: typeof updated.title === "string" ? updated.title.slice(0, 120) : "",
+          via: "post-endpoint",
+        },
+      });
+    }
 
     // Edited content can change the detail leg — recompute (fire-and-forget).
     try {
@@ -318,7 +343,18 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     // Asset images are captured BEFORE the delete; Cloudinary cleanup runs
     // AFTER the commit (best-effort, never fails the delete).
     const orphanCandidates: string[] = Array.isArray(post.images) ? [...post.images] : [];
+    const deleterIsAdmin = isAdmin(user as any) && post.userId !== (user as any).id;
     await prisma.post.delete({ where: { id } });
+    // Admin deletes via this endpoint are audited (owner self-deletes are not).
+    if (deleterIsAdmin) {
+      void logAudit({
+        actorId: (user as any).id ?? null,
+        action: "post.delete",
+        entity: "post",
+        entityId: id,
+        metadata: { via: "post-endpoint" },
+      });
+    }
     try {
       if (MEDIA_CLEANUP_CONFIG.enabled && MEDIA_CLEANUP_CONFIG.postDeleteCleanupEnabled && orphanCandidates.length > 0) {
         const { cleanupImagesInBackground } = await import(

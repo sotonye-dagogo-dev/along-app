@@ -62,8 +62,8 @@ describe("trust breakdown consistency (feed card == detail)", () => {
     expect(single).not.toBeNull();
     expect(batched.validityBreakdown).toBeDefined();
     for (const key of ["community", "detail", "corroboration", "recency", "reputation", "engagement"] as const) {
-      expect((batched.validityBreakdown as Record<string, number>)[key]).toBe(
-        (single as Record<string, number>)[key]
+      expect((batched.validityBreakdown as unknown as Record<string, number>)[key]).toBe(
+        (single as unknown as Record<string, number>)[key]
       );
     }
     // Badge numbers agree too: stored row is overwritten with the live score.

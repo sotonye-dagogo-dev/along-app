@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config";
+import { logAudit } from "@/app/lib/services/auditService";
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- P2022-tolerant casts for the additive archive columns */
 function isMissingColumnError(error: unknown): boolean {
@@ -84,6 +85,13 @@ export async function PATCH(request: NextRequest) {
         where: { id: { in: targets } },
         data: { isArchived, archivedAt: isArchived ? new Date() : null },
       } as never);
+      // Audit every admin archive/restore (fire-and-forget, never fails the op).
+      void logAudit({
+        actorId: (user as { id?: string }).id ?? null,
+        action: isArchived ? "post.archive" : "post.restore",
+        entity: "post",
+        metadata: { postIds: targets.slice(0, 50), count: targets.length },
+      });
       return NextResponse.json({ success: true, updated: targets.length, post: updated }, { status: 200 });
     } catch (e) {
       if (isMissingColumnError(e)) {
@@ -96,6 +104,70 @@ export async function PATCH(request: NextRequest) {
     }
   } catch (error) {
     console.error("Admin post archive error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const user = await getUserFromRequest();
+    if (!isPrivileged(user)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { postId, title, description, tags } = body as {
+      postId?: unknown; title?: unknown; description?: unknown; tags?: unknown;
+    };
+    if (typeof postId !== "string" || postId.length === 0) {
+      return NextResponse.json({ error: "postId required" }, { status: 400 });
+    }
+    // Admin edit is intentionally narrow: title / description / tags only.
+    // Post nature (type/quotedPostId), route legs, and archive state are
+    // never touched here, so an admin correction can never morph a ROUTE
+    // into a ROUTE_REQUEST or unhide an archived post by accident.
+    const data: { title?: string; description?: string | null; tags?: string[] } = {};
+    if (title !== undefined) {
+      if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 200) {
+        return NextResponse.json({ error: "Title must be 3–200 characters" }, { status: 400 });
+      }
+      data.title = title.trim();
+    }
+    if (description !== undefined) {
+      if (typeof description !== "string" || description.length > 5000) {
+        return NextResponse.json({ error: "Description must be under 5000 characters" }, { status: 400 });
+      }
+      data.description = description.trim().length === 0 ? null : description.trim();
+    }
+    if (tags !== undefined) {
+      if (!Array.isArray(tags) || tags.length > 10 || tags.some((t) => typeof t !== "string")) {
+        return NextResponse.json({ error: "Tags must be a list of up to 10 strings" }, { status: 400 });
+      }
+      data.tags = tags.map((t) => (t as string).trim().slice(0, 40)).filter(Boolean);
+    }
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+    }
+
+    const existing = await prisma.post.findUnique({ where: { id: postId } });
+    if (!existing) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+    const updated = await prisma.post.update({ where: { id: postId }, data });
+    // Audit every admin edit (fire-and-forget, never fails the op).
+    void logAudit({
+      actorId: (user as { id?: string }).id ?? null,
+      action: "post.edit",
+      entity: "post",
+      entityId: postId,
+      metadata: {
+        title: typeof updated.title === "string" ? updated.title.slice(0, 120) : "",
+        fields: Object.keys(data),
+      },
+    });
+    return NextResponse.json({ success: true, post: updated }, { status: 200 });
+  } catch (error) {
+    console.error("Admin post edit error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
@@ -127,6 +199,20 @@ export async function DELETE(request: NextRequest) {
     if (snapshots.length === 0) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
+
+    // Audit every admin delete (fire-and-forget, never fails the op).
+    void logAudit({
+      actorId: (user as { id?: string }).id ?? null,
+      action: "post.delete",
+      entity: "post",
+      metadata: {
+        postIds: targets.slice(0, 50),
+        count: snapshots.length,
+        titles: (snapshots as { title?: unknown }[]).slice(0, 10).map((s) =>
+          typeof s.title === "string" ? s.title.slice(0, 120) : ""
+        ),
+      },
+    });
 
     // ACID-safe media hygiene: tx committed above; destroy orphaned
     // Cloudinary assets best-effort (never fails the admin delete).
