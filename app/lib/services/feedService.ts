@@ -94,16 +94,34 @@ async function safeFindManyPosts(args: Parameters<typeof prisma.post.findMany>[0
       // them if the moderation migration has not applied.
       const { isArchived: _drop, ...restWhere } = (filteredArgs as any)?.where ?? {};
       void _drop;
+      const needsAvatarFallback =
+        (filteredArgs as any)?.include?.user?.select?.avatarConfig ||
+        (filteredArgs as any)?.include?.quotedPost?.select?.user?.select?.avatarConfig;
       const fallbackArgs = {
         ...filteredArgs,
         ...(Object.keys(restWhere).length > 0 || (args as any)?.where ? { where: restWhere } : {}),
-        ...((filteredArgs as any)?.include?.user?.select?.avatarConfig
+        ...(needsAvatarFallback
           ? {
               include: {
                 ...(filteredArgs as any).include,
                 user: {
                   select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
                 },
+                ...((filteredArgs as any)?.include?.quotedPost
+                  ? {
+                      quotedPost: {
+                        select: {
+                          id: true,
+                          title: true,
+                          type: true,
+                          createdAt: true,
+                          user: {
+                            select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
+                          },
+                        },
+                      },
+                    }
+                  : {}),
               },
             }
           : {}),
@@ -120,7 +138,10 @@ async function safeFindUniquePost(args: Parameters<typeof prisma.post.findUnique
   try {
     return await (prisma.post.findUnique as any)(args);
   } catch (error) {
-    if (isMissingColumnError(error) && (args as any)?.include?.user?.select?.avatarConfig) {
+    const needsAvatarFallback =
+      (args as any)?.include?.user?.select?.avatarConfig ||
+      (args as any)?.include?.quotedPost?.select?.user?.select?.avatarConfig;
+    if (isMissingColumnError(error) && needsAvatarFallback) {
       const fallbackArgs = {
         ...args,
         include: {
@@ -128,6 +149,21 @@ async function safeFindUniquePost(args: Parameters<typeof prisma.post.findUnique
           user: {
             select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
           },
+          ...((args as any)?.include?.quotedPost
+            ? {
+                quotedPost: {
+                  select: {
+                    id: true,
+                    title: true,
+                    type: true,
+                    createdAt: true,
+                    user: {
+                      select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
+                    },
+                  },
+                },
+              }
+            : {}),
         },
       };
       return await (prisma.post.findUnique as any)(fallbackArgs);
@@ -191,7 +227,7 @@ class FeedService {
     const [followingPosts, trendingPosts, tagPosts, recentPosts] = await Promise.all([
       followingIds.length > 0 ? safeFindManyPosts({
         where: { userId: { in: followingIds }, ...cursorFilter },
-        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } } } } },
+        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
         orderBy: { createdAt: "desc" },
         take: Math.ceil(limit * 2),
       }) : Promise.resolve([]),
@@ -201,20 +237,20 @@ class FeedService {
           ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}),
           createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), ...(cursorCreatedAt ? { lt: cursorCreatedAt } : {}) },
         },
-        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } } } } },
+        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
         orderBy: [{ likes: "desc" }, { comments: "desc" }],
         take: Math.ceil(limit * 1.5),
       }),
       activeTags.length > 0 ? safeFindManyPosts({
         where: { tags: { hasSome: activeTags }, ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}), ...cursorFilter },
-        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } } } } },
+        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
         orderBy: { createdAt: "desc" },
         take: Math.ceil(limit * 1.5),
       }) : Promise.resolve([]),
       // Recent posts fallback ensures new posts always surface, even for cold-start users
       safeFindManyPosts({
         where: { ...recentCursorFilter },
-        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } } } } },
+        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
         orderBy: { createdAt: "desc" },
         take: limit,
       }),
@@ -371,7 +407,7 @@ class FeedService {
             title: true,
             type: true,
             createdAt: true,
-            user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true } },
+            user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } },
           },
         },
       },

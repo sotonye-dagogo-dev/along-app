@@ -10,6 +10,7 @@ import { Search, LocateFixed, SlidersHorizontal, Link2, X, ChevronLeft } from "l
 import { ExplorePinCard, FilterChipsBar } from "@/app/components/features/explore"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
+import { EXPLORE_PIN_POPUP_CONFIG } from "@/app/lib/config/explore"
 import { getMapStyleStack, rasterFallbackDepth } from "@/app/lib/config/mapStack"
 import { MAP_PINS_CONFIG } from "@/app/lib/config/mapPins"
 import { MapRoutePin, MapUserDot } from "@/app/components/features/posts/MapPins"
@@ -81,6 +82,20 @@ export default function ExplorePage() {
   const [dragging, setDragging] = useState(false)
   const [isDark, setIsDark] = useState(false)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
+  const [isLargeScreen, setIsLargeScreen] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${EXPLORE_PIN_POPUP_CONFIG.desktopBreakpointPx}px)`)
+    const sync = () => setIsLargeScreen(mq.matches)
+    sync()
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", sync)
+      return () => mq.removeEventListener("change", sync)
+    }
+    // Legacy Safari fallback (MediaQueryList.addListener).
+    const legacy = mq as unknown as { addListener?: (fn: () => void) => void; removeListener?: (fn: () => void) => void }
+    legacy.addListener?.(sync)
+    return () => legacy.removeListener?.(sync)
+  }, [])
   const [sortBy, setSortBy] = useState("validity")
   // User location pin: always visible once granted. The shared hook requests
   // on mount (no view jump) and watches so the dot tracks movement; the
@@ -492,10 +507,27 @@ export default function ExplorePage() {
         </button>
       )}
 
-      {/* Pin Popup Card (280px, glass) */}
+      {/* Pin Popup Card — same tooltip card on every viewport: click (desktop)
+          and tap (mobile) both open it; only the placement differs
+          (config-driven via EXPLORE_PIN_POPUP_CONFIG). */}
       {selectedPin && (
-        <div className="hidden lg:block absolute z-20 w-[280px] bg-bg-card/90 backdrop-blur-[16px] saturate-[180%] border border-border/40 radius-xl p-4 shadow-lg animate-[scaleIn_200ms_ease-out]"
-          style={{ top: "200px", left: "420px" }}
+        <div
+          className="block absolute z-20 bg-bg-card/90 backdrop-blur-[16px] saturate-[180%] border border-border/40 radius-xl p-4 shadow-lg animate-[scaleIn_200ms_ease-out]"
+          style={
+            isLargeScreen
+              ? {
+                  top: EXPLORE_PIN_POPUP_CONFIG.desktopTop,
+                  left: EXPLORE_PIN_POPUP_CONFIG.desktopLeft,
+                  width: EXPLORE_PIN_POPUP_CONFIG.desktopWidth,
+                }
+              : {
+                  left: EXPLORE_PIN_POPUP_CONFIG.mobileSideInset,
+                  right: EXPLORE_PIN_POPUP_CONFIG.mobileSideInset,
+                  bottom: `calc(${bottomSheetHeight} + ${EXPLORE_PIN_POPUP_CONFIG.mobileAboveSheetGap}px)`,
+                }
+          }
+          role="dialog"
+          aria-label={`${selectedPin.title} details`}
         >
           <div className="flex items-center gap-2 mb-2">
             <AppAvatar
