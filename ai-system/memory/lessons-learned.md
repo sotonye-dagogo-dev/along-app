@@ -266,10 +266,10 @@ Building any file/media upload — verify end-to-end (input → FormData → API
 **What We Learned:**
 1. Wrap every Redis operation in `Promise.race` with <1.5s timeout and fallback to in-memory or DB — cache must be non-critical.
 2. Use a lazy singleton (`app/lib/db/redis.ts`) that resolves `UPSTASH_REDIS_REST_URL || REDIS_URL` and never `new Redis` at import time; guard `replace_me` and non-https values.
-3. Never `await` email sending on the hot path — use `waitUntil` background pattern as in `register`.
+3. Gate-critical email (OTP/verification) must be AWAITED inside bounded timeouts with an honest `sent` flag — fire-and-forget (`void` / `globalThis.waitUntil`, which does not exist on the Vercel/Next runtime) lets serverless freeze the function on response and silently drops the mail (Oct 2026 register fix: `REGISTER_EMAIL_DISPATCH_CONFIG` 6s per-mail race + `Promise.allSettled`, same pattern as forgot-password). Non-critical notices (change-password notice, Google welcome before the fix) may stay background, but never OTP gates.
 
 **Apply When:**
-Any route that touches Redis or Resend on the request hot path — always timeout-guard and make side effects (email, feed invalidation) background work.
+Any route that touches Redis or Resend on the request hot path — always timeout-guard; cache side effects may be background, but verification/OTP delivery must be awaited and honestly reported.
 
 **Supersedes:** None
 **Superseded by:** None
@@ -301,7 +301,7 @@ Forgot-password returned success while Resend never delivered — no mail, no er
 A false "mail sent" success is worse than an error: the user waits for mail that never arrives and blames their inbox. Every background email must check the provider send result and degrade honestly (log + surfaced error) when delivery fails.
 
 **Apply When:**
-Any flow that sends transactional email (verification, reset, notifications) — especially non-blocking `waitUntil` sends where the response already went out.
+Any flow that sends transactional email (verification, reset, notifications) — gate-critical sends must be awaited with timeout + honest `sent`/`reason` (register/otp-resend/verify-email/forgot-password pattern); only non-critical notices may be fire-and-forget, and then only via Next `after()` (never `globalThis.waitUntil`, which does not exist on this runtime).
 
 **Supersedes:** None
 **Superseded by:** None

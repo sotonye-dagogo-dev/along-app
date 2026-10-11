@@ -63,6 +63,45 @@ export const AUTH_VERIFICATION_CONFIG: AuthVerificationConfig = {
   },
 };
 
+/**
+ * Register-path email dispatch registry — single source of truth for how the
+ * signup route delivers its verification + welcome mails.
+ *
+ * Why this exists: register previously fire-and-forgot its mails
+ * (`void sendInBackground()` / `globalThis.waitUntil`, which does not exist
+ * on the Vercel/Next runtime). Serverless freezes the function the moment
+ * the response is returned, so the OTP mail was silently dropped while
+ * awaited flows (forgot-password, resend, verify-email trigger) delivered
+ * fine. Register now AWAITS both mails inside bounded timeouts (same pattern
+ * as forgot-password) and reports an honest `sent` flag instead of a
+ * false-positive "OTP sent to email".
+ *
+ * - `useVerifyTemplate`: register sends the `verifyEmail` template (OTP +
+ *   one-tap link + firstName) so the signup mail matches the resend/trigger
+ *   mails. `sendVerifyEmail` already falls back to the `otp` template when
+ *   the verify template is missing/disabled — non-breaking.
+ * - Timeouts keep total worst-case well inside the route's maxDuration=30.
+ */
+export interface RegisterEmailDispatchConfig {
+  /** Per-mail timeout for the verification mail. */
+  otpTimeoutMs: number;
+  /** Per-mail timeout for the welcome mail (independent, non-fatal). */
+  welcomeTimeoutMs: number;
+  /** Send the verifyEmail template (OTP + link) instead of the otp-only one. */
+  useVerifyTemplate: boolean;
+}
+
+export const REGISTER_EMAIL_DISPATCH_CONFIG: RegisterEmailDispatchConfig = {
+  otpTimeoutMs: 6000,
+  welcomeTimeoutMs: 6000,
+  useVerifyTemplate: true,
+};
+
+/** Welcome-mail dispatch budget for the Google OAuth callback (redirect path). */
+export const GOOGLE_WELCOME_DISPATCH_CONFIG = {
+  timeoutMs: 5000,
+} as const;
+
 /** "048291" stays 6 digits; TTL minutes for expiry notes. */
 export const OTP_TTL_MINUTES = Math.round(AUTH_VERIFICATION_CONFIG.otpTtlSeconds / 60);
 

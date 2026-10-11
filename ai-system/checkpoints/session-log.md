@@ -1857,3 +1857,11 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner — re-reads of all 10 touched + 3 new files, locale JSON parsed valid, `ProfileQuickLink` union-extends-interface fixed to intersection type, test predicate typed via `Extract<ProfileQuickLink,…>`. Full jest/tsc/build deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs (status response shape unchanged — booleans only, now truthful); additive-only (new configs, one footer link, one profile link, one invite CTA, one status line, one toast effect).
 **Chain:** execute-feature → in-progress (written + cleared) → session-log (here) → dev-history + task-queue + repo-map + dependency-graph → update-ai-system terminal sync.
+
+## Session 2026-10-11 — Register verify-email/OTP not sent (execute-feature)
+**Directive:** verify email/OTP not sent on successful register while other email flows deliver; config/metadata-driven, reusable modular, non-breaking + update-ai-system chain, with fallbacks/error handling/edge cases.
+**Root cause:** register fire-and-forgot its mails (`void sendInBackground()` / `globalThis.waitUntil` — nonexistent on Vercel/Next runtime); serverless freezes on response so OTP mail silently dropped while awaited flows (forgot-password, resend, verify-email trigger) delivered. Register also used the otp-only template vs the verifyEmail OTP+link template elsewhere.
+**Implemented:** `REGISTER_EMAIL_DISPATCH_CONFIG` + `GOOGLE_WELCOME_DISPATCH_CONFIG` in `authVerification.ts`; register awaits both mails in parallel with per-mail timeout races via `sendVerifyEmail` (OTP+link) + honest `sent`/`reason` payload; google welcome awaited within 5s; register page warns on `sent===false` but still advances to OTP; NEW `registerEmailDispatch.test.ts` (6 cases).
+**QA:** no node_modules — static re-reads only; full gate deferred to CI/Vercel.
+**Compliance:** additive-only, no migration/deps/API removals.
+**Chain:** execute-feature → session-log (here) → dev-history → lessons-learned + repair-system + system-architecture + dependency-graph → update-ai-system terminal sync.
