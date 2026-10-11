@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 return-type + stash-verified baseline lesson)
-> - last-verified-against-code: 2026-10-11 (Sprint 37: tsc zero errors + build passes + jest 436/439 pre-existing-only + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -677,5 +677,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** `tsc` failed in `trustBreakdownConsistency.test.ts` (`validityBreakdown`/`validityScore`/`validityTier` "do not exist") even though the runtime attaches all three; plus 3 jest failures in `searchService`/`registerEmailDispatch` and lint errors in untouched files.
 - **Root causes:** (1) `attachLiveBreakdownsToPosts` declared `Promise<T[]>` while spreading attached fields onto each row — the generic erased what the function guarantees; (2) unrelated suites assert on auth/search file contents untouched by this sprint.
 - **Fix pattern (reuse):** widen the service return to `T & Partial<Attachment>` (additive, all call sites keep compiling, failures stay expressible via Partial); verify pre-existing status with `git stash -u` + re-run rather than assuming — stash must include untracked files or new-file errors pollute the baseline. Leave unrelated red suites to their owners; record as residual risk in the session log instead of scope-creeping into auth/search code.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 38: degraded-but-rendering UI hides data bugs + pure-scorer trust changes
+- **Symptom:** profile posts "looked fine" but missed the response marker and showed legacy trust numbers — no error anywhere, because `PostCard`/`TrustBadge` degrade gracefully on absent props.
+- **Root causes:** (1) page-level minimal projections stripped fields the shared card needs; graceful fallbacks made the loss invisible except by side-by-side comparison with feed; (2) corroboration's exact-tag ±7d count was near-degenerate on real data (case, tagless posts, short window).
+- **Fix pattern (reuse):** when a shared component degrades gracefully, audit prop-forwarding at every call site (not the component); keep trust math in pure, unit-tested engine functions with config weights, and DB evidence in one best-effort service with per-leg fallbacks — scores stay explainable and reads never fail because of trust.
 - **Supersedes:** None
 - **Superseded by:** None

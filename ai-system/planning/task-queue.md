@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 37 owner-only post menu + admin edit/audit + friendly audit trail)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + build passes + jest 436/439 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
-> - last-synced: 2026-10-11 (Sprint 37 — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
+> - last-synced: 2026-10-11 (Sprint 38 — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -560,6 +560,20 @@ Tags help agents self-select whether a task needs the full `execute-feature.md` 
 | [M] | False "highlighted fields" fix — `validateRouteComposer` skips hidden destination fare/vehicle (`destinationSkipsFare/Vehicle`), prefill/restore seed no destination `_fareRaw` | [x] |
 | [S] | `GET /api/posts` includes `quotedPost` (profile tabs render Responding-to; P2022 fallback drops it) + `FeedPost` client type | [x] |
 | [S] | Tests — `routeValidation.test.ts` +2 (destination skip, destination location still required), `routeDrafts.test.ts` +1 (response round-trip incl. update-in-place) | [x] |
+
+---
+
+## Sprint 38 — Profile post parity + corroboration tightening (2026-10-11)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; all additions optional/additive with safe fallbacks). QA: tsc zero errors + jest 443/446 (3 pre-existing failures verified identical at HEAD) + lint pre-existing-only; build deferred to Vercel.
+
+| Size | Task | Status |
+|------|------|--------|
+| [S] | Profile parity — `PostItem` (own + `[username]`) forwards `validityBreakdown/quotedPostId/quotedPost/responsesCount`; tabs render Responding-to marker + live compact badge as in feed | [x] |
+| [M] | Corroboration evidence blend — `CORROBORATION_CONFIG` + pure engine scorers (tag Jaccard, geo corridor, route content with destination exclusion, endorsement, coverage-scaled blend); service single + batched paths share one pool; create path reuses helper (no optimistic flash) | [x] |
+| [S] | Clarity — `TRUST_BREAKDOWN_DESCRIPTIONS` registry rendered as tooltip help on every TrustBadge row | [x] |
+| [S] | Other trust factors audited, unchanged (all real signals; dynamic legs additive/capped) | [x] |
+| [S] | Tests — NEW `services/corroboration.test.ts` (8: normalization, tag, geo, destination-exclusion, pair, endorsement, blend/coverage/cap/clamp) | [x] |
 
 ---
 
