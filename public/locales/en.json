@@ -226,7 +226,11 @@
   "leaderboard.subtitle": "Top contributors ranked by reward points",
   "leaderboard.empty": "No ranked contributors yet. Share a route to top the board.",
   "leaderboard.points": "{count} pts",
-  "leaderboard.yourRank": "Your rank: #{rank}",
+  "leaderboard.yourRank": "Your rank: {rank}",
+  "leaderboard.jumpToMyRank": "Jump to my rank",
+  "leaderboard.prev": "Prev",
+  "leaderboard.next": "Next",
+  "leaderboard.pageStatus": "Page {page} of {totalPages} · {total} ranked",
 
   "invite.title": "Invite Friends",
   "invite.subtitle": "Share your invite link and earn rewards",

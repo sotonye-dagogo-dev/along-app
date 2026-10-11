@@ -226,7 +226,11 @@
   "leaderboard.subtitle": "Ogas wey don gather pass with reward points",
   "leaderboard.empty": "Nobody don rank yet. Share route make you top di board.",
   "leaderboard.points": "{count} pts",
-  "leaderboard.yourRank": "Your position: #{rank}",
+  "leaderboard.yourRank": "Your position: {rank}",
+  "leaderboard.jumpToMyRank": "Jump go my rank",
+  "leaderboard.prev": "Prev",
+  "leaderboard.next": "Next",
+  "leaderboard.pageStatus": "Page {page} of {totalPages} · {total} ranked",
 
   "invite.title": "Invite Friends",
   "invite.subtitle": "Share your invite link take earn rewards",
