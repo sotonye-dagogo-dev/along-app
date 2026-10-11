@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
+> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -1956,4 +1956,17 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **Tests:** NEW `config/dislikeSync.test.ts` (15) + `profilePosts` +1 assertion.
 **QA:** runner has no node_modules — jest/build deferred to CI/Vercel; tsc zero errors on touched symbols; 30/30 new assertions grep-verified; diff reviewed.
 **Compliance:** additive-only, no migration, no new deps, no removed APIs (vote endpoint contract unchanged).
+**Chain:** execute-feature → in-progress (written + cleared below) → session-log (here) → dev-history + task-queue + project-plan → update-ai-system terminal sync.
+
+## Session 2026-10-11 — Admin destructive user deletion + dashboard period toggle (execute-feature Sprint 43)
+**Directive:** (1) user-deletion flow on the admin panel keeps the deletion-request flow but gains the actual destructive safe deletion (with warning + undo per platform convention); (2) admin dashboard gets a data-period toggle like the user analytics page, wired end-to-end to overview + signups chart. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain, with fallbacks/edge cases.
+**Gap analysis (verified in code):** the grace pipeline existed end-to-end (request → 7-day archive → finalize anonymize) but the admin had no destructive path — deletions queue offered only "finalize due" (bulk, due-only, no per-request action) and the users table only "request deletion" (bulk, grace-only); no per-user cancel/reverse or immediate-delete UI existed. The dashboard fetched a hardcoded 7-day window with no period control while `/api/analytics/user` already took `?period=7|30|90`.
+**Implemented:**
+- Config (`lib/config/admin.ts` + barrel): `ADMIN_DASHBOARD_PERIODS` (7/30/90 + default + `parseAdminDashboardPeriod` with clamp fallback) + `ADMIN_USER_DELETION_META` (request/cancel/delete-now titles, descriptions, confirm labels, undo + recovery copy, self/last-admin guards).
+- Service (`accountDeletionService.ts`, additive): `finalizeSingleRequest(id, by, {force})` (due-guard unless forced), `cancelDeletionRequestById(requestId)`, `deleteUserNow(userId, reason, by)` (request-if-needed then force-finalize through the same ACID anonymize pipeline; last-admin/self/unknown/deleted guards; never throws).
+- APIs: `GET /api/admin/stats?period=` (windowed signups series + window-vs-previous-window KPI deltas so zero-activity periods stay flat; `signups` canonical + `signups7d` alias, `postsInPeriod`, `period`, extended `previous` — fully back-compatible); `POST /api/admin/deletions/finalize` += `cancel` (requestId or userId), `finalizeOne` (due-only unless `force:true`), `deleteNow` (all `logAudit`-audited, self-delete guarded).
+- UI: dashboard period `<select>` (config options) driving fetch + subtitle ("Admin overview · Last N days") + chart title ("Signups (N days)") + posts-card label/value (`Posts Today` on 7d, `Posts (Nd)` otherwise); deletions queue per-row Reverse (sensitive confirm + re-request undo toast) + Delete now (destructive confirm stating irreversibility + recovery note, no fake undo); users table per-row Request deletion (destructive confirm + cancel-undo toast) / Reverse deletion / Delete now gated on `isDeleted`/`deletionScheduledFor`; bulk request copy now reads the shared meta.
+- Tests: `config/admin.test.ts` +3 (period options parity, parser incl. clamps, deletion-meta irreversibility/recovery/guard copy).
+**QA:** runner has no node_modules (npx unavailable) — tsc/jest/build deferred to CI/Vercel; node strip-types suite 9/9 green (periods, parser incl. garbage/clamp, irreversibility + backup copy, formatDelta zero-safety intact); new jest assertions mirror the node suite 1:1 for CI.
+**Compliance:** additive-only, no migration, no new deps, no removed APIs (stats payload only gains fields; finalize route only gains actions; role checks unchanged).
 **Chain:** execute-feature → in-progress (written + cleared below) → session-log (here) → dev-history + task-queue + project-plan → update-ai-system terminal sync.

@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
+> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -712,5 +712,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** feed card correct, detail view wrong — dislike button dead, count stale, active fill missing; comment composer avatar differed from every other surface.
 - **Root causes:** (1) one `Like` row encodes LIKE|DISLIKE but readers only derived `_isLiked` — the second state was unrepresentable downstream, so clients hardcoded `false`; (2) the detail engagement bar was built without wiring the second vote action at all (no `onClick`); (3) toggle endpoints punish wrong payloads silently — sending DISLIKE on unlike *adds* a dislike instead of removing the like; (4) auth context type dropped a field the API already returned, starving all downstream avatar renders.
 - **Fix pattern (reuse):** when one row encodes N states, every read path must derive all N viewer flags (batch, never-throw); every writer must honor toggle-off values and send the repeat-same-type payload; shared caches must mirror the reducer's mutual exclusion; context types must carry every field its API selects (audit type-vs-select drift when adding viewer-derived UI).
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 43: a request queue without per-item actions is a dead end + period deltas need equal windows
+- **Symptom:** admins could see deletion requests but do nothing with them (only bulk "finalize due"); dashboard KPIs compared mismatched windows (today-vs-yesterday, total-vs-7-days-ago) so a quiet period could still render a trend.
+- **Root causes:** (1) the finalize route exposed one bulk action while the queue UI exposed zero per-row actions — the pipeline existed but had no handles; (2) dashboard deltas were hardcoded to 7-day anchors with no period parameter, so any toggle would have compared apples to oranges.
+- **Fix pattern (reuse):** expose one service function per user intent (request / cancel / finalize-one / delete-now), one API action each, one UI affordance each — all through the same transaction; never offer undo without a real reversal path (say what recovery actually is instead); compare every KPI window against its previous equal-length window and let zero-vs-zero read flat via the existing `pctChange`/`formatDelta` null/zero contract.
 - **Supersedes:** None
 - **Superseded by:** None
