@@ -1,11 +1,19 @@
 "use client"
 
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import Link from "next/link"
-import { Search, Shield } from "lucide-react"
-import { AppInput } from "@/app/components/ui"
+import { Search, Shield, Check, XCircle, Mail, Eye, UserCog, UserMinus, Trash2, Undo2 } from "lucide-react"
+import { AppInput, AppTableRowActions, type TableRowAction } from "@/app/components/ui"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
-import { ADMIN_BULK_SELECT_META, ADMIN_USER_DELETION_META } from "@/app/lib/config/admin"
+import {
+  ADMIN_BULK_SELECT_META,
+  ADMIN_USER_DELETION_META,
+  ADMIN_USER_FILTERS,
+  allowedUserRowActions,
+  deletionQueryForFilter,
+  parseAdminUserFilter,
+  type AdminUserFilterId,
+} from "@/app/lib/config/admin"
 import { modalService } from "@/app/lib/services/modalService"
 import { toastService } from "@/app/lib/services/toastService"
 import { undoService } from "@/app/lib/services/undoService"
@@ -27,21 +35,44 @@ interface AdminUser {
   createdAt: string
 }
 
-const DELETION_FILTERS = [
-  { id: "all", label: "All" },
-  { id: "pending", label: "Deletion pending" },
-  { id: "deleted", label: "Deleted" },
-] as const
-
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
   const [bulkBusy, setBulkBusy] = useState(false)
-  const [deletionFilter, setDeletionFilter] = useState<string>("all")
+  const [deletionFilter, setDeletionFilter] = useState<AdminUserFilterId>("all")
   const [rowDeletionBusy, setRowDeletionBusy] = useState<string | null>(null)
 
   const bulk = useBulkSelection(users, (u) => u.id)
+
+  /**
+   * Split the current bulk selection into live vs fully-deleted accounts.
+   * Deleted accounts are view-only, so verify / role / suspend bulk actions
+   * skip them with honest feedback (server enforces the same rule).
+   */
+  const splitLiveSelection = (ids: string[]): { live: string[]; deleted: string[] } => {
+    try {
+      const byId = new Map(users.map((u) => [u.id, u]))
+      const live: string[] = []
+      const deleted: string[] = []
+      for (const id of ids) {
+        const u = byId.get(id)
+        if (u?.isDeleted) deleted.push(id)
+        else live.push(id)
+      }
+      return { live, deleted }
+    } catch {
+      return { live: ids, deleted: [] }
+    }
+  }
+
+  const noteSkippedDeleted = (deletedCount: number) => {
+    if (deletedCount > 0) {
+      toastService.error(
+        `${deletedCount} deleted account(s) skipped — deleted accounts are view-only.`
+      )
+    }
+  }
 
   const loadRef = useRef<AbortController | null>(null)
 
@@ -54,7 +85,8 @@ export default function AdminUsersPage() {
       const params = new URLSearchParams()
       if (q) params.set("q", q)
       const d = deletion ?? deletionFilter
-      if (d && d !== "all") params.set("deletion", d)
+      const query = deletionQueryForFilter(parseAdminUserFilter(d))
+      if (query) params.set("deletion", query)
       const qs = params.toString()
       const url = qs ? `/api/admin/users?${qs}` : "/api/admin/users"
       const res = await fetch(url, { signal })
@@ -194,18 +226,24 @@ export default function AdminUsersPage() {
   const handleBulkVerify = (next: boolean) => {
     const ids = [...bulk.selected]
     if (ids.length === 0) return
+    const { live, deleted } = splitLiveSelection(ids)
+    if (live.length === 0) {
+      noteSkippedDeleted(deleted.length)
+      return
+    }
     const run = async () => {
       setBulkBusy(true)
       try {
         const res = await fetch("/api/admin/users", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userIds: ids, action: next ? "verify" : "unverify" }),
+          body: JSON.stringify({ userIds: live, action: next ? "verify" : "unverify" }),
         })
         if (!res.ok) throw new Error("bulk failed")
         bulk.clear()
         await load(search || undefined)
-        toastService.success(`${ids.length} email(s) ${next ? "verified" : "unverified"}`)
+        toastService.success(`${live.length} email(s) ${next ? "verified" : "unverified"}`)
+        noteSkippedDeleted(deleted.length)
       } catch {
         toastService.error("Bulk verification failed")
       } finally {
@@ -214,7 +252,7 @@ export default function AdminUsersPage() {
     }
     if (!next) {
       modalService.confirm({
-        title: `Mark ${ids.length} email(s) unverified?`,
+        title: `Mark ${live.length} email(s) unverified?`,
         description: "Affected users will need fresh verification codes.",
         variant: "sensitive",
         confirmLabel: "Mark unverified",
@@ -228,9 +266,14 @@ export default function AdminUsersPage() {
   const handleBulkRole = (role: string) => {
     const ids = [...bulk.selected]
     if (ids.length === 0) return
-    const prevRoles = new Map(users.filter((u) => bulk.selected.has(u.id)).map((u) => [u.id, u.role]))
+    const { live, deleted } = splitLiveSelection(ids)
+    if (live.length === 0) {
+      noteSkippedDeleted(deleted.length)
+      return
+    }
+    const prevRoles = new Map(users.filter((u) => live.includes(u.id)).map((u) => [u.id, u.role]))
     modalService.confirm({
-      title: role === "ADMIN" ? `Make ${ids.length} user(s) admin?` : `Demote ${ids.length} user(s)?`,
+      title: role === "ADMIN" ? `Make ${live.length} user(s) admin?` : `Demote ${live.length} user(s)?`,
       description: role === "ADMIN"
         ? "Selected users will gain admin privileges."
         : "Selected users will be demoted to regular users.",
@@ -243,7 +286,7 @@ export default function AdminUsersPage() {
             const res = await fetch("/api/admin/users", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ userIds: ids, role }),
+              body: JSON.stringify({ userIds: live, role }),
             })
             if (!res.ok) throw new Error("bulk failed")
             bulk.clear()
@@ -268,10 +311,11 @@ export default function AdminUsersPage() {
               },
             })
             toastService.undo({
-              message: `${ids.length} user(s) updated to ${role}`,
+              message: `${live.length} user(s) updated to ${role}`,
               undoLabel: "Undo",
               onUndo: () => undoService.execute(undoId),
             })
+            noteSkippedDeleted(deleted.length)
           } catch {
             toastService.error("Bulk update failed")
           } finally {
@@ -285,8 +329,13 @@ export default function AdminUsersPage() {
   const handleBulkSuspend = () => {
     const ids = [...bulk.selected]
     if (ids.length === 0) return
+    const { live, deleted } = splitLiveSelection(ids)
+    if (live.length === 0) {
+      noteSkippedDeleted(deleted.length)
+      return
+    }
     modalService.confirm({
-      title: `Suspend ${ids.length} user(s)?`,
+      title: `Suspend ${live.length} user(s)?`,
       description: "Selected users will be demoted and unverified. This can be undone.",
       variant: "destructive",
       onConfirm: () => {
@@ -297,12 +346,13 @@ export default function AdminUsersPage() {
             const res = await fetch("/api/admin/users", {
               method: "DELETE",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ userIds: ids }),
+              body: JSON.stringify({ userIds: live }),
             })
             if (!res.ok) throw new Error("bulk failed")
             bulk.clear()
             await load(search || undefined)
-            toastService.success(`${ids.length} user(s) suspended`)
+            toastService.success(`${live.length} user(s) suspended`)
+            noteSkippedDeleted(deleted.length)
           } catch {
             toastService.error("Bulk suspend failed")
           } finally {
@@ -317,8 +367,13 @@ export default function AdminUsersPage() {
   const handleBulkDelete = () => {
     const ids = [...bulk.selected]
     if (ids.length === 0) return
+    const { live, deleted } = splitLiveSelection(ids)
+    if (live.length === 0) {
+      noteSkippedDeleted(deleted.length)
+      return
+    }
     modalService.confirm({
-      title: `Request deletion for ${ids.length} user(s)?`,
+      title: `Request deletion for ${live.length} user(s)?`,
       description: ADMIN_USER_DELETION_META.requestDescription,
       variant: "destructive",
       confirmLabel: ADMIN_USER_DELETION_META.requestConfirmLabel,
@@ -328,7 +383,7 @@ export default function AdminUsersPage() {
           setBulkBusy(true)
           try {
             let ok = 0
-            for (const id of ids) {
+            for (const id of live) {
               const res = await fetch("/api/admin/deletions/finalize", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -338,8 +393,9 @@ export default function AdminUsersPage() {
             }
             bulk.clear()
             await load(search || undefined)
-            if (ok === ids.length) toastService.success(`${ok} deletion request(s) started (7-day grace)`)
-            else toastService.error(`${ok}/${ids.length} started — check deletions panel`)
+            if (ok === live.length) toastService.success(`${ok} deletion request(s) started (7-day grace)`)
+            else toastService.error(`${ok}/${live.length} started — check deletions panel`)
+            noteSkippedDeleted(deleted.length)
           } catch {
             toastService.error("Bulk deletion failed")
           } finally {
@@ -479,6 +535,165 @@ export default function AdminUsersPage() {
 
   const allSelected = users.length > 0 && users.every((u) => bulk.selected.has(u.id))
 
+  /**
+   * Metadata-driven row actions: deleted accounts collapse to view-only
+   * (verify / resend / role changes cannot revive anonymized data). Colors
+   * from the old inline buttons are preserved as dropdown item classNames.
+   */
+  const buildRowActions = (u: AdminUser): TableRowAction[] => {
+    const allowed = new Set<string>(allowedUserRowActions(u))
+    const busy = rowDeletionBusy === u.id
+    const busyLabel = (label: string) => (busy ? "Working…" : label)
+    const actions: TableRowAction[] = []
+    try {
+      if (u.isDeleted) {
+        return [
+          {
+            id: "view",
+            label: "View",
+            icon: Eye,
+            title: "View deleted profile (generic deleted-user page)",
+            className: "bg-bg-elevated text-text-secondary",
+            href: `/profile/${encodeURIComponent(u.userName)}`,
+          },
+        ]
+      }
+      if (u.verified && allowed.has("unverify")) {
+        actions.push({
+          id: "unverify",
+          label: "Unverify",
+          icon: XCircle,
+          title: "Mark email unverified (user gets a fresh code on next request)",
+          className: "bg-warning text-warning-text",
+          onSelect: () => handleVerifyChange(u.id, false),
+        })
+      }
+      if (!u.verified && allowed.has("verify")) {
+        actions.push({
+          id: "verify",
+          label: "Verify",
+          icon: Check,
+          title: "Mark email verified (user is notified)",
+          className: "bg-success text-white",
+          onSelect: () => handleVerifyChange(u.id, true),
+        })
+      }
+      if (!u.verified && allowed.has("resend")) {
+        actions.push({
+          id: "resend",
+          label: "Resend code",
+          icon: Mail,
+          title: "Generate + email a fresh verification code",
+          className: "bg-bg-elevated text-text-secondary",
+          onSelect: () => handleResendCode(u.id),
+        })
+      }
+      if (u.role !== "ADMIN" && allowed.has("makeAdmin")) {
+        actions.push({
+          id: "makeAdmin",
+          label: "Make admin",
+          icon: UserCog,
+          title: "Grant admin privileges",
+          className: "bg-primary-muted text-primary",
+          onSelect: () => handleRoleChange(u.id, "ADMIN"),
+        })
+      }
+      if (u.role === "ADMIN" && allowed.has("demote")) {
+        actions.push({
+          id: "demote",
+          label: "Demote",
+          icon: UserMinus,
+          title: "Demote to regular user",
+          className: "bg-bg-elevated text-text-secondary",
+          onSelect: () => handleRoleChange(u.id, "USER"),
+        })
+      }
+      actions.push({
+        id: "view",
+        label: "View",
+        icon: Eye,
+        title: "View profile",
+        className: "bg-bg-elevated text-text-secondary",
+        href: `/profile/${encodeURIComponent(u.userName)}`,
+      })
+      if (!u.isDeleted && !u.deletionScheduledFor && allowed.has("requestDeletion")) {
+        actions.push({
+          id: "requestDeletion",
+          label: busyLabel("Request deletion"),
+          icon: Trash2,
+          title: "Request deletion — 7-day grace, reversible (undo available)",
+          className: "bg-warning text-warning-text",
+          disabled: busy,
+          disabledReason: "Request in progress…",
+          onSelect: () => handleRequestDeletion(u),
+        })
+        actions.push({
+          id: "deleteNow",
+          label: busyLabel("Delete now"),
+          icon: Trash2,
+          variant: "destructive",
+          title: "Delete now — skips grace, anonymizes immediately (irreversible in-app)",
+          className: "bg-error text-error-text",
+          disabled: busy,
+          disabledReason: "Request in progress…",
+          onSelect: () => handleDeleteNow(u),
+        })
+      }
+      if (!u.isDeleted && u.deletionScheduledFor && allowed.has("cancelDeletion")) {
+        actions.push({
+          id: "cancelDeletion",
+          label: busyLabel("Reverse deletion"),
+          icon: Undo2,
+          title: "Reverse the pending request — restores the account",
+          className: "bg-success text-white",
+          disabled: busy,
+          disabledReason: "Request in progress…",
+          onSelect: () => handleCancelDeletion(u),
+        })
+        actions.push({
+          id: "deleteNow",
+          label: busyLabel("Delete now"),
+          icon: Trash2,
+          variant: "destructive",
+          title: "Delete now — skips remaining grace, anonymizes immediately (irreversible in-app)",
+          className: "bg-error text-error-text",
+          disabled: busy,
+          disabledReason: "Request in progress…",
+          onSelect: () => handleDeleteNow(u),
+        })
+      }
+    } catch {
+      /* fall through with whatever was built — never break the row */
+    }
+    return actions.length > 0
+      ? actions
+      : [
+          {
+            id: "view",
+            label: "View",
+            icon: Eye,
+            className: "bg-bg-elevated text-text-secondary",
+            href: `/profile/${encodeURIComponent(u.userName)}`,
+          },
+        ]
+  }
+
+  const filterCounts = useMemo(() => {
+    try {
+      let active = 0
+      let pending = 0
+      let deleted = 0
+      for (const u of users) {
+        if (u.isDeleted) deleted += 1
+        else if (u.deletionScheduledFor) pending += 1
+        else active += 1
+      }
+      return { all: users.length, active, pending, deleted }
+    } catch {
+      return { all: users.length, active: 0, pending: 0, deleted: 0 }
+    }
+  }, [users])
+
   return (
     <div className="min-w-0 flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-1 min-w-0">
@@ -488,21 +703,30 @@ export default function AdminUsersPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <div className="flex gap-1 flex-wrap" role="tablist" aria-label="Deletion filter">
-            {DELETION_FILTERS.map((f) => (
-              <button
-                key={f.id}
-                role="tab"
-                aria-selected={deletionFilter === f.id}
-                onClick={() => setDeletionFilter(f.id)}
-                className={`px-2.5 py-1.5 radius-md text-xs font-medium cursor-pointer border transition-colors ${
-                  deletionFilter === f.id
-                    ? "bg-primary-muted text-primary border-primary"
-                    : "bg-bg-card text-text-secondary border-border hover:text-text-primary"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+            {ADMIN_USER_FILTERS.options.map((f) => {
+              const count =
+                f.id === "active" ? filterCounts.active
+                : f.id === "pending" ? filterCounts.pending
+                : f.id === "deleted" ? filterCounts.deleted
+                : filterCounts.all
+              return (
+                <button
+                  key={f.id}
+                  role="tab"
+                  aria-selected={deletionFilter === f.id}
+                  title={f.description}
+                  onClick={() => setDeletionFilter(parseAdminUserFilter(f.id))}
+                  className={`px-2.5 py-1.5 radius-md text-xs font-medium cursor-pointer border transition-colors ${
+                    deletionFilter === f.id
+                      ? "bg-primary-muted text-primary border-primary"
+                      : "bg-bg-card text-text-secondary border-border hover:text-text-primary"
+                  }`}
+                >
+                  {f.label}
+                  <span className="ml-1 opacity-70">({count})</span>
+                </button>
+              )
+            })}
           </div>
           <div className="w-full sm:w-64">
             <AppInput
@@ -627,92 +851,7 @@ export default function AdminUsersPage() {
                   {new Date(u.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
                 </td>
                 <td className="px-4 py-3 border-b border-border whitespace-nowrap">
-                  <div className="flex gap-1 flex-wrap">
-                    {u.verified ? (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleVerifyChange(u.id, false) }}
-                        title="Mark email unverified (user gets a fresh code on next request)"
-                        className="px-2 py-1 radius-sm text-[10px] font-semibold bg-warning text-warning-text border-none cursor-pointer hover:opacity-80 transition-all duration-fast"
-                      >
-                        Unverify
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleVerifyChange(u.id, true) }}
-                          title="Mark email verified (user is notified)"
-                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-success text-white border-none cursor-pointer hover:opacity-80 transition-all duration-fast"
-                        >
-                          Verify
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleResendCode(u.id) }}
-                          title="Generate + email a fresh verification code"
-                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border cursor-pointer hover:text-primary transition-all duration-fast"
-                        >
-                          Resend code
-                        </button>
-                      </>
-                    )}
-                    {u.role !== "ADMIN" ? (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleRoleChange(u.id, "ADMIN") }}
-                        className="px-2 py-1 radius-sm text-[10px] font-semibold bg-primary-muted text-primary border-none cursor-pointer hover:bg-primary hover:text-text-inverse transition-all duration-fast"
-                      >
-                        Make Admin
-                      </button>
-                    ) : (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleRoleChange(u.id, "USER") }}
-                        className="px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border cursor-pointer hover:text-primary transition-all duration-fast"
-                      >
-                        Demote
-                      </button>
-                    )}
-                    <Link href={`/profile/${u.userName}`} className="px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary no-underline border border-border hover:text-primary transition-all duration-fast">
-                      View
-                    </Link>
-                    {!u.isDeleted && !u.deletionScheduledFor && (
-                      <>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleRequestDeletion(u) }}
-                          disabled={rowDeletionBusy === u.id}
-                          title="Request deletion — 7-day grace, reversible (undo available)"
-                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-warning text-warning-text border-none cursor-pointer hover:opacity-80 transition-all duration-fast disabled:opacity-50"
-                        >
-                          {rowDeletionBusy === u.id ? "Working…" : "Request deletion"}
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteNow(u) }}
-                          disabled={rowDeletionBusy === u.id}
-                          title="Delete now — skips grace, anonymizes immediately (irreversible in-app)"
-                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-error text-error-text border-none cursor-pointer hover:opacity-80 transition-all duration-fast disabled:opacity-50"
-                        >
-                          {rowDeletionBusy === u.id ? "Working…" : "Delete now"}
-                        </button>
-                      </>
-                    )}
-                    {!u.isDeleted && u.deletionScheduledFor && (
-                      <>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleCancelDeletion(u) }}
-                          disabled={rowDeletionBusy === u.id}
-                          title="Reverse the pending request — restores the account"
-                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-success text-white border-none cursor-pointer hover:opacity-80 transition-all duration-fast disabled:opacity-50"
-                        >
-                          {rowDeletionBusy === u.id ? "Working…" : "Reverse deletion"}
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteNow(u) }}
-                          disabled={rowDeletionBusy === u.id}
-                          title="Delete now — skips remaining grace, anonymizes immediately (irreversible in-app)"
-                          className="px-2 py-1 radius-sm text-[10px] font-semibold bg-error text-error-text border-none cursor-pointer hover:opacity-80 transition-all duration-fast disabled:opacity-50"
-                        >
-                          {rowDeletionBusy === u.id ? "Working…" : "Delete now"}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  <AppTableRowActions actions={buildRowActions(u)} align="end" ariaLabel={`Actions for ${u.userName}`} />
                 </td>
               </tr>
               )

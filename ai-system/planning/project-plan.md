@@ -1,7 +1,7 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown)
 > - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: re-verify if project scope or phase changes
 
@@ -174,4 +174,5 @@
 - [x] Sprint 38 (2026-10-11) — Profile post parity + corroboration tightening (PostItem forwards validityBreakdown/quotedPostId/quotedPost/responsesCount; CORROBORATION_CONFIG evidence blend + pure engine scorers + single/batched/create-path reuse; TRUST_BREAKDOWN_DESCRIPTIONS tooltip help) (corroboration 8 suites; tsc zero + jest 443/446 pre-existing-only in-runner, build deferred to Vercel)
 - [x] Sprint 39 (2026-10-11) — Trust detail-42 fix (DETAIL_SCORING_CONFIG richness bonuses + computePostDetailScore/detailContextFromPost, service single+batched + create + worker reuse) + error-boundary bug-report CTA (prefill builder + URL, toast action-slot CTA + inline link, report-bug query prefill + hint, EMPTY_STATES.error honest copy) + search discoverability (NAV_REGISTRY + sidebar user-row icon + footer + profile quick-links + footer.search en/pcm) (detailScoring 8 + errorReportPrefill 6 + searchLinks 3 suites; tsc zero + jest 478/478 + lint clean in-runner, build deferred to Vercel)
 - [x] Sprint 42 (2026-10-11) — Dislike parity + comment-avatar consistency (server `_isDisliked` on detail/list/feed-service + feedStream mutual-exclusion cache, PostCard seed/sync + config-driven dislike fill via POST_ACTIONS_CONFIG warning tokens, post-detail handleDislike + optimistic counts + rollback, feed toggle-payload corrections, AuthProvider avatarConfig + all four comment viewers forward it) (dislikeSync 15 + profilePosts +1 suites; tsc zero new-errors + all 30 assertions grep-verified in-runner, jest/build deferred to CI — no node_modules in runner)
+- [x] Sprint 44 (2026-10-11) — Deleted-account view-only gating + Active filter + row-actions dropdown (config-driven filters/allow-list, API active branch + deleted skip with honest counts, AppTableRowActions dropdown preserving colors on users/posts/deletions tables) (admin +2 suites; static review in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
 - [x] Sprint 43 (2026-10-11) — Admin destructive user deletion + dashboard period toggle (per-request Reverse/Delete-now + per-user Request/Reverse/Delete-now through the same anonymize pipeline with confirm/undo/audit; stats `?period=7|30|90` with windowed deltas; dashboard toggle wired to overview + chart) (admin +3 suites; node 9/9 in-runner, tsc/jest/build deferred to CI — no node_modules in runner)

@@ -1,4 +1,4 @@
-import { formatDelta, inferConfigKind, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, parseAdminDashboardPeriod } from "@/app/lib/config/admin";
+import { formatDelta, inferConfigKind, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, ADMIN_USER_FILTERS, ADMIN_USER_ROW_ACTIONS, ADMIN_TABLE_ACTIONS_META, parseAdminDashboardPeriod, parseAdminUserFilter, deletionQueryForFilter, isDeletedAdminUser, allowedUserRowActions, canShowUserRowAction } from "@/app/lib/config/admin";
 
 describe("admin metrics + config metadata", () => {
   it("never shows a positive/negative trend for a zero value with no movement", () => {
@@ -56,5 +56,42 @@ describe("admin metrics + config metadata", () => {
     expect(ADMIN_USER_DELETION_META.deleteNowRecoveryNote).toMatch(/backup/i);
     expect(ADMIN_USER_DELETION_META.cancelConfirmLabel.length).toBeGreaterThan(0);
     expect(ADMIN_USER_DELETION_META.selfDeleteGuard.length).toBeGreaterThan(0);
+  });
+
+  it("exposes deletion-lifecycle filters including non-deleted (active)", () => {
+    const ids = ADMIN_USER_FILTERS.options.map((o) => o.id);
+    expect(ids).toContain("all");
+    expect(ids).toContain("active");
+    expect(ids).toContain("pending");
+    expect(ids).toContain("deleted");
+    expect(parseAdminUserFilter("active")).toBe("active");
+    expect(parseAdminUserFilter("garbage")).toBe("all");
+    expect(deletionQueryForFilter("all")).toBeNull();
+    expect(deletionQueryForFilter("active")).toBe("active");
+    expect(deletionQueryForFilter("pending")).toBe("pending");
+    expect(deletionQueryForFilter("deleted")).toBe("deleted");
+  });
+
+  it("gates deleted accounts to view-only row actions", () => {
+    expect(isDeletedAdminUser({ isDeleted: true })).toBe(true);
+    expect(isDeletedAdminUser({ isDeleted: false })).toBe(false);
+    expect(isDeletedAdminUser(null)).toBe(false);
+    // Deleted → view only (no verify / resend / role changes).
+    expect(allowedUserRowActions({ isDeleted: true })).toEqual(["view"]);
+    expect(canShowUserRowAction("view", { isDeleted: true })).toBe(true);
+    for (const hidden of ADMIN_USER_ROW_ACTIONS.deletedHidden) {
+      expect(canShowUserRowAction(hidden, { isDeleted: true })).toBe(false);
+    }
+    // Active accounts keep the full set; pending swaps request→reverse.
+    const active = allowedUserRowActions({ isDeleted: false, deletionScheduledFor: null });
+    expect(active).toContain("view");
+    expect(active).toContain("verify");
+    expect(active).toContain("makeAdmin");
+    expect(active).toContain("requestDeletion");
+    const pending = allowedUserRowActions({ isDeleted: false, deletionScheduledFor: "2026-01-01" });
+    expect(pending).toContain("cancelDeletion");
+    expect(pending).not.toContain("requestDeletion");
+    // Row-actions dropdown meta stays compact and accessible.
+    expect(ADMIN_TABLE_ACTIONS_META.triggerAriaLabel.length).toBeGreaterThan(0);
   });
 });

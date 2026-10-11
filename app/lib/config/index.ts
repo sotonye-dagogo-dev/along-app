@@ -96,8 +96,8 @@ export { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, isSystemTemplate, parseM
 export type { EmailTemplateRecord, EmailRecipientSelection, EmailRecipientMode } from "./emailManagement";
 export { EMAIL_DEFAULT_VARIABLES, EMAIL_ICONS, composeEmailDocument, composeEmailText } from "./email";
 export { getEffectiveEnv, isProduction, isDevelopment, getAppUrl, resolveDatabaseUrl } from "./env";
-export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, SITE_CONFIG_EDITORS, inferConfigKind, formatDelta, parseAdminDashboardPeriod } from "./admin";
-export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId, AdminDashboardPeriod } from "./admin";
+export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, ADMIN_USER_FILTERS, ADMIN_USER_ROW_ACTIONS, ADMIN_TABLE_ACTIONS_META, SITE_CONFIG_EDITORS, inferConfigKind, formatDelta, parseAdminDashboardPeriod, parseAdminUserFilter, deletionQueryForFilter, isDeletedAdminUser, allowedUserRowActions, canShowUserRowAction } from "./admin";
+export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId, AdminDashboardPeriod, AdminUserFilterId, AdminUserRowActionId, AdminUserDeletionState } from "./admin";
 export { VALIDATION_RULES } from "./validationRules";
 export { CACHE_TTL, CACHE_KEYS, NOTIFICATION_FILTERS } from "./cache";
 export { API_REGISTRY } from "./apiRegistry";

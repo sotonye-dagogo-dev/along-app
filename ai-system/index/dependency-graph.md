@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
-> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown)
+> - last-verified-against-code: 2026-10-11 (static review + diff review; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -237,6 +237,12 @@ AccountDeletionService (`app/lib/services/accountDeletionService.ts` — request
     → Exports: requestAccountDeletion / cancelAccountDeletion / finalizeDueDeletions / finalizeSingleRequest (force-gated) / cancelDeletionRequestById / deleteUserNow (request-if-needed + force-finalize) [Sprint 43]
     → Consumed by: profile AccountDeletionPanel, POST /api/account/deletion/*, POST /api/admin/deletions/finalize (`request`/`cancel`/`finalizeOne`/`deleteNow`/`finalizeDue`, all audited [Sprint 43]), cron finalize worker
     → Admin UI: `app/admin/deletions/` (queue + per-row Reverse/Delete-now) + `app/admin/users/` (per-user Request/Reverse/Delete-now + bulk request) → confirm modal (modalService) + undo toast (undoService) only where reversible [Sprint 43]
+    → Row-action UX [Sprint 44]: `AppTableRowActions` (`app/components/ui/AppTableRowActions.tsx`, metadata-driven, className-preserving) over `AppDropdown` (className/disabled/title passthrough) — consumed by users/posts/deletions tables; gating via `ADMIN_USER_FILTERS` + `allowedUserRowActions`/`canShowUserRowAction` (`app/lib/config/admin.ts`), enforced in `GET/PATCH /api/admin/users` (active filter + deleted skip with `skippedDeleted` counts)
+
+AdminUsers list (`app/api/admin/users` — GET filters + PATCH verify/resend/role [Sprint 44])
+    → Config: admin (`ADMIN_USER_FILTERS` All/Active/Pending/Deleted + `parseAdminUserFilter`/`deletionQueryForFilter`; `ADMIN_USER_ROW_ACTIONS` + `isDeletedAdminUser`/`allowedUserRowActions`/`canShowUserRowAction` view-only rule)
+    → Prisma: `isDeleted`/`deletionScheduledFor` where clauses (active = `isDeleted:false AND deletionScheduledFor:null`, AND-combined with search)
+    → Consumed by: `app/admin/users/page.tsx` (config-driven tablist with counts, `AppTableRowActions` per row, bulk live/deleted partition)
 
 AdminStats (`app/api/admin/stats` — period-aware overview [Sprint 43])
     → Config: admin (`ADMIN_DASHBOARD_PERIODS` + `parseAdminDashboardPeriod` 7/30/90 clamp)

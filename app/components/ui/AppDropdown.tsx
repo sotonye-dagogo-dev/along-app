@@ -9,18 +9,30 @@ interface DropdownItem {
   icon?: LucideIcon
   onClick?: () => void
   variant?: 'default' | 'destructive'
+  /**
+   * Additive styling passthrough — preserves caller bg/text colors inside the
+   * menu (e.g. table row-action pills). Non-breaking: defaults to none.
+   */
+  className?: string
+  disabled?: boolean
+  disabledReason?: string
+  title?: string
 }
 
 interface AppDropdownProps {
   trigger: React.ReactNode
   items: DropdownItem[]
   align?: 'start' | 'end'
+  ariaLabel?: string
 }
+
+export type { DropdownItem }
 
 export function AppDropdown({
   trigger,
   items,
   align = 'start',
+  ariaLabel,
 }: AppDropdownProps) {
   const [isOpen, setIsOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -48,6 +60,7 @@ export function AppDropdown({
   }, [isOpen])
 
   const handleItemClick = (item: DropdownItem) => {
+    if (item.disabled) return
     item.onClick?.()
     setIsOpen(false)
   }
@@ -57,6 +70,7 @@ export function AppDropdown({
       <div
         role="button"
         tabIndex={0}
+        aria-label={ariaLabel}
         onClick={() => setIsOpen((prev) => !prev)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -82,14 +96,19 @@ export function AppDropdown({
               <button
                 key={index}
                 type="button"
-                onClick={() => handleItemClick(item)}
+                disabled={item.disabled}
+                title={item.disabled ? item.disabledReason ?? item.title : item.title}
+                aria-disabled={item.disabled || undefined}
+                onClick={(e) => { e.stopPropagation(); handleItemClick(item) }}
                 className={cn(
-                  'flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-bg-elevated cursor-pointer transition-colors duration-base',
-                  item.variant === 'destructive' && 'text-error-text',
+                  'flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-bg-elevated cursor-pointer transition-colors duration-base radius-sm mx-1 w-[calc(100%-8px)]',
+                  item.variant === 'destructive' && !item.className && 'text-error-text',
+                  item.disabled && 'opacity-50 cursor-not-allowed hover:bg-transparent',
+                  item.className,
                 )}
               >
-                {Icon && <Icon size={16} />}
-                <span>{item.label}</span>
+                {Icon && <Icon size={16} className="shrink-0" />}
+                <span className="truncate">{item.label}</span>
               </button>
             )
           })}
