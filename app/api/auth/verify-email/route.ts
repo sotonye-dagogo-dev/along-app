@@ -8,13 +8,14 @@ import {
   delOtp,
   setOtp,
   setSendCooldown,
+  clearSendCooldown,
   getSendCooldownRemaining,
   recordVerifyAttempt,
   clearVerifyAttempts,
 } from "@/app/lib/services/otpStore";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { getAppUrl } from "@/app/lib/config/env";
-import { AUTH_VERIFICATION_CONFIG, cooldownKeyFor, attemptsKeyFor } from "@/app/lib/config/authVerification";
+import { AUTH_VERIFICATION_CONFIG, REGISTER_EMAIL_DISPATCH_CONFIG, cooldownKeyFor, attemptsKeyFor } from "@/app/lib/config/authVerification";
 import { z } from "zod";
 
 export const maxDuration = 30;
@@ -113,14 +114,24 @@ export async function POST(request: NextRequest) {
     let sendReason: string | undefined;
     try {
       const { sendVerifyEmail } = await import("@/app/lib/services/emailService");
-      const r = await sendVerifyEmail(email, firstName, otp, `${appUrl}/verify-email?email=${encodeURIComponent(email)}`);
+      const r = await sendVerifyEmail(email, firstName, otp, `${appUrl}/verify-email?email=${encodeURIComponent(email)}`, REGISTER_EMAIL_DISPATCH_CONFIG.otpTimeoutMs);
       delivered = r.sent;
       sendReason = r.sent ? undefined : r.reason;
-      if (!r.sent) console.warn(`[verify-email] send failed for ${email}: ${r.reason}`);
+      if (!r.sent) {
+        console.warn(`[verify-email] send failed for ${email}: ${r.reason}`);
+        // Same fallback as register/resend: lift the issuance cooldown so a
+        // failed delivery never strands the user behind a 60s timer.
+        if (REGISTER_EMAIL_DISPATCH_CONFIG.clearCooldownOnFailure) {
+          try { await clearSendCooldown(cooldownKey); } catch { /* best-effort */ }
+        }
+      }
     } catch (e) {
       console.error("[verify-email] send error", e);
       Sentry.captureException(e);
       sendReason = "Email service error — code saved, delivery uncertain.";
+      if (REGISTER_EMAIL_DISPATCH_CONFIG.clearCooldownOnFailure) {
+        try { await clearSendCooldown(cooldownKey); } catch { /* best-effort */ }
+      }
     }
     return NextResponse.json(
       {
@@ -128,7 +139,7 @@ export async function POST(request: NextRequest) {
         sent: delivered,
         ...(sendReason ? { reason: sendReason } : {}),
         expiresIn: AUTH_VERIFICATION_CONFIG.otpTtlSeconds,
-        cooldown: AUTH_VERIFICATION_CONFIG.resendCooldownSeconds,
+        cooldown: delivered ? AUTH_VERIFICATION_CONFIG.resendCooldownSeconds : 0,
         invalidatesPrevious: true,
       },
       { status: 200 }

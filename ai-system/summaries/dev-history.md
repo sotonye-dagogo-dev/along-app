@@ -1139,3 +1139,15 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `detailScoring` (8) + `errorReportPrefill` (6) + `searchLinks` (3).
 **QA:** tsc zero errors; jest 57/57 suites 478/478 (was 461/461); `next lint` exit 0, warnings pre-existing-only, zero findings in touched files; build deferred to Vercel.
 **Compliance:** additive-only, no migration/deps/API removals (optional params; toast shape reused).
+
+## Sprint 41 (2026-10-11) — Signup verify-email delivery parity + failure fallback
+**Directive:** signup verify mails persistently undelivered while the profile-triggered flow works; audit the unverified-blocking hypothesis; keep profile fallback for edge cases only. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- Root cause (budget asymmetry, not a logic gate): register raced each mail against 6s outer / 5s inner timeouts while the profile trigger awaited a single send with no outer race (maxDuration=30) — cold starts timed out on signup and delivered on profile. Audit confirmed NO unverified-recipient gate exists on any transactional verify path (new static suite asserts it).
+- `REGISTER_EMAIL_DISPATCH_CONFIG`: otpTimeoutMs 6s→15s, welcomeTimeoutMs 6s→10s (parallel wall-time ≤15s < maxDuration 30) + new `clearCooldownOnFailure` + `resendUseVerifyTemplate` flags.
+- `emailService`: `sendEmail({timeoutMs})` + optional timeout params on sendOtp/sendWelcome/sendVerify (defaults unchanged); verify fallback to otp-only preserved.
+- `otpStore`: additive `clearSendCooldown` (redis + memory; OTP hash untouched, auth rate bucket still caps abuse).
+- Register/resend/verify-email-trigger: thread patient budgets; on delivery failure lift the issuance cooldown and return `cooldown: 0` so the OTP screen offers immediate retry (success still returns the 60s cooldown); otp/resend now sends the verifyEmail template (OTP + link) like register/profile instead of otp-only.
+- Tests: NEW `config/signupVerifyDelivery` (7 static: helper, config, timeout threading, three routes, no-gate audit).
+**QA:** no node_modules in runner (jest/tsc/build deferred to CI/Vercel); brace/paren balance + expectation-presence checks via node one-liners all green; existing `registerEmailDispatch` assertions preserved (parallel dispatch + honest `sent` contract intact).
+**Compliance:** additive-only, no migration/deps/API removals (optional params; response shapes gain no new required fields).

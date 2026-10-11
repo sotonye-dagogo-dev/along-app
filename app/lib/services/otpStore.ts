@@ -184,6 +184,26 @@ export async function setSendCooldown(key: string, windowSeconds: number): Promi
   cooldownMemoryStore.set(key, notBefore);
 }
 
+/**
+ * Clear a resend-cooldown (additive, non-breaking). Callers invoke this when
+ * a code-send's DELIVERY failed (provider timeout/disabled template) so the
+ * user can retry immediately instead of waiting out a cooldown for a mail
+ * that never left the server. The OTP hash itself is untouched (the saved
+ * code stays valid); only the throttle is lifted. Abuse is still capped by
+ * the shared auth rate bucket + attempt counters.
+ */
+export async function clearSendCooldown(key: string): Promise<void> {
+  const redis = await getRedis();
+  if (redis) {
+    try {
+      await withTimeout(redis.del(key));
+    } catch (e) {
+      console.warn("[otpStore] redis del cooldown failed", (e as Error).message);
+    }
+  }
+  cooldownMemoryStore.delete(key);
+}
+
 /** Seconds remaining before another send is allowed (0 = allowed). */
 export async function getSendCooldownRemaining(key: string): Promise<number> {
   const redis = await getRedis();

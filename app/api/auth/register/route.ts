@@ -4,7 +4,7 @@ import { prisma } from "@/app/lib/db/prisma";
 import { REGISTER_SCHEMA } from "@/app/lib/schemas/auth";
 import { hashPassword } from "@/app/lib/utils/security";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
-import { setOtp, setSendCooldown } from "@/app/lib/services/otpStore";
+import { setOtp, setSendCooldown, clearSendCooldown } from "@/app/lib/services/otpStore";
 import { AUTH_VERIFICATION_CONFIG, REGISTER_EMAIL_DISPATCH_CONFIG, cooldownKeyFor } from "@/app/lib/config/authVerification";
 import { getAppUrl } from "@/app/lib/config/env";
 
@@ -210,8 +210,20 @@ export async function POST(request: NextRequest) {
     // never rolled back on mail failure — the response just reports honestly.
     // Welcome fires regardless of OTP outcome (plan-register and referral
     // links share this path; referral isolation above keeps them non-interfering).
+    //
+    // AUDIT (signup-verify gap): no unverified-recipient gate exists anywhere
+    // on this path — transactional sends (verify/welcome/otp) never check
+    // `user.verified`, so an unverified address cannot block its own
+    // verification mail. The observed "signup gets nothing, profile resend
+    // works" signature matched a budget asymmetry instead: this route raced
+    // each mail against 6s/5s timeouts while the profile trigger awaited a
+    // single send with no outer race (maxDuration=30). Cold starts timed out
+    // here and delivered there. Budgets below are config-driven
+    // (REGISTER_EMAIL_DISPATCH_CONFIG) and the per-send Resend timeout is
+    // threaded through so both layers agree.
     const appUrl = getAppUrl();
     const verifyLink = `${appUrl}/verify-email?email=${encodeURIComponent(email)}`;
+    const cooldownKey = cooldownKeyFor(email);
     const withTimeout = <T>(p: Promise<T>, ms: number, label: string): Promise<T> =>
       Promise.race([
         p,
@@ -230,20 +242,20 @@ export async function POST(request: NextRequest) {
       const sendVerification = REGISTER_EMAIL_DISPATCH_CONFIG.useVerifyTemplate
         ? () =>
             withTimeout(
-              sendVerifyEmail(email, firstName, otp, verifyLink),
+              sendVerifyEmail(email, firstName, otp, verifyLink, REGISTER_EMAIL_DISPATCH_CONFIG.otpTimeoutMs),
               REGISTER_EMAIL_DISPATCH_CONFIG.otpTimeoutMs,
               "Verification email send"
             )
         : () =>
             withTimeout(
-              sendOtpEmail(email, otp),
+              sendOtpEmail(email, otp, REGISTER_EMAIL_DISPATCH_CONFIG.otpTimeoutMs),
               REGISTER_EMAIL_DISPATCH_CONFIG.otpTimeoutMs,
               "OTP email send"
             );
       const [otpSettled, welcomeSettled] = await Promise.allSettled([
         sendVerification(),
         withTimeout(
-          sendWelcomeEmail(email, firstName),
+          sendWelcomeEmail(email, firstName, REGISTER_EMAIL_DISPATCH_CONFIG.welcomeTimeoutMs),
           REGISTER_EMAIL_DISPATCH_CONFIG.welcomeTimeoutMs,
           "Welcome email send"
         ),
@@ -289,6 +301,15 @@ export async function POST(request: NextRequest) {
     // 201 either way (the account + code ARE saved) but the payload is
     // honest about delivery — mirrors /api/auth/otp/resend so the OTP screen
     // can say "check spam / wait for the timer" instead of a false positive.
+    // FALLBACK preserved for delivery failure: the cooldown set at issuance
+    // is lifted so the OTP screen's Resend is immediately available (the
+    // saved code stays valid; abuse stays capped by the auth rate bucket).
+    // The response cooldown is 0 in that case so the client timer agrees.
+    if (!otpSent && REGISTER_EMAIL_DISPATCH_CONFIG.clearCooldownOnFailure) {
+      try {
+        await clearSendCooldown(cooldownKey);
+      } catch { /* throttle best-effort */ }
+    }
     return NextResponse.json(
       {
         message: otpSent ? "OTP sent to email" : AUTH_VERIFICATION_CONFIG.copy.sendFailed,
@@ -296,7 +317,7 @@ export async function POST(request: NextRequest) {
         ...(otpReason && !otpSent ? { reason: otpReason } : {}),
         welcomeSent,
         expiresIn: AUTH_VERIFICATION_CONFIG.otpTtlSeconds,
-        cooldown: AUTH_VERIFICATION_CONFIG.resendCooldownSeconds,
+        cooldown: otpSent ? AUTH_VERIFICATION_CONFIG.resendCooldownSeconds : 0,
         invalidatesPrevious: false,
       },
       { status: 201 }
