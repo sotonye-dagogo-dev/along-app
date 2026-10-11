@@ -9,11 +9,13 @@ import { cleanupImagesByUrls } from "@/app/lib/services/mediaCleanupService";
 /**
  * POST /api/upload/cleanup — destroy orphaned Cloudinary uploads.
  *
- * Used by client-side draft discards (drafts live in localStorage but their
+ * Used by client-side draft discards AND single-photo removes in the
+ * share-route composer (drafts live in localStorage but their
  * images were eagerly uploaded). ACID-safe:
  * - Auth required; URLs capped + restricted to allowlisted `along/*` assets.
  * - URLs still referenced by ANY live post are skipped (publish-then-discard
- *   reuses the same URLs — deleting them would break the new post).
+ *   reuses the same URLs — deleting them would break the new post; the same
+ *   guard protects edit-originals removed in the composer before PATCH).
  * - Cloudinary failures never fail the request (best-effort); the draft row
  *   (localStorage) is already gone client-side regardless.
  */
@@ -21,6 +23,7 @@ import { cleanupImagesByUrls } from "@/app/lib/services/mediaCleanupService";
 const CLEANUP_SCHEMA = z.object({
   urls: z.array(z.string().min(1).max(2048)).max(20).default([]),
   draftId: z.string().max(120).optional(),
+  source: z.enum(["draft-discard", "composer-remove"]).default("draft-discard"),
 });
 
 export async function POST(request: NextRequest) {
@@ -35,7 +38,6 @@ export async function POST(request: NextRequest) {
         { status: 200 }
       );
     }
-
     let body: unknown;
     try {
       body = await request.json();
@@ -45,6 +47,14 @@ export async function POST(request: NextRequest) {
     const parsed = CLEANUP_SCHEMA.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    const source = parsed.data.source;
+    if (source === "composer-remove" && !MEDIA_CLEANUP_CONFIG.composerRemoveCleanupEnabled) {
+      return NextResponse.json(
+        { ok: true, skipped: true, reason: "composer-remove cleanup disabled" },
+        { status: 200 }
+      );
     }
 
     const cleanable = filterCleanableUrls(
@@ -85,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await cleanupImagesByUrls(unreferenced, {
-      source: "draft-discard",
+      source,
       userId: (user as { id?: string }).id,
       draftId: parsed.data.draftId,
     });

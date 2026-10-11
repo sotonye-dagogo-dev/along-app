@@ -29,6 +29,8 @@ export interface MediaCleanupConfig {
   postEditCleanupEnabled: boolean;
   /** Draft discard purges draft images not referenced by any live post. */
   draftCleanupEnabled: boolean;
+  /** Composer photo-remove purges a single eagerly-uploaded image. */
+  composerRemoveCleanupEnabled: boolean;
   /** Bug-report REMOVE_POST purges the removed post's images. */
   moderationDeleteCleanupEnabled: boolean;
   /** Account finalize keeps anonymized post images (policy retention). */
@@ -61,6 +63,7 @@ export const MEDIA_CLEANUP_CONFIG: MediaCleanupConfig = {
   postDeleteCleanupEnabled: envFlag("MEDIA_CLEANUP_POST_DELETE", true),
   postEditCleanupEnabled: envFlag("MEDIA_CLEANUP_POST_EDIT", true),
   draftCleanupEnabled: envFlag("MEDIA_CLEANUP_DRAFTS", true),
+  composerRemoveCleanupEnabled: envFlag("MEDIA_CLEANUP_COMPOSER_REMOVE", true),
   moderationDeleteCleanupEnabled: envFlag("MEDIA_CLEANUP_MODERATION", true),
   retainPostImagesOnAccountFinalize: true,
   cleanupAvatarOnAccountFinalize: envFlag("MEDIA_CLEANUP_ACCOUNT_AVATAR", true),
@@ -73,4 +76,5 @@ export type MediaCleanupSource =
   | "post-edit"
   | "bug-remove-post"
   | "draft-discard"
+  | "composer-remove"
   | "account-avatar";

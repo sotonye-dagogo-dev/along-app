@@ -6,6 +6,7 @@
  */
 import {
   MAP_STACK_CONFIG,
+  MAP_EXPAND_CONFIG,
   vectorStyleUrl,
   rasterFallbackTile,
   rasterFallbackDepth,
@@ -85,6 +86,30 @@ describe("execute-feature Sprint 19: keyless map stack config", () => {
     expect(darkRaster.sources.basemap.tiles[0]).toBe(
       MAP_STACK_CONFIG.rasterFallbacks.light[0]
     );
+  });
+});
+
+describe("fix-build: expanded map is a contained dialog (never full-bleed)", () => {
+  it("overlay centers a max-width panel instead of stretching 100vw past the column", () => {
+    expect(MAP_EXPAND_CONFIG.overlayClass).toMatch("fixed");
+    expect(MAP_EXPAND_CONFIG.overlayClass).toMatch("items-center");
+    expect(MAP_EXPAND_CONFIG.overlayClass).toMatch("justify-center");
+    expect(MAP_EXPAND_CONFIG.panelMaxWidthClass).toMatch("max-w-");
+    expect(MAP_EXPAND_CONFIG.panelClass).toMatch("overflow-hidden");
+    // No viewport-width bleed (100vw includes the scrollbar and spills into
+    // the desktop suggestions rail); height is a bounded dialog height.
+    expect(MAP_EXPAND_CONFIG.overlayClass).not.toMatch("100vw");
+    expect(MAP_EXPAND_CONFIG.panelClass).not.toMatch("100vw");
+    expect(MAP_EXPAND_CONFIG.panelHeight).not.toMatch("100vh");
+    expect(MAP_EXPAND_CONFIG.panelHeight).toMatch("80vh");
+  });
+
+  it("dialog dismisses via backdrop + Escape with an accessible name", () => {
+    expect(MAP_EXPAND_CONFIG.closeOnBackdropClick).toBe(true);
+    expect(MAP_EXPAND_CONFIG.closeOnEscape).toBe(true);
+    expect(MAP_EXPAND_CONFIG.backdropClass.length).toBeGreaterThan(0);
+    expect(MAP_EXPAND_CONFIG.dialogLabel.length).toBeGreaterThan(0);
+    expect(MAP_EXPAND_CONFIG.minimizeLabel.length).toBeGreaterThan(0);
   });
 });
 

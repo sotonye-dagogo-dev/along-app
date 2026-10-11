@@ -22,6 +22,16 @@ export interface ShareRouteModalConfig {
   descriptionPlaceholder: string;
   descriptionHint: string;
   descriptionMinLength: number;
+  /** Accessible label for the per-photo remove button in the composer. */
+  photoRemoveLabel: string;
+  /**
+   * Token classes for the per-photo remove button. Always visible (no
+   * hover-only `opacity-0`) so touch users and keyboard users can discover
+   * it; hover/focus only deepen the treatment. Design tokens only.
+   */
+  photoRemoveButtonClass: string;
+  /** Icon size (px) for the per-photo remove X. */
+  photoRemoveIconSize: number;
 }
 
 export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
@@ -37,4 +47,8 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
   descriptionPlaceholder: "Describe the route experience, best time to go, cost tips… (min 10 characters)",
   descriptionHint: "Adds to your Route Quality Score and helps others trust this route.",
   descriptionMinLength: 10,
+  photoRemoveLabel: "Remove photo",
+  photoRemoveButtonClass:
+    "absolute top-1 right-1 w-7 h-7 rounded-circle bg-black/70 text-white flex items-center justify-center border border-white/40 cursor-pointer shadow-md opacity-100 hover:bg-black/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors",
+  photoRemoveIconSize: 14,
 };

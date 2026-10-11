@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-command 2026-10-10 (Sprint 34 location/feed/invite)
-> - last-verified-against-code: 2026-10-10
+> - last-updated-by: fix-build 2026-10-11 (photo-remove visibility + expanded-map containment)
+> - last-verified-against-code: 2026-10-11
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1056,4 +1056,13 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Feed/Explore: SiteConfig feedAlgorithm honoured (DEFAULT fallback); viewer-location bonus (haversine 50km decay × locationBonus, geo-less = no-op); trust tie-break (score → validityScore → recency); ?lat=&lng feed params; feedStream + home passive-fix one-shot revalidation; Explore Verified⊇Trusted, engagement tie-breaks, NEW Nearest sort.
 - Invites: buildInviteUrl/sanitizeInviteCode; OAuth failures redirect to /login?error= (+ref preserved); login renders sanitized error map; NEW /invite/[code] → canonical /register?ref= redirect.
 **QA:** no node_modules in runner — static checks only (19/19 files, 12/12 balance). Full gate deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only.
+
+## Fix-build 2026-10-11 — Share-modal photo-remove visibility + expanded-map containment
+**Directive:** image-removal button in the share route modal works but is invisible (not accessible); desktop post-view expanded map spills past its container into the suggestions rail. Config/metadata-driven, non-breaking + update-ai-system chain.
+**Implemented:**
+- `shareRoute.ts` += `photoRemoveButtonClass` (always-visible `opacity-100`, `w-7 h-7`, `bg-black/70`, `border-white/40`, focus-visible outline, token classes only) + `photoRemoveIconSize: 14`; `ShareRouteModal.tsx` consumes them (inline fallbacks; indexed aria-label unchanged).
+- `mapStack.ts` += `MAP_EXPAND_CONFIG` (+ barrel export): centered overlay, scrim backdrop, `max-w-4xl` panel, `80vh` height, backdrop-click + Escape dismissal, dialog/minimize labels; `RouteMap.tsx` expanded mode renders that contained dialog (shared `mapChrome` fragment, resize + refit on open, focus to Minimize, scroll-lock kept); collapsed root += `max-w-full w-full min-w-0`.
+- Tests: `uxTightening.test.ts` +1 photo-remove case; `mapStack.test.ts` +2 containment cases.
+**QA:** no node_modules in runner — targeted `tsc --ignoreConfig --noResolve` zero attributable errors (noise identical to untouched baseline); full jest/tsc/build deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only.

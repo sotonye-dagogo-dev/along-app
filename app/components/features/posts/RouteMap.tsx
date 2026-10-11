@@ -6,7 +6,7 @@ import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import polyline from '@mapbox/polyline'
-import { getMapStyleStack, rasterFallbackDepth, MAP_STACK_CONFIG } from '@/app/lib/config/mapStack'
+import { getMapStyleStack, rasterFallbackDepth, MAP_STACK_CONFIG, MAP_EXPAND_CONFIG } from '@/app/lib/config/mapStack'
 import { MAP_PINS_CONFIG } from '@/app/lib/config/mapPins'
 import { MapRoutePin, MapUserDot } from './MapPins'
 
@@ -248,15 +248,39 @@ function RouteMap({
   }
 
   const toggleExpanded = () => setExpanded((e) => !e)
+  const closeExpanded = useCallback(() => setExpanded(false), [])
+  const minimizeRef = useRef<HTMLButtonElement>(null)
 
-  return (
-    <div
-      ref={containerRef}
-      className={`relative overflow-hidden rounded-md ${className} ${isDark ? "dark-map" : ""} ${
-        expanded ? 'fixed inset-0 z-50 rounded-none' : ''
-      }`}
-      style={expanded ? { height: '100vh', width: '100vw' } : { height }}
-    >
+  // Escape closes the contained dialog (config-gated, non-breaking).
+  useEffect(() => {
+    if (!expanded || !MAP_EXPAND_CONFIG.closeOnEscape) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [expanded])
+
+  // Resizing after the panel mounts keeps the trace fitted instead of
+  // half-rendered; focusing Minimize keeps keyboard users oriented.
+  useEffect(() => {
+    if (!expanded || !mapLoaded) return
+    const raf = requestAnimationFrame(() => {
+      try {
+        (mapRef.current as unknown as { resize?: () => void } | null)?.resize?.()
+      } catch {
+        // Soft-fail: the map still paints, just without a refit.
+      }
+      fitMapToBounds()
+    })
+    minimizeRef.current?.focus()
+    return () => cancelAnimationFrame(raf)
+  }, [expanded, mapLoaded, fitMapToBounds])
+
+  // Shared map chrome: identical canvas/markers/controls inline and in the
+  // contained expanded dialog, so behaviour never diverges between modes.
+  const mapChrome = (
+    <>
       <style>{isDark && MAP_STACK_CONFIG.darkCanvasFilter !== "none" ? `.dark-map .maplibregl-canvas { filter: ${MAP_STACK_CONFIG.darkCanvasFilter}; }` : ""}</style>
       <Map
         ref={mapRef}
@@ -383,9 +407,10 @@ function RouteMap({
 
       <button
         type="button"
+        ref={expanded ? minimizeRef : undefined}
         className="absolute top-2 left-2 z-[3] flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-bg-card/80 backdrop-blur-sm border border-border text-text-secondary text-xs font-medium shadow-sm hover:bg-bg-card transition-colors"
         onClick={toggleExpanded}
-        aria-label={expanded ? 'Minimize map' : 'Expand map'}
+        aria-label={expanded ? MAP_EXPAND_CONFIG.minimizeLabel : 'Expand map'}
       >
         {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         {expanded ? 'Minimize' : 'Expand'}
@@ -401,6 +426,43 @@ function RouteMap({
           Auto-Trace
         </button>
       )}
+    </>
+  )
+
+  // Expanded mode is a contained centered dialog (backdrop + max-width
+  // panel), never a full-bleed 100vw layer — so it cannot spill past its
+  // column into the desktop suggestions rail or scroll the page sideways.
+  if (expanded) {
+    return (
+      <div
+        className={MAP_EXPAND_CONFIG.overlayClass}
+        role="dialog"
+        aria-modal="true"
+        aria-label={MAP_EXPAND_CONFIG.dialogLabel}
+      >
+        <div
+          className={MAP_EXPAND_CONFIG.backdropClass}
+          aria-hidden="true"
+          onClick={MAP_EXPAND_CONFIG.closeOnBackdropClick ? closeExpanded : undefined}
+        />
+        <div
+          ref={containerRef}
+          className={`${MAP_EXPAND_CONFIG.panelMaxWidthClass} ${MAP_EXPAND_CONFIG.panelClass} ${isDark ? "dark-map" : ""}`}
+          style={{ height: MAP_EXPAND_CONFIG.panelHeight }}
+        >
+          {mapChrome}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className={`relative overflow-hidden rounded-md max-w-full w-full min-w-0 ${className} ${isDark ? "dark-map" : ""}`}
+      style={{ height }}
+    >
+      {mapChrome}
     </div>
   )
 }
