@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Search as SearchIcon } from "lucide-react";
 import { PostCard } from "@/app/components/features/posts";
-import { AppEmptyState, PostCardSkeleton } from "@/app/components/ui";
+import { PostCommentsModal } from "@/app/components/features/comments";
+import { AppEmptyState, PostCardSkeleton, AppAvatar } from "@/app/components/ui";
 import { EMPTY_STATES } from "@/app/lib/config";
 import { FollowButton } from "@/app/components/features/suggestions/FollowButton";
 import { usePostShare } from "@/app/hooks/usePostShare";
+import { useAuth } from "@/app/hooks/useAuth";
 
 type Tab = "all" | "posts" | "users";
 
@@ -43,6 +45,7 @@ const TABS: { key: Tab; label: string }[] = [
 function SearchContent() {
   const searchParams = useSearchParams();
   const { sharePost } = usePostShare();
+  const { user } = useAuth();
   const initialQ = searchParams.get("q") ?? "";
   const [input, setInput] = useState(initialQ);
   const [query, setQuery] = useState(initialQ);
@@ -52,6 +55,16 @@ function SearchContent() {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Shared comment modal (parity with feed/profile): comment icon opens the
+  // modal with an expand-post link instead of being a dead control.
+  const [commentPostId, setCommentPostId] = useState<string | null>(null);
+  const commentPost = commentPostId ? data?.posts.find((p) => p.id === commentPostId) ?? null : null;
+  const commentViewer = {
+    userName: (user as { userName?: string } | null)?.userName ?? "guest",
+    displayName:
+      `${(user as { firstName?: string } | null)?.firstName ?? ""} ${(user as { lastName?: string } | null)?.lastName ?? ""}`.trim() || "You",
+    avatar: (user as { avatar?: string } | null)?.avatar ?? null,
+  };
 
   // Debounce typing → committed query (300ms)
   useEffect(() => {
@@ -194,14 +207,13 @@ function SearchContent() {
                 className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-bg-card border border-border"
               >
                 <Link href={`/profile/${u.userName}`} className="flex items-center gap-3 min-w-0 flex-1">
-                  {u.avatar ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={u.avatar} alt={u.userName} className="w-9 h-9 rounded-lg object-cover shrink-0" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-lg bg-primary-muted text-primary flex items-center justify-center text-sm font-bold shrink-0">
-                      {(u.userName?.[0] ?? "?").toUpperCase()}
-                    </div>
-                  )}
+                  <AppAvatar
+                    src={u.avatar ?? undefined}
+                    alt={`${u.firstName} ${u.lastName}`}
+                    size={32}
+                    userName={u.userName}
+                    linkToProfile={false}
+                  />
                   <div className="min-w-0">
                     <div className="text-sm font-semibold truncate">
                       {u.firstName} {u.lastName}
@@ -226,6 +238,7 @@ function SearchContent() {
                 key={post.id}
                 post={post as never}
                 onShare={(postId) => void sharePost(postId, (post as { title?: string }).title)}
+                onComment={(postId) => setCommentPostId(postId)}
                 onDeleted={(postId) => setData((prev) => (prev ? { ...prev, posts: prev.posts.filter((p) => p.id !== postId) } : prev))}
                 onRestored={() => {}}
                 onArchivedChanged={(postId, archived) => {
@@ -253,6 +266,13 @@ function SearchContent() {
           </section>
         )}
       </div>
+      <PostCommentsModal
+        open={commentPostId !== null}
+        postId={commentPostId}
+        postTitle={(commentPost as { title?: string } | null)?.title}
+        viewer={commentViewer}
+        onClose={() => setCommentPostId(null)}
+      />
     </div>
   );
 }

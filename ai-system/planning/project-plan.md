@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -79,7 +79,7 @@
 - [x] ValidityEngine for route verification scoring (`app/lib/services/ValidityEngine.ts`)
 - [x] DraftingCoach for post quality guidance (`app/lib/services/DraftingCoachService.ts`)
 - [x] TrustBadge component for verified reporters (`app/components/ui/TrustBadge.tsx`)
-- [x] Search — unified posts + users + tags search (`GET /api/search`, `searchService.ts`, `/search` page; contains/insensitive queries + Redis cache, no migration needed; 2026-10-08)
+- [x] Search — unified posts + users + tags search (`GET /api/search`, `searchService.ts`, `/search` page; contains/insensitive queries + Redis cache, no migration needed; 2026-10-08). Sprint 39: explore search expansion — `ExploreSearchInput` suggestions (routes incl. requests + people + tags) + localStorage recents + full-search footer over untouched client filter (`EXPLORE_SEARCH_CONFIG`); shared `PostCommentsModal` on feed/profile/search/detail (`COMMENTS_CONFIG`); 3 pre-existing red suites fixed, jest 461/461 (2026-10-11)
 - [x] Map integration with route polyline rendering (`app/components/features/posts/RouteMap.tsx`, `app/lib/services/routeTracingService.ts`, `app/api/routes/trace/`)
 - [x] Route requests E2E — PostType enum, quotedPost self-relation, RequestRouteModal, Respond CTA + quote block, /api/suggestions (Sprint 7, 2026-10-07/08)
 - [ ] Clustering for dense map markers (supercluster dependency listed but not wired)

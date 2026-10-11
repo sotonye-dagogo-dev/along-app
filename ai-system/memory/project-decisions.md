@@ -1,8 +1,8 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -712,3 +712,13 @@ Showing Archive/Delete to admins on other users' posts leaks moderation affordan
 **Implications:**
 - Tuning trust = editing `CORROBORATION_CONFIG`/`VALIDITY_SIGNAL_BOUNDS` only; engine stays pure, service stays the only DB reader.
 - Any new list surface must forward `quotedPost/quotedPostId/validityBreakdown/responsesCount` or it silently degrades (marker hidden, badge placeholders) — no error is raised.
+
+## Sprint 39: one shared comment modal, additive explore suggestions, AppAvatar everywhere in comments
+**Decision:** A single `PostCommentsModal` (config title/expand/loading copy) serves feed, profile tabs, search, and detail; explore search gains an additive `ExploreSearchInput` dropdown (unified `/api/search` + localStorage recents) over the untouched client filter; all comment faces render via `AppAvatar`; caret color is explicit config, not `currentColor`.
+**Alternatives Considered:**
+- **Duplicate the profile modal markup into feed/search**: Rejected — two copies already drifted (feed navigated, profile modal'd); one component keeps behaviour identical by construction.
+- **New explore search endpoint or replacing the client filter**: Rejected — `/api/search` already covers posts+users+tags and the map filter works offline; the dropdown is additive with silent fallback, so offline/rate-limited degrades to today's behaviour.
+- **Passing avatar URLs as plain img/initials in comments**: Rejected — `AppAvatar` already encodes upload/DiceBear/fallback + profile linking; hand-rolled divs re-created the inconsistency.
+**Implications:**
+- New surfaces that need comments use `PostCommentsModal` (viewer + postId + title); no new comment UI.
+- Explore search tuning = `EXPLORE_SEARCH_CONFIG` only; comment tuning = `COMMENTS_CONFIG` only.

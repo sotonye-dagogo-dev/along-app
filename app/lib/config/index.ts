@@ -110,6 +110,14 @@ export { DEFAULT_BLOG_CATEGORIES, BLOG_LAYOUT_CONFIG } from "./blog";
 export type { BlogCategory, BlogLayoutConfig } from "./blog";
 export { EXPLORE_PIN_POPUP_CONFIG } from "./explore";
 export type { ExplorePinPopupConfig } from "./explore";
+export { COMMENTS_CONFIG } from "./comments";
+export type { CommentsConfig } from "./comments";
+export {
+  EXPLORE_SEARCH_CONFIG,
+  loadRecentSearches,
+  saveRecentSearch,
+  clearRecentSearches,
+} from "./exploreSearch";
 export { PROFILE_POSTS_CONFIG } from "./profilePosts";
 export type { ProfilePostsConfig } from "./profilePosts";
 export { MEDIA_CLEANUP_CONFIG } from "./mediaCleanup";

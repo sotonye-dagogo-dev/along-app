@@ -158,6 +158,9 @@ class SearchService {
           CACHE_KEYS.search(`${type}:${region ?? "-"}:${postType ?? "-"}:${query}`, "unified")
         );
         if (cached) {
+          // Empty cached pages carry nothing to re-enrich — return as-is so
+          // callers keep a stable reference and we skip a needless import.
+          if (!cached.posts || cached.posts.length === 0) return cached;
           try {
             const { attachLiveBreakdownsToPosts } = await import(
               "@/app/lib/services/trustBreakdownService"

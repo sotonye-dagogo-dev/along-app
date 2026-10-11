@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import type { MapRef } from "react-map-gl/maplibre"
 import "maplibre-gl/dist/maplibre-gl.css"
-import { Search, LocateFixed, SlidersHorizontal, Link2, X, ChevronLeft } from "lucide-react"
-import { ExplorePinCard, FilterChipsBar } from "@/app/components/features/explore"
+import { LocateFixed, SlidersHorizontal, Link2, X, ChevronLeft } from "lucide-react"
+import { ExplorePinCard, FilterChipsBar, ExploreSearchInput } from "@/app/components/features/explore"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
 import { EXPLORE_PIN_POPUP_CONFIG } from "@/app/lib/config/explore"
@@ -75,6 +75,7 @@ interface ExploreApiPost {
 
 export default function ExplorePage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [selectedPin, setSelectedPin] = useState<PostPin | null>(null)
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") ?? "")
   const [panelCollapsed, setPanelCollapsed] = useState(false)
@@ -313,8 +314,22 @@ export default function ExplorePage() {
     );
   };
 
-  const handleShareView = async () => {
-    const url = window.location.href;
+  // Suggestion pick: centre the map on the pin + open its card. Falls back
+  // to the post page when the pick isn't a map-placed pin (e.g. a request
+  // without coordinates). Non-breaking: the text filter is untouched.
+  const handlePickPost = useCallback((postId: string) => {
+    const match = pins.find((p) => p.id === postId);
+    if (match) {
+      setSelectedPin(match);
+      setViewState({ latitude: match.lat, longitude: match.lng, zoom: 14 });
+      updateUrl(match.lat, match.lng, 14);
+      mapRef.current?.flyTo({ center: [match.lng, match.lat], zoom: 14, duration: 1200 });
+    } else {
+      router.push(`/posts/${postId}`);
+    }
+  }, [pins, updateUrl, router]);
+
+  const handleShareView = async () => {    const url = window.location.href;
     const title = "Along — explore routes";
     if (sharing) return;
     setSharing(true);
@@ -410,15 +425,7 @@ export default function ExplorePage() {
       {/* Glass Top Bar - Desktop */}
       <div className="absolute top-0 left-0 right-0 z-15 hidden lg:flex items-center gap-3 px-5 py-3 bg-bg-base/70 backdrop-blur-[16px] saturate-[180%] border-b border-border/40">
         <div className="relative w-[360px] shrink-0">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search routes, places..."
-            aria-label="Search routes"
-            className="w-full h-10 pl-9 pr-3 border border-border radius-sm text-sm font-sans outline-none bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
-          />
+          <ExploreSearchInput value={searchQuery} onChange={setSearchQuery} onPickPost={handlePickPost} />
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <FilterChipsBar filters={filters} onToggle={(label) => setFilters((prev) => prev.map((x) => (x.label === label ? { ...x, active: !x.active } : x)))} />
@@ -437,15 +444,7 @@ export default function ExplorePage() {
       {/* Glass Top Bar - Mobile */}
       <div className="absolute top-0 left-0 right-0 z-15 flex lg:hidden items-center gap-2 px-3 py-2 bg-bg-base/70 backdrop-blur-[16px] saturate-[180%]">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search routes, places..."
-            aria-label="Search routes"
-            className="w-full h-10 pl-9 pr-3 border border-border radius-sm text-sm font-sans outline-none bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted"
-          />
+          <ExploreSearchInput value={searchQuery} onChange={setSearchQuery} onPickPost={handlePickPost} />
         </div>
         <button onClick={() => setMobileFilterOpen(!mobileFilterOpen)} className="w-10 h-10 rounded-md border border-border bg-bg-card text-text-secondary flex items-center justify-center shrink-0 cursor-pointer" aria-label="Filters">
           <SlidersHorizontal size={18} />

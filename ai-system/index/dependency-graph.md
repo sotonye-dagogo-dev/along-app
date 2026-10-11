@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 38 profile post parity + corroboration tightening)
-> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 443/446 with 3 pre-existing failures verified at HEAD + lint pre-existing-only)
+> - last-updated-by: execute-feature 2026-10-11 (comment tightening + feed modal + explore search + test close-out)
+> - last-verified-against-code: 2026-10-11 (tsc zero errors + jest 461/461 + build clean + lint pre-existing-only)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -142,8 +142,13 @@ FeedService
 
 SearchService (`app/lib/services/searchService.ts`, live 2026-10-08 — powers `GET /api/search`)
     → PostModel, UserModel (Prisma `contains`/`insensitive`, no migration; P2022 avatarConfig fallback)
-    → Redis (unified search cache, 120s TTL, never-throw)
+    → Redis (unified search cache, 120s TTL, never-throw; empty first-pages return by reference, non-empty re-enriched with live trust [Sprint 39])
     → Config: cache (CACHE_KEYS.search, CACHE_TTL.searchResults), rateLimits (search bucket)
+    → Consumed by: explore `ExploreSearchInput` suggestions + `/search` page (Sprint 39 additive; map client filter untouched)
+
+PostCommentsModal (`app/components/features/comments/PostCommentsModal.tsx`, new Sprint 39 — shared feed/profile/search/detail comment modal)
+    → CommentInput + CommentList (AppAvatar, config caret) + AppModal + POST_ACTIONS_CONFIG + COMMENTS_CONFIG
+    → Config: comments (COMMENTS_CONFIG title/expand/loading copy)
 
 SuggestionsService
     → UserModel, FollowModel (Prisma)
