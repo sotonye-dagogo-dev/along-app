@@ -91,6 +91,15 @@ class RewardsService {
       }),
     ]);
 
+    // Leaderboard accuracy: points changed, so the cached board (10 min
+    // TTL) is now stale. Best-effort invalidation — failure keeps the TTL
+    // fallback and never blocks the award.
+    try {
+      const { redis } = await import("@/app/lib/db/redis");
+      const { CACHE_KEYS } = await import("@/app/lib/config");
+      await redis.del(CACHE_KEYS.leaderboard());
+    } catch { /* non-critical */ }
+
     return {
       pointsAwarded: config.points,
       newTotal: newPoints,

@@ -11,6 +11,7 @@ const REVIEWER_SELECT = {
   lastName: true,
   userName: true,
   avatar: true,
+  avatarConfig: true,
 } as const;
 
 /**

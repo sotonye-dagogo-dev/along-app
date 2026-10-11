@@ -49,6 +49,6 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
   descriptionMinLength: 10,
   photoRemoveLabel: "Remove photo",
   photoRemoveButtonClass:
-    "absolute top-1 right-1 w-7 h-7 rounded-circle bg-black/70 text-white flex items-center justify-center border border-white/40 cursor-pointer shadow-md opacity-100 hover:bg-black/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors",
+    "absolute top-1 right-1 z-10 w-7 h-7 rounded-circle bg-black/85 text-white flex items-center justify-center border border-white/60 ring-2 ring-white/80 shadow-md opacity-100 visible hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors",
   photoRemoveIconSize: 14,
 };

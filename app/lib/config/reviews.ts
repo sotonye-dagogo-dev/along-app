@@ -69,7 +69,7 @@ export interface PlatformReviewItem {
   comment: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED";
   createdAt: string;
-  reviewer: { id: string; firstName: string; lastName: string; userName: string; avatar: string | null };
+  reviewer: { id: string; firstName: string; lastName: string; userName: string; avatar: string | null; avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null };
 }
 
 /** Null-safe display name — anonymized (deleted/archived) authors render as
