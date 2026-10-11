@@ -412,7 +412,7 @@ Three interlocking issues:
 **Prevention:**
 - Never `new Redis` with `!` assertions or at import time. Always use `app/lib/db/redis.ts` wrapper which handles missing env, invalid host, and timeout.
 - Any Redis operation on a user-facing hot path must be `withTimeout` <2s and fall back to memory/DB; cache failures must be non-critical.
-- Auth routes that send email must not `await` Resend on the hot path — use `waitUntil` background pattern as in `register` and now `forgot-password`.
+- Gate-critical auth email (OTP/verification/reset) MUST be awaited inside bounded timeouts with an honest `sent` flag (Oct 2026 register fix: `REGISTER_EMAIL_DISPATCH_CONFIG` 6s per-mail race + `Promise.allSettled`, forgot-password 6s race pattern). Fire-and-forget (`void` / `globalThis.waitUntil`, which does not exist on the Vercel/Next runtime) lets serverless freeze on response and silently drops OTP mail — that was the recurring verify-email/OTP gap. Only non-critical notices may stay background, via Next `after()`.
 - Env var names: `UPSTASH_REDIS_REST_URL/TOKEN` are canonical; `REDIS_URL/TOKEN` kept as fallback alias only.
 
 **Files Affected:**

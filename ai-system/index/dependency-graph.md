@@ -218,7 +218,7 @@ NotificationService
 EmailService
     → Resend (transactional: otp, welcome incl. Google OAuth, password reset, verify/change-email/change-password, contact/bug, deletion lifecycle)
     → Shared wrapper (logo/header/CTA/footer) + escaped interpolation (missing→"") + toggle-pauses-send + EmailLog audit
-    → Non-blocking via waitUntil on hot paths (register, forgot-password, google callback)
+    → Awaited with bounded timeouts + honest sent flag on gate-critical paths (register 6s/mail via REGISTER_EMAIL_DISPATCH_CONFIG, forgot-password 6s, resend/verify-email trigger awaited, google welcome 5s); only non-critical notices via Next after()
 
 OtpStore / ResetTokenStore
     → Redis via shared wrapper (1.5s timeout, in-memory Map fallback)

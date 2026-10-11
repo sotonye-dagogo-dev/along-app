@@ -70,8 +70,10 @@ export default function RegisterPage() {
         body: JSON.stringify(refCode ? { ...form, ref: refCode } : form),
       })
       // Parse once (body can only be read once) — success carries the
-      // server cooldown so the OTP timer and throttle agree from the start.
-      let successData: { cooldown?: number } | null = null
+      // server cooldown so the OTP timer and throttle agree from the start,
+      // plus an honest `sent` flag (the code IS saved even when delivery
+      // failed, so we still advance to the OTP screen with a warning).
+      let successData: { cooldown?: number; sent?: boolean; message?: string; reason?: string } | null = null
       try {
         const text = await res.text()
         successData = text ? JSON.parse(text) as { error?: string; fieldErrors?: Record<string, string>; cooldown?: number } : null
@@ -91,7 +93,13 @@ export default function RegisterPage() {
               `Request failed (${res.status}). Please try again.`)
         )
       }
-      toastService.success("Account created! Check your email for the verification code.")
+      if (successData && successData.sent === false) {
+        toastService.info(
+          successData.message ?? "Account created, but the email could not be delivered. Use Resend after the timer — your newest code stays valid."
+        )
+      } else {
+        toastService.success("Account created! Check your email for the verification code.")
+      }
       const cooldownSuffix =
         successData && typeof successData.cooldown === "number"
           ? `&cooldown=${successData.cooldown}`

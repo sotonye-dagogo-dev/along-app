@@ -5,7 +5,8 @@ import { REGISTER_SCHEMA } from "@/app/lib/schemas/auth";
 import { hashPassword } from "@/app/lib/utils/security";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 import { setOtp, setSendCooldown } from "@/app/lib/services/otpStore";
-import { AUTH_VERIFICATION_CONFIG, cooldownKeyFor } from "@/app/lib/config/authVerification";
+import { AUTH_VERIFICATION_CONFIG, REGISTER_EMAIL_DISPATCH_CONFIG, cooldownKeyFor } from "@/app/lib/config/authVerification";
+import { getAppUrl } from "@/app/lib/config/env";
 
 export const maxDuration = 30;
 export const dynamic = "force-dynamic";
@@ -199,48 +200,104 @@ export async function POST(request: NextRequest) {
       ).catch(() => {}),
     ]);
 
-    // Non-blocking email send — never hold request waiting for Resend, but now tightly observed (no false-positive).
+    // Awaited email dispatch — the previous fire-and-forget
+    // (`void sendInBackground()` / `globalThis.waitUntil`, which does not
+    // exist on the Vercel/Next runtime) let serverless freeze the function
+    // the moment the response returned, silently dropping the OTP mail while
+    // awaited flows (forgot-password, resend, verify-email trigger) delivered
+    // fine. Same bounded-timeout pattern as forgot-password: each mail races
+    // its own timeout, OTP + welcome run in parallel, account creation is
+    // never rolled back on mail failure — the response just reports honestly.
     // Welcome fires regardless of OTP outcome (plan-register and referral
     // links share this path; referral isolation above keeps them non-interfering).
-    const sendInBackground = async () => {
-      try {
-        const { sendOtpEmail, sendWelcomeEmail } = await import("@/app/lib/services/emailService");
-        const otpResult = await sendOtpEmail(email, otp);
-        if (!otpResult.sent) {
-          console.error(`[REGISTER] OTP email failed for ${email}: ${otpResult.reason}`);
-          Sentry.captureMessage(`OTP email failed for ${email}: ${otpResult.reason}`, "warning");
-        }
-        if (process.env.NODE_ENV !== "production") {
-          console.log(`[DEV] OTP for ${email}: ${otp}`);
-        }
-        const welcomeResult = await sendWelcomeEmail(email, firstName);
-        if (!welcomeResult.sent) {
-          console.warn(`[REGISTER] welcome email failed for ${email}: ${welcomeResult.reason}`);
-        }
-      } catch (e) {
-        console.error("[REGISTER] background email failed", e);
-        Sentry.captureException(e);
-        if (process.env.NODE_ENV !== "production") {
-          console.log(`[DEV] OTP for ${email}: ${otp}`);
-        }
-      }
-    };
+    const appUrl = getAppUrl();
+    const verifyLink = `${appUrl}/verify-email?email=${encodeURIComponent(email)}`;
+    const withTimeout = <T>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)
+        ),
+      ]);
 
-    // Use waitUntil if available (Vercel), otherwise fire-and-forget
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const maybeWaitUntil = (globalThis as any)?.waitUntil as ((p: Promise<void>) => void) | undefined;
-    if (maybeWaitUntil) {
-      maybeWaitUntil(sendInBackground());
-    } else {
-      // Don't await — respond immediately
-      void sendInBackground();
+    let otpSent = false;
+    let otpReason: string | undefined;
+    let welcomeSent = false;
+    try {
+      const { sendVerifyEmail, sendOtpEmail, sendWelcomeEmail } = await import(
+        "@/app/lib/services/emailService"
+      );
+      const sendVerification = REGISTER_EMAIL_DISPATCH_CONFIG.useVerifyTemplate
+        ? () =>
+            withTimeout(
+              sendVerifyEmail(email, firstName, otp, verifyLink),
+              REGISTER_EMAIL_DISPATCH_CONFIG.otpTimeoutMs,
+              "Verification email send"
+            )
+        : () =>
+            withTimeout(
+              sendOtpEmail(email, otp),
+              REGISTER_EMAIL_DISPATCH_CONFIG.otpTimeoutMs,
+              "OTP email send"
+            );
+      const [otpSettled, welcomeSettled] = await Promise.allSettled([
+        sendVerification(),
+        withTimeout(
+          sendWelcomeEmail(email, firstName),
+          REGISTER_EMAIL_DISPATCH_CONFIG.welcomeTimeoutMs,
+          "Welcome email send"
+        ),
+      ]);
+      if (otpSettled.status === "fulfilled") {
+        otpSent = otpSettled.value.sent;
+        otpReason = otpSettled.value.sent ? undefined : otpSettled.value.reason;
+        if (!otpSettled.value.sent) {
+          console.error(`[REGISTER] verification email failed for ${email}: ${otpSettled.value.reason}`);
+          Sentry.captureMessage(
+            `Verification email failed for ${email}: ${otpSettled.value.reason}`,
+            "warning"
+          );
+        }
+      } else {
+        otpReason = otpSettled.reason instanceof Error ? otpSettled.reason.message : String(otpSettled.reason);
+        console.error(`[REGISTER] verification email exception for ${email}:`, otpReason);
+        Sentry.captureException(otpSettled.reason);
+      }
+      if (welcomeSettled.status === "fulfilled") {
+        welcomeSent = welcomeSettled.value.sent;
+        if (!welcomeSettled.value.sent) {
+          console.warn(`[REGISTER] welcome email failed for ${email}: ${welcomeSettled.value.reason}`);
+        }
+      } else {
+        console.warn(
+          `[REGISTER] welcome email exception for ${email}:`,
+          welcomeSettled.reason instanceof Error ? welcomeSettled.reason.message : String(welcomeSettled.reason)
+        );
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`[DEV] OTP for ${email}: ${otp}`);
+      }
+    } catch (e) {
+      otpReason = e instanceof Error ? e.message : String(e);
+      console.error("[REGISTER] email dispatch failed", e);
+      Sentry.captureException(e);
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`[DEV] OTP for ${email}: ${otp}`);
+      }
     }
 
+    // 201 either way (the account + code ARE saved) but the payload is
+    // honest about delivery — mirrors /api/auth/otp/resend so the OTP screen
+    // can say "check spam / wait for the timer" instead of a false positive.
     return NextResponse.json(
       {
-        message: "OTP sent to email",
+        message: otpSent ? "OTP sent to email" : AUTH_VERIFICATION_CONFIG.copy.sendFailed,
+        sent: otpSent,
+        ...(otpReason && !otpSent ? { reason: otpReason } : {}),
+        welcomeSent,
         expiresIn: AUTH_VERIFICATION_CONFIG.otpTtlSeconds,
         cooldown: AUTH_VERIFICATION_CONFIG.resendCooldownSeconds,
+        invalidatesPrevious: false,
       },
       { status: 201 }
     );

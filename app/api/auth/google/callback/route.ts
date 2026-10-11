@@ -206,11 +206,27 @@ export async function GET(request: NextRequest) {
         allowSelf: true,
       });
     } catch { /* non-critical */ }
+    // Awaited (bounded) welcome dispatch — the previous fire-and-forget
+    // (`void sendWelcomeEmail(...)`) had the same serverless-freeze class as
+    // the register bug: the redirect response returned before Resend
+    // completed, so Google signups silently missed the wired-in welcome mail.
+    // A short timeout keeps OAuth redirect latency unaffected; failure is
+    // non-fatal and only logged.
     try {
+      const { GOOGLE_WELCOME_DISPATCH_CONFIG } = await import(
+        "@/app/lib/config/authVerification"
+      );
       const { sendWelcomeEmail } = await import("@/app/lib/services/emailService");
-      void sendWelcomeEmail(email, firstName || "traveller").then((r) => {
-        if (!r.sent) console.warn(`[GOOGLE] welcome email not sent for ${email}: ${r.reason}`);
-      });
+      const result = await Promise.race([
+        sendWelcomeEmail(email, firstName || "traveller"),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`Welcome email timeout after ${GOOGLE_WELCOME_DISPATCH_CONFIG.timeoutMs}ms`)),
+            GOOGLE_WELCOME_DISPATCH_CONFIG.timeoutMs
+          )
+        ),
+      ]).catch((e) => ({ sent: false as const, reason: e instanceof Error ? e.message : String(e) }));
+      if (!result.sent) console.warn(`[GOOGLE] welcome email not sent for ${email}: ${result.reason}`);
     } catch { /* non-critical */ }
     if (invitedById) {
       const { linkReferralRewards } = await import("@/app/lib/services/referralService");
