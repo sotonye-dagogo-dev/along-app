@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { AppButton, AppAlert } from "@/app/components/ui"
 import { toastService } from "@/app/lib/services/toastService"
+import { AUTH_LINK_STATUS_CONFIG, resolveAuthLinkState } from "@/app/lib/config/authLink"
 import { Link2, Shield, Eye, EyeOff } from "lucide-react"
 
 export function AuthLinkPanel() {
@@ -126,8 +127,12 @@ export function AuthLinkPanel() {
         </div>
       </div>
 
-      {!status.hasGoogle && !status.hasPassword && (
-        <p className="text-xs text-text-muted mt-2">Tip: Link both methods so you can sign in either way.</p>
+      {status && resolveAuthLinkState(status.hasGoogle, status.hasPassword) === "both" && (
+        <p className="text-xs text-text-muted mt-2">{AUTH_LINK_STATUS_CONFIG.bothConnected}</p>
+      )}
+
+      {!status?.hasGoogle && !status?.hasPassword && (
+        <p className="text-xs text-text-muted mt-2">{AUTH_LINK_STATUS_CONFIG.none}</p>
       )}
     </div>
   )

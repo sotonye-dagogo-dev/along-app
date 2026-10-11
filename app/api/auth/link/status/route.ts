@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { prisma } from "@/app/lib/db/prisma";
 
 export async function GET() {
   try {
-    const user = await getUserFromRequest() as { id: string; googleId: string | null; password: string } | null;
-    if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-    const hasGoogle = !!user.googleId;
-    const hasPassword = !!user.password && user.password.length > 0;
+    const session = await getUserFromRequest() as { id: string } | null;
+    if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    // Re-read auth methods from the DB on every call (never trust — or leak —
+    // the password hash via the session helper). Only booleans leave this
+    // route, so linking/unlinking persists and both panels reflect reality
+    // even after reloads or cross-device changes.
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.id },
+      select: { googleId: true, password: true },
+    });
+    if (!dbUser) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    const hasGoogle = !!dbUser.googleId;
+    const hasPassword = !!dbUser.password && dbUser.password.length > 0;
     return NextResponse.json({ hasGoogle, hasPassword }, { status: 200 });
   } catch (error) {
     console.error("Link status error:", error);

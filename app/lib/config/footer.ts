@@ -56,6 +56,7 @@ export const FOOTER_CONFIG: FooterConfig = {
       links: [
         { label: "Explore Routes", href: "/explore", i18nKey: "footer.exploreRoutes" },
         { label: "Share Route", href: "/home", i18nKey: "nav.shareRoute" },
+        { label: "Leaderboard", href: "/leaderboard", i18nKey: "footer.leaderboard" },
         { label: "Notifications", href: "/notifications", i18nKey: "footer.notifications" },
         { label: "Invite Friends", href: "/invite", i18nKey: "footer.inviteFriends" },
       ],

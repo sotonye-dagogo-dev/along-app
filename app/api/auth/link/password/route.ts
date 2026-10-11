@@ -12,7 +12,7 @@ const Schema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getUserFromRequest() as { id: string; googleId: string | null; password: string } | null;
+    const user = await getUserFromRequest() as { id: string } | null;
     if (!user) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
     const body = await request.json();

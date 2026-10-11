@@ -1,7 +1,7 @@
 # Repair System — Error Knowledge Base
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-11 (explore avatarConfig type + leaderboard competition ranking)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 link-status cast-lie entry)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
@@ -412,7 +412,7 @@ Three interlocking issues:
 **Prevention:**
 - Never `new Redis` with `!` assertions or at import time. Always use `app/lib/db/redis.ts` wrapper which handles missing env, invalid host, and timeout.
 - Any Redis operation on a user-facing hot path must be `withTimeout` <2s and fall back to memory/DB; cache failures must be non-critical.
-- Auth routes that send email must not `await` Resend on the hot path — use `waitUntil` background pattern as in `register` and now `forgot-password`.
+- Gate-critical auth email (OTP/verification/reset) MUST be awaited inside bounded timeouts with an honest `sent` flag (Oct 2026 register fix: `REGISTER_EMAIL_DISPATCH_CONFIG` 6s per-mail race + `Promise.allSettled`, forgot-password 6s race pattern). Fire-and-forget (`void` / `globalThis.waitUntil`, which does not exist on the Vercel/Next runtime) lets serverless freeze on response and silently drops OTP mail — that was the recurring verify-email/OTP gap. Only non-critical notices may stay background, via Next `after()`.
 - Env var names: `UPSTASH_REDIS_REST_URL/TOKEN` are canonical; `REDIS_URL/TOKEN` kept as fallback alias only.
 
 **Files Affected:**
@@ -1118,3 +1118,24 @@ Always access optional array fields with `?? []` fallback or optional chaining. 
 
 **Date:** 2026-06-09
 **Status:** Superseded — same pattern covered by "Feed Stream Crash on API Error Response" entry
+
+## Link status always-false hasPassword (casted session field never selected)
+
+**Symptom:**
+Connecting a password (Google-only → add password) toasts success, but after reload the Connected Accounts panel shows "Add a password" again and Email & Security never shows Change-password.
+
+**Root Cause:**
+`getUserFromRequest()` (`app/lib/utils/auth.ts`) selects a safe subset without `password`, but `GET /api/auth/link/status` cast the result to `{...; password: string}` and derived `hasPassword` from a field that was always `undefined`. The `Record<string, unknown>` return type lets the cast lie silently.
+
+**Fix Applied:**
+Status route re-reads `{googleId, password}` from `prisma.user` per call and returns booleans only (hash never leaves the server). `link/password` cast narrowed to `{id}` (it already re-fetches the DB row).
+
+**Prevention:**
+Never derive status from a casted session/helper object — if the query doesn't `select` it, it isn't there. Prefer narrow `{id}` casts + explicit DB re-reads in status routes; treat any `as` widening of `Record<string, unknown>` as a review flag.
+
+**Files Affected:**
+- `app/api/auth/link/status/route.ts`
+- `app/api/auth/link/password/route.ts`
+
+**Date:** 2026-10-11
+**Status:** Active

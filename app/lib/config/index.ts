@@ -68,6 +68,11 @@ export {
 export type { MapStackConfig, MapVectorStyleName, MapRoutingProvider, MapGeocodeProvider, MapLibreRasterStyle, MapExpandConfig } from "./mapStack";
 export { REWARD_TIERS, POINTS_CONFIG } from "./rewards";
 export { INVITE_CONFIG } from "./inviteConfig";
+export { LEADERBOARD_LINKS_CONFIG } from "./leaderboardLinks";
+export { PROFILE_QUICK_LINKS_CONFIG } from "./profileQuickLinks";
+export type { ProfileQuickLink, ProfileQuickLinkKind } from "./profileQuickLinks";
+export { AUTH_LINK_STATUS_CONFIG, resolveAuthLinkState, authLinkStatusCopy } from "./authLink";
+export type { AuthLinkState } from "./authLink";
 export {
   EARLY_ADOPTER_CONFIG_KEY,
   DEFAULT_EARLY_ADOPTER_CONFIG,

@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: fix-build 2026-10-11 (photo-remove visibility + expanded-map containment)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 leaderboard links + auth-link tightening)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: historical entries do not go stale
 
@@ -1066,3 +1066,25 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `uxTightening.test.ts` +1 photo-remove case; `mapStack.test.ts` +2 containment cases.
 **QA:** no node_modules in runner — targeted `tsc --ignoreConfig --noResolve` zero attributable errors (noise identical to untouched baseline); full jest/tsc/build deferred to CI/Vercel.
 **Compliance:** no migration, no new deps, no removed APIs; additive-only.
+
+## Sprint 35 (2026-10-11) — Leaderboard cross-links + auth-link tightening
+**Directive:** leaderboard links on footer/profile/invite; one-auth-means accounts can connect the other and it persists; Email & Security reflects connected means. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `LEADERBOARD_LINKS_CONFIG` + footer Leaderboard link + `PROFILE_QUICK_LINKS_CONFIG` (profile quick links now config-driven, incl. Leaderboard) + invite "View full leaderboard" CTA; 3 locale keys added with en/pcm parity.
+- `GET /api/auth/link/status` re-reads auth methods from DB (booleans only) — fixes always-false `hasPassword` so password-linking persists in UI and Change-password gating works; profile toasts `google_linked`/`google_already_linked` once and cleans the URL.
+- NEW `AUTH_LINK_STATUS_CONFIG` (+ state resolver/copy helper) consumed by Connected Accounts + Email & Security (connected-methods line, per-state hints).
+- Tests: NEW `leaderboardAuthLink.test.ts` (5 cases).
+**QA:** no node_modules in runner — static verification only; full gate deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs; additive-only.
+
+## Fix 2026-10-11 — Register verify-email/OTP not sent (fire-and-forget freeze)
+**Directive:** verify email/OTP not sent on successful register while other email flows deliver; config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Root cause:** register used fire-and-forget (`void sendInBackground()` / `globalThis.waitUntil`, which does not exist on the Vercel/Next runtime). Serverless freezes the function the moment the response returns, so the OTP mail was silently dropped; awaited flows (forgot-password 6s race, resend, verify-email trigger) delivered fine — matching the "email service functional, register OTP missing" report. Secondary: register sent the otp-only template while resend/trigger use the verifyEmail (OTP + link) template.
+**Implemented:**
+- `lib/config/authVerification.ts` += `REGISTER_EMAIL_DISPATCH_CONFIG` (otpTimeoutMs 6000, welcomeTimeoutMs 6000, useVerifyTemplate true) + `GOOGLE_WELCOME_DISPATCH_CONFIG` (5000).
+- `api/auth/register/route.ts`: awaited parallel dispatch (`Promise.allSettled`, per-mail timeout race, `sendVerifyEmail` OTP+link with `verify-email?email=` link, welcome independent/non-fatal), honest `sent`/`reason`/`welcomeSent` payload (mirrors resend contract) instead of false-positive "OTP sent"; account creation never rolled back on mail failure.
+- `api/auth/google/callback/route.ts`: welcome awaited within 5s timeout (same freeze class fixed; redirect latency bounded, failure non-fatal).
+- `(auth)/register/page.tsx`: surfaces `sent===false` via info toast but still advances to `/otp` (code IS saved).
+- Tests: NEW `registerEmailDispatch.test.ts` (6 file-presence cases).
+**QA:** no node_modules in runner — re-reads of all touched files, static predicate checks (no sendInBackground/globalThis/void-send remains on register; sent flag + verify link present); full jest/tsc/build deferred to CI/Vercel.
+**Compliance:** no migration, no new deps, no removed APIs (register 201 shape additive-only: +sent/reason/welcomeSent/invalidatesPrevious); additive-only.

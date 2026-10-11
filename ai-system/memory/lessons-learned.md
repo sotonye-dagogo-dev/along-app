@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-11 (hover-only controls + full-bleed dialog lesson)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 session-select vs status-source lesson)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -266,10 +266,10 @@ Building any file/media upload — verify end-to-end (input → FormData → API
 **What We Learned:**
 1. Wrap every Redis operation in `Promise.race` with <1.5s timeout and fallback to in-memory or DB — cache must be non-critical.
 2. Use a lazy singleton (`app/lib/db/redis.ts`) that resolves `UPSTASH_REDIS_REST_URL || REDIS_URL` and never `new Redis` at import time; guard `replace_me` and non-https values.
-3. Never `await` email sending on the hot path — use `waitUntil` background pattern as in `register`.
+3. Gate-critical email (OTP/verification) must be AWAITED inside bounded timeouts with an honest `sent` flag — fire-and-forget (`void` / `globalThis.waitUntil`, which does not exist on the Vercel/Next runtime) lets serverless freeze the function on response and silently drops the mail (Oct 2026 register fix: `REGISTER_EMAIL_DISPATCH_CONFIG` 6s per-mail race + `Promise.allSettled`, same pattern as forgot-password). Non-critical notices (change-password notice, Google welcome before the fix) may stay background, but never OTP gates.
 
 **Apply When:**
-Any route that touches Redis or Resend on the request hot path — always timeout-guard and make side effects (email, feed invalidation) background work.
+Any route that touches Redis or Resend on the request hot path — always timeout-guard; cache side effects may be background, but verification/OTP delivery must be awaited and honestly reported.
 
 **Supersedes:** None
 **Superseded by:** None
@@ -301,7 +301,7 @@ Forgot-password returned success while Resend never delivered — no mail, no er
 A false "mail sent" success is worse than an error: the user waits for mail that never arrives and blames their inbox. Every background email must check the provider send result and degrade honestly (log + surfaced error) when delivery fails.
 
 **Apply When:**
-Any flow that sends transactional email (verification, reset, notifications) — especially non-blocking `waitUntil` sends where the response already went out.
+Any flow that sends transactional email (verification, reset, notifications) — gate-critical sends must be awaited with timeout + honest `sent`/`reason` (register/otp-resend/verify-email/forgot-password pattern); only non-critical notices may be fire-and-forget, and then only via Next `after()` (never `globalThis.waitUntil`, which does not exist on this runtime).
 
 **Supersedes:** None
 **Superseded by:** None
@@ -656,5 +656,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** a working remove button nobody could see (especially on touch); an expanded map that painted over the adjacent suggestions rail.
 - **Root causes:** (1) `opacity-0` + `group-hover:opacity-100` gates discovery on hover, which touch devices never fire — the control is hidden for a whole input modality; (2) `fixed inset-0` + `100vw/100vh` with no max-width cap or scrim is a layer, not a dialog — and `100vw` includes the scrollbar, so it also scrolls sideways.
 - **Fix pattern (reuse):** removal/destructive actions are persistently visible (`opacity-100`); hover/focus only deepen, never reveal; touch-size targets (≥28px) with focus rings. Expansions render as centered dialogs (`inset-0` flex center + `w-full max-w-*` panel + scrim + Escape/backdrop close + resize/refit on open); never `100vw` — prefer `inset-0` wrappers with capped panels. Both behind zero-dep config so copy/classes stay tunable. Applies to any future thumbnail-grid action or fullscreen-capable viewer.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 35: session-helper selects are not status sources behind "linked but the UI forgot"
+- **Symptom:** password-linking succeeded at the API (DB updated, success toast shown) but after reload the panel showed "Add a password" again and Email & Security never offered Change-password — linking looked non-persistent.
+- **Root causes:** (1) `getUserFromRequest()` deliberately selects a safe subset (no `password` hash), but `GET /api/auth/link/status` cast the result to include `password` and derived `hasPassword` from a field that was always `undefined` — a type-cast lie the compiler could not catch because the helper returns `Record<string, unknown>`; (2) redirect result flags (`?success=`/`?error=`) had no renderer on the landing page, so link outcomes were silent.
+- **Fix pattern (reuse):** status routes re-read the authoritative columns from the DB per call and return booleans only (hash never leaves the server); never derive status from a casted session object — if the helper doesn't select it, it isn't there. Any redirect-flag handoff (`?success=`/`?error=`) ships with a one-shot renderer (toast + `history.replaceState` cleanup) on the landing page in the same change. Applies to any future connected-state or verification-status surface.
 - **Supersedes:** None
 - **Superseded by:** None
