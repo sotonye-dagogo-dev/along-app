@@ -408,7 +408,7 @@ Hover lift (when `hover=true`): `translateY(-2px)` + `--shadow-md` transition 20
 - Always circular (`--radius-circle`)
 - Source priority: 1) DiceBear URL from `user.avatarConfig`, 2) `getFallbackAvatarUrl(user.firstName)`
 - Verified badge: `BadgeCheck` icon (14px, `--color-primary`) at `bottom: -1px, right: -1px`
-- Sizes: 24/32/40/56/80/120px
+- Sizes: 20/24/32/40/56/80/120px (20px added Sprint 48 for compact suggestion cards)
 - Loading: skeleton pulse circle
 - Alt text: `"${user.firstName}'s avatar"`
 - When `linkToProfile=true`: wraps in `<Link href="/profile/[userName]">` with `e.stopPropagation()`

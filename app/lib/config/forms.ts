@@ -1,4 +1,4 @@
-import { Mail, Lock, User, Phone, MessageSquare, Camera, Bug } from "lucide-react";
+import { Mail, Lock, User, MessageSquare, Camera, Bug } from "lucide-react";
 import type { FieldConfig } from "@/app/lib/types";
 
 export const REGISTER_FIELDS: FieldConfig[] = [
@@ -16,10 +16,12 @@ export const LOGIN_FIELDS: FieldConfig[] = [
 
 export const EDIT_PROFILE_FIELDS: FieldConfig[] = [
   { name: "userName", label: "Username", type: "text", placeholder: "Choose a unique username", required: true, icon: User },
-  { name: "firstName", label: "First Name", type: "text", required: true, icon: User },
-  { name: "lastName", label: "Last Name", type: "text", required: true, icon: User },
-  { name: "bio", label: "Bio", type: "textarea", placeholder: "Tell us about yourself", icon: MessageSquare },
-  { name: "phone", label: "Phone", type: "tel", placeholder: "+234...", icon: Phone },
+  // NOTE: phone was removed — the User model has no phone column, register
+  // never collected it, and PATCH never persisted it, so the input could
+  // never save (dead UI). See PROFILE_VALIDATION_CONFIG for name rules.
+  { name: "firstName", label: "First Name", type: "text", required: true, icon: User, validation: { minLength: 1, maxLength: 50 } },
+  { name: "lastName", label: "Last Name", type: "text", required: true, icon: User, validation: { minLength: 1, maxLength: 50 } },
+  { name: "bio", label: "Bio", type: "textarea", placeholder: "Tell us about yourself", icon: MessageSquare, validation: { maxLength: 160 } },
 ];
 
 /** Shared username rules (mirrors REGISTER_SCHEMA so edit + signup agree). */

@@ -106,6 +106,9 @@ export async function PATCH(
     }
 
     const body = await request.json();
+    // Allowlist: stale clients may still send `phone` (removed from the
+    // edit-profile form — no User column ever stored it); it is ignored
+    // here rather than rejected so old app versions keep working.
     const allowedFields = ["userName", "firstName", "lastName", "bio", "avatar"];
 
     const updateData: Record<string, unknown> = {};
@@ -117,6 +120,29 @@ export async function PATCH(
 
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+
+    // Display-name whitespace hygiene (config-driven, mirrors registration
+    // trimming): "  Ada  " → "Ada", "Ada    Bello" → "Ada Bello", "   " →
+    // "" which is rejected below instead of persisting an invisible name.
+    const { normalizeProfilePatch, validateProfilePatch } = await import(
+      "@/app/lib/config/profileValidation"
+    );
+    const normalizedPatch = normalizeProfilePatch(
+      body as Record<string, unknown>,
+    );
+    const patchError = validateProfilePatch(normalizedPatch);
+    if (patchError) {
+      return NextResponse.json({ error: patchError }, { status: 400 });
+    }
+    if (normalizedPatch.firstName !== undefined) {
+      updateData.firstName = normalizedPatch.firstName;
+    }
+    if (normalizedPatch.lastName !== undefined) {
+      updateData.lastName = normalizedPatch.lastName;
+    }
+    if (normalizedPatch.bio !== undefined) {
+      updateData.bio = normalizedPatch.bio;
     }
 
     // Username stays globally unique: validate shape, then confirm no OTHER

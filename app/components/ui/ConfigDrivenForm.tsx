@@ -113,7 +113,22 @@ export function ConfigDrivenForm({
       e.preventDefault();
       setFieldErrors({});
 
-      const result = await schema.safeParseAsync(formValues);
+      // Whitespace hygiene (config-driven forms): trim every non-password
+      // input before validation so trailing spaces ("Ada ") don't persist
+      // and whitespace-only entries ("   ") fail `required` instead of
+      // saving invisible values. Passwords are exempt — their exact bytes
+      // are significant. Heavier name collapsing (internal `\s+` → " ")
+      // happens server-side via `normalizeProfilePatch`.
+      const byName = new Map(fields.map((f) => [f.name, f]));
+      const normalized: Record<string, string> = {};
+      for (const [name, value] of Object.entries(formValues)) {
+        normalized[name] =
+          typeof value === "string" && byName.get(name)?.type !== "password"
+            ? value.trim()
+            : value;
+      }
+
+      const result = await schema.safeParseAsync(normalized);
       if (!result.success) {
         const errors: Record<string, string> = {};
         for (const issue of result.error.issues) {
@@ -126,7 +141,7 @@ export function ConfigDrivenForm({
 
       await onSubmit(result.data as Record<string, unknown>);
     },
-    [formValues, schema, onSubmit],
+    [formValues, schema, onSubmit, fields],
   );
 
   const renderField = (field: FieldConfig) => {

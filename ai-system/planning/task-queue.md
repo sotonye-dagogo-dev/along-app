@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 47 PWA notice icon/theme compliance + user visibility + avatar consistency)
-> - last-verified-against-code: 2026-10-12 (brace balance + token/emoji sweeps + tsc --strict zero-dep configs + node execution of visibility/faq-link logic; full tsc/jest/build deferred to CI — no node_modules in runner)
-> - last-synced: 2026-10-12 (Sprint 47 PWA notice icon/theme compliance + user visibility + avatar consistency — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 48 profile tightening: dead phone field, name whitespace, AvatarSize 20)
+> - last-verified-against-code: 2026-10-12 (full local gate: tsc --noEmit clean, jest 66 suites / 559 tests pass, lint 0 new errors vs baseline)
+> - last-synced: 2026-10-12 (Sprint 48 profile tightening — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
