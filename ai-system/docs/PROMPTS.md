@@ -40,7 +40,7 @@ Your task: Generate a complete Along design system including:
    - AppCard: 5 variants (default, elevated, glass, flat, suggestion) with hover lift. Per DESIGN.md §6.2.
    - AppInput / AppSelect / AppTextarea: default / focus / error / disabled. Per DESIGN.md §6.3.
    - AppTag / AppBadge: all variants × sizes. Per DESIGN.md §6.7.
-   - AppAvatar: all 6 sizes (24/32/40/56/80/120px), verified badge, profile-link indicator. Per DESIGN.md §6.8.
+   - AppAvatar: all 7 sizes (20/24/32/40/56/80/120px), verified badge, profile-link indicator. Per DESIGN.md §6.8.
    - AppUserLabel: horizontal and vertical layouts, with/without handle. Per DESIGN.md §6.8.
    - TrustBadge: all 4 trust levels (Low/Developing/Verified/Trusted) in compact + default sizes, with tooltip breakdown panel. Per DESIGN.md §6.10.
    - AppModal: all 5 sizes, header variants. Per DESIGN.md §6.5.

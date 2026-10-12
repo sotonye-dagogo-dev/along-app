@@ -7,8 +7,36 @@ import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { AppAvatar } from "@/app/components/ui/AppAvatar"
 import { FollowButton } from "@/app/components/features/suggestions/FollowButton"
+import { EndlessCarousel } from "@/app/components/features/suggestions/EndlessCarousel"
+import { SUGGESTIONS_PANEL_CONFIG } from "@/app/lib/config"
 import { filterVisibleUsers, isVisibleUser } from "@/app/lib/config/userVisibility"
-import type { SuggestionsData } from "@/app/components/features/suggestions/types"
+import type { SuggestionsData, SuggestionPost } from "@/app/components/features/suggestions/types"
+
+function OpenRequestCard({ req }: { req: SuggestionPost }) {
+  return (
+    <Link
+      href={`/posts/${req.id}`}
+      className={`block ${SUGGESTIONS_PANEL_CONFIG.openRequests.cardWidthClass} bg-bg-card border border-border rounded-xl p-3 hover:border-primary-muted transition-colors`}
+    >
+      <div className="text-sm font-semibold line-clamp-2">{req.title}</div>
+      <div className="text-xs text-text-muted mt-1.5 flex items-center gap-1.5 min-w-0">
+        <AppAvatar
+          src={req.user.avatar ?? undefined}
+          alt={`${req.user.firstName} ${req.user.lastName}`}
+          size={20}
+          config={req.user.avatarConfig ?? undefined}
+          verified={req.user.verified}
+          linkToProfile={false}
+          userName={req.user.userName}
+        />
+        <span className="truncate">
+          @{req.user.userName}
+          {req.region ? ` · ${req.region}` : ""}
+        </span>
+      </div>
+    </Link>
+  )
+}
 
 export function SuggestionsPanel() {
   const { user, isLoading: authLoading } = useAuth()
@@ -92,28 +120,43 @@ export function SuggestionsPanel() {
         )}
       </div>
 
-      {/* Open route requests */}
+      {/* Open route requests — single stays a static row; 2+ scroll in the shared endless tape */}
       <div className="bg-bg-card border border-border rounded-xl overflow-hidden shadow-sm">
         <div className="px-4 py-3 text-sm font-semibold border-b border-border flex items-center gap-1.5">
           <ClipboardList size={14} className="text-secondary" />
           Open route requests
+          {requests.length > 1 && (
+            <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-medium text-text-muted">
+              <span className="px-1.5 py-0.5 rounded-full bg-bg-elevated border border-border">
+                {requests.length}
+              </span>
+              {SUGGESTIONS_PANEL_CONFIG.openRequests.scrollHint}
+            </span>
+          )}
         </div>
         {requests.length === 0 ? (
           <p className="px-4 py-3 text-xs text-text-muted">No open requests yet.</p>
+        ) : requests.length === 1 ? (
+          <Link
+            href={`/posts/${requests[0].id}`}
+            className="block px-4 py-2.5 hover:bg-bg-elevated transition-colors"
+          >
+            <div className="text-sm font-semibold line-clamp-1">{requests[0].title}</div>
+            <div className="text-xs text-text-muted truncate">
+              @{requests[0].user.userName}
+              {requests[0].region ? ` · ${requests[0].region}` : ""}
+            </div>
+          </Link>
         ) : (
-          requests.map((req) => (
-            <Link
-              key={req.id}
-              href={`/posts/${req.id}`}
-              className="block px-4 py-2.5 hover:bg-bg-elevated transition-colors"
-            >
-              <div className="text-sm font-semibold line-clamp-1">{req.title}</div>
-              <div className="text-xs text-text-muted truncate">
-                @{req.user.userName}
-                {req.region ? ` · ${req.region}` : ""}
-              </div>
-            </Link>
-          ))
+          <div className="px-3 py-3">
+            <EndlessCarousel
+              items={requests.map((req) => (
+                <OpenRequestCard key={req.id} req={req} />
+              ))}
+              label={SUGGESTIONS_PANEL_CONFIG.openRequests.carouselLabel}
+              durationSec={SUGGESTIONS_PANEL_CONFIG.openRequests.carouselDurationSec}
+            />
+          </div>
         )}
       </div>
 

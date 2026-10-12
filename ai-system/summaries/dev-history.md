@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 46 push firing + global PWA install/push notices)
-> - last-verified-against-code: 2026-10-12 (static review + node --check sw.js + JSON parity + brace/paren balance; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1214,3 +1214,26 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `config/sprint47.test.ts` (9 suites mirror for CI).
 **QA:** no node_modules in runner (tsc/jest/build deferred to CI); brace/token/emoji sweeps clean, tsc --strict zero-dep configs OK, node execution 11/11 + faq-links OK.
 **Compliance:** additive-only, no migration/deps/API removals.
+---
+
+## Sprint 48 (2026-10-12) — Profile tightening: dead phone field, name whitespace, AvatarSize 20
+**Directive:** drop unpersistable edit-profile phone field; whitespace handling for name inputs (edit + registration audit); fix `size={20}` Vercel type error. Config/metadata-driven, reusable, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `lib/config/profileValidation.ts` (`PROFILE_VALIDATION_CONFIG` + normalize/validate helpers) + barrel; `EDIT_PROFILE_FIELDS` phone removed (+ client caps on names/bio); `VALIDATION_RULES.phonePattern` removed (unused).
+- `ConfigDrivenForm` trims non-password fields pre-validation; `PATCH /api/users/[id]` normalizes + 400s bad display names (stale `phone` ignored); register collapses name whitespace.
+- `AppAvatar` `AvatarSize` += 20 (compact request-card intent preserved).
+- Tests: `config/profileTightening.test.ts` (14).
+**QA:** full local gate — `tsc --noEmit` clean, jest 66/559 pass, lint 0 new errors vs baseline.
+**Compliance:** non-breaking, no migration (UI-config-only phone removal; additive avatar union; legacy `phone` payloads still succeed).
+
+## Sprint 49 (2026-10-12) — Installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt
+**Directive:** close the SW update gap — installed clients ran stale shells (auto-skipWaiting, no periodic `registration.update()`, no prompt); ensure updates surface without yanking running pages or dropping sessions. Config/metadata-driven, reusable, non-breaking + update-ai-system chain.
+**Implemented:**
+- Config: `PWA_CACHE_VERSION` v4→v5 (+ `sw.js` mirror) so existing installs purge stale caches on next activate; NEW `PWA_UPDATE_CONFIG` (hourly interval, visible/focus/online checks, `along:sw-update-ready` event, reload-guard + 1-day dismiss TTL, copy) + NEW `PWA_SW_MESSAGES` vocabulary (`SKIP_WAITING`/`SW_UPDATE_READY`/`SW_ACTIVATED`/`GET_SW_VERSION`/`SW_VERSION`) + barrel exports.
+- SW: install precaches WITHOUT `skipWaiting` (never yanks a running page), broadcasts `SW_UPDATE_READY`/`SW_ACTIVATED` with version, answers `GET_SW_VERSION`; activate still claims + purges non-v5 caches; auth/push/admin never-cache untouched.
+- Client: `ServiceWorkerRegistrar` rewritten — periodic `registration.update()` (hourly + visible/focus/online, offline-skipped), `updatefound`→waiting detection (controlled pages only), `controllerchange` single-reload guarded (first-install never reloads; sessionStorage episode flag cleared 5s after settled load), SW message relay.
+- UI: NEW `ServiceWorkerUpdatePrompt` in `PwaNotices` hub — fixed bottom card (above offline slot) + collapsible pill, Update posts SKIP_WAITING (8s stale-browser fallback reload + success toast), Later snoozes 1 day, `pwa.update*` i18n keys (en + pcm pidgin), `--color-*` tokens, lucide RefreshCw/X/Chevron icons.
+- Copy: NEW FAQ `app-updates` answer (+pcm twin) — background checks, Update/Later, session preservation, refresh-when-online.
+- Tests: `pwa.test.ts` +2 (update registry shape, message vocabulary), `locales.test.ts` +4 required keys (en/pcm parity).
+**QA:** no node_modules in runner (full tsc/jest/build deferred to CI — standing arrangement); executed: `node --check sw.js` OK, en/pcm JSON parse OK, CACHE_VERSION v5 both sides, precache/message parity script OK (11/11 routes + 5/5 tokens); tsc shows only pre-existing missing-module noise (react/jest types), zero errors attributable to touched files.
+**Compliance:** additive-only, non-breaking, no migration/deps/API removals (SW message additions backward-compatible — old pages ignore unknown broadcasts; prompt renders only when an update is actually waiting; first-install path unchanged in behaviour).

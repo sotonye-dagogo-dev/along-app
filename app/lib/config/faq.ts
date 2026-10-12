@@ -123,6 +123,12 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         answer:
           "No. Going offline never signs you out — your session is preserved and restored when connectivity returns. You only need to sign in again if your session genuinely expired.",
       },
+      {
+        id: "app-updates",
+        question: "Does the installed app update itself?",
+        answer:
+          "Yes. Along checks for updates in the background — on every visit and about hourly while the app stays open — and shows a small Update notice when a new version is ready. Tapping Update now applies it with a single refresh; tapping Later snoozes the notice for a day. You never lose your session: signing in again is only needed if your session genuinely expired, and cached pages keep working offline either way. Refresh when back online to stay updated.",
+      },
     ],
   },
   {
@@ -279,6 +285,11 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     question: "Network cut go sign me out?",
     answer:
       "No. To dey offline no dey ever sign you out — your session dey preserved and e go restore when connectivity return. Na only when your session don truly expire you go need sign in again.",
+  },
+  "app-updates": {
+    question: "Di installed app dey update by itsef?",
+    answer:
+      "Yes. Along dey check for updates for background — every visit and about every hour while app dey open — come show small Update notice when new version don ready. Tap Update now to apply am with one refresh; tap Later to snooze am till tomorrow. Your session no dey loss: na only when your session don truly expire you go need sign in again, and cached pages still dey work offline either way. Refresh when you come back online make you current.",
   },
   "trust-badges": {
     question: "Wetin be TrustBadges?",

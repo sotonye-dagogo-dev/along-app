@@ -19,6 +19,8 @@ export { MODERATION_CONFIG } from "./moderation";
 export type { ModerationConfig, ModerationActionConfig } from "./moderation";
 export { ENDLESS_CAROUSEL_CONFIG } from "./carousel";
 export type { EndlessCarouselConfig } from "./carousel";
+export { SUGGESTIONS_PANEL_CONFIG } from "./suggestionsPanel";
+export type { SuggestionsPanelConfig } from "./suggestionsPanel";
 export { SHARE_ROUTE_MODAL_CONFIG } from "./shareRoute";
 export type { ShareRouteModalConfig } from "./shareRoute";
 export { ROUTE_STEPS_CONFIG, isDestinationStep, showStepFare, showStepVehicle, normalizeRouteSteps } from "./routeSteps";
@@ -90,8 +92,8 @@ export { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES, cooldownKeyFor, attemptsKeyF
 export type { AuthVerificationConfig } from "./authVerification";
 export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";
 export type { PushPromptConfig, PushSubscribeReason } from "./pushPrompt";
-export { PWA_INSTALL_CONFIG, PWA_FAQ_LINKS, isStandaloneDisplay } from "./pwa";
-export type { PwaInstallConfig } from "./pwa";
+export { PWA_INSTALL_CONFIG, PWA_FAQ_LINKS, PWA_UPDATE_CONFIG, PWA_SW_MESSAGES, isStandaloneDisplay } from "./pwa";
+export type { PwaInstallConfig, PwaUpdateConfig } from "./pwa";
 export { ACCOUNT_DELETION_CONFIG, deletionScheduledFor, buildDeletedUserName, buildDeletedEmail, isDeletionOverdue } from "./accountDeletion";
 export type { AccountDeletionStatus } from "./accountDeletion";
 export { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, isSystemTemplate, parseManualEmails } from "./emailManagement";
@@ -101,6 +103,14 @@ export { getEffectiveEnv, isProduction, isDevelopment, getAppUrl, resolveDatabas
 export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, ADMIN_USER_FILTERS, ADMIN_USER_ROW_ACTIONS, ADMIN_TABLE_ACTIONS_META, SITE_CONFIG_EDITORS, inferConfigKind, formatDelta, parseAdminDashboardPeriod, parseAdminUserFilter, deletionQueryForFilter, isDeletedAdminUser, allowedUserRowActions, canShowUserRowAction } from "./admin";
 export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId, AdminDashboardPeriod, AdminUserFilterId, AdminUserRowActionId, AdminUserDeletionState } from "./admin";
 export { VALIDATION_RULES } from "./validationRules";
+export {
+  PROFILE_VALIDATION_CONFIG,
+  normalizePersonName,
+  normalizeBio,
+  normalizeProfilePatch,
+  validateProfilePatch,
+} from "./profileValidation";
+export type { ProfileValidationConfig, NormalizedProfilePatch } from "./profileValidation";
 export {
   isDeletedUser,
   isArchivedUser,
