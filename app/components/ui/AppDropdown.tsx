@@ -65,17 +65,25 @@ export function AppDropdown({
     setIsOpen(false)
   }
 
+  const toggle = () => setIsOpen((prev) => !prev)
+
   return (
     <div ref={menuRef} className="relative inline-flex">
       <div
         role="button"
         tabIndex={0}
         aria-label={ariaLabel}
-        onClick={() => setIsOpen((prev) => !prev)}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        // Capture-phase toggle: a trigger child that calls stopPropagation()
+        // (e.g. a nested <button>) must not swallow the toggle — capture runs
+        // before any bubble-phase stopPropagation on descendants. Propagation
+        // to ancestor row handlers is stopped here after toggling.
+        onClickCapture={(e) => { e.stopPropagation(); toggle() }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault()
-            setIsOpen((prev) => !prev)
+            toggle()
           }
         }}
         className="inline-flex cursor-pointer"

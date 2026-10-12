@@ -76,15 +76,12 @@ export function AppTableRowActions({
         items={items}
         ariaLabel={ariaLabel}
         trigger={
-          <button
-            type="button"
-            aria-label={ariaLabel}
-            title={ariaLabel}
-            onClick={(e) => e.stopPropagation()}
+          <span
+            aria-hidden="true"
             className="w-8 h-8 radius-md border border-border bg-bg-base text-text-secondary hover:text-text-primary hover:bg-bg-elevated cursor-pointer grid place-items-center transition-colors duration-fast"
           >
             <MoreHorizontal size={16} />
-          </button>
+          </span>
         }
       />
     </span>
