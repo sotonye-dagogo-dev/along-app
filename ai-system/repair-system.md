@@ -119,6 +119,12 @@
 - Fix: Add `grid-cols-12` to the `gridTemplateColumns` theme extension in the plugin
 - Prevention: Register all custom utility values in `tailwind.config.ts`
 
+**Inline Styles Ignore Dark Mode (Sprint 47)**
+- Symptom: A notice/card looks correct in light mode but stays light (or unreadable) in dark mode
+- Cause: Inline styles reference bespoke CSS vars (`var(--brand, #00623B)`, `var(--offline-bg, …)`) whose fallbacks never flip — only the canonical `--color-*` tokens are overridden under `.dark`
+- Fix: Reference `--color-*` tokens in every inline style (e.g. `var(--color-bg-card, #FFFFFF)`); for intentionally-dark chrome use the inverted pair (`background: var(--color-text-primary)`, `color: var(--color-bg-base)`) so contrast survives both themes
+- Prevention: Sweep new inline-style UI for `var(--` names outside the `--color-*` family; prefer Tailwind token classes (`bg-bg-card text-text-primary border-border`) where possible
+
 ### Configuration / Environment
 
 **Missing Environment Variable**

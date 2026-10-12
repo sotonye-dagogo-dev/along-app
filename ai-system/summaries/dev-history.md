@@ -1205,3 +1205,12 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **QA:** no node_modules in runner (tsc/jest/build deferred to CI); node --check sw.js + JSON + balance checks green; review clean.
 **Compliance:** additive-only, no migration/deps/API removals.
 ---
+
+## Sprint 47 (2026-10-12) — PWA notice icon/theme compliance + user visibility + avatar consistency
+**Directive:** icon-library compliance for PWA notices (? → FAQ), instance + platform-wide design-system run, deleted/archived-user exclusion + follow guards + counts, avatar consistency. Config/metadata-driven, reusable, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `lib/config/userVisibility.ts` + `PWA_FAQ_LINKS`; FaqClient `?q=`/`#hash` deep-links; InstallPrompt/PushManager/OfflineBanner lucide icons + `--color-*` tokens + FAQ help links; NavigationGuide Check icon + token pills.
+- Suggestions/search/follow/followers/following/user-search visibility filters (P2022-tolerant) + follow 410 + live counts; Panel/Rail/UserList filters + AppAvatar; FollowButton unavailable state; admin avatar selects + AppAvatar/AppUserLabel pages.
+- Tests: `config/sprint47.test.ts` (9 suites mirror for CI).
+**QA:** no node_modules in runner (tsc/jest/build deferred to CI); brace/token/emoji sweeps clean, tsc --strict zero-dep configs OK, node execution 11/11 + faq-links OK.
+**Compliance:** additive-only, no migration/deps/API removals.

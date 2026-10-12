@@ -121,6 +121,7 @@ export async function GET(request: NextRequest) {
         lastName: true,
         email: true,
         avatar: true,
+        avatarConfig: true,
         role: true,
         rewardTier: true,
         rewardPoints: true,

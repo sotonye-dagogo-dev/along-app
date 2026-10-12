@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useContext, useEffect, useState } from "react";
+import Link from "next/link";
+import { Bell, X, ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { AuthContext } from "@/app/providers/AuthProvider";
 import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
 import { toastService } from "@/app/lib/services/toastService";
+import { PWA_FAQ_LINKS } from "@/app/lib/config/pwa";
 import {
   getPushSupport,
   subscribeToPushDetailed,
@@ -58,7 +61,6 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
   const [dismissed, setDismissed] = useState(false);
   const [failure, setFailure] = useState<PushSubscribeReason | null>(null);
   const [unsupported, setUnsupported] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
   const copy = PUSH_PROMPT_CONFIG.copy;
@@ -189,9 +191,9 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
             gap: 6,
             padding: "8px 12px",
             borderRadius: 999,
-            border: "none",
-            background: "var(--info-soft, #e8f1ff)",
-            color: "var(--info-ink, #1d4ed8)",
+            border: "1px solid var(--color-info-border, #93C5FD)",
+            background: "var(--color-info, #DBEAFE)",
+            color: "var(--color-info-text, #1E3A8A)",
             boxShadow: "0 8px 28px rgba(0,0,0,.18)",
             fontSize: 12,
             fontWeight: 700,
@@ -199,8 +201,9 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
             maxWidth: "calc(100vw - 24px)",
           }}
         >
-          <span aria-hidden>🔔</span>
+          <Bell size={14} aria-hidden />
           {copy.enable}
+          <ChevronUp size={14} aria-hidden />
         </button>
       );
     }
@@ -221,17 +224,18 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
           gap: 10,
           padding: "10px 12px",
           borderRadius: 12,
-          background: "var(--info-soft, #e8f1ff)",
-          color: "var(--info-ink, #1d4ed8)",
+          border: "1px solid var(--color-info-border, #93C5FD)",
+          background: "var(--color-info, #DBEAFE)",
+          color: "var(--color-info-text, #1E3A8A)",
           boxShadow: "0 8px 28px rgba(0,0,0,.18)",
           fontSize: 13,
           paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
         }}
       >
-        <span aria-hidden style={{ fontSize: 16, lineHeight: 1.2 }}>🔔</span>
+        <Bell size={16} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
         <span style={{ flex: 1, minWidth: 0 }}>
           {failureLine ?? copy.prompt}
-          {(failure === "denied" || permission === "denied" || showHelp) && (
+          {(failure === "denied" || permission === "denied") && (
             <span style={{ display: "block", marginTop: 4, fontSize: 12, opacity: 0.9 }}>{helpLine}</span>
           )}
         </span>
@@ -241,8 +245,8 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
             disabled={busy || !isOnline}
             title={!isOnline ? copy.offline : copy.enable}
             style={{
-              background: "var(--brand, #00623B)",
-              color: "#fff",
+              background: "var(--color-primary, #00623B)",
+              color: "var(--color-text-inverse, #FFFFFF)",
               border: "none",
               borderRadius: 8,
               padding: "6px 12px",
@@ -259,18 +263,30 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
             onClick={() => setCollapsed(true)}
             aria-label="Minimize"
             title="Minimize"
-            style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.8 }}
+            style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.8, display: "inline-flex", alignItems: "center", gap: 4, color: "inherit" }}
           >
-            ↓
+            <ChevronDown size={14} aria-hidden />
+            Minimize
           </button>
           <button
             onClick={dismiss}
             disabled={busy}
             aria-label={copy.dismissed}
-            style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.8 }}
+            title={copy.dismissed}
+            style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.8, display: "inline-flex", alignItems: "center", gap: 4, color: "inherit" }}
           >
-            ✕
+            <X size={14} aria-hidden />
+            Dismiss
           </button>
+          <Link
+            href={PWA_FAQ_LINKS.pushHelp}
+            aria-label={copy.howTo}
+            title={copy.howTo}
+            style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 12, opacity: 0.8, display: "inline-flex", alignItems: "center", gap: 4, color: "inherit", textDecoration: "none" }}
+          >
+            <HelpCircle size={14} aria-hidden />
+            {copy.howTo}
+          </Link>
         </span>
       </div>
     );
@@ -286,15 +302,17 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
         gap: 10,
         padding: "8px 12px",
         borderRadius: 10,
-        background: "var(--info-soft, #e8f1ff)",
-        color: "var(--info-ink, #1d4ed8)",
+        border: "1px solid var(--color-info-border, #93C5FD)",
+        background: "var(--color-info, #DBEAFE)",
+        color: "var(--color-info-text, #1E3A8A)",
         fontSize: 13,
         marginBottom: 10,
       }}
     >
+      <Bell size={16} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
       <span style={{ flex: 1 }}>
         {failureLine ?? copy.prompt}
-        {(failure === "denied" || permission === "denied" || showHelp) && (
+        {(failure === "denied" || permission === "denied") && (
           <span style={{ display: "block", marginTop: 4, fontSize: 12, opacity: 0.9 }}>{helpLine}</span>
         )}
       </span>
@@ -304,8 +322,8 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
           disabled={busy || !isOnline}
           title={!isOnline ? copy.offline : copy.enable}
           style={{
-            background: "var(--brand, #00623B)",
-            color: "#fff",
+            background: "var(--color-primary, #00623B)",
+            color: "var(--color-text-inverse, #FFFFFF)",
             border: "none",
             borderRadius: 8,
             padding: "6px 12px",
@@ -337,22 +355,23 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
         </button>
       )}
       {failureLine && failure !== "dismissed-permission" && (
-        <button
-          onClick={() => setShowHelp((v) => !v)}
+        <Link
+          href={PWA_FAQ_LINKS.pushHelp}
           aria-label={copy.howTo}
           title={copy.howTo}
-          style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14 }}
+          style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14, display: "inline-flex", alignItems: "center", color: "inherit", textDecoration: "none" }}
         >
-          ?
-        </button>
+          <HelpCircle size={16} aria-hidden />
+        </Link>
       )}
       <button
         onClick={dismiss}
         disabled={busy}
         aria-label={copy.dismissed}
-        style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14 }}
+        title={copy.dismissed}
+        style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 14, display: "inline-flex", alignItems: "center", color: "inherit" }}
       >
-        ✕
+        <X size={16} aria-hidden />
       </button>
     </div>
   );

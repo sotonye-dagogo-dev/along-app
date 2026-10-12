@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react"
 import Link from "next/link"
 import { Search, Shield, Check, XCircle, Mail, Eye, UserCog, UserMinus, Trash2, Undo2 } from "lucide-react"
-import { AppInput, AppTableRowActions, type TableRowAction } from "@/app/components/ui"
+import { AppInput, AppTableRowActions, AppAvatar, type TableRowAction } from "@/app/components/ui"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 import {
   ADMIN_BULK_SELECT_META,
@@ -25,6 +25,7 @@ interface AdminUser {
   lastName: string
   email: string
   avatar: string | null
+  avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null
   role: string
   rewardTier: string
   rewardPoints: number
@@ -809,11 +810,14 @@ export default function AdminUsersPage() {
                 </td>
                 <td className="px-4 py-3 border-b border-border max-w-[220px]">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Link href={`/profile/${u.userName}`} className="no-underline shrink-0">
-                      <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                        {u.firstName[0]}{u.lastName[0]}
-                      </div>
-                    </Link>
+                    <AppAvatar
+                      src={u.avatar ?? undefined}
+                      alt={`${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.userName}
+                      size={32}
+                      config={u.avatarConfig ?? undefined}
+                      verified={u.verified}
+                      userName={u.userName}
+                    />
                     <div className="min-w-0">
                       <Link href={`/profile/${u.userName}`} className="text-xs font-semibold no-underline hover:underline text-text-primary block truncate">{u.firstName} {u.lastName}</Link>
                       <Link href={`/profile/${u.userName}`} className="text-[10px] text-text-muted no-underline hover:underline block truncate">@{u.userName}</Link>

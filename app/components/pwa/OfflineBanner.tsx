@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, ChevronUp, WifiOff, HelpCircle } from "lucide-react";
 import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
 import { useTranslation } from "@/app/providers/I18nProvider";
-import { PWA_TOAST_COPY, PWA_OFFLINE_BANNER } from "@/app/lib/config/pwa";
+import { PWA_TOAST_COPY, PWA_OFFLINE_BANNER, PWA_FAQ_LINKS } from "@/app/lib/config/pwa";
 
 /**
  * Slim offline banner — renders nothing when online. Collapsible so it never
@@ -71,16 +72,16 @@ export function OfflineBanner() {
           gap: 6,
           padding: "8px 12px",
           borderRadius: 999,
-          border: "none",
-          background: "var(--offline-bg, #1f2937)",
-          color: "var(--offline-fg, #fff)",
+          border: "1px solid var(--color-border, #E5E7EB)",
+          background: "var(--color-text-primary, #1A1A1A)",
+          color: "var(--color-bg-base, #FFFFFF)",
           boxShadow: "0 8px 28px rgba(0,0,0,.25)",
           fontSize: 12,
           fontWeight: 700,
           cursor: "pointer",
         }}
       >
-        <span aria-hidden>📡</span>
+        <WifiOff size={14} aria-hidden />
         {collapsedLabel}
         <ChevronUp size={14} aria-hidden />
       </button>
@@ -102,19 +103,20 @@ export function OfflineBanner() {
         gap: 12,
         padding: "10px 14px",
         borderRadius: 12,
-        background: "var(--offline-bg, #1f2937)",
-        color: "var(--offline-fg, #fff)",
+        border: "1px solid var(--color-border, #E5E7EB)",
+        background: "var(--color-text-primary, #1A1A1A)",
+        color: "var(--color-bg-base, #FFFFFF)",
         boxShadow: "0 8px 28px rgba(0,0,0,.25)",
         fontSize: 14,
       }}
     >
-      <span aria-hidden>📡</span>
+      <WifiOff size={16} aria-hidden style={{ flexShrink: 0 }} />
       <span style={{ flex: 1 }}>{wentOffline}</span>
       <button
         onClick={() => void recheck()}
         style={{
-          background: "var(--brand, #00623B)",
-          color: "#fff",
+          background: "var(--color-primary, #00623B)",
+          color: "var(--color-text-inverse, #FFFFFF)",
           border: "none",
           borderRadius: 8,
           padding: "6px 12px",
@@ -124,6 +126,24 @@ export function OfflineBanner() {
       >
         {retryLabel}
       </button>
+      <Link
+        href={PWA_FAQ_LINKS.offlineHelp}
+        aria-label="Offline help"
+        title="Offline help"
+        style={{
+          background: "transparent",
+          color: "inherit",
+          border: "1px solid currentColor",
+          borderRadius: 8,
+          padding: "6px 8px",
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          textDecoration: "none",
+        }}
+      >
+        <HelpCircle size={14} aria-hidden />
+      </Link>
       <button
         type="button"
         onClick={() => toggleCollapsed(true)}
@@ -139,6 +159,7 @@ export function OfflineBanner() {
           cursor: "pointer",
           display: "inline-flex",
           alignItems: "center",
+          gap: 4,
         }}
       >
         <ChevronDown size={14} aria-hidden />
@@ -162,8 +183,9 @@ export function CachedDataNotice({ compact = false }: { compact?: boolean }) {
       style={{
         padding: compact ? "6px 10px" : "8px 12px",
         borderRadius: 8,
-        background: "var(--warning-soft, #fef3c7)",
-        color: "var(--warning-ink, #92400e)",
+        border: "1px solid var(--color-warning-border, #FCD34D)",
+        background: "var(--color-warning, #FEF3C7)",
+        color: "var(--color-warning-text, #92400E)",
         fontSize: 13,
         marginBottom: compact ? 6 : 10,
       }}

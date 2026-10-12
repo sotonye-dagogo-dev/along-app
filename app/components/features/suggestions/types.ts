@@ -10,6 +10,9 @@ export interface SuggestionUser {
   verified: boolean
   postCount: number
   followerCount: number
+  /** Visibility flags (optional for cached/legacy payloads — absent means visible). */
+  isDeleted?: boolean | null
+  deletionScheduledFor?: string | Date | null
 }
 
 export interface SuggestionPost {
@@ -32,6 +35,9 @@ export interface SuggestionPost {
     avatar: string | null
     avatarConfig: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null
     verified: boolean
+    /** Visibility flags (optional for cached/legacy payloads — absent means visible). */
+    isDeleted?: boolean | null
+    deletionScheduledFor?: string | Date | null
   }
 }
 

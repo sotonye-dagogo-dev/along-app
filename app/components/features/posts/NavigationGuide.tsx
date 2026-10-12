@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react"
-import { Navigation, ChevronLeft, ChevronRight, MapPin, BadgeDollarSign, X, LocateFixed, AlertTriangle, Compass } from "lucide-react"
+import { Navigation, ChevronLeft, ChevronRight, MapPin, BadgeDollarSign, X, LocateFixed, AlertTriangle, Compass, Check } from "lucide-react"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import { LOCATION_FEEDBACK_CONFIG } from "@/app/lib/config/locationFeedback"
@@ -351,13 +351,13 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
                   <div
                     className={`w-7 h-7 rounded-circle flex items-center justify-center text-xs font-bold shrink-0 ${
                       isCurrent
-                        ? "bg-primary text-white"
+                        ? "bg-primary text-text-inverse"
                         : i < currentStepIndex
-                          ? "bg-success text-white"
+                          ? "bg-success text-success-text"
                           : "bg-bg-elevated text-text-secondary border border-border"
                     }`}
                   >
-                    {i < currentStepIndex ? "✓" : i + 1}
+                    {i < currentStepIndex ? <Check size={14} aria-hidden /> : i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-text-primary truncate">

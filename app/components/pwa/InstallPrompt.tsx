@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { Smartphone, X, ChevronDown, ChevronUp, HelpCircle } from "lucide-react";
 import { useTranslation } from "@/app/providers/I18nProvider";
 import { toastService } from "@/app/lib/services/toastService";
 import {
   PWA_INSTALL_CONFIG,
+  PWA_FAQ_LINKS,
   isStandaloneDisplay,
 } from "@/app/lib/config/pwa";
 import { isLikelyIos } from "@/app/lib/config/pushPrompt";
@@ -203,9 +206,9 @@ export function InstallPrompt() {
           gap: 6,
           padding: "8px 12px",
           borderRadius: 999,
-          border: "1px solid var(--border, #e5e7eb)",
-          background: "var(--bg-base, #fff)",
-          color: "var(--text-primary, #111827)",
+          border: "1px solid var(--color-border, #E5E7EB)",
+          background: "var(--color-bg-card, #FFFFFF)",
+          color: "var(--color-text-primary, #1A1A1A)",
           boxShadow: "0 8px 28px rgba(0,0,0,.18)",
           fontSize: 12,
           fontWeight: 700,
@@ -213,8 +216,9 @@ export function InstallPrompt() {
           maxWidth: "calc(100vw - 24px)",
         }}
       >
-        <span aria-hidden>📲</span>
+        <Smartphone size={14} aria-hidden />
         {title}
+        <ChevronUp size={14} aria-hidden />
       </button>
     );
   }
@@ -237,17 +241,15 @@ export function InstallPrompt() {
         gap: 10,
         padding: "10px 12px",
         borderRadius: 12,
-        border: "1px solid var(--border, #e5e7eb)",
-        background: "var(--bg-base, #fff)",
-        color: "var(--text-primary, #111827)",
+        border: "1px solid var(--color-border, #E5E7EB)",
+        background: "var(--color-bg-card, #FFFFFF)",
+        color: "var(--color-text-primary, #1A1A1A)",
         boxShadow: "0 8px 28px rgba(0,0,0,.18)",
         fontSize: 13,
         paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
       }}
     >
-      <span aria-hidden style={{ fontSize: 18, lineHeight: 1.2 }}>
-        📲
-      </span>
+      <Smartphone size={18} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontWeight: 700 }}>{title}</span>
         <span
@@ -283,8 +285,8 @@ export function InstallPrompt() {
             onClick={() => void install()}
             disabled={busy}
             style={{
-              background: "var(--brand, #00623B)",
-              color: "#fff",
+              background: "var(--color-primary, #00623B)",
+              color: "var(--color-text-inverse, #FFFFFF)",
               border: "none",
               borderRadius: 8,
               padding: "6px 12px",
@@ -297,9 +299,8 @@ export function InstallPrompt() {
             {busy ? copy.installing : installLabel}
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={() => setShowHelp((v) => !v)}
+          <Link
+            href={PWA_FAQ_LINKS.installHelp}
             aria-label={copy.howTo}
             title={copy.howTo}
             style={{
@@ -311,24 +312,35 @@ export function InstallPrompt() {
               fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              textDecoration: "none",
             }}
           >
-            ?
-          </button>
+            <HelpCircle size={14} aria-hidden />
+            {copy.howTo}
+          </Link>
         )}
         <button
           type="button"
           onClick={dismiss}
           disabled={busy}
           aria-label={copy.dismissed}
+          title={copy.dismissed}
           style={{
             background: "transparent",
             border: "none",
             cursor: "pointer",
             fontSize: 12,
             opacity: 0.8,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            color: "inherit",
           }}
         >
+          <X size={14} aria-hidden />
           {laterLabel}
         </button>
         <button
@@ -342,10 +354,37 @@ export function InstallPrompt() {
             cursor: "pointer",
             fontSize: 12,
             opacity: 0.7,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            color: "inherit",
           }}
         >
-          ↓
+          <ChevronDown size={14} aria-hidden />
+          {tt("pwa.collapse", "Minimize")}
         </button>
+        {deferred && (
+          <Link
+            href={PWA_FAQ_LINKS.installHelp}
+            aria-label={copy.howTo}
+            title={copy.howTo}
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 12,
+              opacity: 0.7,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              color: "inherit",
+              textDecoration: "none",
+            }}
+          >
+            <HelpCircle size={14} aria-hidden />
+            {copy.howTo}
+          </Link>
+        )}
       </span>
     </div>
   );
