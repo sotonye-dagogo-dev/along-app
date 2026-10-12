@@ -9,6 +9,18 @@ import { useEffect } from "react";
  */
 export function ServiceWorkerRegistrar() {
   useEffect(() => {
+    try {
+      // Dev guard: registering the prod SW under `next dev` caches HMR
+      // chunks and stale app-shells. Opt-in via NEXT_PUBLIC_ENABLE_SW_IN_DEV.
+      if (
+        process.env.NODE_ENV !== "production" &&
+        process.env.NEXT_PUBLIC_ENABLE_SW_IN_DEV !== "true"
+      ) {
+        return;
+      }
+    } catch {
+      // env read failed — fall through and attempt registration
+    }
     if (!("serviceWorker" in navigator)) return;
     let cancelled = false;
     navigator.serviceWorker

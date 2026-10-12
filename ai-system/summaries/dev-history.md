@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown)
-> - last-verified-against-code: 2026-10-11 (static review + diff review; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 46 push firing + global PWA install/push notices)
+> - last-verified-against-code: 2026-10-12 (static review + node --check sw.js + JSON parity + brace/paren balance; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1195,3 +1195,13 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `config/charts.test.ts` + `components/ChartTooltip.test.tsx` + `components/AdminAnalyticsShell.test.tsx` (new suites mirror for CI).
 **QA:** no node_modules in runner (tsc/jest/build deferred to CI/Vercel); node strip-types live check 6/6 green on `charts.ts` (caught + fixed a null→"0" formatting bug pre-ship); changed-file review clean.
 **Compliance:** additive-only, no migration/deps/API removals (new routes/pages/props optional or additive; legacy `title` fallbacks and `signups7d` alias kept).
+
+## Sprint 46 (2026-10-12) — Push firing + global PWA install/push notices
+**Directive:** push functional/firing (permissions et al) + non-interfering global PWA install notice; offline already good, push/install never observed. Config/metadata-driven, reusable, non-breaking + update-ai-system chain.
+**Implemented:**
+- VAPID parity (/api/push/vapid-public-key reads VAPID_PUBLIC_KEY ?? NEXT_PUBLIC_VAPID_PUBLIC_KEY); FOLLOW post-transaction push+invalidation mirror; registrar dev-guard (NEXT_PUBLIC_ENABLE_SW_IN_DEV).
+- PWA_INSTALL_CONFIG + isStandaloneDisplay + NEW InstallPrompt (deferred BIP, appinstalled, iOS/manual help, flags, collapsible, i18n) + PushManager floating variant + PwaNotices hub in root layout + appleWebApp meta; FAQ install/push copy (+pcm) updated.
+- Tests: pwa.test.ts +3 (install registry, standalone helper).
+**QA:** no node_modules in runner (tsc/jest/build deferred to CI); node --check sw.js + JSON + balance checks green; review clean.
+**Compliance:** additive-only, no migration/deps/API removals.
+---

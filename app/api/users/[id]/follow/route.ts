@@ -68,6 +68,22 @@ export async function POST(
       }),
     ]);
 
+    // FOLLOW writes bypass createNotification (lifecycle-coupled cleanup lives
+    // in this transaction), so mirror its side-effects here: cache
+    // invalidation + Web Push fan-out. Both fire-and-forget, never fail follow.
+    void import("@/app/lib/services/notificationService")
+      .then(({ invalidateNotificationCaches }) => invalidateNotificationCaches([id]))
+      .catch(() => {});
+    void import("@/app/lib/services/pushSender")
+      .then(({ fanOutPush }) =>
+        fanOutPush({
+          type: "FOLLOW",
+          message: `${currentUser.firstName} ${currentUser.lastName} started following you`,
+          recipientIds: [id],
+        }),
+      )
+      .catch(() => {});
+
     void enqueueAuthorTrustRefresh(id);
 
     return NextResponse.json({ followed: true }, { status: 201 });
