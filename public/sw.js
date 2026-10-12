@@ -3,6 +3,17 @@
  * Mirrors app/lib/config/pwa.ts (plain JS here: SW has no bundler).
  * Bump CACHE_VERSION there AND below when the precache list changes.
  *
+ * Update lifecycle (mirrors PWA_UPDATE_CONFIG in app/lib/config/pwa.ts):
+ * - install precaches WITHOUT skipWaiting, so a running page is never
+ *   yanked underneath the user. The client detects the waiting worker via
+ *   `updatefound` and shows a prompt; the user's Update tap posts
+ *   SKIP_WAITING, the worker activates + claims, and the page reloads once.
+ * - First installs (no controller) need no prompt: activate + claim takes
+ *   effect immediately and the client reload guard stays clear.
+ * - The worker broadcasts SW_UPDATE_READY on install (to controlled
+ *   clients) and SW_ACTIVATED on activate, and answers GET_SW_VERSION —
+ *   all carrying CACHE_VERSION so the UI can label the pending update.
+ *
  * Strategies:
  * - Precache app shell (install) — guest-accessible routes only, so install
  *   never fails on auth redirects.
@@ -16,7 +27,7 @@
  * - Push mirrors every in-app notification; click focuses/opens the URL.
  */
 
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const STATIC_CACHE = `along-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `along-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `along-api-${CACHE_VERSION}`;
@@ -108,6 +119,19 @@ function offlineJson() {
   );
 }
 
+async function broadcast(message) {
+  try {
+    const list = await clients.matchAll({ includeUncontrolled: true });
+    for (const client of list) {
+      try {
+        client.postMessage(message);
+      } catch (_) {}
+    }
+  } catch (_) {
+    // no clients yet (first install) — non-critical
+  }
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
@@ -115,7 +139,10 @@ self.addEventListener("install", (event) => {
       .then((cache) =>
         Promise.allSettled(PRECACHE.map((url) => cache.add(url).catch(() => {})))
       )
-      .then(() => self.skipWaiting())
+      // No skipWaiting here: a waiting worker must NOT yank a running page.
+      // The client prompts the user; their Update tap posts SKIP_WAITING.
+      // First installs have no controller, so activate follows immediately.
+      .then(() => broadcast({ type: "SW_UPDATE_READY", version: CACHE_VERSION }))
   );
 });
 
@@ -132,12 +159,25 @@ self.addEventListener("activate", (event) => {
         names.filter((n) => !ALL_CACHES.includes(n)).map((n) => caches.delete(n))
       );
       await self.clients.claim();
+      await broadcast({ type: "SW_ACTIVATED", version: CACHE_VERSION });
     })()
   );
 });
 
 self.addEventListener("message", (event) => {
-  if (event.data === "SKIP_WAITING") self.skipWaiting();
+  const data = event.data;
+  const type = typeof data === "string" ? data : data && data.type;
+  if (type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
+  if (type === "GET_SW_VERSION") {
+    try {
+      const port = event.ports && event.ports[0];
+      if (port) port.postMessage({ type: "SW_VERSION", version: CACHE_VERSION });
+      else if (event.source) event.source.postMessage({ type: "SW_VERSION", version: CACHE_VERSION });
+    } catch (_) {}
+  }
 });
 
 self.addEventListener("fetch", (event) => {

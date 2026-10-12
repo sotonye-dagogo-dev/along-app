@@ -7,7 +7,7 @@
  * two in sync and bump PWA_CACHE_VERSION when the precache list changes.
  */
 
-export const PWA_CACHE_VERSION = "v4";
+export const PWA_CACHE_VERSION = "v5";
 
 export const PWA_CACHE_NAMES = {
   static: `along-static-${PWA_CACHE_VERSION}`,
@@ -216,6 +216,83 @@ export const PWA_FAQ_LINKS = {
   pushHelp: "/faq?q=notifications#offline-pwa",
   /** Offline banner help → offline answers inside Offline & App. */
   offlineHelp: "/faq?q=offline#offline-pwa",
+} as const;
+
+/**
+ * Service-worker update registry — single source of truth for how an
+ * installed PWA picks up new versions. Zero app deps (config layer only).
+ *
+ * Behaviour (client + public/sw.js both honor this):
+ * - The browser revalidates /sw.js on navigation AND the registrar calls
+ *   `registration.update()` periodically (interval + on visible/online/focus),
+ *   so updates are found even for long-lived installed sessions.
+ * - A newly installed worker WAITS (no auto skipWaiting) while a page is
+ *   controlled; the client shows a non-blocking prompt instead of
+ *   force-reloading under the user. Tapping Update posts SKIP_WAITING, the
+ *   new worker activates + claims, `controllerchange` fires, and the page
+ *   reloads exactly once to pick up the new shell.
+ * - First installs (no controller) activate immediately with no prompt.
+ */
+export interface PwaUpdateConfig {
+  /** How often to call registration.update() while the app is open. */
+  checkIntervalMs: number;
+  /** Also check when the tab becomes visible / window regains focus. */
+  checkOnVisible: boolean;
+  /** Also check when the device comes back online. */
+  checkOnOnline: boolean;
+  /** DOM CustomEvent name the registrar dispatches when an update is ready. */
+  updateReadyEvent: string;
+  storage: {
+    /** Set when a reload-for-update has been triggered (loop guard). */
+    reloadedKey: string;
+    /** Timestamp of the last user dismissal (respected for dismissTtlMs). */
+    dismissedAtKey: string;
+    /** How long a dismissal hides the update prompt. */
+    dismissTtlMs: number;
+  };
+  copy: {
+    title: string;
+    body: string;
+    update: string;
+    updating: string;
+    later: string;
+    dismissed: string;
+    updatedToast: string;
+  };
+}
+
+export const PWA_UPDATE_CONFIG: PwaUpdateConfig = {
+  checkIntervalMs: 60 * 60 * 1000, // 1h — frequent enough for day-long sessions, cheap (one HEAD-scale fetch)
+  checkOnVisible: true,
+  checkOnOnline: true,
+  updateReadyEvent: "along:sw-update-ready",
+  storage: {
+    reloadedKey: "along-sw-update-reloaded",
+    dismissedAtKey: "along-sw-update-dismissed-at",
+    dismissTtlMs: 24 * 60 * 60 * 1000, // 1 day — re-prompt next day if still not updated
+  },
+  copy: {
+    title: "Update available",
+    body: "A new version of Along is ready. Update to get the latest fixes and features.",
+    update: "Update now",
+    updating: "Updating…",
+    later: "Later",
+    dismissed: "Dismiss update prompt",
+    updatedToast: "Along updated — you're on the latest version.",
+  },
+};
+
+/** Client ↔ SW message vocabulary. Plain strings (SW has no bundler). */
+export const PWA_SW_MESSAGES = {
+  skipWaiting: "SKIP_WAITING",
+  /** SW → client: a waiting worker is ready (carries `version`). */
+  updateReady: "SW_UPDATE_READY",
+  /** SW → client on activation (carries `version`). */
+  activated: "SW_ACTIVATED",
+  /** Client → SW: ask for the running cache version. */
+  getVersion: "GET_SW_VERSION",
+  /** SW → client: answer to GET_SW_VERSION (carries `version`). */
+  version: "SW_VERSION",
 } as const;
 
 /** True when the page already runs as an installed PWA (standalone). */

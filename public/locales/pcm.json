@@ -134,6 +134,10 @@
   "pwa.installBody": "Put Along for your home screen make e fast and dey work offline.",
   "pwa.installCta": "Install app",
   "pwa.installLater": "No be now",
+  "pwa.updateTitle": "New update don land",
+  "pwa.updateBody": "New version of Along don ready. Update am make you get di latest fixes and features.",
+  "pwa.updateCta": "Update now",
+  "pwa.updateLater": "Later",
 
   "push.enablePrompt": "On push notifications make you no miss replies, mentions, and rewards.",
   "push.enable": "On am",

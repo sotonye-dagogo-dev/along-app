@@ -1,8 +1,8 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 48 profile tightening: dead phone field, name whitespace, AvatarSize 20)
-> - last-verified-against-code: 2026-10-12 (full local gate: tsc --noEmit clean, jest 66 suites / 559 tests pass, lint 0 new errors vs baseline)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -123,6 +123,7 @@ Client Utilities (app/lib/utils/*)
 PWA (public/sw.js)
     → (standalone service worker — no app imports; mirrors app/lib/config/pwa.ts — bump both)
     → Cache strategies: static assets, API responses, pages, /locales/ dictionaries (cache-first [Sprint 25]), SWR map tiles
+    → Update lifecycle [Sprint 49]: no auto-skipWaiting — install broadcasts SW_UPDATE_READY, activate broadcasts SW_ACTIVATED + claims + purges stale version caches, answers GET_SW_VERSION; client ServiceWorkerRegistrar polls registration.update() (hourly + visible/focus/online) → updatefound/waiting → along:sw-update-ready event → ServiceWorkerUpdatePrompt (Update posts SKIP_WAITING → controllerchange single reload w/ loop-guard; Later snoozes 1 day); first install claims silently, never reloads; PWA_UPDATE_CONFIG + PWA_SW_MESSAGES in lib/config/pwa.ts
 ```
 
 ### Detailed Service Dependencies

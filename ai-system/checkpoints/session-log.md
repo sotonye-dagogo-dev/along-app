@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 48 profile tightening: dead phone field, name whitespace, AvatarSize 20)
-> - last-verified-against-code: 2026-10-12 (full local gate: tsc --noEmit clean, jest 66 suites / 559 tests pass, lint 0 new errors vs baseline)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+> - last-verified-against-code: 2026-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -2062,3 +2062,16 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** runner HAS node_modules this run — full gate executed locally: `npx tsc --noEmit` clean (the reported SuggestionsPanel error gone), `npx jest` 66 suites / 559 tests all pass, `npm run lint` error count identical to pre-change baseline (15 pre-existing, 0 new).
 **Compliance:** non-breaking, no migration (phone removal is UI-config-only — DB never had the column; PATCH allowlist unchanged so legacy clients sending `phone` still succeed; avatar-size change is union-additive; form trim is submit-time-only).
 **Chain:** execute-feature -> session-log (here) -> dev-history + task-queue + system-architecture/Profile + repo-map/dependency-graph freshness -> update-ai-system terminal sync (new config module = architecture impact per contract).
+---
+## Session 2026-10-12 — Sprint 49: installed-PWA update lifecycle (execute-feature)
+**Directive:** PWA works offline + push fires, but do installed clients auto-update or is a version-detect + user-prompt (reload/refresh) needed — close any gap. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Found:** real gap — (1) `sw.js` install called `self.skipWaiting()` unconditionally, so a new worker seized control without reloading: the open page kept running OLD hashed JS until the next navigation (silent-stale); (2) registrar registered once and never called `registration.update()` — day-long installed sessions only revalidated `/sw.js` on navigation, so updates were never even discovered; (3) no update UI existed anywhere, and `project-plan.md` already ticked "service worker update flow" when only the silent path existed.
+**Implemented:**
+- Config (`app/lib/config/pwa.ts` + barrel): `PWA_CACHE_VERSION` v4→v5 (purges stale caches on next activate); NEW `PWA_UPDATE_CONFIG` (hourly `checkIntervalMs`, visible/focus/online checks, `along:sw-update-ready` event, sessionStorage reload-guard key + 1-day dismiss TTL, copy) + NEW `PWA_SW_MESSAGES` vocabulary; FAQ gains `app-updates` answer (+pcm twin: checks cadence, Update/Later, session preservation, refresh-when-online); `pwa.update*` en/pcm keys (parity kept).
+- SW (`public/sw.js`, v5, plain-JS mirror): install precaches WITHOUT skipWaiting + broadcasts `SW_UPDATE_READY`; activate still claims + deletes non-v5 caches + broadcasts `SW_ACTIVATED`; NEW message router honors `SKIP_WAITING` (prompt path) and answers `GET_SW_VERSION`; never-cache auth/push/admin + all cache strategies untouched.
+- Client: `ServiceWorkerRegistrar` rewritten — periodic `registration.update()` (hourly + visible/focus/online, offline-skipped), `updatefound`→waiting detection for controlled pages only, `controllerchange` single-reload (first-install none→worker never reloads; episode flag cleared 5s after settled load), SW broadcast relay; dev-guard + scope unchanged.
+- UI: NEW `ServiceWorkerUpdatePrompt` wired into `PwaNotices` hub — fixed bottom card (above offline slot, max-w-480, safe-area) + collapsible pill, Update posts SKIP_WAITING (8s stale-browser fallback reload + success toast; busy-disabled), Later snoozes 1 day, lucide RefreshCw/X/Chevron icons, `--color-*` tokens, i18n with config fallback; guests included; never throws.
+- Tests: `pwa.test.ts` +2 (update-registry shape, message vocabulary), `locales.test.ts` +4 required `pwa.update*` keys.
+**QA:** no node_modules in runner — full tsc/jest/build deferred to CI (standing arrangement); executed: `node --check sw.js` OK, en/pcm JSON parse OK, CACHE_VERSION v5 both sides, precache/message parity script OK (11/11 routes, 5/5 tokens); tsc output filtered to touched files shows only pre-existing missing-module noise (react/jest types), zero attributable errors.
+**Compliance:** additive-only, non-breaking, no migration/deps/API removals (unknown SW broadcasts ignored by old pages; prompt renders only when a waiting worker actually exists; first-install behaviour unchanged; auth/session flows untouched — SW still never caches auth).
+**Chain:** execute-feature → in-progress (written, cleared at close) → session-log (here) → dev-history + task-queue + lessons-learned + system-architecture + repo-map + dependency-graph + project-plan → update-ai-system terminal sync (new config + SW lifecycle + global prompt = architecture impact per contract).

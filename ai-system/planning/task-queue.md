@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 48 profile tightening: dead phone field, name whitespace, AvatarSize 20)
-> - last-verified-against-code: 2026-10-12 (full local gate: tsc --noEmit clean, jest 66 suites / 559 tests pass, lint 0 new errors vs baseline)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - last-synced: 2026-10-12 (Sprint 48 profile tightening — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
@@ -655,3 +655,5 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 - [x] Sprint 43 (2026-10-11) — Admin destructive user deletion (grace request kept + per-request Reverse/Delete-now in deletions queue + per-user Request/Reverse/Delete-now in users table, same anonymize pipeline, confirm + undo where reversible, irreversibility warning + backup-recovery note where not, all audited) + dashboard period toggle (7/30/90 wired end-to-end to KPIs + signups chart) (admin +3 suites; node strip-types 9/9 in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
 - [x] Sprint 47 (2026-10-12) — PWA notice icon/theme compliance + deleted/archived-user visibility + avatar consistency (PWA_FAQ_LINKS + userVisibility registry + FaqClient ?q=/#hash deep-links; InstallPrompt/PushManager/OfflineBanner lucide icons + --color-* token styling + FAQ help links; NavigationGuide Check icon + token step pills; suggestions/search/follow/followers/following/users search visibility filters + follow 410 + live counts; SuggestionsPanel/Rail + UserList AppAvatar + client filters + FollowButton unavailable state; admin stats/users/analytics avatar+avatarConfig+verified selects + AppAvatar/AppUserLabel pages; sprint47 9 suites; tsc --strict zero-dep + node execution green in-runner, full gate deferred to CI — no node_modules in runner)
 | [S] | Desktop open-requests scrollable endless tape (SuggestionsPanel 1 static / 2+ EndlessCarousel via SUGGESTIONS_PANEL_CONFIG, count+hint) | [x] |
+- [x] Sprint 48 (2026-10-12) — Profile tightening: dead phone field, name whitespace, AvatarSize 20 (profileValidation registry + ConfigDrivenForm trim + PATCH/register normalization + AppAvatar 20; profileTightening 14 suites; full local gate green: tsc 0, jest 66/559, lint 0 new)
+- [x] Sprint 49 (2026-10-12) — Installed-PWA update lifecycle (PWA_UPDATE_CONFIG + PWA_SW_MESSAGES + v4→v5 cache rollover; sw.js no-auto-skipWaiting + ready/activated/version broadcasts; registrar hourly/visible/focus/online polling + updatefound + guarded single-reload; ServiceWorkerUpdatePrompt in PwaNotices hub + pwa.update* en/pcm + FAQ app-updates +pcm; pwa.test +2, locales.test +4 keys; node --check/JSON/parity green in-runner, tsc/jest/build deferred to CI — no node_modules in runner)

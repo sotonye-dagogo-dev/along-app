@@ -134,6 +134,10 @@
   "pwa.installBody": "Add Along to your home screen for fast, offline-friendly access.",
   "pwa.installCta": "Install app",
   "pwa.installLater": "Not now",
+  "pwa.updateTitle": "Update available",
+  "pwa.updateBody": "A new version of Along is ready. Update to get the latest fixes and features.",
+  "pwa.updateCta": "Update now",
+  "pwa.updateLater": "Later",
 
   "push.enablePrompt": "Enable push notifications to never miss replies, mentions, and rewards.",
   "push.enable": "Enable",
