@@ -1983,3 +1983,14 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** runner has no node_modules — tsc/jest/build deferred to CI/Vercel; static review clean (exports, icons on lucide 0.469, closure order, AND-search); new assertions mirror for CI.
 **Compliance:** additive-only, no migration, no new deps, no removed APIs (optional filter value/fields, additive component, preserved button colors as item classNames).
 **Chain:** execute-feature → session-log (here) → dev-history + lessons-learned + repo-map + dependency-graph + system-architecture → update-ai-system terminal sync.
+
+## Session 2026-10-12 — Actions-cell dropdown no-op fix (execute-feature follow-up)
+**Directive:** following up on the last work done — clicking on the button in the actions cell isn't triggering the expected drop-down menu (visually, nothing is happening).
+**Gap analysis (verified in code):** Sprint 44 moved admin row actions into `AppTableRowActions` over `AppDropdown`, but the row-actions trigger was a nested `<button onClick={(e) => e.stopPropagation()}>` inside `AppDropdown`'s `div[role=button]` bubble-phase toggle — the nested stopPropagation swallowed the toggle so the menu never opened. `PostMenu` carried the same nested-button anti-pattern (opened only by accident via bubbling; invalid nested-interactive HTML, double tab stop, Enter/Space double-toggle risk once the toggle hardens).
+**Implemented:**
+- `AppDropdown`: toggle moved to `onClickCapture` (capture runs before any descendant bubble-phase stopPropagation, so hostile nested triggers can't swallow it; the handler's own stopPropagation still isolates ancestor row clicks) + `aria-expanded`/`aria-haspopup`.
+- `AppTableRowActions` + `PostMenu` triggers: nested `<button>` → non-focusable `<span aria-hidden="true">` with identical styling; the wrapper owns the single tab stop and keyboard handling (`PostMenu` passes its "More options" label through as `ariaLabel` so the accessible name is preserved).
+- Tests: NEW `app/__tests__/components/AppDropdown.test.tsx` (opens with a stopPropagation-swallowing nested trigger = exact Sprint 44 bug, toggles closed on second click, row-actions menu opens).
+**QA:** runner has no node_modules — tsc/jest/build deferred to CI/Vercel (same standing arrangement as Sprint 44); static review clean (single toggle path, no capture+bubble double-fire, menu/item subtrees unaffected by the capture toggle, outside-click/Escape unchanged, accessible names preserved).
+**Compliance:** additive interaction fix, no API/config/schema change, no removed APIs, styling identical.
+**Chain:** execute-feature → in-progress (written + cleared) → session-log (here). No architecture impact and no `[L]`/`[XL]` tag → `update-ai-system` deep sync not triggered per contract; drift covered by this log entry.
