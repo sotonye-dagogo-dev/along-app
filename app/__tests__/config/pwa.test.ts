@@ -5,6 +5,8 @@ import {
   PWA_CACHED_DESTINATIONS,
   PWA_NEVER_CACHE_API,
   PWA_OFFLINE_BANNER,
+  PWA_INSTALL_CONFIG,
+  isStandaloneDisplay,
   isNeverCacheApi,
   isCacheableApi,
   isMapTileHost,
@@ -96,5 +98,19 @@ describe("pwa config", () => {
     expect(PWA_TOAST_COPY.wentOffline).not.toMatch(/unexpected token|<\!|an error occurred/i);
     expect(PWA_TOAST_COPY.blockedOffline).toMatch(/offline/i);
     expect(PWA_TOAST_COPY.cachedNotice).toMatch(/refresh/i);
+  });
+
+  it("exposes a config-driven install registry (local flags, TTL, copy)", () => {
+    expect(PWA_INSTALL_CONFIG.storage.installedKey).toBe("along-pwa-installed");
+    expect(PWA_INSTALL_CONFIG.storage.dismissedAtKey).toBe("along-pwa-dismissed-at");
+    expect(PWA_INSTALL_CONFIG.storage.dismissTtlMs).toBeGreaterThan(0);
+    for (const k of ["title", "body", "install", "later", "iosHelp", "manualHelp"] as const) {
+      expect(PWA_INSTALL_CONFIG.copy[k].length).toBeGreaterThan(0);
+    }
+  });
+
+  it("isStandaloneDisplay never throws and returns false without a window match", () => {
+    expect(() => isStandaloneDisplay()).not.toThrow();
+    expect(isStandaloneDisplay()).toBe(false);
   });
 });

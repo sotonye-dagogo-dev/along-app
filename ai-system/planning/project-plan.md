@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown)
-> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 46 push firing + global PWA install/push notices)
+> - last-verified-against-code: 2026-10-12 (static review + node --check sw.js + JSON parity + brace/paren balance; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.

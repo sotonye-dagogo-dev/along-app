@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown)
-> - last-verified-against-code: 2026-10-11 (static review + diff review; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 46 push firing + global PWA install/push notices)
+> - last-verified-against-code: 2026-10-12 (static review + node --check sw.js + JSON parity + brace/paren balance; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -733,5 +733,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** charts had no hover detail (only native `<title>` on string-built SVG dots, nothing on bars); a live check showed `formatChartCount(null)` rendering `"0"` — a fake zero in a tooltip.
 - **Root causes:** (1) every chart hand-rolled its own SVG strings, so there was no shared hover layer — tooltips were impossible without per-page rewrites; (2) `Number(null) === 0` / `Number("") === 0`, so naive `Number()` coercion turns missing data into a confident zero.
 - **Fix pattern (reuse):** build one mouse-follow tooltip host (`SvgChartContainer` maps pointer-x → nearest column; `ChartTooltipWrapper` for HTML rows) fed by one colour/format registry, and keep native `<title>` as the no-JS fallback; in every formatter, reject `null`/`undefined`/`""` BEFORE numeric coercion and let genuine `0` pass through. Live-verify pure helpers with `node --experimental-strip-types` when jest can't run in the runner.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 46: prompts nobody can see + env-name split-brain behind silent push
+- **Symptom:** offline worked, but push never fired and neither a push prompt nor an install notice was ever observed.
+- **Root causes:** (1) opt-in UI mounted only on a rarely-visited page (PushManager solely on /notifications) and no install component existed — discovery was structurally impossible; (2) server/client read different env names (sender accepted VAPID_PUBLIC_KEY ?? NEXT_PUBLIC_VAPID_PUBLIC_KEY, client route only the former) so Enable collapsed to silent no-vapid in prod; (3) lifecycle-coupled writes that bypass the central service (FOLLOW transaction) silently dropped its side-effects (invalidation + fan-out); (4) conditional-hook call (usePathname only on one variant) would have tripped lint/rules-of-hooks.
+- **Fix pattern (reuse):** mount discovery UI globally but non-interferingly (fixed, capped, collapsible-to-pill, z-ordered below the offline banner, page-aware suppression where the inline variant already covers it); keep env-name parity between every producer and consumer of the same secret; when a write must bypass the central service for transactional reasons, mirror its side-effects explicitly post-commit (fire-and-forget, never-throw); always call hooks unconditionally and branch on the result.
 - **Supersedes:** None
 - **Superseded by:** None

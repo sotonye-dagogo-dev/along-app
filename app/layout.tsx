@@ -13,6 +13,7 @@ import { I18nProvider } from "@/app/providers/I18nProvider";
 import ThemeToggle from "@/app/components/ui/ThemeToggle";
 import BackToTop from "@/app/components/ui/BackToTop";
 import { OfflineBanner } from "@/app/components/pwa/OfflineBanner";
+import { PwaNotices } from "@/app/components/pwa/PwaNotices";
 import { ServiceWorkerRegistrar } from "@/app/components/pwa/ServiceWorkerRegistrar";
 import { MAP_STACK_CONFIG } from "@/app/lib/config/mapStack";
 
@@ -52,6 +53,11 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Along",
+  },
   openGraph: {
     title: "Along — Navigate Together",
     description:
@@ -139,6 +145,7 @@ export default function RootLayout({
                         <ThemeToggle />
                         <BackToTop />
                         <OfflineBanner />
+                        <PwaNotices />
                         <ServiceWorkerRegistrar />
                       </CookieConsentProvider>
                     </GlobalToastProvider>
