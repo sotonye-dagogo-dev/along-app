@@ -139,13 +139,14 @@ export function PostMenu({
     <>
       <AppDropdown
         align="end"
+        ariaLabel={tf("common.moreOptions", "More options")}
         trigger={
-          <button
+          <span
+            aria-hidden="true"
             className="w-7 h-7 rounded-circle flex items-center justify-center text-text-muted hover:bg-bg-elevated transition-colors duration-fast"
-            aria-label={tf("common.moreOptions", "More options")}
           >
             <MoreHorizontal size={16} />
-          </button>
+          </span>
         }
         items={items}
       />
