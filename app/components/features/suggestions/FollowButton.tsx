@@ -39,9 +39,6 @@ export function FollowButton({ userId, className = "", onFollowed, target }: Fol
       </button>
     )
   }
-  const auth = useContext(AuthContext)
-  const [following, setFollowing] = useState(false)
-  const [busy, setBusy] = useState(false)
 
   const handleClick = async (e: React.MouseEvent) => {
     e.preventDefault()
