@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
-import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
+import { CACHE_KEYS, CACHE_TTL, visibleUserWhere } from "@/app/lib/config";
 
 const USER_SELECT = {
   id: true,
@@ -11,6 +11,8 @@ const USER_SELECT = {
   avatar: true,
   avatarConfig: true,
   verified: true,
+  isDeleted: true,
+  deletionScheduledFor: true,
 } as const;
 
 /**
@@ -39,22 +41,28 @@ export async function GET(_request: NextRequest) {
     const excludeIds = [userId, ...followingIds];
 
     // Archived posts never surface as suggestions; P2022 fallback keeps the
-    // route working if the moderation migration has not applied yet.
+    // route working if the moderation migration has not applied yet. The
+    // author-visibility filter is stripped in the same fallback so legacy
+    // DBs (pre account-deletion columns) keep serving instead of 500ing.
     const safePostList = async (args: Record<string, unknown>): Promise<Array<{ id: string } & Record<string, any>>> => {
       try {
         return await (prisma.post.findMany as any)({ ...args, where: { ...(args.where as object), isArchived: false } });
       } catch (e) {
         if (e instanceof Error && ((e as any).code === "P2022" || e.name === "PrismaClientKnownRequestError")) {
-          return await (prisma.post.findMany as any)(args);
+          const { isArchived: _arch, user: _userFilter, ...restWhere } = (args.where as Record<string, unknown>);
+          void _arch; void _userFilter;
+          return await (prisma.post.findMany as any)({ ...args, where: restWhere });
         }
         throw e;
       }
     };
 
     const [routeRequests, routes, suggestedUsers] = await Promise.all([
-      // Open route requests from others, most recent first
+      // Open route requests from others, most recent first. Deleted and
+      // archived (pending-deletion) authors never surface on user-facing
+      // discovery — their accounts are unavailable until restored.
       safePostList({
-        where: { type: "ROUTE_REQUEST", userId: { not: userId } },
+        where: { type: "ROUTE_REQUEST", userId: { not: userId }, user: { ...visibleUserWhere } },
         include: {
           user: { select: USER_SELECT },
         },
@@ -63,7 +71,7 @@ export async function GET(_request: NextRequest) {
       }),
       // Recent community routes
       safePostList({
-        where: { type: "ROUTE" },
+        where: { type: "ROUTE", user: { ...visibleUserWhere } },
         include: {
           user: { select: USER_SELECT },
         },
@@ -71,16 +79,37 @@ export async function GET(_request: NextRequest) {
         take: 6,
       }),
       // Accounts to follow: active posters the viewer doesn't follow yet
-      prisma.user.findMany({
-        where: { id: { notIn: excludeIds } },
-        select: {
-          ...USER_SELECT,
-          rewardPoints: true,
-          _count: { select: { posts: true, followers: true } },
-        },
-        orderBy: [{ posts: { _count: "desc" } }, { rewardPoints: "desc" }],
-        take: 5,
-      }),
+      (async () => {
+        try {
+          return await prisma.user.findMany({
+            where: { id: { notIn: excludeIds }, ...visibleUserWhere },
+            select: {
+              ...USER_SELECT,
+              rewardPoints: true,
+              _count: { select: { posts: true, followers: true } },
+            },
+            orderBy: [{ posts: { _count: "desc" } }, { rewardPoints: "desc" }],
+            take: 5,
+          });
+        } catch (e) {
+          // Pre account-deletion columns: serve without the visibility filter.
+          if (e instanceof Error && ((e as any).code === "P2022" || e.name === "PrismaClientKnownRequestError")) {
+            const { isDeleted: _del, deletionScheduledFor: _sched, ...restSelect } = USER_SELECT;
+            void _del; void _sched;
+            return await prisma.user.findMany({
+              where: { id: { notIn: excludeIds } },
+              select: {
+                ...restSelect,
+                rewardPoints: true,
+                _count: { select: { posts: true, followers: true } },
+              },
+              orderBy: [{ posts: { _count: "desc" } }, { rewardPoints: "desc" }],
+              take: 5,
+            });
+          }
+          throw e;
+        }
+      })(),
     ]);
 
     // Canonical live trust for suggested routes (same service as feed/detail)

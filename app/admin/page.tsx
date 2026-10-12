@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { RefreshCw, Users, FileText, Shield, Bug, ChevronUp, ChevronDown, Minus, Eye } from "lucide-react"
 import { formatDelta, ADMIN_DASHBOARD_PERIODS } from "@/app/lib/config/admin"
-import { SvgChartContainer, ChartTooltipWrapper } from "@/app/components/ui"
+import { SvgChartContainer, ChartTooltipWrapper, AppAvatar } from "@/app/components/ui"
 import { formatChartDate, chartBarColor } from "@/app/lib/config/charts"
 
 interface AdminStats {
@@ -17,7 +17,7 @@ interface AdminStats {
   signups7d: { date: string; count: number }[]
   signups?: { date: string; count: number }[]
   topPosts: { id: string; title: string; validityScore: number }[]
-  recentUsers?: { id: string; userName: string; firstName: string; lastName: string; email: string; role: string; rewardTier: string; _count: { posts: number }; createdAt: string }[]
+  recentUsers?: { id: string; userName: string; firstName: string; lastName: string; email: string; avatar?: string | null; avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null; verified?: boolean; role: string; rewardTier: string; _count: { posts: number }; createdAt: string }[]
   deltas?: { totalUsers: number | null; postsToday: number | null; postsWeek: number | null; avgValidity: number | null; openBugs: number | null }
 }
 
@@ -292,11 +292,14 @@ export default function AdminDashboard() {
                 <tr key={u.id} className="hover:bg-bg-elevated transition-colors duration-fast cursor-pointer">
                   <td className="px-4 py-3 border-b border-border max-w-[220px]">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Link href={`/profile/${u.userName}`} className="no-underline shrink-0">
-                        <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-sm font-bold shrink-0 text-primary">
-                          {(u.firstName?.[0] ?? "?")}{(u.lastName?.[0] ?? "")}
-                        </div>
-                      </Link>
+                      <AppAvatar
+                        src={u.avatar ?? undefined}
+                        alt={`${u.firstName} ${u.lastName}`}
+                        size={32}
+                        config={u.avatarConfig ?? undefined}
+                        verified={u.verified ?? false}
+                        userName={u.userName}
+                      />
                       <div className="min-w-0">
                         <Link href={`/profile/${u.userName}`} className="text-xs font-semibold no-underline hover:underline text-text-primary block truncate">{u.firstName} {u.lastName}</Link>
                         <div className="text-[10px] text-text-muted truncate max-w-[150px]">{u.email}</div>

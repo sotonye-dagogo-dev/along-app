@@ -99,8 +99,8 @@ async function safePostFindMany(args: any): Promise<any[]> {
     return await (prisma.post.findMany as any)(filteredArgs);
   } catch (error) {
     if (isMissingColumnError(error)) {
-      const { isArchived: _drop, ...restWhere } = filteredArgs?.where ?? {};
-      void _drop;
+      const { isArchived: _drop, user: _userFilter, ...restWhere } = filteredArgs?.where ?? {};
+      void _drop; void _userFilter;
       const fallbackArgs = {
         ...filteredArgs,
         ...(filteredArgs?.where ? { where: restWhere } : {}),
@@ -118,10 +118,13 @@ async function safeUserFindMany(args: any): Promise<any[]> {
   try {
     return await (prisma.user.findMany as any)(args);
   } catch (error) {
-    if (isMissingColumnError(error) && args?.select?.avatarConfig) {
-      const { avatarConfig: _omit, ...rest } = args.select;
+    if (isMissingColumnError(error)) {
+      // Strip additive selects + visibility filters for legacy DBs.
+      const { isDeleted: _del, deletionScheduledFor: _sched, ...restWhere } = args?.where ?? {};
+      void _del; void _sched;
+      const { avatarConfig: _omit, ...rest } = args.select ?? {};
       void _omit;
-      return await (prisma.user.findMany as any)({ ...args, select: rest });
+      return await (prisma.user.findMany as any)({ ...args, where: restWhere, select: rest });
     }
     throw error;
   }
@@ -189,6 +192,8 @@ class SearchService {
         { region: { contains: query, mode: "insensitive" } },
         { tags: { has: query.toLowerCase() } },
       ],
+      // Deleted/archived authors never surface on user-facing search.
+      user: { isDeleted: false, deletionScheduledFor: null },
     };
     if (region) postWhere.region = { contains: region, mode: "insensitive" };
     if (postType) postWhere.type = postType;
@@ -207,6 +212,9 @@ class SearchService {
         ? Promise.resolve([])
         : safeUserFindMany({
             where: {
+              // Deleted/archived accounts are never searchable on user surfaces.
+              isDeleted: false,
+              deletionScheduledFor: null,
               OR: [
                 { userName: { contains: query, mode: "insensitive" } },
                 { firstName: { contains: query, mode: "insensitive" } },

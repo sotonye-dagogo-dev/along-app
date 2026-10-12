@@ -4,8 +4,10 @@ import Link from "next/link"
 import { ClipboardList, MapPin, Users, Sparkles } from "lucide-react"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { AppAvatar } from "@/app/components/ui/AppAvatar"
 import { EndlessCarousel } from "./EndlessCarousel"
 import { ENDLESS_CAROUSEL_CONFIG } from "@/app/lib/config"
+import { filterVisibleUsers, isVisibleUser } from "@/app/lib/config/userVisibility"
 import { FollowButton } from "./FollowButton"
 import type { SuggestionsData, SuggestionPost, SuggestionUser } from "./types"
 
@@ -23,9 +25,15 @@ function RequestCard({ post }: { post: SuggestionPost }) {
       </div>
       <div className="text-sm font-semibold line-clamp-2">{post.title}</div>
       <div className="text-xs text-text-muted mt-1.5 flex items-center gap-1.5">
-        <span className="w-4 h-4 rounded-circle bg-primary-muted text-primary text-[9px] font-bold flex items-center justify-center shrink-0">
-          {(post.user.firstName?.[0] ?? post.user.userName?.[0] ?? "?").toUpperCase()}
-        </span>
+        <AppAvatar
+          src={post.user.avatar ?? undefined}
+          alt={`${post.user.firstName} ${post.user.lastName}`}
+          size={24}
+          config={post.user.avatarConfig ?? undefined}
+          verified={post.user.verified}
+          linkToProfile={false}
+          userName={post.user.userName}
+        />
         <span className="truncate">@{post.user.userName}</span>
       </div>
     </Link>
@@ -55,15 +63,21 @@ function UserCard({ user }: { user: SuggestionUser }) {
   return (
     <div className="w-[240px] sm:w-[280px] bg-bg-card border border-border rounded-xl p-3 flex items-center gap-2.5">
       <Link href={`/profile/${user.userName}`} className="flex items-center gap-2.5 min-w-0 flex-1">
-        <span className="w-9 h-9 rounded-circle bg-primary-muted text-primary text-xs font-bold flex items-center justify-center shrink-0">
-          {(user.firstName?.[0] ?? user.userName?.[0] ?? "?").toUpperCase()}
-        </span>
+        <AppAvatar
+          src={user.avatar ?? undefined}
+          alt={`${user.firstName} ${user.lastName}`}
+          size={32}
+          config={user.avatarConfig ?? undefined}
+          verified={user.verified}
+          linkToProfile={false}
+          userName={user.userName}
+        />
         <span className="min-w-0">
           <span className="block text-sm font-semibold truncate">{user.firstName} {user.lastName}</span>
           <span className="block text-xs text-text-muted truncate">@{user.userName}</span>
         </span>
       </Link>
-      <FollowButton userId={user.id} />
+      <FollowButton userId={user.id} target={user} />
     </div>
   )
 }
@@ -82,10 +96,14 @@ export function SuggestionsRail() {
   // Real data only: cards are built exclusively from GET /api/suggestions.
   // Mock/synthetic fallback is disabled (ENDLESS_CAROUSEL_CONFIG.allowMockFallback
   // stays false), so production with an empty feed renders nothing — never mock content.
+  // Deleted/archived accounts are filtered client-side too (stale caches).
+  const routeRequests = (data?.routeRequests ?? []).filter((p) => isVisibleUser(p.user))
+  const routes = (data?.routes ?? []).filter((p) => isVisibleUser(p.user))
+  const users = filterVisibleUsers(data?.users ?? [])
   const cards: Card[] = [
-    ...(data?.routeRequests ?? []).map((p) => ({ key: `req-${p.id}`, node: <RequestCard post={p} /> })),
-    ...(data?.routes ?? []).map((p) => ({ key: `route-${p.id}`, node: <RouteCard post={p} /> })),
-    ...(data?.users ?? []).map((u) => ({ key: `user-${u.id}`, node: <UserCard user={u} /> })),
+    ...routeRequests.map((p) => ({ key: `req-${p.id}`, node: <RequestCard post={p} /> })),
+    ...routes.map((p) => ({ key: `route-${p.id}`, node: <RouteCard post={p} /> })),
+    ...users.map((u) => ({ key: `user-${u.id}`, node: <UserCard user={u} /> })),
   ]
 
   if (cards.length === 0) return null

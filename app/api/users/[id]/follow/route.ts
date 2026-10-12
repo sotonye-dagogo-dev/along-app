@@ -46,6 +46,18 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    // Deleted or archived (pending-deletion) accounts cannot gain followers
+    // until restored — 410 signals "gone, possibly temporary" (vs 404).
+    try {
+      const { DELETED_USER_COPY } = await import("@/app/lib/config/userVisibility");
+      const t = targetUser as unknown as { isDeleted?: boolean; deletionScheduledFor?: Date | null };
+      if (t.isDeleted === true || t.deletionScheduledFor != null) {
+        return NextResponse.json({ error: DELETED_USER_COPY.followUnavailable }, { status: 410 });
+      }
+    } catch {
+      /* visibility check is best-effort — a legacy row without the columns stays followable */
+    }
+
     const existing = await prisma.follow.findUnique({
       where: { followerId_followingId: { followerId: currentUser.id as string, followingId: id } },
     });

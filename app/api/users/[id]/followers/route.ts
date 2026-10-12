@@ -9,7 +9,9 @@ export async function GET(
     const { id } = await params;
 
     const follows = await prisma.follow.findMany({
-      where: { followingId: id },
+      // Deleted/archived accounts never appear in user-facing lists; their
+      // follows stay in the DB (restorable) but are hidden until then.
+      where: { followingId: id, follower: { isDeleted: false, deletionScheduledFor: null } },
       select: {
         follower: {
           select: {
