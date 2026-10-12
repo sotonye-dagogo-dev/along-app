@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 47 PWA notice icon/theme compliance + user visibility + avatar consistency)
-> - last-verified-against-code: 2026-10-12 (brace balance + token/emoji sweeps + tsc --strict zero-dep configs + node execution of visibility/faq-link logic; full tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -94,7 +94,7 @@
 - [x] Push notification subscription and sending (Web Push API) via `app/api/push/*`, PushProvider, pushSubscriptionService
 - [x] QStash background jobs (`app/lib/services/qstashService.ts`, `app/api/workers/*`)
 - [x] Offline page and caching strategies (`public/offline.html`, `public/sw.js`)
-- [x] Service worker update flow (`public/sw.js`)
+- [x] Service worker update flow (`public/sw.js`) — full prompt lifecycle since Sprint 49 (was install-time auto-skipWaiting only; now periodic checks + user-approved single-reload)
 
 ---
 

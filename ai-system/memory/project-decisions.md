@@ -1,8 +1,8 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
-> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -744,3 +744,13 @@ Showing Archive/Delete to admins on other users' posts leaks moderation affordan
 **Implications:**
 - Any future destructive admin action must follow the same pattern: shared config copy, confirm modal, undo only when a real reversal path exists, audit log entry, recovery note when irreversible.
 - Tuning deletion = editing `ADMIN_USER_DELETION_META` + `ACCOUNT_DELETION_CONFIG` only; the service stays the only writer.
+
+## Sprint 49: user-approved SW updates (prompt + single reload) over silent auto-apply
+**Decision:** Installed updates surface through a non-blocking prompt (`ServiceWorkerUpdatePrompt` on `PWA_UPDATE_CONFIG.updateReadyEvent`) instead of silent auto-`skipWaiting()`: Update posts `SKIP_WAITING` and `controllerchange` reloads exactly once; Later snoozes 1 day; the registrar polls `registration.update()` hourly + on visible/focus/online. First installs still claim silently with no prompt and never reload. Cadence/copy/TTLs live in `PWA_UPDATE_CONFIG`; the client↔SW vocabulary lives in `PWA_SW_MESSAGES`; cache generation bumped v4→v5 in both `pwa.ts` and `sw.js`.
+**Alternatives Considered:**
+- **Keep auto-skipWaiting (silent apply)**: Rejected — the worker seizes control without reloading, so the open page runs stale hashed JS until the next navigation; with no polling and no prompt, day-long installed sessions never update at all. This was the exact reported gap.
+- **Force-reload on updatefound**: Rejected — yanking a running page (mid-post, mid-payment, mid-navigation) violates the non-interference contract and risks data loss; the prompt preserves user agency.
+- **Shorter poll interval (<15min)**: Rejected — `/sw.js` revalidation is cheap but not free on metered connections; hourly + event-driven checks catch updates within a session without background-chatter.
+**Implications:**
+- Every future `sw.js` change MUST bump `PWA_CACHE_VERSION` in both `app/lib/config/pwa.ts` and `public/sw.js` or old caches won't purge on activate.
+- Tuning update behaviour = editing `PWA_UPDATE_CONFIG` only (interval, TTLs, copy, event name); the registrar/prompt/SW read it, so no logic edits are needed.

@@ -6,6 +6,8 @@ import {
   PWA_NEVER_CACHE_API,
   PWA_OFFLINE_BANNER,
   PWA_INSTALL_CONFIG,
+  PWA_UPDATE_CONFIG,
+  PWA_SW_MESSAGES,
   isStandaloneDisplay,
   isNeverCacheApi,
   isCacheableApi,
@@ -112,5 +114,26 @@ describe("pwa config", () => {
   it("isStandaloneDisplay never throws and returns false without a window match", () => {
     expect(() => isStandaloneDisplay()).not.toThrow();
     expect(isStandaloneDisplay()).toBe(false);
+  });
+
+  it("exposes a config-driven SW update registry (interval, event, TTL, copy)", () => {
+    expect(PWA_UPDATE_CONFIG.checkIntervalMs).toBeGreaterThan(0);
+    expect(PWA_UPDATE_CONFIG.checkOnVisible).toBe(true);
+    expect(PWA_UPDATE_CONFIG.checkOnOnline).toBe(true);
+    expect(PWA_UPDATE_CONFIG.updateReadyEvent).toBe("along:sw-update-ready");
+    expect(PWA_UPDATE_CONFIG.storage.reloadedKey).toBeTruthy();
+    expect(PWA_UPDATE_CONFIG.storage.dismissedAtKey).toBeTruthy();
+    expect(PWA_UPDATE_CONFIG.storage.dismissTtlMs).toBeGreaterThan(0);
+    for (const k of ["title", "body", "update", "later", "updatedToast"] as const) {
+      expect(PWA_UPDATE_CONFIG.copy[k].length).toBeGreaterThan(0);
+    }
+  });
+
+  it("exposes a stable client-SW message vocabulary (prompt flow, no force-reload)", () => {
+    expect(PWA_SW_MESSAGES.skipWaiting).toBe("SKIP_WAITING");
+    expect(PWA_SW_MESSAGES.updateReady).toBeTruthy();
+    expect(PWA_SW_MESSAGES.activated).toBeTruthy();
+    expect(PWA_SW_MESSAGES.getVersion).toBeTruthy();
+    expect(PWA_SW_MESSAGES.version).toBeTruthy();
   });
 });

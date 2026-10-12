@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 46 push firing + global PWA install/push notices)
-> - last-verified-against-code: 2026-10-12 (static review + node --check sw.js + JSON parity + brace/paren balance; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -747,5 +747,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** PWA notices looked identical in dark mode (static light styling); deleted/archived accounts appeared in suggestions/carousels and could be followed; avatars rendered 4 different ways (raw img, initials spans, partial AppAvatar) across suggestions/admin/lists.
 - **Root causes:** (1) PWA components styled via bespoke `var(--brand/--bg-base/--info-soft/--offline-bg…)` vars with light-only fallbacks — those vars never flip under `.dark`, unlike the canonical `--color-*` tokens; literal emoji/↓/✕/? glyphs instead of the lucide icon library; help affordances with no route to the FAQ they document. (2) visibility lived nowhere centrally — suggestions/search/follow/lists each had their own (absent) filtering, counts used raw `_count`, and the follow API had no gone-state. (3) avatar rendering was per-page hand-rolled because two admin APIs omitted `avatarConfig`/`verified`, so pages *couldn't* use the canonical component.
 - **Fix pattern (reuse):** style every inline-style surface on `--color-*` tokens (fallbacks = light values; `.dark` overrides do the flipping — for intentionally-dark chrome use the inverted text-primary/bg-base pair); encode account lifecycle once as config + pure predicates (`isDeletedUser`/`isArchivedUser`/`isVisibleUser`/`visibleUserWhere`/`filterVisibleUsers`) consumed by APIs (Prisma filters + 410 gone-state + live counts with `_count` fallback) AND clients (stale-cache defense + disabled affordances); make APIs select everything the canonical component needs (`avatarConfig`, `verified`) so no page has an excuse to hand-roll. Verify with token-var/emoji sweeps + `tsc --strict` on zero-dep configs + node execution of the pure helpers when jest can't run.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 49: auto-skipWaiting is a silent-stale trap — updates need a prompt, not a yank
+- **Symptom:** PWA worked offline and push fired, but installed clients ran stale shells indefinitely: `sw.js` install called `skipWaiting()` unconditionally, the registrar never called `registration.update()`, and no UI ever told the user a new version existed — the project-plan even claimed "service worker update flow" done when only the silent path existed.
+- **Root causes:** (1) auto-`skipWaiting()` + `clients.claim()` takes control without reloading, so the loaded page keeps running OLD hashed JS until the next navigation — the update is "applied" but invisible; (2) browsers only revalidate `/sw.js` on navigation, so day-long installed sessions never discover updates without explicit `registration.update()` polling (interval + visible/focus/online); (3) `controllerchange` reloads must be guarded (first install none→worker must NOT reload; one reload per episode via sessionStorage) or they loop.
+- **Fix pattern (reuse):** SW installs WITHOUT skipWaiting and broadcasts readiness; the client detects `updatefound`→waiting (only when already controlled) and shows a collapsible, snoozable Update prompt; the user's tap posts SKIP_WAITING and `controllerchange` reloads exactly once; bump the mirrored CACHE_VERSION in both `pwa.ts` and `sw.js` on every SW change so old caches purge. Keep the whole vocabulary (`PWA_UPDATE_CONFIG` + `PWA_SW_MESSAGES`) in config so copy/timing/TTLs stay metadata-driven.
 - **Supersedes:** None
 - **Superseded by:** None

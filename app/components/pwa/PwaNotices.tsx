@@ -9,11 +9,13 @@
  */
 import { InstallPrompt } from "@/app/components/pwa/InstallPrompt";
 import { PushManager } from "@/app/components/pwa/PushManager";
+import { ServiceWorkerUpdatePrompt } from "@/app/components/pwa/ServiceWorkerUpdatePrompt";
 
 export function PwaNotices() {
   return (
     <>
       <InstallPrompt />
+      <ServiceWorkerUpdatePrompt />
       <PushManager variant="floating" />
     </>
   );
