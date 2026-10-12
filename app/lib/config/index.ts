@@ -104,6 +104,14 @@ export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, ADMIN_
 export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId, AdminDashboardPeriod, AdminUserFilterId, AdminUserRowActionId, AdminUserDeletionState } from "./admin";
 export { VALIDATION_RULES } from "./validationRules";
 export {
+  PROFILE_VALIDATION_CONFIG,
+  normalizePersonName,
+  normalizeBio,
+  normalizeProfilePatch,
+  validateProfilePatch,
+} from "./profileValidation";
+export type { ProfileValidationConfig, NormalizedProfilePatch } from "./profileValidation";
+export {
   isDeletedUser,
   isArchivedUser,
   isVisibleUser,

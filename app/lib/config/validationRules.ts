@@ -40,8 +40,4 @@ export const VALIDATION_RULES: Record<string, ValidationRule> = {
     max: 5,
     message: "Rating must be between 1 and 5.",
   },
-  phonePattern: {
-    pattern: /^\+?[\d\s-]{7,20}$/,
-    message: "Please enter a valid phone number.",
-  },
 };

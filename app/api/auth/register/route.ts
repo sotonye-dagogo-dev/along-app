@@ -29,9 +29,11 @@ export async function POST(request: NextRequest) {
     // Without trimming, a perfectly good signup fails Zod with a bare
     // "Validation failed" and the user has no idea why.
     const raw = (body ?? {}) as Record<string, unknown>;
+    const collapseName = (v: unknown) =>
+      typeof v === "string" ? v.trim().replace(/\s+/g, " ") : v;
     const normalized = {
-      firstName: typeof raw.firstName === "string" ? raw.firstName.trim() : raw.firstName,
-      lastName: typeof raw.lastName === "string" ? raw.lastName.trim() : raw.lastName,
+      firstName: collapseName(raw.firstName),
+      lastName: collapseName(raw.lastName),
       userName: typeof raw.userName === "string" ? raw.userName.trim() : raw.userName,
       email: typeof raw.email === "string" ? raw.email.trim().toLowerCase() : raw.email,
       password: raw.password,

@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 46 push firing + global PWA install/push notices)
-> - last-verified-against-code: 2026-10-12 (static review + node --check sw.js + JSON parity + brace/paren balance; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 48 profile tightening: dead phone field, name whitespace, AvatarSize 20)
+> - last-verified-against-code: 2026-10-12 (full local gate: tsc --noEmit clean, jest 66 suites / 559 tests pass, lint 0 new errors vs baseline)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1214,3 +1214,14 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `config/sprint47.test.ts` (9 suites mirror for CI).
 **QA:** no node_modules in runner (tsc/jest/build deferred to CI); brace/token/emoji sweeps clean, tsc --strict zero-dep configs OK, node execution 11/11 + faq-links OK.
 **Compliance:** additive-only, no migration/deps/API removals.
+---
+
+## Sprint 48 (2026-10-12) — Profile tightening: dead phone field, name whitespace, AvatarSize 20
+**Directive:** drop unpersistable edit-profile phone field; whitespace handling for name inputs (edit + registration audit); fix `size={20}` Vercel type error. Config/metadata-driven, reusable, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `lib/config/profileValidation.ts` (`PROFILE_VALIDATION_CONFIG` + normalize/validate helpers) + barrel; `EDIT_PROFILE_FIELDS` phone removed (+ client caps on names/bio); `VALIDATION_RULES.phonePattern` removed (unused).
+- `ConfigDrivenForm` trims non-password fields pre-validation; `PATCH /api/users/[id]` normalizes + 400s bad display names (stale `phone` ignored); register collapses name whitespace.
+- `AppAvatar` `AvatarSize` += 20 (compact request-card intent preserved).
+- Tests: `config/profileTightening.test.ts` (14).
+**QA:** full local gate — `tsc --noEmit` clean, jest 66/559 pass, lint 0 new errors vs baseline.
+**Compliance:** non-breaking, no migration (UI-config-only phone removal; additive avatar union; legacy `phone` payloads still succeed).

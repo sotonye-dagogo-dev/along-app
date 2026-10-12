@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
-> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 48 profile tightening: dead phone field, name whitespace, AvatarSize 20)
+> - last-verified-against-code: 2026-10-12 (full local gate: tsc --noEmit clean, jest 66 suites / 559 tests pass, lint 0 new errors vs baseline)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -2047,3 +2047,18 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner - full tsc/jest/build deferred to CI; executed: brace/paren balance 4 files OK, branch-presence sweep (EndlessCarousel/config/0/1/Card) all ok, emoji/raw-hex sweeps clean on touched files.
 **Compliance:** additive-only, non-breaking (single-request and empty states byte-identical in behaviour; 2+ only changes layout inside the section card, overflow stays owned by the carousel wrapper so the feed column never grows); config/metadata-driven; design tokens only.
 **Chain:** execute-feature -> in-progress (written, cleared at close) -> session-log (here) -> task-queue entry -> sync-context close (no architecture impact, update-ai-system not triggered).
+---
+## Session 2026-10-12 — Profile tightening: dead phone field, name whitespace, AvatarSize 20 (execute-feature)
+**Directive:** Drop the edit-profile phone field if phone data is never collected/persisted; whitespace/trailing-space handling for name inputs on edit profile (verify registration too); fix Vercel type error `Type '20' is not assignable to type 'AvatarSize'` in SuggestionsPanel. Config/metadata-driven, reusable, non-breaking + update-ai-system chain.
+**Found:** (1) Prisma `User` has no phone column, `REGISTER_FIELDS` never collected phone, PATCH allowlist (`userName/firstName/lastName/bio/avatar`) silently dropped `phone`, and profile-page `initialValues` omitted it — so the phone input rendered, accepted typing, then vanished on save with a false-success toast (exactly the reported symptom). `VALIDATION_RULES.phonePattern` had zero usages. (2) Registration trims names server-side (`register/route.ts`) + `.trim()` client checks, but edit-profile PATCH only trimmed `userName` — `firstName`/`lastName`/`bio` stored raw, and `ConfigDrivenForm` validated untrimmed values so `"   "` passed `required`. (3) Prior session intentionally rendered `OpenRequestCard` avatars at 20px but `AppAvatar`'s `AvatarSize` union only allowed 24/32/40/56/80/120 — the Vercel type gate failed on `size={20}`.
+**Implemented:**
+- Config: NEW `lib/config/profileValidation.ts` (zero-dep `PROFILE_VALIDATION_CONFIG`: name 1-50, bio 160, collapseWhitespace + messages; `normalizePersonName` trim + `\s+`→single-space, `normalizeBio` trim with newlines preserved, `normalizeProfilePatch` allowlist-normalize ignoring stale keys like `phone`, `validateProfilePatch` first-error-or-null) + barrel exports.
+- Forms: `EDIT_PROFILE_FIELDS` phone entry removed (+ unused `Phone` icon import); firstName/lastName gain `{minLength:1,maxLength:50}`, bio `{maxLength:160}` client validation metadata. `VALIDATION_RULES.phonePattern` removed (proven unused).
+- `ConfigDrivenForm` submit now trims all non-password fields before Zod validation + submit (passwords exempt — bytes significant); heavier name collapsing stays server-side.
+- `PATCH /api/users/[id]`: display-name fields run through `normalizeProfilePatch`/`validateProfilePatch` (400 on whitespace-only/overlong, stale `phone` ignored via allowlist as before).
+- `POST /api/auth/register`: firstName/lastName now trim + collapse internal whitespace (was trim-only), matching edit-profile normalization.
+- `AppAvatar`: `AvatarSize` gains `20` (`sizeMap` 20→9px font) so the intended compact request-card avatar type-checks; `SuggestionsPanel` `size={20}` unchanged.
+- Tests: NEW `__tests__/config/profileTightening.test.ts` (14: no-phone field, field order/caps, trim/collapse/whitespace-only/non-string, bio newlines, stale-phone ignore, overlong rejects, full-patch accept).
+**QA:** runner HAS node_modules this run — full gate executed locally: `npx tsc --noEmit` clean (the reported SuggestionsPanel error gone), `npx jest` 66 suites / 559 tests all pass, `npm run lint` error count identical to pre-change baseline (15 pre-existing, 0 new).
+**Compliance:** non-breaking, no migration (phone removal is UI-config-only — DB never had the column; PATCH allowlist unchanged so legacy clients sending `phone` still succeed; avatar-size change is union-additive; form trim is submit-time-only).
+**Chain:** execute-feature -> session-log (here) -> dev-history + task-queue + system-architecture/Profile + repo-map/dependency-graph freshness -> update-ai-system terminal sync (new config module = architecture impact per contract).
