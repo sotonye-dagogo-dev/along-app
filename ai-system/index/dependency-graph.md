@@ -232,11 +232,11 @@ OtpStore / ResetTokenStore
     → PasswordResetToken (Prisma, durable DB tokens — survives Redis loss; fixed Sept 29 "link expired" bug)
 
 AccountDeletionService (`app/lib/services/accountDeletionService.ts` — request → 7-day grace → finalize; ACID tx, anonymize-in-place, best-effort side-effects)
-    → Config: accountDeletion (grace/retention/backup windows, anon identity) + admin (`ADMIN_USER_DELETION_META` copy/guards [Sprint 43])
+    → Config: accountDeletion (grace/retention/backup windows, anon identity) + admin (`ADMIN_USER_DELETION_META` copy/guards [Sprint 43]) + charts.ts (tooltip behaviour/series colours/format helpers + `ADMIN_ANALYTICS_CONFIG` KPIs/sections/buckets → ChartTooltip host + admin/user analytics charts + /admin/analytics [Sprint 45])
     → Prisma: AccountDeletionRequest + User/Post/Like/Bookmark/Follow/PushSubscription (tx) + counters recompute + EmailOtpStore mirror
     → Exports: requestAccountDeletion / cancelAccountDeletion / finalizeDueDeletions / finalizeSingleRequest (force-gated) / cancelDeletionRequestById / deleteUserNow (request-if-needed + force-finalize) [Sprint 43]
     → Consumed by: profile AccountDeletionPanel, POST /api/account/deletion/*, POST /api/admin/deletions/finalize (`request`/`cancel`/`finalizeOne`/`deleteNow`/`finalizeDue`, all audited [Sprint 43]), cron finalize worker
-    → Admin UI: `app/admin/deletions/` (queue + per-row Reverse/Delete-now) + `app/admin/users/` (per-user Request/Reverse/Delete-now + bulk request) → confirm modal (modalService) + undo toast (undoService) only where reversible [Sprint 43]
+    → Admin UI: `app/admin/deletions/` (queue + per-row Reverse/Delete-now) + `app/admin/users/` (per-user Request/Reverse/Delete-now + bulk request) → confirm modal (modalService) + undo toast (undoService) only where reversible [Sprint 43]; `app/admin/analytics/` + `GET /api/admin/analytics` (period KPIs/deltas/series/buckets/roles/tiers/top lists, `ADMIN_ANALYTICS_CONFIG`-driven, chart tooltips via shared ChartTooltip host) + overview/user-analytics tooltip wiring [Sprint 45]
     → Row-action UX [Sprint 44]: `AppTableRowActions` (`app/components/ui/AppTableRowActions.tsx`, metadata-driven, className-preserving) over `AppDropdown` (className/disabled/title passthrough) — consumed by users/posts/deletions tables; gating via `ADMIN_USER_FILTERS` + `allowedUserRowActions`/`canShowUserRowAction` (`app/lib/config/admin.ts`), enforced in `GET/PATCH /api/admin/users` (active filter + deleted skip with `skippedDeleted` counts)
 
 AdminUsers list (`app/api/admin/users` — GET filters + PATCH verify/resend/role [Sprint 44])

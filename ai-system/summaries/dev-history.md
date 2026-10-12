@@ -1185,3 +1185,13 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `config/admin.test.ts` +2 suites (filter ids/parse/query; deleted view-only gating incl. active-vs-pending sets + dropdown meta).
 **QA:** no node_modules in runner (tsc/jest/build deferred to CI/Vercel like recent sprints); changed-file review clean (imports/exports — incl. new `TableRowAction` barrel type — icon availability on lucide-react 0.469, closure-order safety on deletions helper, AND-search composition on the active filter); new assertions mirror for CI.
 **Compliance:** additive-only, no migration/deps/API removals (new filter value optional, new response field optional, new component additive, old button classes preserved as item classNames).
+
+## Sprint 45 (2026-10-12) — Chart hover tooltips + admin analytics + sidebar/avatar
+**Directive:** hover tooltips on charts platform-wide; dedicated comprehensive admin analytics page; admin sidebar scrollability; admin avatar consistent with the platform via the existing component extended with an optional admin tag (whole component linking to profile). Config/metadata-driven, reusable, non-breaking + update-ai-system chain.
+**Implemented:**
+- Config (`lib/config/charts.ts`, barrel re-exported): `CHART_TOOLTIP_CONFIG` + `CHART_SERIES_META` + never-throw colour/format helpers + `ADMIN_ANALYTICS_CONFIG` (KPIs/sections/lists/validity buckets).
+- UI shared: NEW `ChartTooltip.tsx` (`ChartHoverTooltip`/`ChartTooltipWrapper`/`SvgChartContainer`, barrel exported); `AppUserLabel` += optional `roleLabel`/`hideTier` (link-to-profile preserved, null → legacy render).
+- Pages: `app/admin/page.tsx` + `app/(dashboard)/analytics/page.tsx` hover tooltips on every chart (SVG mouse-follow + per-point `<title>` fallbacks, bar-row wrappers, config colours); NEW `app/admin/analytics/page.tsx` (period toggle, 6 KPIs, 4 chart sections, top-posts/contributors, responsive grids) + NEW `GET /api/admin/analytics?period=` (period-aware deltas, sanitized errors); `AdminShell` scrollable links region + `AppAvatar`/`AppUserLabel` identity + `/admin/analytics` nav entry.
+- Tests: `config/charts.test.ts` + `components/ChartTooltip.test.tsx` + `components/AdminAnalyticsShell.test.tsx` (new suites mirror for CI).
+**QA:** no node_modules in runner (tsc/jest/build deferred to CI/Vercel); node strip-types live check 6/6 green on `charts.ts` (caught + fixed a null→"0" formatting bug pre-ship); changed-file review clean.
+**Compliance:** additive-only, no migration/deps/API removals (new routes/pages/props optional or additive; legacy `title` fallbacks and `signups7d` alias kept).

@@ -55,7 +55,7 @@ along-app/
 │   ├── generated/           → Code-generated files
 │   ├── (auth)/              → Auth pages (login, register, OTP)
 │   ├── (dashboard)/         → Main app (feed, explore, search, profile, leaderboard, marketplace, etc.)
-│   ├── admin/               → Admin dashboard (period toggle 7/30/90 wired to stats KPIs + chart [Sprint 43]; posts incl. Edit modal [Sprint 37]; users table with Active/Pending/Deleted filters + deleted view-only gating + row-actions dropdown [Sprint 44]; deletions queue with per-row Reverse/Delete-now dropdown [Sprint 44]; audit trail table [Sprint 37])
+│   ├── admin/               → Admin dashboard (period toggle 7/30/90 wired to stats KPIs + chart [Sprint 43]; hover tooltips on all charts via shared ChartTooltip + charts.ts registry [Sprint 45]; dedicated /admin/analytics page + GET /api/admin/analytics — KPIs, growth/engagement/validity/audience, top posts/contributors [Sprint 45]; scrollable links region + platform-consistent profile-linked AppUserLabel/AppAvatar identity [Sprint 45]; posts incl. Edit modal [Sprint 37]; users table with Active/Pending/Deleted filters + deleted view-only gating + row-actions dropdown [Sprint 44]; deletions queue with per-row Reverse/Delete-now dropdown [Sprint 44]; audit trail table [Sprint 37])
 │   ├── (public)/            → Landing, about, contact, legal, faq, blog
 │   │   ├── faq/             → FAQ page with categorized Q&A
 │   │   ├── blog/            → Blog listing page

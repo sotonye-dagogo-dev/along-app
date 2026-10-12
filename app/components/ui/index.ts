@@ -19,6 +19,7 @@ export { AppFooter } from "./AppFooter";
 export { AppModal } from "./AppModal";
 export { AppEmptyState } from "./AppEmptyState";
 export { AppTooltip } from "./AppTooltip";
+export { ChartHoverTooltip, ChartTooltipWrapper, SvgChartContainer } from "./ChartTooltip";
 export { AppDropdown } from "./AppDropdown";
 export { AppTableRowActions } from "./AppTableRowActions";
 export type { DropdownItem } from "./AppDropdown";
