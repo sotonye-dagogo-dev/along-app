@@ -99,6 +99,16 @@ export { getEffectiveEnv, isProduction, isDevelopment, getAppUrl, resolveDatabas
 export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, ADMIN_USER_FILTERS, ADMIN_USER_ROW_ACTIONS, ADMIN_TABLE_ACTIONS_META, SITE_CONFIG_EDITORS, inferConfigKind, formatDelta, parseAdminDashboardPeriod, parseAdminUserFilter, deletionQueryForFilter, isDeletedAdminUser, allowedUserRowActions, canShowUserRowAction } from "./admin";
 export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId, AdminDashboardPeriod, AdminUserFilterId, AdminUserRowActionId, AdminUserDeletionState } from "./admin";
 export { VALIDATION_RULES } from "./validationRules";
+export {
+  CHART_TOOLTIP_CONFIG,
+  CHART_SERIES_META,
+  ADMIN_ANALYTICS_CONFIG,
+  chartSeriesColor,
+  chartBarColor,
+  formatChartDate,
+  formatChartCount,
+} from "./charts";
+export type { ChartTooltipLine, ChartSeriesId, AdminAnalyticsKpiId, AdminAnalyticsSectionId } from "./charts";
 export { CACHE_TTL, CACHE_KEYS, NOTIFICATION_FILTERS } from "./cache";
 export { API_REGISTRY } from "./apiRegistry";
 export { DEFAULT_META, PAGE_META } from "./seo";

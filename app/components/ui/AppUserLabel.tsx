@@ -35,6 +35,13 @@ interface AppUserLabelProps {
   vertical?: boolean
   showHandle?: boolean
   linkToProfile?: boolean
+  /**
+   * Optional role tag (e.g. "Admin" / "Mod") rendered under the name.
+   * Used by the admin sidebar so one modular component owns the
+   * avatar + profile-link behaviour everywhere.
+   */
+  roleLabel?: string | null
+  hideTier?: boolean
 }
 
 function AppUserLabel({
@@ -43,6 +50,8 @@ function AppUserLabel({
   vertical = false,
   showHandle = true,
   linkToProfile = true,
+  roleLabel = null,
+  hideTier = false,
 }: AppUserLabelProps) {
   const avatarSize = size === 'sm' ? 24 : 32
   const displayName = `${user.firstName} ${user.lastName}`
@@ -71,12 +80,17 @@ function AppUserLabel({
           {user.isVerified && (
             <BadgeCheck size={14} className="text-primary shrink-0" />
           )}
-          {tier && TierIcon && (
+          {tier && TierIcon && !hideTier && (
             <TierIcon
               size={12}
               className="shrink-0"
               style={{ color: tierColorMap[user.rewardTier!] ?? tier.color }}
             />
+          )}
+          {roleLabel && (
+            <span className="inline-block px-1.5 py-0.5 radius-pill text-[10px] font-semibold bg-error text-error-text uppercase tracking-wider">
+              {roleLabel}
+            </span>
           )}
         </div>
         {showHandle && (

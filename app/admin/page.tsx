@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { RefreshCw, Users, FileText, Shield, Bug, ChevronUp, ChevronDown, Minus, Eye } from "lucide-react"
 import { formatDelta, ADMIN_DASHBOARD_PERIODS } from "@/app/lib/config/admin"
+import { SvgChartContainer, ChartTooltipWrapper } from "@/app/components/ui"
+import { formatChartDate, chartBarColor } from "@/app/lib/config/charts"
 
 interface AdminStats {
   totalUsers: number
@@ -97,7 +99,11 @@ export default function AdminDashboard() {
     return `${Math.round(x)},${Math.round(y)}`
   })
 
-  const barColors = ["var(--color-primary)", "var(--color-warning-border)", "var(--color-primary)", "var(--color-info-text)", "var(--color-warning-border)"]
+  // Hover-tooltip columns for the signups line (one per day, config-formatted).
+  const signupColumns = signups7d.map((d) => ({
+    title: formatChartDate(d.date),
+    lines: [{ label: "Signups", value: d.count, color: "var(--color-primary)" }],
+  }))
 
   const cards = [
     { label: "Total Users", value: stats.totalUsers, display: stats.totalUsers.toLocaleString(), delta: stats.deltas?.totalUsers ?? null, icon: <Users size={18} />, bg: "var(--color-primary-muted)", color: "var(--color-primary)" },
@@ -148,6 +154,14 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <div className="text-[24px] sm:text-[28px] font-bold leading-tight truncate">{stat.display}</div>
+              <ChartTooltipWrapper
+                title={stat.label}
+                lines={[
+                  { label: "Current", value: stat.display },
+                  { label: "Trend vs previous period", value: trend.label },
+                ]}
+                className="text-xs font-semibold inline-flex items-center gap-1 truncate"
+              >
               <div
                 title={trend.direction === "flat" ? "No meaningful change in this period" : `Trend: ${trend.label} vs previous period`}
                 className={`text-xs font-semibold inline-flex items-center gap-1 truncate ${
@@ -158,6 +172,7 @@ export default function AdminDashboard() {
                 <span className="truncate">{trend.label}</span>
                 <span className="font-normal text-text-muted truncate">vs prev</span>
               </div>
+              </ChartTooltipWrapper>
             </div>
           )
         })}
@@ -173,7 +188,12 @@ export default function AdminDashboard() {
           </div>
           <div className="overflow-x-auto">
             <div className="min-w-[320px]" style={{ position: "relative" }}>
-              <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: "100%", height: "160px", overflow: "visible" }} role="img" aria-label="Signups over the last 7 days">
+              <SvgChartContainer
+                title={`Signups over the last ${activePeriod} days`}
+                columns={signupColumns}
+                count={signups7d.length}
+              >
+              <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: "100%", height: "160px", overflow: "visible" }} role="img" aria-label={`Signups over the last ${activePeriod} days`}>
                 <line x1={padL} y1={svgH - padB} x2={svgW - padR} y2={svgH - padB} stroke="var(--color-border)" strokeWidth="1" />
                 {[0.25, 0.5, 0.75].map(ratio => {
                   const y = padT + plotH - ratio * plotH
@@ -189,7 +209,9 @@ export default function AdminDashboard() {
                   const y = padT + plotH - (d.count / maxSignup) * (plotH - 20) - 10
                   const isLast = i === signups7d.length - 1
                   return (
-                    <circle key={d.date} cx={Math.round(x)} cy={Math.round(y)} r={isLast ? 4 : 3.5} fill={isLast ? "var(--color-primary)" : "#fff"} stroke="var(--color-primary)" strokeWidth="2.5" />
+                    <circle key={d.date} cx={Math.round(x)} cy={Math.round(y)} r={isLast ? 4 : 3.5} fill={isLast ? "var(--color-primary)" : "#fff"} stroke="var(--color-primary)" strokeWidth="2.5">
+                      <title>{`${d.count} signup${d.count === 1 ? "" : "s"} on ${formatChartDate(d.date)}`}</title>
+                    </circle>
                   )
                 })}
                 {signups7d.map((d, i) => {
@@ -206,6 +228,7 @@ export default function AdminDashboard() {
                   )
                 })}
               </svg>
+              </SvgChartContainer>
             </div>
           </div>
         </div>
@@ -219,16 +242,21 @@ export default function AdminDashboard() {
           </div>
           <div className="flex flex-col gap-2.5">
             {topPosts.map((post, i) => (
-              <div key={post.id} className="flex items-center gap-2.5 min-w-0">
+              <ChartTooltipWrapper
+                key={post.id}
+                title={post.title}
+                lines={[{ label: "Validity score", value: post.validityScore, color: chartBarColor(i) }]}
+                className="flex items-center gap-2.5 min-w-0 w-full"
+              >
                 <Link href={`/posts/${post.id}`} className="text-xs font-medium flex-1 min-w-0 truncate no-underline hover:underline text-text-primary" title={post.title}>{post.title}</Link>
                 <div className="flex-1 min-w-[60px] h-5 bg-bg-elevated radius-pill overflow-hidden">
                   <div
                     className="h-full radius-pill"
-                    style={{ width: `${post.validityScore}%`, background: barColors[i % barColors.length], transition: "width 200ms" }}
+                    style={{ width: `${post.validityScore}%`, background: chartBarColor(i), transition: "width 200ms" }}
                   />
                 </div>
                 <span className="text-xs font-semibold text-text-secondary w-10 text-right shrink-0">{post.validityScore}</span>
-              </div>
+              </ChartTooltipWrapper>
             ))}
             {topPosts.length === 0 && (
               <div className="text-sm text-text-muted text-center py-4">No posts yet</div>

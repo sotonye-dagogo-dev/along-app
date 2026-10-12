@@ -5,6 +5,8 @@ import Link from "next/link"
 import { Eye, Heart, Award, TrendingUp } from "lucide-react"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { SvgChartContainer, ChartTooltipWrapper } from "@/app/components/ui"
+import { formatChartDate, chartSeriesColor, chartBarColor } from "@/app/lib/config/charts"
 
 interface KpiData {
   totalViews: number
@@ -168,6 +170,21 @@ export default function AnalyticsPage() {
   const likesLine = data.engagementData.find(s => s.label === "Likes")
   const bookmarksLine = data.engagementData.find(s => s.label === "Bookmarks")
 
+  // Shared hover-tooltip columns: one per date, all three series together.
+  // Falls back gracefully when a series is missing for a date.
+  const engagementColumns = (viewsLine?.data ?? likesLine?.data ?? bookmarksLine?.data ?? []).map((d, i) => ({
+    title: formatChartDate(d.date),
+    lines: [
+      { label: "Views", value: viewsLine?.data[i]?.count ?? 0, color: chartSeriesColor("views") },
+      { label: "Likes", value: likesLine?.data[i]?.count ?? 0, color: chartSeriesColor("likes") },
+      { label: "Bookmarks", value: bookmarksLine?.data[i]?.count ?? 0, color: chartSeriesColor("bookmarks") },
+    ],
+  }))
+  const followerColumns = data.followerGrowth.map((d) => ({
+    title: formatChartDate(d.date),
+    lines: [{ label: "Followers", value: d.count, color: chartSeriesColor("followers") }],
+  }))
+
   return (
     <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-8 flex flex-col gap-6">
       <div className="flex items-center justify-between">
@@ -228,6 +245,11 @@ export default function AnalyticsPage() {
             ))}
           </div>
           <div className="an-svg-chart" style={{ position: "relative" }}>
+            <SvgChartContainer
+              title="Engagement over time"
+              columns={engagementColumns}
+              count={engagementColumns.length}
+            >
             <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: "100%", height: "150px", overflow: "visible" }}>
               <line x1={padL} y1={svgH - padB} x2={svgW - padR} y2={svgH - padB} stroke="var(--color-border)" strokeWidth="1" />
               <g dangerouslySetInnerHTML={{ __html: gridLines }} />
@@ -239,6 +261,7 @@ export default function AnalyticsPage() {
               {bookmarksLine && <g dangerouslySetInnerHTML={{ __html: makeLine(bookmarksLine.data, "var(--color-info-text)", 0.6)?.dots ?? "" }} />}
               {viewsLine && <g dangerouslySetInnerHTML={{ __html: renderXLabels(viewsLine.data) }} />}
             </svg>
+            </SvgChartContainer>
           </div>
         </div>
 
@@ -249,15 +272,23 @@ export default function AnalyticsPage() {
           </div>
           <div className="flex flex-col gap-2">
             {data.topPosts.map((post, i) => {
-              const colors = ["var(--color-primary)", "var(--color-error-text)", "var(--color-info-text)", "var(--color-warning-border)", "var(--color-text-muted)"]
               return (
-                <div key={post.id} className="flex items-center gap-2">
+                <ChartTooltipWrapper
+                  key={post.id}
+                  title={post.title}
+                  lines={[
+                    { label: "Validity score", value: post.validityScore, color: chartBarColor(i) },
+                    { label: "Likes", value: post.likes, color: chartSeriesColor("likes") },
+                    { label: "Views", value: post.views, color: chartSeriesColor("views") },
+                  ]}
+                  className="flex items-center gap-2 w-full"
+                >
                   <Link href={`/posts/${post.id}`} className="text-xs font-medium flex-1 min-w-0 truncate no-underline hover:underline text-text-primary">{post.title}</Link>
                   <div className="flex-1 h-[18px] bg-bg-elevated radius-pill overflow-hidden">
-                    <div className="h-full radius-pill" style={{ width: `${post.validityScore}%`, background: colors[i % colors.length], transition: "width 200ms" }} />
+                    <div className="h-full radius-pill" style={{ width: `${post.validityScore}%`, background: chartBarColor(i), transition: "width 200ms" }} />
                   </div>
                   <span className="text-[11px] font-semibold text-text-secondary w-9 text-right shrink-0">{post.validityScore}</span>
-                </div>
+                </ChartTooltipWrapper>
               )
             })}
             {data.topPosts.length === 0 && (
@@ -276,6 +307,11 @@ export default function AnalyticsPage() {
             </span>
           </div>
           <div className="an-svg-chart" style={{ position: "relative" }}>
+            <SvgChartContainer
+              title="Follower growth"
+              columns={followerColumns}
+              count={followerColumns.length}
+            >
             <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: "100%", height: "150px", overflow: "visible" }}>
               <line x1={padL} y1={svgH - padB} x2={svgW - padR} y2={svgH - padB} stroke="var(--color-border)" strokeWidth="1" />
               <g dangerouslySetInnerHTML={{ __html: gridLines }} />
@@ -286,6 +322,7 @@ export default function AnalyticsPage() {
                 <g dangerouslySetInnerHTML={{ __html: renderXLabels(data.followerGrowth) }} />
               )}
             </svg>
+            </SvgChartContainer>
           </div>
         </div>
 
