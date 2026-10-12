@@ -728,3 +728,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** encode lifecycle visibility as config + pure predicates (`ADMIN_USER_FILTERS`, `allowedUserRowActions`/`canShowUserRowAction`) consumed by BOTH the UI (dropdown builder) and the API (target partition + honest skip counts); build one metadata-driven dropdown (`AppTableRowActions` over `AppDropdown` with `className` passthrough) so colors survive the move and every table shares the compact trigger. Filters that are complements of others (Active = NOT pending AND NOT deleted) combine with search via AND, never by replacing the search clause.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 45: tooltips need one shared host, and Number(null) is 0
+- **Symptom:** charts had no hover detail (only native `<title>` on string-built SVG dots, nothing on bars); a live check showed `formatChartCount(null)` rendering `"0"` — a fake zero in a tooltip.
+- **Root causes:** (1) every chart hand-rolled its own SVG strings, so there was no shared hover layer — tooltips were impossible without per-page rewrites; (2) `Number(null) === 0` / `Number("") === 0`, so naive `Number()` coercion turns missing data into a confident zero.
+- **Fix pattern (reuse):** build one mouse-follow tooltip host (`SvgChartContainer` maps pointer-x → nearest column; `ChartTooltipWrapper` for HTML rows) fed by one colour/format registry, and keep native `<title>` as the no-JS fallback; in every formatter, reject `null`/`undefined`/`""` BEFORE numeric coercion and let genuine `0` pass through. Live-verify pure helpers with `node --experimental-strip-types` when jest can't run in the runner.
+- **Supersedes:** None
+- **Superseded by:** None

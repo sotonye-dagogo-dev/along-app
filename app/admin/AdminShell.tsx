@@ -7,6 +7,7 @@ import { useAuth } from "@/app/hooks/useAuth"
 import { isAdminRole } from "@/app/lib/config/navigation"
 import { ADMIN_LAYOUT_CONFIG } from "@/app/lib/config/admin"
 import { AppPageLoader } from "@/app/components/ui"
+import { AppAvatar, AppUserLabel } from "@/app/components/ui"
 import AppLogo from "@/app/components/ui/AppLogo"
 import {
   LayoutDashboard, Users, FileText, Settings, Bug, Shield,
@@ -16,6 +17,7 @@ import {
 
 const adminNavItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/deletions", label: "Deletions", icon: UserX },
   { href: "/admin/posts", label: "Posts", icon: FileText },
@@ -110,39 +112,63 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <>
       <Link
         href="/home"
-        className={`px-5 py-6 pb-4 no-underline flex items-center ${isCollapsed && !isMobile ? "justify-center px-2" : ""}`}
+        className={`px-5 py-6 pb-4 no-underline flex items-center shrink-0 ${isCollapsed && !isMobile ? "justify-center px-2" : ""}`}
       >
         <AppLogo size="md" showText={!isCollapsed || isMobile} variant="icon" />
       </Link>
 
-      {topNavItems.map((item) => (
-        <NavLink key={item.href} href={item.href} label={item.label} Icon={item.icon}
-          active={pathname === item.href} collapsed={isCollapsed && !isMobile} />
-      ))}
-
-      <div className="h-px bg-border mx-4 my-3" />
-      {(!isCollapsed || isMobile) && (
-        <div className="text-[11px] font-medium uppercase tracking-wider text-text-muted px-5 mb-1 truncate">Admin</div>
-      )}
-
-      <nav aria-label="Admin sections" className="flex flex-col overflow-y-auto overflow-x-hidden">
-        {adminNavItems.map((item) => (
+      {/* Scrollable links region — grows/shrinks with the viewport so the
+          nav never overflows the sidebar no matter how many items exist. */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col">
+        {topNavItems.map((item) => (
           <NavLink key={item.href} href={item.href} label={item.label} Icon={item.icon}
             active={pathname === item.href} collapsed={isCollapsed && !isMobile} />
         ))}
-      </nav>
 
-      <div className={`mt-auto border-t border-border px-5 py-4 flex items-center gap-2.5 overflow-hidden ${isCollapsed && !isMobile ? "justify-center px-2" : ""}`}>
-        <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-sm font-bold text-primary shrink-0">
-          {user.firstName?.[0]}{user.lastName?.[0]}
-        </div>
+        <div className="h-px bg-border mx-4 my-3 shrink-0" />
         {(!isCollapsed || isMobile) && (
-          <div className="min-w-0">
-            <div className="text-sm font-semibold leading-tight truncate max-w-[140px]">{user.firstName} {user.lastName}</div>
-            <span className="inline-block px-1.5 py-0.5 radius-pill text-[10px] font-semibold bg-error text-error-text uppercase tracking-wider">
-              {user.role === "ADMIN" ? "Admin" : "Mod"}
-            </span>
-          </div>
+          <div className="text-[11px] font-medium uppercase tracking-wider text-text-muted px-5 mb-1 truncate shrink-0">Admin</div>
+        )}
+
+        <nav aria-label="Admin sections" className="flex flex-col">
+          {adminNavItems.map((item) => (
+            <NavLink key={item.href} href={item.href} label={item.label} Icon={item.icon}
+              active={pathname === item.href || (item.href !== "/admin" && pathname?.startsWith(item.href))} collapsed={isCollapsed && !isMobile} />
+          ))}
+        </nav>
+      </div>
+
+      {/* Platform-consistent identity: AppAvatar/AppUserLabel (links to the
+          user's profile) with the admin tag — one modular component owns
+          avatar + profile-link behaviour everywhere. */}
+      <div className={`mt-auto shrink-0 border-t border-border px-5 py-4 flex items-center gap-2.5 overflow-hidden ${isCollapsed && !isMobile ? "justify-center px-2" : ""}`}>
+        {isCollapsed && !isMobile ? (
+          <AppAvatar
+            src={user.avatar ?? undefined}
+            alt={`${user.firstName} ${user.lastName}`}
+            size={32}
+            config={user.avatarConfig ?? undefined}
+            verified={user.verified}
+            linkToProfile={true}
+            userName={user.userName}
+          />
+        ) : (
+          <AppUserLabel
+            user={{
+              firstName: user.firstName,
+              lastName: user.lastName,
+              userName: user.userName,
+              avatar: user.avatar ?? undefined,
+              avatarConfig: user.avatarConfig ?? undefined,
+              isVerified: user.verified,
+              rewardTier: user.rewardTier,
+            }}
+            size="md"
+            showHandle={false}
+            linkToProfile={true}
+            hideTier={true}
+            roleLabel={user.role === "ADMIN" ? "Admin" : "Mod"}
+          />
         )}
       </div>
     </>
@@ -175,7 +201,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <aside className="absolute left-0 top-0 bottom-0 w-[280px] max-w-[85vw] bg-bg-card border-r border-border flex flex-col overflow-y-auto">
+          <aside className="absolute left-0 top-0 bottom-0 w-[280px] max-w-[85vw] bg-bg-card border-r border-border flex flex-col overflow-hidden">
             <div className="flex items-center justify-end px-3 pt-3">
               <button
                 onClick={() => setMobileOpen(false)}
