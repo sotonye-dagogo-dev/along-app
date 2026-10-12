@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
-> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown)
+> - last-verified-against-code: 2026-10-11 (static review + diff review; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -719,5 +719,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** admins could see deletion requests but do nothing with them (only bulk "finalize due"); dashboard KPIs compared mismatched windows (today-vs-yesterday, total-vs-7-days-ago) so a quiet period could still render a trend.
 - **Root causes:** (1) the finalize route exposed one bulk action while the queue UI exposed zero per-row actions — the pipeline existed but had no handles; (2) dashboard deltas were hardcoded to 7-day anchors with no period parameter, so any toggle would have compared apples to oranges.
 - **Fix pattern (reuse):** expose one service function per user intent (request / cancel / finalize-one / delete-now), one API action each, one UI affordance each — all through the same transaction; never offer undo without a real reversal path (say what recovery actually is instead); compare every KPI window against its previous equal-length window and let zero-vs-zero read flat via the existing `pctChange`/`formatDelta` null/zero contract.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 44: view-only is a server rule, not a UI hide + one dropdown component beats N inline action rows
+- **Symptom:** deleted (anonymized) accounts still offered verify / resend-code / make-admin actions that could never meaningfully succeed (recovery is off-platform from backups); tables with 5–8 inline row buttons elongated rows and invited mis-taps.
+- **Root causes:** (1) the row-action allow-list lived implicitly in JSX conditionals with no server counterpart — the UI hid nothing for deleted rows and the API applied verify/role changes to any id; (2) every admin table hand-rolled its own inline button row, so colors, order, and gating diverged per page.
+- **Fix pattern (reuse):** encode lifecycle visibility as config + pure predicates (`ADMIN_USER_FILTERS`, `allowedUserRowActions`/`canShowUserRowAction`) consumed by BOTH the UI (dropdown builder) and the API (target partition + honest skip counts); build one metadata-driven dropdown (`AppTableRowActions` over `AppDropdown` with `className` passthrough) so colors survive the move and every table shares the compact trigger. Filters that are complements of others (Active = NOT pending AND NOT deleted) combine with search via AND, never by replacing the search clause.
 - **Supersedes:** None
 - **Superseded by:** None
