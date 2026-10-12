@@ -16,8 +16,9 @@ export async function GET(request: NextRequest) {
     // Future-proof filter: ?earlyAdopter=true lists the earliest-joined users
     // first (badge qualification order) for rewards/audience tooling.
     const earlyAdopterOnly = searchParams.get("earlyAdopter") === "true";
-    // Deletion lifecycle filters: ?deletion=pending|deleted, ?order=oldest for
+    // Deletion lifecycle filters: ?deletion=pending|deleted|active, ?order=oldest for
     // first-N-by-signup quick selection (earliest createdAt first).
+    // `active` (non-deleted) = neither anonymized nor inside the grace window.
     const deletionFilter = searchParams.get("deletion");
     const oldestFirst = searchParams.get("order") === "oldest";
 
@@ -35,6 +36,25 @@ export async function GET(request: NextRequest) {
       (where as Record<string, unknown>).isDeleted = false;
     } else if (deletionFilter === "deleted") {
       (where as Record<string, unknown>).isDeleted = true;
+    } else if (deletionFilter === "active") {
+      // Non-deleted: neither anonymized nor inside the grace window. Search
+      // combines via AND so text search keeps working under the filter.
+      const clauses: Record<string, unknown>[] = [
+        { isDeleted: false },
+        { deletionScheduledFor: null },
+      ];
+      if (search) {
+        clauses.push({
+          OR: [
+            { firstName: { contains: search, mode: "insensitive" } },
+            { lastName: { contains: search, mode: "insensitive" } },
+            { userName: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+          ],
+        });
+        delete (where as Record<string, unknown>).OR;
+      }
+      (where as Record<string, unknown>).AND = clauses;
     }
 
     if (earlyAdopterOnly && !cursor) {
@@ -145,14 +165,30 @@ export async function PATCH(request: NextRequest) {
     // Capture previous verification state for client-side undo (all paths).
     const previous = await prisma.user.findMany({
       where: { id: { in: targets } },
-      select: { id: true, role: true, verified: true },
+      select: { id: true, role: true, verified: true, isDeleted: true },
     });
+
+    // Deleted (fully anonymized) accounts are view-only: verify / resend /
+    // role changes cannot revive personal data and recovery is off-platform
+    // from backups only. Filter them out defensively (UI hides them too) and
+    // report honestly so bulk callers know what was skipped.
+    const deletedIds = new Set(
+      previous.filter((p) => (p as { isDeleted?: boolean }).isDeleted === true).map((p) => p.id)
+    );
+    const liveTargets = targets.filter((id) => !deletedIds.has(id));
+    const skippedDeleted = targets.length - liveTargets.length;
+    if ((action === "verify" || action === "unverify" || action === "resend-verification" || role) && liveTargets.length === 0) {
+      return NextResponse.json(
+        { error: "Deleted accounts are view-only — no changes applied.", skippedDeleted },
+        { status: 422 }
+      );
+    }
 
     // --- Email-verification actions (additive; role flow below unchanged) ---
     if (action === "verify" || action === "unverify") {
       const next = action === "verify";
       await prisma.user.updateMany({
-        where: { id: { in: targets } },
+        where: { id: { in: liveTargets } },
         data: { verified: next },
       });
       // Notify each affected user (self-addressed VERIFIED on verify so the
@@ -160,7 +196,7 @@ export async function PATCH(request: NextRequest) {
       // recorded so the user knows their status changed).
       try {
         const { createNotification } = await import("@/app/lib/services/notificationService");
-        for (const t of targets) {
+        for (const t of liveTargets) {
           void createNotification({
             type: "VERIFIED",
             actorId: user.id as string,
@@ -173,9 +209,9 @@ export async function PATCH(request: NextRequest) {
       } catch { /* non-critical */ }
       try {
         const { logAudit } = await import("@/app/lib/services/auditService");
-        await logAudit({ actorId: user.id as string, action: `user.${action}`, entity: "user", metadata: { targets, next } });
+        await logAudit({ actorId: user.id as string, action: `user.${action}`, entity: "user", metadata: { targets: liveTargets, next, ...(skippedDeleted ? { skippedDeleted } : {}) } });
       } catch { /* ignore */ }
-      return NextResponse.json({ success: true, updated: targets.length, previous, action }, { status: 200 });
+      return NextResponse.json({ success: true, updated: liveTargets.length, previous, action, ...(skippedDeleted ? { skippedDeleted } : {}) }, { status: 200 });
     }
 
     if (action === "resend-verification") {
@@ -186,7 +222,7 @@ export async function PATCH(request: NextRequest) {
       const appUrl = getAppUrl();
       let emailed = 0;
       const errors: string[] = [];
-      for (const id of targets) {
+      for (const id of liveTargets) {
         try {
           const target = await prisma.user.findUnique({
             where: { id },
@@ -244,7 +280,7 @@ export async function PATCH(request: NextRequest) {
         }
       }
       return NextResponse.json(
-        { success: true, updated: targets.length, emailed, previous, action, ...(errors.length ? { errors } : {}) },
+        { success: true, updated: liveTargets.length, emailed, previous, action, ...(skippedDeleted ? { skippedDeleted } : {}), ...(errors.length ? { errors } : {}) },
         { status: 200 }
       );
     }
@@ -258,7 +294,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     await prisma.user.updateMany({
-      where: { id: { in: targets } },
+      where: { id: { in: liveTargets } },
       data:
         typeof verified === "boolean"
           ? { role: role as "USER" | "ADMIN", verified }
@@ -267,9 +303,9 @@ export async function PATCH(request: NextRequest) {
 
     try {
       const { logAudit } = await import("@/app/lib/services/auditService");
-      await logAudit({ actorId: user.id as string, action: "user.role", entity: "user", metadata: { targets, role, verified: verified ?? null } });
+      await logAudit({ actorId: user.id as string, action: "user.role", entity: "user", metadata: { targets: liveTargets, role, verified: verified ?? null, ...(skippedDeleted ? { skippedDeleted } : {}) } });
     } catch { /* ignore */ }
-    return NextResponse.json({ success: true, updated: targets.length, previous }, { status: 200 });
+    return NextResponse.json({ success: true, updated: liveTargets.length, previous, ...(skippedDeleted ? { skippedDeleted } : {}) }, { status: 200 });
   } catch (error) {
     console.error("Admin user update error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

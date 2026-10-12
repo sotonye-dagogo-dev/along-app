@@ -1970,3 +1970,16 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** runner has no node_modules (npx unavailable) — tsc/jest/build deferred to CI/Vercel; node strip-types suite 9/9 green (periods, parser incl. garbage/clamp, irreversibility + backup copy, formatDelta zero-safety intact); new jest assertions mirror the node suite 1:1 for CI.
 **Compliance:** additive-only, no migration, no new deps, no removed APIs (stats payload only gains fields; finalize route only gains actions; role checks unchanged).
 **Chain:** execute-feature → in-progress (written + cleared below) → session-log (here) → dev-history + task-queue + project-plan → update-ai-system terminal sync.
+
+## Session 2026-10-11 — Deleted view-only gating + Active filter + row-actions dropdown (execute-feature Sprint 44)
+**Directive:** (1) admin users panel — Actions for deleted accounts must not include verify / resend-code / make-admin (view-only; recovery impossible in-app); add a non-deleted filter alongside deleted / deletion-pending; (2) AppTable actions move into a dropdown preserving bg/text colors (long inline action rows elongate rows + invite mis-taps). Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain, with fallbacks/edge cases.
+**Gap analysis (verified in code):** users page hardcoded 3 `DELETION_FILTERS` with no Active option and the API had no `active` branch; row actions were 5–8 inline buttons rendered for every state (deleted rows still offered verify/resend/make-admin) and PATCH applied them to any id; posts/deletions tables had the same inline-row elongation; `AppDropdown` supported only default/destructive variants with no className passthrough, so colors could not survive a move into a menu.
+**Implemented:**
+- Config (`lib/config/admin.ts` + barrel): `ADMIN_USER_FILTERS` + `parseAdminUserFilter`/`deletionQueryForFilter`; `ADMIN_USER_ROW_ACTIONS` + `isDeletedAdminUser`/`allowedUserRowActions`/`canShowUserRowAction`; `ADMIN_TABLE_ACTIONS_META`.
+- API (`app/api/admin/users/route.ts`): `?deletion=active` branch (AND-combined with search); PATCH partitions live vs deleted, 422 when all-deleted, `skippedDeleted` on partials; notifications/audit use live targets.
+- UI shared: `AppDropdown` className/disabled/title/ariaLabel passthrough; NEW `AppTableRowActions` (+ barrel type exports).
+- UI pages: users (config tablist + counts, dropdown cell, bulk live/deleted partition + skip toasts), posts (Edit/Hide/View/Delete dropdown), deletions (View/Reverse/Delete-now dropdown).
+- Tests: `config/admin.test.ts` +2 suites.
+**QA:** runner has no node_modules — tsc/jest/build deferred to CI/Vercel; static review clean (exports, icons on lucide 0.469, closure order, AND-search); new assertions mirror for CI.
+**Compliance:** additive-only, no migration, no new deps, no removed APIs (optional filter value/fields, additive component, preserved button colors as item classNames).
+**Chain:** execute-feature → session-log (here) → dev-history + lessons-learned + repo-map + dependency-graph + system-architecture → update-ai-system terminal sync.

@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
-> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown)
+> - last-verified-against-code: 2026-10-11 (static review + diff review; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1174,3 +1174,14 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `config/admin.test.ts` +3 suites (period parity, parser clamps, deletion copy).
 **QA:** no node_modules in runner (tsc/jest/build deferred to CI/Vercel); node strip-types checks 9/9 green; jest additions mirror them for CI.
 **Compliance:** additive-only, no migration/deps/API removals (new query param optional, new response fields optional, new finalize actions additive).
+
+## Sprint 44 (2026-10-11) — Deleted-account view-only gating + Active filter + row-actions dropdown
+**Directive:** admin users panel — deleted accounts must not offer verify / resend-code / make-admin (view-only; recovery is off-platform); add a non-deleted (Active) filter alongside All / Deletion pending / Deleted; move AppTable row actions into a dropdown that preserves bg/text colors so long action lists stop elongating rows and prevent mis-taps. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- Config (`lib/config/admin.ts`, barrel re-exported): `ADMIN_USER_FILTERS` (All/Active/Pending/Deleted + descriptions + `parseAdminUserFilter`/`deletionQueryForFilter`), `ADMIN_USER_ROW_ACTIONS` (action ids + deleted-hidden list + view-only note) + pure never-throw `isDeletedAdminUser`/`allowedUserRowActions`/`canShowUserRowAction` (deleted → `["view"]`; pending swaps request→reverse), `ADMIN_TABLE_ACTIONS_META` (trigger copy/align/empty).
+- API (`GET/PATCH /api/admin/users`): `?deletion=active` = `isDeleted:false AND deletionScheduledFor:null` (AND-combined with text search so search keeps working); PATCH verify/unverify/resend/role partitions targets into live vs deleted, applies only to live, returns 422 when all-deleted and honest `skippedDeleted` counts on partials; audit metadata + notifications use live targets.
+- UI shared: `AppDropdown` += additive `className`/`disabled`/`disabledReason`/`title`/`ariaLabel` passthrough (colors preserved per item, destructive variant untouched); NEW `AppTableRowActions` (`TableRowAction` metadata: id/label/icon/className/variant/disabled/href/onSelect, never-throw builder, compact `···` trigger, stopPropagation-safe, empty → `—`).
+- UI pages: users table tablist now config-driven with live counts, actions cell replaced by the dropdown (deleted rows render View-only); bulk verify/role/suspend/delete partition the selection (deleted skipped with honest toast); posts table (Edit/Hide-View-Delete) and deletions queue (View/Reverse/Delete-now) migrated to the same dropdown with colors preserved.
+- Tests: `config/admin.test.ts` +2 suites (filter ids/parse/query; deleted view-only gating incl. active-vs-pending sets + dropdown meta).
+**QA:** no node_modules in runner (tsc/jest/build deferred to CI/Vercel like recent sprints); changed-file review clean (imports/exports — incl. new `TableRowAction` barrel type — icon availability on lucide-react 0.469, closure-order safety on deletions helper, AND-search composition on the active filter); new assertions mirror for CI.
+**Compliance:** additive-only, no migration/deps/API removals (new filter value optional, new response field optional, new component additive, old button classes preserved as item classNames).

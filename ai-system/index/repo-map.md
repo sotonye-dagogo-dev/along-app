@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
-> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown)
+> - last-verified-against-code: 2026-10-11 (static review + diff review; tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
 > **Overview:** Complete folder structure of the Along monorepo with purpose descriptions for each directory. This file is **auto-regenerable** — use tool-based discovery (filesystem MCP, git ls-tree) for ground truth, and treat manual entries here as supplementary context, not primary navigation.
@@ -55,7 +55,7 @@ along-app/
 │   ├── generated/           → Code-generated files
 │   ├── (auth)/              → Auth pages (login, register, OTP)
 │   ├── (dashboard)/         → Main app (feed, explore, search, profile, leaderboard, marketplace, etc.)
-│   ├── admin/               → Admin dashboard (period toggle 7/30/90 wired to stats KPIs + chart [Sprint 43]; posts incl. Edit modal [Sprint 37]; user Request/Reverse/Delete-now [Sprint 43]; deletions queue with per-row Reverse/Delete-now [Sprint 43]; audit trail table [Sprint 37])
+│   ├── admin/               → Admin dashboard (period toggle 7/30/90 wired to stats KPIs + chart [Sprint 43]; posts incl. Edit modal [Sprint 37]; users table with Active/Pending/Deleted filters + deleted view-only gating + row-actions dropdown [Sprint 44]; deletions queue with per-row Reverse/Delete-now dropdown [Sprint 44]; audit trail table [Sprint 37])
 │   ├── (public)/            → Landing, about, contact, legal, faq, blog
 │   │   ├── faq/             → FAQ page with categorized Q&A
 │   │   ├── blog/            → Blog listing page
@@ -90,7 +90,7 @@ along-app/
 │   │   │   ├── rewards/
 │   │   │   └── validity-recompute/
 │   ├── components/          → React components
-│   │   ├── ui/              → 42 App* universal component wrappers + SuggestionsPanel (live)
+│   │   ├── ui/              → 43 App* universal component wrappers + SuggestionsPanel (live) — incl. NEW AppTableRowActions (metadata-driven row-actions dropdown, className-preserving) + AppDropdown className/disabled/title passthrough [Sprint 44]
 │   │   └── features/        → Domain-specific components (comments [CommentInput caret-explicit + AppAvatar, CommentList AppAvatar rows, PostCommentsModal shared feed/profile/search/detail (Sprint 39)], posts incl. LiveNavigationModal floating map+guide overlay [Sprint 28], RequestRouteModal/RequestRouteTrigger/RouteDraftsPanel (restore/update/delete)/ShareRouteModal edit mode + draft update-vs-new prompt, MapPins [MapRoutePin/MapUserDot anchor-stable], moderation [PostMenu owner-only Edit/Archive/Delete (Sprint 37), ReportDialog], profile [RewardsPanel, EarlyAdopterBadge, AuthLinkPanel, EmailSecurityPanel (verify/change-email/change-password, gated)], reviews [ReviewsPanel form+list+FAQ (own + read-only author-scoped)] [Sprint 25], explore [ExploreSearchInput unified suggestions + recents (Sprint 39)], suggestions [EndlessCarousel, SuggestionsRail, FollowButton], events [frozen])
 │   ├── lib/                 → Shared code
 │   │   ├── services/        → 27 service modules (post detail richness scorer + context derivation [Sprint 40], errorReport prefill builder + bug-report URL [Sprint 40], corroboration evidence blend single+batched + create-path reuse [Sprint 38], mediaCleanup ACID-safe Cloudinary orphan purge [Sprint 33], trustBreakdown canonical single+batched live breakdowns [Sprint 32], postShare universal Web-Share→clipboard→legacy [Sprint 31], mapProxy keyless trace/geocode/reverse, earlyAdopter rank/status/list, errorReport sanitized bug filing, feed, search, routeDrafts, postModeration, mention, referral, notification, push sub, QStash, rewards, email, OTP/reset-token stores, etc.)

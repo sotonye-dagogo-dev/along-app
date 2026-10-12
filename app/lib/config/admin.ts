@@ -40,6 +40,151 @@ export const ADMIN_BULK_SELECT_META = {
 export type AdminBulkActionId = (typeof ADMIN_BULK_SELECT_META.actions)[number];
 
 /**
+ * Admin users deletion-lifecycle filters — metadata-driven so the tablist,
+ * the API `?deletion=` query value, and future filters stay in one place.
+ * `active` (non-deleted) is the complement of `pending` + `deleted`: accounts
+ * that are neither anonymized nor inside the 7-day grace window.
+ */
+export const ADMIN_USER_FILTERS = {
+  options: [
+    { id: "all", label: "All", query: null, description: "Every account including archived and deleted." },
+    { id: "active", label: "Active", query: "active", description: "Non-deleted accounts with no pending deletion request." },
+    { id: "pending", label: "Deletion pending", query: "pending", description: "Accounts inside the 7-day reversible grace window." },
+    { id: "deleted", label: "Deleted", query: "deleted", description: "Fully anonymized accounts (no in-app recovery)." },
+  ],
+  defaultFilter: "all",
+} as const;
+
+export type AdminUserFilterId =
+  (typeof ADMIN_USER_FILTERS.options)[number]["id"];
+
+/** Normalize a raw filter id (tab state, query param) to a known option. */
+export function parseAdminUserFilter(raw: unknown): AdminUserFilterId {
+  const id = String(raw ?? "").trim().toLowerCase();
+  const known = ADMIN_USER_FILTERS.options.find((o) => o.id === id);
+  return (known?.id ?? ADMIN_USER_FILTERS.defaultFilter) as AdminUserFilterId;
+}
+
+/** Resolve the `?deletion=` query value for a filter id (null = no filter). */
+export function deletionQueryForFilter(filterId: string): string | null {
+  const found = ADMIN_USER_FILTERS.options.find((o) => o.id === filterId);
+  return found ? (found.query as string | null) : null;
+}
+
+/**
+ * Per-row admin user action ids. Deleted (fully anonymized) accounts expose
+ * view-only — verify / resend-code / role changes cannot revive personal data
+ * and recovery is off-platform from backups only.
+ */
+export const ADMIN_USER_ROW_ACTIONS = {
+  ids: [
+    "verify",
+    "unverify",
+    "resend",
+    "makeAdmin",
+    "demote",
+    "view",
+    "requestDeletion",
+    "cancelDeletion",
+    "deleteNow",
+  ],
+  /** Actions stripped for fully-deleted accounts (everything except view). */
+  deletedHidden: [
+    "verify",
+    "unverify",
+    "resend",
+    "makeAdmin",
+    "demote",
+    "requestDeletion",
+    "cancelDeletion",
+    "deleteNow",
+  ],
+  viewOnlyFallbackNote:
+    "Deleted accounts are view-only — recovery is handled off-platform from backups.",
+} as const;
+
+export type AdminUserRowActionId =
+  (typeof ADMIN_USER_ROW_ACTIONS.ids)[number];
+
+export interface AdminUserDeletionState {
+  isDeleted?: boolean | null;
+  deletionScheduledFor?: string | null;
+}
+
+/** True when the account is fully anonymized (post-grace, irreversible in-app). */
+export function isDeletedAdminUser(
+  user: AdminUserDeletionState | null | undefined
+): boolean {
+  try {
+    return (user as { isDeleted?: unknown })?.isDeleted === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Pure allow-list for row actions given deletion state. Never throws —
+ * unknown states fall back to the pre-change (full) set minus nothing, and
+ * deleted always collapses to view-only.
+ */
+export function allowedUserRowActions(
+  user: AdminUserDeletionState | null | undefined
+): AdminUserRowActionId[] {
+  if (isDeletedAdminUser(user)) return ["view"];
+  const pending = Boolean(
+    !isDeletedAdminUser(user) &&
+      (user as { deletionScheduledFor?: unknown } | null | undefined)
+        ?.deletionScheduledFor
+  );
+  if (pending) {
+    return [
+      "verify",
+      "unverify",
+      "resend",
+      "makeAdmin",
+      "demote",
+      "view",
+      "cancelDeletion",
+      "deleteNow",
+    ];
+  }
+  return [
+    "verify",
+    "unverify",
+    "resend",
+    "makeAdmin",
+    "demote",
+    "view",
+    "requestDeletion",
+    "deleteNow",
+  ];
+}
+
+/** Convenience: should this action id render for the given user? */
+export function canShowUserRowAction(
+  actionId: string,
+  user: AdminUserDeletionState | null | undefined
+): boolean {
+  try {
+    return (allowedUserRowActions(user) as string[]).includes(actionId);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Row-actions dropdown metadata — one compact trigger keeps long action lists
+ * from elongating rows and prevents mis-taps. Colors are preserved per item
+ * via `className` passthrough (see AppTableRowActions).
+ */
+export const ADMIN_TABLE_ACTIONS_META = {
+  triggerLabel: "Row actions",
+  triggerAriaLabel: "Open row actions",
+  align: "end",
+  emptyLabel: "—",
+} as const;
+
+/**
  * Dashboard data-period toggle — mirrors the user analytics period selector
  * (7/30/90 days) so overview KPIs + signups chart actualize end-to-end.
  * `GET /api/admin/stats?period=` accepts these values; default keeps the

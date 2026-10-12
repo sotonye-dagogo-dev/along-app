@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { Trash2, Archive, ArchiveRestore, Flag, Pencil } from "lucide-react"
+import { Trash2, Archive, ArchiveRestore, Flag, Pencil, Eye } from "lucide-react"
 import { modalService } from "@/app/lib/services/modalService"
 import { toastService } from "@/app/lib/services/toastService"
 import { undoService } from "@/app/lib/services/undoService"
-import { AppModal, AppInput, AppTextarea, AppButton } from "@/app/components/ui"
+import { AppModal, AppInput, AppTextarea, AppButton, AppTableRowActions, type TableRowAction } from "@/app/components/ui"
 import { POST_ACTIONS_CONFIG, MODERATION_CONFIG } from "@/app/lib/config"
 import { ADMIN_BULK_SELECT_META } from "@/app/lib/config/admin"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
@@ -282,6 +282,49 @@ export default function AdminPostsPage() {
 
   const allSelected = posts.length > 0 && posts.every((p) => bulk.selected.has(p.id))
 
+  /** Compact dropdown keeps 3 actions from elongating the row; colors preserved per item. */
+  const buildPostRowActions = (p: AdminPost): TableRowAction[] => {
+    try {
+      return [
+        {
+          id: "edit",
+          label: "Edit",
+          icon: Pencil,
+          title: `Edit ${p.title}`,
+          className: "bg-bg-elevated text-text-secondary",
+          onSelect: () => openEdit(p),
+        },
+        {
+          id: p.isArchived ? "restore" : "archive",
+          label: p.isArchived ? "Restore" : "Hide",
+          icon: p.isArchived ? ArchiveRestore : Archive,
+          title: p.isArchived ? "Restore post" : "Archive post",
+          className: "bg-bg-elevated text-text-secondary",
+          onSelect: () => handleArchiveToggle(p),
+        },
+        {
+          id: "view",
+          label: "View",
+          icon: Eye,
+          title: "View post",
+          className: "bg-bg-elevated text-text-secondary",
+          href: `/posts/${p.id}`,
+        },
+        {
+          id: "delete",
+          label: "Delete",
+          icon: Trash2,
+          variant: "destructive",
+          title: "Delete post",
+          className: "bg-error text-error-text",
+          onSelect: () => handleDelete(p),
+        },
+      ]
+    } catch {
+      return []
+    }
+  }
+
   return (
     <div className="min-w-0 flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-1 min-w-0">
@@ -376,29 +419,7 @@ export default function AdminPostsPage() {
                   {new Date(p.createdAt).toLocaleDateString()}
                 </td>
                 <td className="px-4 py-3 border-b border-border whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1.5 flex-wrap">
-                    <button
-                      onClick={() => openEdit(p)}
-                      aria-label={`Edit ${p.title}`}
-                      className="inline-flex items-center gap-1 px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border cursor-pointer hover:border-primary-muted hover:text-primary transition-all duration-fast"
-                    >
-                      <Pencil size={10} />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleArchiveToggle(p)}
-                      className="inline-flex items-center gap-1 px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border cursor-pointer hover:border-primary-muted hover:text-primary transition-all duration-fast"
-                    >
-                      {p.isArchived ? <ArchiveRestore size={10} /> : <Archive size={10} />}
-                      {p.isArchived ? "Restore" : "Hide"}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p)}
-                      className="inline-flex items-center gap-1 px-2 py-1 radius-sm text-[10px] font-semibold bg-error text-error-text border-none cursor-pointer hover:bg-error-text hover:text-text-inverse transition-all duration-fast"
-                    >
-                      <Trash2 size={10} /> Delete
-                    </button>
-                  </span>
+                  <AppTableRowActions actions={buildPostRowActions(p)} align="end" ariaLabel={`Actions for ${p.title}`} />
                 </td>
               </tr>
               )

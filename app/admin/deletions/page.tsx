@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { RefreshCw, UserX } from "lucide-react";
+import { RefreshCw, UserX, Undo2, Trash2, Eye } from "lucide-react";
 import { toastService } from "@/app/lib/services/toastService";
 import { modalService } from "@/app/lib/services/modalService";
 import { undoService } from "@/app/lib/services/undoService";
+import { AppTableRowActions, type TableRowAction } from "@/app/components/ui";
 import { ADMIN_USER_DELETION_META } from "@/app/lib/config/admin";
 
 interface DeletionRequest {
@@ -130,6 +131,46 @@ export default function AdminDeletionsPage() {
     });
   };
 
+  /** Compact dropdown for the Reverse/Delete-now pair (colors preserved). */
+  const buildDeletionRowActions = (r: DeletionRequest): TableRowAction[] => {
+    const busy = rowBusy === r.id;
+    try {
+      return [
+        {
+          id: "view",
+          label: "View profile",
+          icon: Eye,
+          title: "View profile",
+          className: "bg-bg-elevated text-text-secondary",
+          href: `/profile/${encodeURIComponent(r.originalUserName)}`,
+        },
+        {
+          id: "reverse",
+          label: busy ? "Working…" : "Reverse",
+          icon: Undo2,
+          title: "Reverse this request — restores the account (undo available)",
+          className: "bg-bg-elevated text-text-secondary",
+          disabled: busy,
+          disabledReason: "Request in progress…",
+          onSelect: () => handleCancelOne(r),
+        },
+        {
+          id: "deleteNow",
+          label: busy ? "Working…" : "Delete now",
+          icon: Trash2,
+          variant: "destructive",
+          title: "Delete now — skips grace, anonymizes immediately (irreversible in-app)",
+          className: "bg-error text-error-text",
+          disabled: busy,
+          disabledReason: "Request in progress…",
+          onSelect: () => handleFinalizeOne(r),
+        },
+      ];
+    } catch {
+      return [];
+    }
+  };
+
   /**
    * Destructive safe deletion for one pending request: skips the remaining
    * grace and anonymizes immediately via the same pipeline. Warning modal is
@@ -250,24 +291,11 @@ export default function AdminDeletionsPage() {
                 </td>
                 <td className="px-4 py-3 border-b border-border whitespace-nowrap">
                   {r.status === "PENDING" ? (
-                    <div className="flex gap-1 flex-wrap">
-                      <button
-                        onClick={() => handleCancelOne(r)}
-                        disabled={rowBusy === r.id}
-                        title="Reverse this request — restores the account (undo available)"
-                        className="px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border cursor-pointer hover:text-primary transition-all duration-fast disabled:opacity-50"
-                      >
-                        {rowBusy === r.id ? "Working…" : "Reverse"}
-                      </button>
-                      <button
-                        onClick={() => handleFinalizeOne(r)}
-                        disabled={rowBusy === r.id}
-                        title="Delete now — skips grace, anonymizes immediately (irreversible in-app)"
-                        className="px-2 py-1 radius-sm text-[10px] font-semibold bg-error text-error-text border-none cursor-pointer hover:opacity-80 transition-all duration-fast disabled:opacity-50"
-                      >
-                        {rowBusy === r.id ? "Working…" : "Delete now"}
-                      </button>
-                    </div>
+                    <AppTableRowActions
+                      actions={buildDeletionRowActions(r)}
+                      align="end"
+                      ariaLabel={`Actions for deletion request ${r.originalUserName}`}
+                    />
                   ) : (
                     <span className="text-[10px] text-text-muted">—</span>
                   )}

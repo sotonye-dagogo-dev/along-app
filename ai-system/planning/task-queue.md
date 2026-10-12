@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle)
-> - last-verified-against-code: 2026-10-11 (node strip-types config suite 9/9; tsc/jest/build deferred to CI — no node_modules in runner)
-> - last-synced: 2026-10-11 (Sprint 43 admin destructive user deletion + dashboard period toggle — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown)
+> - last-verified-against-code: 2026-10-11 (static review + diff review; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-synced: 2026-10-11 (Sprint 44 deleted-account view-only gating + Active filter + AppTableRowActions dropdown — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
