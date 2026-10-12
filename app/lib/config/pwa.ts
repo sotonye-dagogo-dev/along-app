@@ -152,6 +152,71 @@ export const PWA_PUSH_DEFAULTS = {
 } as const;
 
 /**
+ * Install-prompt registry — single source of truth for the PWA "install"
+ * notice. Zero app deps (config layer only).
+ *
+ * The notice must (a) use the deferred beforeinstallprompt when the browser
+ * offers it, (b) explain manual install (Add to Home Screen / address-bar
+ * icon) when it doesn't (notably iOS), and (c) stay hidden once resolved —
+ * via local flags, not server state (guests can install too).
+ */
+export interface PwaInstallConfig {
+  storage: {
+    /** Set when the app is installed (appinstalled event / standalone). */
+    installedKey: string;
+    /** Timestamp of the last user dismissal (respected for dismissTtlMs). */
+    dismissedAtKey: string;
+    /** How long a dismissal hides the prompt. */
+    dismissTtlMs: number;
+  };
+  copy: {
+    title: string;
+    body: string;
+    install: string;
+    installing: string;
+    later: string;
+    installedToast: string;
+    dismissed: string;
+    iosHelp: string;
+    manualHelp: string;
+    howTo: string;
+  };
+}
+
+export const PWA_INSTALL_CONFIG: PwaInstallConfig = {
+  storage: {
+    installedKey: "along-pwa-installed",
+    dismissedAtKey: "along-pwa-dismissed-at",
+    dismissTtlMs: 14 * 24 * 60 * 60 * 1000, // 14 days
+  },
+  copy: {
+    title: "Install Along",
+    body: "Add Along to your home screen for fast, offline-friendly access.",
+    install: "Install app",
+    installing: "Installing…",
+    later: "Not now",
+    installedToast: "Along installed — see you on the home screen.",
+    dismissed: "Dismiss install prompt",
+    iosHelp: "On iPhone: tap Share → Add to Home Screen, then open Along from your home screen.",
+    manualHelp: "Open your browser menu → Install / Add to Home Screen, then open Along from there.",
+    howTo: "How to install",
+  },
+};
+
+/** True when the page already runs as an installed PWA (standalone). */
+export function isStandaloneDisplay(): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    if (window.matchMedia?.("(display-mode: standalone)").matches) return true;
+    const nav = window.navigator as unknown as { standalone?: boolean };
+    if (typeof nav.standalone === "boolean" && nav.standalone) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * In-app notification type → push payload. Mirrors every in-app type (and
  * every emailed type) so push, in-app, and email stay in lockstep. Non-critical:
  * unknown future types fall back to the generic payload instead of breaking.

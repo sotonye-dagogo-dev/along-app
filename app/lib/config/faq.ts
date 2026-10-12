@@ -109,13 +109,13 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "install-app",
         question: "How do I install Along on my phone or computer?",
         answer:
-          "Open Along in Chrome, Edge, or Safari and use 'Add to Home Screen' (mobile) or the install icon in the address bar (desktop). The installed app opens full-screen, works offline with cached content, and can receive push notifications if you enable them.",
+          "Open Along in Chrome, Edge, or Safari and look for the small Install notice near the bottom of the screen — it never blocks what you're doing and can be minimized or dismissed. Tapping Install uses your browser's install sheet; on iPhone use Share → Add to Home Screen, then open Along from your home screen. The installed app opens full-screen, works offline with cached content, and can receive push notifications if you enable them.",
       },
       {
         id: "push-notifications",
         question: "How do push notifications work?",
         answer:
-          "Every in-app notification — likes, comments, mentions, follows, route responses, rewards, badges, and moderation updates — is also sent as a push notification when you enable it, mirroring what you'd get by email. You can turn push on or off anytime; enabling needs a connection and your browser's permission. Tapping a notification opens the relevant post or page.",
+          "Every in-app notification — likes, comments, mentions, follows, route responses, rewards, badges, and moderation updates — is also sent as a push notification when you enable it, mirroring what you'd get by email. Signed-in users see a small Enable notice (also on the Notifications page) that can be minimized or dismissed; enabling needs a connection and your browser's permission, and the notice explains exactly what to do if permission was blocked or your device needs the installed app first. You can turn push on or off anytime. Tapping a notification opens the relevant post or page.",
       },
       {
         id: "staying-signed-in-offline",
@@ -268,12 +268,12 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "install-app": {
     question: "How I go take install Along for my phone or computer?",
     answer:
-      "Open Along for Chrome, Edge, or Safari come use 'Add to Home Screen' (mobile) or di install icon for address bar (desktop). Di installed app dey open full-screen, dey work offline with cached content, and fit send you push notifications if you gree.",
+      "Open Along for Chrome, Edge, or Safari come look for small Install notice near di bottom of screen — e no dey block wetin you dey do and you fit reduce am or comot am. Tap Install to use your browser install sheet; for iPhone use Share → Add to Home Screen, den open Along from your home screen. Di installed app dey open full-screen, dey work offline with cached content, and fit send you push notifications if you gree.",
   },
   "push-notifications": {
     question: "How push notifications take dey work?",
     answer:
-      "Every in-app notification — likes, comments, mentions, follows, route responses, rewards, badges, and moderation updates — dem still dey send am as push notification when you don on am, just like email own. You fit on or off am anytime; to on am you need connection and your browser permission. If you tap notification e go open di correct post or page.",
+      "Every in-app notification — likes, comments, mentions, follows, route responses, rewards, badges, and moderation updates — dem still dey send am as push notification when you don on am, just like email own. Signed-in users dey see small Enable notice (also for Notifications page) wey you fit reduce or comot; to on am you need connection and your browser permission, and di notice go explain wetin to do if permission block or your device need di installed app first. You fit on or off am anytime. If you tap notification e go open di correct post or page.",
   },
   "staying-signed-in-offline": {
     question: "Network cut go sign me out?",
