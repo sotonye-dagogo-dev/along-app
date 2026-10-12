@@ -53,13 +53,33 @@ export async function GET(
       earlyAdopter = null;
     }
 
+    // Follower/following counts reflect what user-facing lists actually show:
+    // deleted + archived (pending-deletion) accounts are excluded. Falls back
+    // to the raw `_count` on legacy DBs without the visibility columns.
+    let followerCount = user._count.followers;
+    let followingCount = user._count.following;
+    try {
+      const [liveFollowers, liveFollowing] = await Promise.all([
+        prisma.follow.count({
+          where: { followingId: id, follower: { isDeleted: false, deletionScheduledFor: null } },
+        }),
+        prisma.follow.count({
+          where: { followerId: id, following: { isDeleted: false, deletionScheduledFor: null } },
+        }),
+      ]);
+      followerCount = liveFollowers;
+      followingCount = liveFollowing;
+    } catch {
+      /* legacy DB — keep _count */
+    }
+
     return NextResponse.json({
       user: {
         ...user,
         avgValidityScore: Math.round(avgValidity._avg.validityScore ?? 0),
         postCount: user._count.posts,
-        followerCount: user._count.followers,
-        followingCount: user._count.following,
+        followerCount,
+        followingCount,
         earlyAdopter,
       },
     }, { status: 200 });

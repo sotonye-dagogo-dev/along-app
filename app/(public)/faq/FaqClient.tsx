@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, ChevronDown } from "lucide-react";
 import { useTranslation } from "@/app/providers/I18nProvider";
 import type { FaqCategory } from "@/app/lib/config/faq";
@@ -14,6 +14,33 @@ export default function FaqClient({ categories }: FaqClientProps) {
   const { tf, locale } = useTranslation();
   const [search, setSearch] = useState("");
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+
+  // Deep-link support (additive): PWA notices link here with `?q=<term>` to
+  // pre-filter and `#<category-id>` to open + scroll to a section. Runs once
+  // on mount; manual typing afterwards always wins. Never throws.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const q = (params.get("q") ?? "").trim().slice(0, 80);
+      if (q) setSearch(q);
+      const hash = window.location.hash.replace(/^#/, "").trim();
+      if (hash) {
+        // Defer a tick so the filtered render commits before scrolling.
+        window.setTimeout(() => {
+          try {
+            document
+              .getElementById(`faq-${hash}`)
+              ?.scrollIntoView({ behavior: "smooth", block: "start" });
+          } catch {
+            /* scroll is best-effort */
+          }
+        }, 60);
+      }
+    } catch {
+      /* non-critical */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleItem = (id: string) => {
     setOpenItems((prev) => {
@@ -86,7 +113,7 @@ export default function FaqClient({ categories }: FaqClientProps) {
         </p>
       ) : (
         filtered.map((category) => (
-          <section key={category.id} className="mb-10">
+          <section key={category.id} id={`faq-${category.id}`} className="mb-10 scroll-mt-20">
             <h2 className="text-xl font-semibold text-text-primary mb-4 pb-2 border-b border-border">
               {category.category}
             </h2>

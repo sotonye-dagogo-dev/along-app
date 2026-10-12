@@ -5,21 +5,10 @@ import { ClipboardList, MapPin, TrendingUp, Sparkles } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { AppAvatar } from "@/app/components/ui/AppAvatar"
 import { FollowButton } from "@/app/components/features/suggestions/FollowButton"
+import { filterVisibleUsers, isVisibleUser } from "@/app/lib/config/userVisibility"
 import type { SuggestionsData } from "@/app/components/features/suggestions/types"
-
-function Avatar({ name, avatar }: { name: string; avatar?: string | null }) {
-  const initial = (name?.[0] ?? "?").toUpperCase()
-  if (avatar) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={avatar} alt={name} className="w-9 h-9 rounded-lg object-cover shrink-0" />
-  }
-  return (
-    <div className="w-9 h-9 rounded-lg bg-primary-muted text-primary flex items-center justify-center text-sm font-bold shrink-0">
-      {initial}
-    </div>
-  )
-}
 
 export function SuggestionsPanel() {
   const { user, isLoading: authLoading } = useAuth()
@@ -32,7 +21,8 @@ export function SuggestionsPanel() {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
 
   const users = useMemo(
-    () => (data?.users ?? []).filter((u) => !dismissed.has(u.id)),
+    // Server already excludes; stale caches get the same rule client-side.
+    () => filterVisibleUsers(data?.users ?? []).filter((u) => !dismissed.has(u.id)),
     [data, dismissed]
   )
 
@@ -48,7 +38,7 @@ export function SuggestionsPanel() {
       .map(([tag]) => tag)
   }, [data])
 
-  const requests = data?.routeRequests ?? []
+  const requests = (data?.routeRequests ?? []).filter((p) => isVisibleUser(p.user))
 
   if (authLoading || (loading && !data)) {
     return (
@@ -78,7 +68,15 @@ export function SuggestionsPanel() {
           users.map((u) => (
             <div key={u.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-bg-elevated transition-colors">
               <Link href={`/profile/${u.userName}`} className="flex items-center gap-3 min-w-0 flex-1">
-                <Avatar name={u.userName} avatar={u.avatar} />
+                <AppAvatar
+                  src={u.avatar ?? undefined}
+                  alt={`${u.firstName} ${u.lastName}`}
+                  size={32}
+                  config={u.avatarConfig ?? undefined}
+                  verified={u.verified}
+                  linkToProfile={false}
+                  userName={u.userName}
+                />
                 <div className="min-w-0">
                   <div className="text-sm font-semibold truncate">
                     {u.firstName} {u.lastName}
@@ -88,7 +86,7 @@ export function SuggestionsPanel() {
                   </div>
                 </div>
               </Link>
-              <FollowButton userId={u.id} onFollowed={() => setDismissed((prev) => new Set(prev).add(u.id))} />
+              <FollowButton userId={u.id} target={u} onFollowed={() => setDismissed((prev) => new Set(prev).add(u.id))} />
             </div>
           ))
         )}

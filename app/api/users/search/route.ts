@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
 
     const users = await prisma.user.findMany({
       where: {
+        // Deleted/archived accounts are never searchable on user surfaces.
+        isDeleted: false,
+        deletionScheduledFor: null,
         OR: [
           { userName: { contains: q, mode: "insensitive" } },
           { firstName: { contains: q, mode: "insensitive" } },

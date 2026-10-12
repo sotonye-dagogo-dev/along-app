@@ -1,9 +1,9 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 46 push firing + global PWA install/push notices)
-> - last-verified-against-code: 2026-10-12 (static review + node --check sw.js + JSON parity + brace/paren balance; tsc/jest/build deferred to CI — no node_modules in runner)
-> - last-synced: 2026-10-12 (Sprint 46 push firing + global PWA install/push notices — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 47 PWA notice icon/theme compliance + user visibility + avatar consistency)
+> - last-verified-against-code: 2026-10-12 (brace balance + token/emoji sweeps + tsc --strict zero-dep configs + node execution of visibility/faq-link logic; full tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-synced: 2026-10-12 (Sprint 47 PWA notice icon/theme compliance + user visibility + avatar consistency — execute-feature close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -653,3 +653,4 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 - [x] Sprint 46 (2026-10-12) — Push firing + global PWA install/push notices (VAPID fallback parity, FOLLOW fan-out mirror, registrar dev-guard, PWA_INSTALL_CONFIG + InstallPrompt + PushManager floating + PwaNotices hub + appleWebApp meta, FAQ copy+pcm, pwa.test +3; node --check/JSON/balance green in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
 - [x] Sprint 45 (2026-10-12) — Chart hover tooltips platform-wide + admin analytics page/API + sidebar scrollability + platform-consistent admin avatar (charts + ChartTooltip + AdminAnalyticsShell suites; node strip-types 6/6 in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
 - [x] Sprint 43 (2026-10-11) — Admin destructive user deletion (grace request kept + per-request Reverse/Delete-now in deletions queue + per-user Request/Reverse/Delete-now in users table, same anonymize pipeline, confirm + undo where reversible, irreversibility warning + backup-recovery note where not, all audited) + dashboard period toggle (7/30/90 wired end-to-end to KPIs + signups chart) (admin +3 suites; node strip-types 9/9 in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
+- [x] Sprint 47 (2026-10-12) — PWA notice icon/theme compliance + deleted/archived-user visibility + avatar consistency (PWA_FAQ_LINKS + userVisibility registry + FaqClient ?q=/#hash deep-links; InstallPrompt/PushManager/OfflineBanner lucide icons + --color-* token styling + FAQ help links; NavigationGuide Check icon + token step pills; suggestions/search/follow/followers/following/users search visibility filters + follow 410 + live counts; SuggestionsPanel/Rail + UserList AppAvatar + client filters + FollowButton unavailable state; admin stats/users/analytics avatar+avatarConfig+verified selects + AppAvatar/AppUserLabel pages; sprint47 9 suites; tsc --strict zero-dep + node execution green in-runner, full gate deferred to CI — no node_modules in runner)

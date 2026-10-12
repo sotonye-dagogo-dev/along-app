@@ -173,3 +173,8 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 - Silent auto-update on save: rejected — prompt preserves explicit new-entry intent.
 
 **Implications:** New map surfaces must use `MapPins.tsx` + `MAP_PINS_CONFIG` (no bespoke markers, no hardcoded hex). No dark filter / dark-only raster without revisiting the Sprint 20 decision.
+
+## Sprint 47 (2026-10-12) — Notice theming via tokens; lifecycle visibility as shared config
+- PWA notices moved from bespoke CSS vars + emoji/literal glyphs to `--color-*` design tokens (auto-flip under `.dark`) + lucide icons, with help affordances deep-linking into the FAQ (`PWA_FAQ_LINKS`, honored by FaqClient `?q=`/`#hash`).
+- Account lifecycle visibility centralized in `lib/config/userVisibility.ts` (deleted vs pending-deletion-archived vs visible) and enforced at every non-admin user surface (suggestions, search, follow + lists + counts); admin surfaces intentionally exempt.
+- Avatar rendering converged on canonical `AppAvatar`/`AppUserLabel` after backfilling the two admin APIs that omitted `avatarConfig`/`verified`.

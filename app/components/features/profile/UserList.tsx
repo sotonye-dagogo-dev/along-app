@@ -5,6 +5,7 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { AppAvatar, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { filterVisibleUsers } from "@/app/lib/config/userVisibility"
 
 interface UserSummary {
   id: string
@@ -15,6 +16,9 @@ interface UserSummary {
   avatarConfig: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null
   verified: boolean
   followedAt?: string
+  /** Visibility flags (optional for legacy payloads — absent means visible). */
+  isDeleted?: boolean | null
+  deletionScheduledFor?: string | Date | null
 }
 
 interface UserListProps {
@@ -34,7 +38,8 @@ export function UserList({ userId, username, type }: UserListProps) {
         const res = await fetch(`/api/users/${userId}/${type}`)
         if (res.ok) {
           const data = await res.json()
-          setUsers(data.users ?? [])
+          // Server already excludes; stale caches get the same rule client-side.
+          setUsers(filterVisibleUsers(data.users ?? []))
         }
       } catch { /* ignore */ } finally { setLoading(false) }
     }

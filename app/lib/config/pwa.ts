@@ -203,6 +203,21 @@ export const PWA_INSTALL_CONFIG: PwaInstallConfig = {
   },
 };
 
+/**
+ * FAQ deep-links for the PWA help (?) affordances. The FAQ client honors
+ * `?q=` as initial search text and `#<category-id>` to open + scroll to a
+ * section, so these land users on filtered, relevant answers. Single source
+ * of truth — notice components must reference these, never hardcode paths.
+ */
+export const PWA_FAQ_LINKS = {
+  /** Install notice help → install answer inside Offline & App. */
+  installHelp: "/faq?q=install#offline-pwa",
+  /** Push notice help → notifications answer inside Offline & App. */
+  pushHelp: "/faq?q=notifications#offline-pwa",
+  /** Offline banner help → offline answers inside Offline & App. */
+  offlineHelp: "/faq?q=offline#offline-pwa",
+} as const;
+
 /** True when the page already runs as an installed PWA (standalone). */
 export function isStandaloneDisplay(): boolean {
   try {

@@ -32,7 +32,7 @@ interface AnalyticsPayload {
   roles: { id: string; label: string; count: number }[]
   tiers: { id: string; label: string; count: number }[]
   topPosts: { id: string; title: string; validityScore: number; likes: number; views: number }[]
-  topContributors: { id: string; userName: string; firstName: string; lastName: string; avatar?: string | null; posts: number }[]
+  topContributors: { id: string; userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null; verified?: boolean; posts: number }[]
 }
 
 const svgW = 500
@@ -403,6 +403,8 @@ export default function AdminAnalyticsPage() {
                     lastName: c.lastName,
                     userName: c.userName,
                     avatar: c.avatar ?? undefined,
+                    avatarConfig: c.avatarConfig ?? undefined,
+                    isVerified: c.verified ?? false,
                   }}
                   size="sm"
                   showHandle={false}

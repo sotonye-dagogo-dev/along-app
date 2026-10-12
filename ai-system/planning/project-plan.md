@@ -1,8 +1,8 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 46 push firing + global PWA install/push notices)
-> - last-verified-against-code: 2026-10-12 (static review + node --check sw.js + JSON parity + brace/paren balance; tsc/jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-12 (Sprint 47 PWA notice icon/theme compliance + user visibility + avatar consistency)
+> - last-verified-against-code: 2026-10-12 (brace balance + token/emoji sweeps + tsc --strict zero-dep configs + node execution of visibility/faq-link logic; full tsc/jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -177,3 +177,4 @@
 - [x] Sprint 44 (2026-10-11) — Deleted-account view-only gating + Active filter + row-actions dropdown (config-driven filters/allow-list, API active branch + deleted skip with honest counts, AppTableRowActions dropdown preserving colors on users/posts/deletions tables) (admin +2 suites; static review in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
 - [x] Sprint 43 (2026-10-11) — Admin destructive user deletion + dashboard period toggle (per-request Reverse/Delete-now + per-user Request/Reverse/Delete-now through the same anonymize pipeline with confirm/undo/audit; stats `?period=7|30|90` with windowed deltas; dashboard toggle wired to overview + chart) (admin +3 suites; node 9/9 in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
 - [x] Sprint 45 (2026-10-12) — Chart hover tooltips platform-wide (shared ChartTooltip components + charts config) + dedicated admin analytics page/API (KPIs, growth/engagement/validity/audience, top posts/contributors) + admin sidebar scrollability + platform-consistent profile-linked admin avatar (AppUserLabel role-tag extension) (charts + ChartTooltip + AdminAnalyticsShell suites; node strip-types 6/6 in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
+- [x] Sprint 47 (2026-10-12) — PWA notice icon/theme compliance + deleted/archived-user visibility + avatar consistency (PWA_FAQ_LINKS + userVisibility registry + FaqClient deep-links; notices on lucide icons + theme tokens + FAQ help; suggestions/search/follow/lists visibility + 410 + live counts; Panel/Rail/UserList AppAvatar + FollowButton unavailable; admin avatar selects + pages) (sprint47 9 suites; static + node execution in-runner, full gate deferred to CI — no node_modules in runner)
