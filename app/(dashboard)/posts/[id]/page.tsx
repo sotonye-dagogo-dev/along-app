@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, Maximize2, MapPin, Navigation, ClipboardList, Reply, Archive } from "lucide-react"
 import { AppCard, TrustBadge, VehicleChip, AppEmptyState, ImageLightbox, AppAvatar } from "@/app/components/ui"
 import { VEHICLE_REGISTRY, EMPTY_STATES, MODERATION_CONFIG, POST_ACTIONS_CONFIG } from "@/app/lib/config"
@@ -158,6 +158,19 @@ export default function PostDetailPage() {
   const ready = !authLoading && Boolean(postId)
   const viewerId = currentUser?.id ?? "guest"
   const { sharePost } = usePostShare()
+  // Deep-link target from notification routing (?comment=<id>): scrolled to
+  // + highlighted once comments load. Never throws on missing/invalid ids.
+  const searchParams = useSearchParams()
+  const highlightCommentId = searchParams?.get("comment") ?? null
+  useEffect(() => {
+    if (!highlightCommentId || commentsLoading || comments.length === 0) return
+    const t = setTimeout(() => {
+      try {
+        document.getElementById(`comment-${highlightCommentId}`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+      } catch { /* non-critical */ }
+    }, 150)
+    return () => clearTimeout(t)
+  }, [highlightCommentId, commentsLoading, comments.length])
 
   const { data: postData, loading: postLoading, mutate: mutatePost } = useCachedFetch<{ post: PostDetail; archived?: boolean }>(
     ready ? `post:${viewerId}:${postId}` : null,
@@ -889,6 +902,7 @@ export default function PostDetailPage() {
           onDeleted={handleDeleteComment}
           onUpdated={handleUpdateComment}
           onRestored={() => void refreshComments()}
+          highlightId={highlightCommentId}
         />
       </div>
 

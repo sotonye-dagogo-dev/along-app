@@ -139,6 +139,14 @@ export function buildBugReportNotificationVars(title: string, category: string, 
   return { title, category, description };
 }
 
+export function buildBugReportReceivedVars(firstName: string, title: string, category: string, reportId: string): Record<string, string> {
+  return { firstName, title, category, reportId };
+}
+
+export function buildBugReportStatusVars(firstName: string, title: string, status: string, statusNote: string, reportId: string): Record<string, string> {
+  return { firstName, title, status, statusNote, reportId };
+}
+
 export function buildVerifyEmailVars(firstName: string, otp: string, verifyLink: string): Record<string, string> {
   return { firstName, otp, verifyLink };
 }

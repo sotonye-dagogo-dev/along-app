@@ -37,6 +37,71 @@ export const ADMIN_BULK_SELECT_META = {
   actions: ["selectAll", "invert", "undo", "clear"] as const,
 } as const;
 
+/**
+ * Admin cursor-pagination meta (config-driven, bulk-safe).
+ * Cursor "View more" APPENDS windows so bulk selection (a Set of ids held
+ * outside the list) is never lost — page-number replacement is what caused
+ * the deferred bulk-select state risk. `pageSize` matches the API default.
+ */
+export const ADMIN_PAGINATION_META = {
+  defaultLimit: 20,
+  maxLimit: 50,
+  viewMoreLabel: "View more",
+} as const;
+
+/**
+ * Admin table sort meta — every admin table offers asc/desc sort over an
+ * allow-listed field set. `defaultSort` preserves each API's legacy order
+ * (non-breaking); the UI sends ?sort=&dir= which APIs validate against
+ * `allowed` before applying.
+ */
+export interface AdminSortOption {
+  id: string;
+  label: string;
+  sort: string;
+  dir: "asc" | "desc";
+}
+
+export const ADMIN_TABLE_SORT_META: Record<string, { options: AdminSortOption[]; defaultId: string }> = {
+  bugs: {
+    defaultId: "newest",
+    options: [
+      { id: "newest", label: "Newest first", sort: "createdAt", dir: "desc" },
+      { id: "oldest", label: "Oldest first", sort: "createdAt", dir: "asc" },
+      { id: "title-az", label: "Title A–Z", sort: "title", dir: "asc" },
+      { id: "title-za", label: "Title Z–A", sort: "title", dir: "desc" },
+      { id: "status", label: "Status", sort: "status", dir: "asc" },
+      { id: "category", label: "Category", sort: "category", dir: "asc" },
+    ],
+  },
+  users: {
+    defaultId: "newest",
+    options: [
+      { id: "newest", label: "Newest first", sort: "createdAt", dir: "desc" },
+      { id: "oldest", label: "Oldest first", sort: "createdAt", dir: "asc" },
+      { id: "username-az", label: "Username A–Z", sort: "userName", dir: "asc" },
+      { id: "points-desc", label: "Most points", sort: "rewardPoints", dir: "desc" },
+      { id: "points-asc", label: "Fewest points", sort: "rewardPoints", dir: "asc" },
+    ],
+  },
+  posts: {
+    defaultId: "newest",
+    options: [
+      { id: "newest", label: "Newest first", sort: "createdAt", dir: "desc" },
+      { id: "oldest", label: "Oldest first", sort: "createdAt", dir: "asc" },
+      { id: "validity-desc", label: "Highest validity", sort: "validityScore", dir: "desc" },
+      { id: "likes-desc", label: "Most liked", sort: "likes", dir: "desc" },
+    ],
+  },
+  reviews: {
+    defaultId: "newest",
+    options: [
+      { id: "newest", label: "Newest first", sort: "createdAt", dir: "desc" },
+      { id: "oldest", label: "Oldest first", sort: "createdAt", dir: "asc" },
+    ],
+  },
+} as const;
+
 export type AdminBulkActionId = (typeof ADMIN_BULK_SELECT_META.actions)[number];
 
 /**

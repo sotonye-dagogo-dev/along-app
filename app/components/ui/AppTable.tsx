@@ -199,6 +199,7 @@ function AppTable<T extends Record<string, unknown>>({
                   col.sortable ? 'cursor-pointer select-none hover:text-text-primary transition-colors duration-base' : ''
                 }`}
                 onClick={col.sortable ? () => handleSort(col.key) : undefined}
+                aria-sort={col.sortable ? (localSortKey === col.key ? (localSortDir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
               >
                 <span className="inline-flex items-center gap-1">
                   {col.label}

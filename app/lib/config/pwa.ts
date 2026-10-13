@@ -308,6 +308,8 @@ export function isStandaloneDisplay(): boolean {
   }
 }
 
+import { resolveNotificationRoute } from "./notificationRoutes";
+
 /**
  * In-app notification type → push payload. Mirrors every in-app type (and
  * every emailed type) so push, in-app, and email stay in lockstep. Non-critical:
@@ -345,12 +347,25 @@ export function resolvePushPayload(
   opts: { postId?: string; commentId?: string } = {},
 ): { title: string; body: string; url: string } {
   const mirror = PWA_PUSH_MIRROR[type];
-  if (!mirror) {
-    return {
-      title: PWA_PUSH_DEFAULTS.title,
-      body: message || PWA_PUSH_DEFAULTS.body,
-      url: opts.postId ? `/posts/${opts.postId}` : PWA_PUSH_DEFAULTS.url,
-    };
+  // Single source of truth for the URL: the shared deep-routing resolver.
+  // The per-type `url` lambdas above stay as documentation/fallback; the
+  // resolver guarantees in-app clicks and push clicks land in the same place
+  // (post → post, comment → post?comment=, reports/queue → /notifications).
+  let url: string;
+  try {
+    url = resolveNotificationRoute({ type, postId: opts.postId ?? null, commentId: opts.commentId ?? null });
+  } catch {
+    if (!mirror) {
+      return {
+        title: PWA_PUSH_DEFAULTS.title,
+        body: message || PWA_PUSH_DEFAULTS.body,
+        url: opts.postId ? `/posts/${opts.postId}` : PWA_PUSH_DEFAULTS.url,
+      };
+    }
+    url = mirror.url(opts);
   }
-  return { title: mirror.title, body: mirror.body(message), url: mirror.url(opts) };
+  if (!mirror) {
+    return { title: PWA_PUSH_DEFAULTS.title, body: message || PWA_PUSH_DEFAULTS.body, url };
+  }
+  return { title: mirror.title, body: mirror.body(message), url };
 }

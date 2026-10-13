@@ -30,6 +30,8 @@ export const EMAIL_TEMPLATE_NAMES = {
   CHANGE_PASSWORD: "changePassword",
   CONTACT_NOTIFICATION: "contactNotification",
   BUG_REPORT_NOTIFICATION: "bugReportNotification",
+  BUG_REPORT_RECEIVED: "bugReportReceived",
+  BUG_REPORT_STATUS_UPDATE: "bugReportStatusUpdate",
   ACCOUNT_DELETION_REQUESTED: "accountDeletionRequested",
   ACCOUNT_DELETION_COMPLETED: "accountDeletionCompleted",
   ADMIN_DELETION_ALERT: "adminDeletionAlert",
@@ -370,6 +372,70 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 </html>`,
     bodyText: "New bug report\nTitle: {{title}}\nCategory: {{category}}\n\n{{description}}",
     variables: ["title", "category", "description", "appUrl", "logoUrl", "appName", "year"],
+  },
+  {
+    name: "bugReportReceived",
+    subject: "We received your bug report: {{title}}",
+    bodyHtml: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
+<h1 style="font-size:18px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Thanks, {{firstName||traveller}} — report received</h1>
+<p style="font-size:13px;color:#666;margin:0 0 4px"><strong>Title:</strong> {{title}}</p>
+<p style="font-size:13px;color:#666;margin:0 0 20px"><strong>Category:</strong> {{category}} &middot; <strong>Ref:</strong> {{reportId}}</p>
+</td></tr>
+<tr><td style="padding:0 32px 8px">
+<p style="font-size:14px;color:#444;margin:0 0 12px;line-height:1.6">Our team has been notified and your report is queued for review. We will email you again when its status changes (in progress, resolved, or closed).</p>
+</td></tr>
+<tr><td style="padding:16px 32px 28px;text-align:center;border-top:1px solid #eee">
+<p style="font-size:11px;color:#999;margin:0">Questions? Reply to this email or visit our <a href="{{appUrl}}/faq" style="color:#00A862;text-decoration:none">FAQ</a>.</p>
+<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body>
+</html>`,
+    bodyText: "Thanks {{firstName}} — we received your report\nTitle: {{title}}\nCategory: {{category}}\nRef: {{reportId}}\n\nOur team has been notified and will email you when the status changes.",
+    variables: ["firstName", "title", "category", "reportId", "appUrl", "logoUrl", "appName", "year"],
+    enabled: true,
+    description: "Sent to the reporter when their bug report is created.",
+    isSystem: true,
+  },
+  {
+    name: "bugReportStatusUpdate",
+    subject: "Update on your report: {{title}} is now {{status}}",
+    bodyHtml: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8" /></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;margin:0;padding:40px 20px">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
+<table style="max-width:480px;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+<tr><td style="padding:28px 32px 0;text-align:center">
+<a href="{{appUrl}}/home"><img src="{{logoUrl}}" alt="{{appName}}" width="96" style="display:inline-block;border:0;outline:none;height:auto;max-width:120px" /></a>
+<h1 style="font-size:18px;font-weight:700;margin:16px 0 4px;color:#1a1a1a">Report {{status}}</h1>
+<p style="font-size:13px;color:#666;margin:0 0 20px"><strong>Title:</strong> {{title}} &middot; <strong>Ref:</strong> {{reportId}}</p>
+</td></tr>
+<tr><td style="padding:0 32px 8px">
+<p style="font-size:14px;color:#444;margin:0 0 12px;line-height:1.6">Hi {{firstName||traveller}}, your bug report is now <strong>{{status}}</strong>.</p>
+<div style="background:#f9f9f9;border:1px solid #eee;border-radius:8px;padding:16px;font-size:13px;color:#444;line-height:1.6">{{statusNote}}</div>
+</td></tr>
+<tr><td style="padding:16px 32px 28px;text-align:center;border-top:1px solid #eee">
+<p style="font-size:11px;color:#999;margin:0">Questions? Reply to this email or visit our <a href="{{appUrl}}/faq" style="color:#00A862;text-decoration:none">FAQ</a>.</p>
+<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
+</td></tr>
+</table>
+</td></tr></table>
+</body>
+</html>`,
+    bodyText: "Hi {{firstName}}, your report {{title}} ({{reportId}}) is now {{status}}.\n\n{{statusNote}}",
+    variables: ["firstName", "title", "status", "statusNote", "reportId", "appUrl", "logoUrl", "appName", "year"],
+    enabled: true,
+    description: "Sent to the reporter when an admin moves their report to in-progress / resolved / closed.",
+    isSystem: true,
   },
   {
     name: "accountDeletionRequested",

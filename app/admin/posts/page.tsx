@@ -8,7 +8,7 @@ import { toastService } from "@/app/lib/services/toastService"
 import { undoService } from "@/app/lib/services/undoService"
 import { AppModal, AppInput, AppTextarea, AppButton, AppTableRowActions, type TableRowAction } from "@/app/components/ui"
 import { POST_ACTIONS_CONFIG, MODERATION_CONFIG } from "@/app/lib/config"
-import { ADMIN_BULK_SELECT_META } from "@/app/lib/config/admin"
+import { ADMIN_BULK_SELECT_META, ADMIN_TABLE_SORT_META } from "@/app/lib/config/admin"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 
 interface AdminPost {
@@ -38,6 +38,10 @@ export default function AdminPostsPage() {
   const [posts, setPosts] = useState<AdminPost[]>([])
   const [loading, setLoading] = useState(true)
   const [bulkBusy, setBulkBusy] = useState(false)
+  // Bulk-safe cursor pagination (append-only) + config-driven sort.
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [sortId, setSortId] = useState(ADMIN_TABLE_SORT_META.posts.defaultId)
   const bulk = useBulkSelection(posts, (p) => p.id)
   // Admin edit state — title/description/tags only (nature-preserving, see PUT /api/admin/posts).
   const [editing, setEditing] = useState<AdminPost | null>(null)
@@ -47,15 +51,36 @@ export default function AdminPostsPage() {
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const loadingMoreRef = React.useRef(false)
+  const load = useCallback(async (cursor: string | null = null) => {
+    if (cursor) {
+      if (loadingMoreRef.current) return
+      loadingMoreRef.current = true
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
     try {
-      const res = await fetch("/api/admin/posts")
+      const sortOpt = ADMIN_TABLE_SORT_META.posts.options.find((o) => o.id === sortId)
+        ?? ADMIN_TABLE_SORT_META.posts.options[0]
+      const params = new URLSearchParams({ sort: sortOpt.sort, dir: sortOpt.dir, limit: "20" })
+      if (cursor) params.set("cursor", cursor)
+      const res = await fetch(`/api/admin/posts?${params.toString()}`)
       if (!res.ok) throw new Error("Request failed")
       const data = await res.json()
-      setPosts(data.posts ?? [])
-    } catch (err) { console.error("[AdminError]", err) } finally { setLoading(false) }
-  }, [])
+      const fresh = (data.posts ?? []) as AdminPost[]
+      setPosts((prev) => {
+        if (!cursor) return fresh
+        const seen = new Set(prev.map((p) => p.id))
+        return [...prev, ...fresh.filter((p) => !seen.has(p.id))]
+      })
+      setNextCursor(data.nextCursor ?? null)
+    } catch (err) { console.error("[AdminError]", err) } finally {
+      setLoading(false)
+      setLoadingMore(false)
+      loadingMoreRef.current = false
+    }
+  }, [sortId])
 
   useEffect(() => { load() }, [load])
 
@@ -332,6 +357,16 @@ export default function AdminPostsPage() {
           <h1 className="text-[24px] sm:text-[28px] font-bold tracking-tight truncate">Posts</h1>
           <div className="text-sm text-text-secondary truncate">Manage all posts</div>
         </div>
+        <select
+          value={sortId}
+          onChange={(e) => setSortId(e.target.value)}
+          className="px-3 py-1.5 radius-md border border-border text-xs font-medium font-sans bg-bg-card text-text-primary cursor-pointer"
+          aria-label="Sort posts"
+        >
+          {ADMIN_TABLE_SORT_META.posts.options.map((o) => (
+            <option key={o.id} value={o.id}>{o.label}</option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 bg-bg-card border border-border radius-lg px-3 py-2 text-xs min-w-0">
@@ -427,6 +462,18 @@ export default function AdminPostsPage() {
           </tbody>
         </table>
       </div>
+      {nextCursor && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => void load(nextCursor)}
+            disabled={loadingMore}
+            className="px-4 py-2 radius-md border border-border bg-bg-card text-xs font-semibold text-text-primary cursor-pointer disabled:opacity-50"
+          >
+            {loadingMore ? "Loading more…" : "View more"}
+          </button>
+        </div>
+      )}
 
       <AppModal
         open={editing !== null}

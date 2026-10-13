@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Heart, ThumbsDown, MessageCircle, UserPlus, AtSign, Star, Award, CheckCircle, Sparkles, ClipboardList, Reply, Route as RouteIcon, Bell, ShieldCheck } from "lucide-react"
 import { AppEmptyState, ViewMoreButton } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { resolveNotificationRoute } from "@/app/lib/config/notificationRoutes"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { PushManager } from "@/app/components/pwa/PushManager"
@@ -28,6 +29,9 @@ interface NotificationItem {
     | "NEW_ROUTE"
     | "REPORT"
     | "MODERATION"
+    | "ACCOUNT_DELETION_REQUESTED"
+    | "ACCOUNT_DELETION_CANCELLED"
+    | "ACCOUNT_DELETION_COMPLETED"
   message: string
   createdAt: string
   actor: {
@@ -39,6 +43,7 @@ interface NotificationItem {
     avatarConfig?: unknown
   }
   post?: { id: string; title: string } | null
+  commentId?: string | null
   recipients: { read: boolean }[]
 }
 
@@ -317,15 +322,17 @@ function NotificationRow({
         body: JSON.stringify({ notificationId: notification.id }),
       }).catch(() => undefined)
     }
-    if (notification.post?.id) {
-      router.push(`/posts/${notification.post.id}`)
-    } else if (notification.type === "VERIFIED") {
-      // Email-verification prompts CTA to the profile security tab where
-      // the verify allocation lives (edge-case unverified logins).
-      router.push(`/profile?tab=security`)
-    } else {
-      router.push(`/profile/${notification.actor.userName}`)
-    }
+    // Config-driven deep routing: post → /posts/:id (+?comment= anchor),
+    // follow → actor profile, reports/queue → /notifications or admin queue,
+    // never a misleading profile fallback.
+    router.push(
+      resolveNotificationRoute({
+        type: notification.type,
+        postId: notification.post?.id ?? null,
+        commentId: notification.commentId ?? null,
+        actorUserName: notification.actor.userName,
+      })
+    )
   }
 
   return (
