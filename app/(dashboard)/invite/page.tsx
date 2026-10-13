@@ -7,6 +7,7 @@ import { AppCard, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { buildInviteUrl } from "@/app/lib/config/inviteConfig"
 import { LEADERBOARD_LINKS_CONFIG } from "@/app/lib/config/leaderboardLinks"
+import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection"
 import { useTranslation } from "@/app/providers/I18nProvider"
 
 interface InviteData {
@@ -188,6 +189,9 @@ export default function InvitePage() {
           </div>
         )}
       </AppCard>
+
+      {/* Featured Blogs: same endless tape as home, after the leaderboard */}
+      <FeaturedBlogsSection compact />
     </div>
   )
 }

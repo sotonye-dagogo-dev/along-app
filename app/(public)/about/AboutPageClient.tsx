@@ -8,6 +8,7 @@ import type { PlatformReviewItem } from "@/app/lib/config";
 import { useTranslation } from "@/app/providers/I18nProvider";
 import { useAuth } from "@/app/hooks/useAuth";
 import { EndlessCarousel } from "@/app/components/features/suggestions/EndlessCarousel";
+import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection";
 import { AppAvatar } from "@/app/components/ui";
 
 export default function AboutPageClient() {
@@ -203,6 +204,11 @@ export default function AboutPageClient() {
             />
           )}
         </div>
+      </section>
+
+      {/* Featured Blogs: same endless tape as home, after reviews */}
+      <section className="max-w-[1100px] mx-auto px-6">
+        <FeaturedBlogsSection />
       </section>
     </div>
   );
