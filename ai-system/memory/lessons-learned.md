@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 50: metadata-JSON attachments + merged geo + floating lanes)
+> - last-updated-by: execute-feature 2026-10-13 (broad suggestions: sequential fan-out is a latency bug, not just slowness)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -775,5 +775,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** round buttons on the wrong side with no per-surface control; upload-after-submit baked by form ownership of its submit; landmark queries only as good as one index's coverage.
 - **Root causes:** (1) dock side lived in one shared value consumed only by the buttons it should move — the fix was that value, not per-component classes. (2) the form owned its submit so page-level ordering was impossible without a slot between fields and submit. (3) label shaping dropped address parts before display, and the one cities-only provider could never answer landmarks — recall needed a last-resort OSM named-feature source, gated so short queries never trigger global scans.
 - **Fix pattern (reuse):** shared placement = one config value consumed only by its surfaces; form-level ordering = optional `beforeSubmit` slot (absent = legacy); provider gaps = append a gated last-resort source with safe fallthrough for unknown future providers, and render every address part the upstream already returns.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Session 2026-10-13: sequential fan-out is a correctness bug under a serverless budget, not just slowness
+- **Symptom:** location suggestions fired only for near-exact address starts; every broad query (roads, towns, landmarks) returned blank despite healthy upstreams.
+- **Root causes:** (1) four providers awaited sequentially at 8s each inside a 10s budget — the merge could never complete for uncached queries, so latency became emptiness; cached address queries masked it. (2) suggestion gates (min chars, debounce, limit) were hardcoded in four places, so "loosen the lookup" meant hunting call sites. (3) bias applied only after fetch, leaving upstream result windows full of far matches before the slice.
+- **Fix pattern (reuse):** parallel bounded fan-out (`Promise.all` + per-leg timeout race) with slow legs as empty-only fallbacks in ONE extra batch; suggestion tuning (min/max/debounce/limit/timeout/fallbacks) in one config consumed by route + every client; bias at BOTH layers (upstream params rank-only + server re-rank, never filter); exact-intent inputs (coordinates) pinned ahead of ranking.
 - **Supersedes:** None
 - **Superseded by:** None

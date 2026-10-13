@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+> - last-updated-by: execute-feature 2026-10-13 (broad location suggestions: locationSuggestions config + parallel geocode fan-out)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
@@ -1280,4 +1280,14 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - `app/api/admin/email/templates/route.ts` + `app/lib/utils/emailTemplates.ts` — Studio GET merges via NEW exported `mergeEmailTemplatesWithDefaults` (stored wins, defaults backfill); save/delete/restore persist the raw row so backfills never snapshot.
 - Tests: NEW `app/__tests__/config/locationSuggestions.test.ts` (7 suites).
 **QA:** no node_modules in runner — re-reads + balance-vs-baseline + diff-stat review green; full tsc/jest/build deferred to CI.
+**Compliance:** non-breaking, no migration, no new deps, additive-only.
+
+**Session 2026-10-13 — broad location suggestions.**
+**Directive:** suggestions only fired for near-exact address starts; must cover addresses, landmarks/buildings, roads, towns/cities, postal codes, states/countries, coordinates in any order, nearby-first with permission.
+**Implemented:**
+- NEW `app/lib/config/locationSuggestions.ts` — `LOCATION_SUGGESTIONS_CONFIG` + `parseCoordinateQuery` + `reorderQueryTokens` + `buildGeocodeUrl` (barrel-exported).
+- `mapProxyService.geocodeForward` — parallel fast fan-out (`bounded` race), coordinate fast-path pinned first, empty-only fallback batch (overpass + reorder retry), Photon `lat/lon` + Nominatim `viewbox` rank-only bias, short TTL for empty merges.
+- `GET /api/maps/geocode` + `RouteStepInput`/`ShareRouteModal`/`RequestRouteModal` consume the shared config (min 2 chars, 350ms debounce, limit 6).
+- Tests: NEW `app/__tests__/config/locationSuggestBroad.test.ts` (13 suites).
+**QA:** no node_modules in runner — node-executed pure-logic port green, full re-reads + pre-existing-suite compat verified; full tsc/jest/build deferred to CI.
 **Compliance:** non-breaking, no migration, no new deps, additive-only.

@@ -57,6 +57,13 @@ export type { MapPinsConfig } from "./mapPins";
 export { LOCATION_FEEDBACK_CONFIG, locationErrorCopy } from "./locationFeedback";
 export type { LocationFeedbackConfig } from "./locationFeedback";
 export {
+  LOCATION_SUGGESTIONS_CONFIG,
+  parseCoordinateQuery,
+  reorderQueryTokens,
+  buildGeocodeUrl,
+} from "./locationSuggestions";
+export type { LocationSuggestionsConfig, ParsedCoordinates } from "./locationSuggestions";
+export {
   MAP_STACK_CONFIG,
   MAP_EXPAND_CONFIG,
   LANDMARK_GEOCODE_CONFIG,

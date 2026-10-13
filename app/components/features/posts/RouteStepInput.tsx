@@ -3,6 +3,7 @@
 import React, { useCallback, useRef, useState } from 'react'
 import { MapPin, Navigation } from 'lucide-react'
 import { getBiasCoordsQuick, peekBiasCoords, biasQuerySuffix } from '@/app/lib/utils/geoBias'
+import { LOCATION_SUGGESTIONS_CONFIG, buildGeocodeUrl } from '@/app/lib/config/locationSuggestions'
 
 interface RoutePin {
   lat: number
@@ -40,7 +41,7 @@ function RouteStepInput({
   const abortRef = useRef<AbortController | null>(null)
 
   const doGeocode = useCallback(async (q: string) => {
-    if (q.length < 3) {
+    if (q.length < LOCATION_SUGGESTIONS_CONFIG.minQueryLength) {
       setSuggestions([])
       setShowSuggestions(false)
       return
@@ -52,9 +53,10 @@ function RouteStepInput({
 
     setLoading(true)
     try {
-      // Keyless stack: geocode via the internal server proxy (Nominatim +
-      // Photon + Open-Meteo + Overpass landmark fallback, merged, cached). Viewer bias (granted-only, never
-      // prompts) re-ranks nearby hits first server-side. Bias resolves on a
+      // Keyless stack: geocode via the internal server proxy (fast providers
+      // in parallel + Overpass/token-reorder fallback, merged, cached).
+      // Viewer bias (granted-only, never prompts) re-ranks nearby hits first
+      // server-side. Bias resolves on a
       // ~120ms budget so a cold GPS fix never stalls keystroke suggestions.
       // Browser-direct upstream calls violate usage policy and are banned —
       // never call upstream from the client.
@@ -62,7 +64,7 @@ function RouteStepInput({
       // only upgrades the bias when it resolves within budget.
       const bias = peekBiasCoords() ?? (await getBiasCoordsQuick());
       const res = await fetch(
-        `/api/maps/geocode?q=${encodeURIComponent(q)}&limit=5${biasQuerySuffix(bias)}`,
+        `${buildGeocodeUrl(q)}${biasQuerySuffix(bias)}`,
         { signal: controller.signal }
       )
       if (res.status === 429) {
@@ -91,14 +93,14 @@ function RouteStepInput({
 
       if (timerRef.current) clearTimeout(timerRef.current)
 
-      if (val.length < 3) {
+      if (val.length < LOCATION_SUGGESTIONS_CONFIG.minQueryLength) {
         setSuggestions([])
         setShowSuggestions(false)
         return
       }
 
       setLoading(true)
-      timerRef.current = setTimeout(() => doGeocode(val), 400)
+      timerRef.current = setTimeout(() => doGeocode(val), LOCATION_SUGGESTIONS_CONFIG.debounceMs)
     },
     [doGeocode]
   )
