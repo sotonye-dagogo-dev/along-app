@@ -770,3 +770,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** single `resolveXRoute(input)` in config consumed by every surface (in-app + push + future); admin lists paginate cursor-append with id-dedupe and keep selection outside the list; mutating submits take `Idempotency-Key` (header or body) plus a short same-actor+content dedup window, stored in existing JSON columns when no migration is warranted.
 - **Supersedes:** Sprint 50 follow-up "remaining admin tables deferred (bulk-select state risk)".
 - **Superseded by:** None
+
+## Session 2026-10-13: dock side as one value; slots beat reordering; last-resort providers stay gated
+- **Symptom:** round buttons on the wrong side with no per-surface control; upload-after-submit baked by form ownership of its submit; landmark queries only as good as one index's coverage.
+- **Root causes:** (1) dock side lived in one shared value consumed only by the buttons it should move — the fix was that value, not per-component classes. (2) the form owned its submit so page-level ordering was impossible without a slot between fields and submit. (3) label shaping dropped address parts before display, and the one cities-only provider could never answer landmarks — recall needed a last-resort OSM named-feature source, gated so short queries never trigger global scans.
+- **Fix pattern (reuse):** shared placement = one config value consumed only by its surfaces; form-level ordering = optional `beforeSubmit` slot (absent = legacy); provider gaps = append a gated last-resort source with safe fallthrough for unknown future providers, and render every address part the upstream already returns.
+- **Supersedes:** None
+- **Superseded by:** None

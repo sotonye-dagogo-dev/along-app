@@ -98,15 +98,16 @@ function ReportBugForm() {
         initialValues={initialValues}
         onSubmit={handleSubmit}
         submitLabel={sending ? "Submitting…" : "Submit Report"}
+        isLoading={sending}
+        beforeSubmit={
+          <ReportImageUpload images={images} onChange={setImages} disabled={sending} />
+        }
       />
       {error && (
         <p role="alert" className="mt-3 text-sm text-error-text bg-error radius-md px-3 py-2.5">
           {error}
         </p>
       )}
-      <div className="mt-5">
-        <ReportImageUpload images={images} onChange={setImages} disabled={sending} />
-      </div>
     </div>
   );
 }

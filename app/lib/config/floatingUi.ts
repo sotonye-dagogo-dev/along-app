@@ -6,9 +6,11 @@
  * - Offline banner / pill: 76 (12px gap above the tab bar + safe-area).
  * - Install card / pill: 76 when online, 152 when the offline banner is also
  *   up (one card height + gap) so the two never paint over each other.
- * - Round action buttons (Back to top, theme toggle): docked LEFT on mobile
- *   (the Profile tab lives on the right — right-docked rounds covered it),
- *   stacked vertically; desktop keeps the established right-side stack.
+ * - Round action buttons (Back to top, theme toggle): docked RIGHT on mobile
+ *   and desktop (established right-side stack). All other floating surfaces
+ *   (offline banner, install card, transient prompts) keep their existing
+ *   centered/full-width lanes above the tab bar, so only the two round
+ *   buttons move — nothing else changes dock.
  *
  * Desktop (lg+) has a sidebar instead of a tab bar, so lanes drop to the
  * classic bottom offsets. All values flow through CSS `max()` with
@@ -27,7 +29,7 @@ export interface FloatingUiConfig {
     /** Transient prompts (push opt-in, SW update) — top lane, above install. */
     transientBottomPx: number;
   };
-  /** Mobile dock side for the round action buttons. */
+  /** Mobile dock side for the round action buttons (BackToTop + ThemeToggle). */
   mobileDockSide: "left" | "right";
   roundButtons: {
     /** Bottom offset of the lower round button on mobile. */
@@ -47,7 +49,7 @@ export const FLOATING_UI_CONFIG: FloatingUiConfig = {
     installBottomOfflinePx: 152,
     transientBottomPx: 228,
   },
-  mobileDockSide: "left",
+  mobileDockSide: "right",
   roundButtons: {
     firstBottomPx: 96,
     secondBottomPx: 152,

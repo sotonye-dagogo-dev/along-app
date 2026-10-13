@@ -181,5 +181,5 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 
 ## Sprint 50 (2026-10-13) — Attachments in metadata JSON; recall via merge; lanes as config
 - Report screenshots ride in `BugReport.metadata.images` (validated, `along/reports` folder, `report-discard` cleanup) — no migration, no P2022 window.
-- Geocode recall comes from merging all keyless providers (nominatim+photon+openmeteo) with dedupe + rank-only viewer bias (`geoBias`, promptless); community stop names recalled via best-effort `routes::text` prefetch in search.
+- Geocode recall comes from merging all keyless providers (nominatim+photon+openmeteo+overpass) with dedupe + rank-only viewer bias (`geoBias`, promptless); community stop names recalled via best-effort `routes::text` prefetch in search. Landmark power-up (this session): Nominatim carries `addressdetails=1&dedupe=1`, Photon labels render street-level parts (street/housenumber/district/locality), and keyless Overpass OSM `name` search runs last as the landmark/building gap-closer (LANDMARK_GEOCODE_CONFIG-gated, never-throws).
 - Cursor surfaces gain View-More (model unchanged); page surfaces share `PageNavigator`. Floating surfaces share `FLOATING_UI_CONFIG` lanes above the mobile tab bar.

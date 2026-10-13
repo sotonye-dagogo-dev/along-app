@@ -8,7 +8,8 @@ import { FLOATING_UI_CONFIG, laneBottom } from "@/app/lib/config/floatingUi"
 export default function ThemeToggle() {
   const { theme, toggleTheme } = useTheme()
   const isDark = theme === "dark"
-  // Same mobile dock as Back to top (stacked above it, clear of the tab bar).
+  // Same dock as Back to top (FLOATING_UI_CONFIG.mobileDockSide = right,
+  // stacked above it, clear of the tab bar).
   const { mobileDockSide, roundButtons } = FLOATING_UI_CONFIG
   const mobileSideClass = mobileDockSide === "left" ? "left-3 right-auto" : "right-3 left-auto"
 

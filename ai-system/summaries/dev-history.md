@@ -1259,3 +1259,13 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Top-posts correctness filter + deterministic order (analytics + stats).
 **QA:** structural review in-runner (no node_modules); full gate deferred to CI.
 **Compliance:** additive-only, non-breaking, no migration.
+
+## Session 2026-10-13 — Right-dock rounds, bug-report upload-before-submit, landmark geocode power-up
+**Directive:** theme toggle + back-to-top buttons aligned right again (rest stay left); bug-report screenshot upload before the submit button (submit last); location providers to support landmark/building names/addresses (+ another keyless provider if needed). Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Implemented:**
+- `FLOATING_UI_CONFIG.mobileDockSide` left→right (config-only; only BackToTop/ThemeToggle consume the dock side — banners/install/transient lanes untouched) + comment refresh in both buttons; sprint50 test expectation updated to right.
+- `ConfigDrivenForm.beforeSubmit` optional slot (rendered fields → slot → submit; absent = legacy layout verbatim) + report-bug page passes `ReportImageUpload` through it with `isLoading={sending}` (submit stays last, disables while sending); ReportDialog already upload-before-actions, unchanged.
+- Landmark power-up: `MapGeocodeProvider` += `overpass` (last in `geocodeOrder`, barrel-exported `LANDMARK_GEOCODE_CONFIG` min-4-chars/cap-5/10s tuning); `geocodeViaOverpass` (regex-escaped OSM `name` search via keyless overpass-api.de interpreter, canonical hits, timeout-guarded, never-throws) merged in `geocodeForward` with unknown-provider fallthrough; Nominatim `addressdetails=1&dedupe=1`; Photon labels now render street/housenumber/district/locality/county/postcode (was name/city/state/country only — addresses were dropped); proxy + RouteStepInput comments refreshed. All consumers (RouteStepInput/ShareRouteModal/search/explore) inherit via `/api/maps/geocode`, no client branching.
+- Tests: NEW `__tests__/config/sessionTightening.test.ts` (7: right dock + lane clearance, order/upstream/tuning, photon street labels, overpass landmark surfacing, short-query gating, overpass-failure merge safety).
+**QA:** no node_modules in runner — `node --experimental-strip-types --check` green on all touched .ts files (mapStack, mapProxyService, floatingUi, config index, geocode route, new test); .tsx changes hand-verified (slot render order, page wiring); full tsc/jest/build deferred to CI (standing arrangement).
+**Compliance:** additive-only, non-breaking (no migration — overpass hits are runtime-merged, photon/nominatim shapes unchanged for callers, beforeSubmit optional, dock side is one config value; unknown future providers fall through safely).

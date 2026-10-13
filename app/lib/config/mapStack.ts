@@ -16,9 +16,13 @@
  *             env-gated ORS / Mapbox, then straight-line fallback.
  * - Geocode → `/api/maps/*` server proxy (Nominatim server-side with
  *             proper User-Agent/Referer + Photon + keyless Open-Meteo
- *             fallbacks, merged + deduped, optionally re-ranked near the
- *             viewer). Browser-direct Nominatim calls violate usage policy
- *             and are banned.
+ *             + keyless Overpass landmark/address fallback, merged +
+ *             deduped, optionally re-ranked near the viewer). Nominatim and
+ *             Photon already index OSM landmarks/buildings/addresses by name;
+ *             Open-Meteo covers cities only, so Overpass (OSM `name` search,
+ *             no key, no registration) closes the landmark/building gap as a
+ *             last-resort provider. Browser-direct Nominatim calls violate
+ *             usage policy and are banned.
  *
  * Single source of truth for: tile style URLs, dark-mode mapping,
  * raster fallback chain, provider orders, cache TTLs, attributions,
@@ -28,7 +32,7 @@
 
 export type MapVectorStyleName = "liberty" | "bright" | "positron";
 export type MapRoutingProvider = "osrm" | "ors" | "mapbox" | "straight";
-export type MapGeocodeProvider = "nominatim" | "photon" | "openmeteo";
+export type MapGeocodeProvider = "nominatim" | "photon" | "openmeteo" | "overpass";
 
 export interface MapStackConfig {
   /** Keyless vector tile styles (OpenFreeMap, no registration). */
@@ -54,6 +58,8 @@ export interface MapStackConfig {
     photon: string;
     /** Keyless Open-Meteo geocoding (no key, no registration). */
     openmeteo: string;
+    /** Keyless Overpass API (OSM landmark/building/address fallback). */
+    overpass: string;
     ors: string;
     mapbox: string;
   };
@@ -90,12 +96,13 @@ export const MAP_STACK_CONFIG: MapStackConfig = {
     ],
   },
   routingOrder: ["osrm", "ors", "mapbox", "straight"],
-  geocodeOrder: ["nominatim", "photon", "openmeteo"],
+  geocodeOrder: ["nominatim", "photon", "openmeteo", "overpass"],
   upstreams: {
     osrm: "https://router.project-osrm.org/route/v1/driving",
     nominatim: "https://nominatim.openstreetmap.org",
     photon: "https://photon.komoot.io",
     openmeteo: "https://geocoding-api.open-meteo.com/v1",
+    overpass: "https://overpass-api.de/api",
     ors: "https://api.openrouteservice.org/v2/directions/driving-car",
     mapbox: "https://api.mapbox.com/directions/v5/mapbox/driving",
   },
@@ -195,6 +202,33 @@ export function hasMapboxKey(): boolean {
   );
 }
 
+/**
+ * Landmark / building / address geocode tuning (config-driven, zero app deps).
+ *
+ * - Nominatim + Photon already index OSM named features (landmarks,
+ *   buildings, streets + house numbers) — no param change needed to *enable*
+ *   them, but Nominatim requests carry `addressdetails=1&dedupe=1` so full
+ *   addresses survive, and Photon labels render street-level granularity.
+ * - Open-Meteo only knows populated places (name/admin/country), so it can
+ *   never answer a landmark/building query — Overpass (keyless OSM `name`
+ *   search) runs LAST as the gap-closer, only for queries long enough to
+ *   keep the global scan bounded. It never throws and never blocks the merge:
+ *   timeouts / empty results degrade to the already-merged hits.
+ */
+export interface LandmarkGeocodeConfig {
+  /** Min trimmed query length before Overpass is attempted (bounded scans). */
+  overpassMinQueryLength: number;
+  /** Max Overpass elements parsed per query (cap before canonical mapping). */
+  overpassMaxElements: number;
+  /** Overpass QL timeout (seconds, mirrored in the query + fetch guard). */
+  overpassTimeoutSec: number;
+}
+
+export const LANDMARK_GEOCODE_CONFIG: LandmarkGeocodeConfig = {
+  overpassMinQueryLength: 4,
+  overpassMaxElements: 5,
+  overpassTimeoutSec: 10,
+};
 /**
  * Expanded-map overlay configuration (config-driven, zero app deps).
  *
