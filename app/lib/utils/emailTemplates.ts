@@ -11,9 +11,16 @@ export async function getEmailConfig(): Promise<EmailConfig> {
 
 export async function getEmailTemplates(): Promise<EmailTemplate[]> {
   const stored = await getSiteConfig<EmailTemplate[]>("emailTemplates", DEFAULT_EMAIL_TEMPLATES);
-  // Merge defaults with stored customs: stored wins per-name, new system
-  // templates backfill automatically (non-breaking forward-compat).
-  const byName = new Map(stored.map((t) => [t.name, t]));
+  return mergeEmailTemplatesWithDefaults(stored);
+}
+
+/**
+ * Merge hardcoded defaults under stored customs (stored wins per-name, new
+ * system templates backfill). Pure + exported for the admin Studio route
+ * (which reads the raw SiteConfig row directly) and for tests.
+ */
+export function mergeEmailTemplatesWithDefaults(stored: EmailTemplate[]): EmailTemplate[] {
+  const byName = new Map((Array.isArray(stored) ? stored : []).map((t) => [t.name, t]));
   for (const d of DEFAULT_EMAIL_TEMPLATES) {
     if (!byName.has(d.name)) byName.set(d.name, d);
   }

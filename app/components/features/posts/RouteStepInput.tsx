@@ -2,7 +2,7 @@
 
 import React, { useCallback, useRef, useState } from 'react'
 import { MapPin, Navigation } from 'lucide-react'
-import { getBiasCoords, biasQuerySuffix } from '@/app/lib/utils/geoBias'
+import { getBiasCoordsQuick, peekBiasCoords, biasQuerySuffix } from '@/app/lib/utils/geoBias'
 
 interface RoutePin {
   lat: number
@@ -54,24 +54,31 @@ function RouteStepInput({
     try {
       // Keyless stack: geocode via the internal server proxy (Nominatim +
       // Photon + Open-Meteo + Overpass landmark fallback, merged, cached). Viewer bias (granted-only, never
-      // prompts) re-ranks nearby hits first server-side. Browser-direct
-      // upstream calls violate usage policy and are banned — never call
-      // upstream from the client.
-      const bias = await getBiasCoords()
+      // prompts) re-ranks nearby hits first server-side. Bias resolves on a
+      // ~120ms budget so a cold GPS fix never stalls keystroke suggestions.
+      // Browser-direct upstream calls violate usage policy and are banned —
+      // never call upstream from the client.
+      // A quick cached peek fires the request immediately; the raced lookup
+      // only upgrades the bias when it resolves within budget.
+      const bias = peekBiasCoords() ?? (await getBiasCoordsQuick());
       const res = await fetch(
         `/api/maps/geocode?q=${encodeURIComponent(q)}&limit=5${biasQuerySuffix(bias)}`,
         { signal: controller.signal }
       )
+      if (res.status === 429) {
+        // Rate-limited: keep prior suggestions visible (if any) rather than
+        // wiping the dropdown — the user can keep typing; next keystroke
+        // retries. Never throws, never clears good results.
+        return;
+      }
       if (!res.ok) throw new Error(`geocode ${res.status}`)
       const data = (await res.json()) as { results?: GeoResult[] }
       const results = Array.isArray(data.results) ? data.results : []
       setSuggestions(results)
       setShowSuggestions(results.length > 0)
     } catch {
-      if (!controller.signal.aborted) {
-        setSuggestions([])
-        setShowSuggestions(false)
-      }
+      // Offline/aborted/upstream failure: leave prior suggestions untouched
+      // so the dropdown doesn't flash empty on transient errors.
     } finally {
       if (!controller.signal.aborted) setLoading(false)
     }
