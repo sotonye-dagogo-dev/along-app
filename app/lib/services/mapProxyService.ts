@@ -8,6 +8,11 @@ import {
   type MapGeocodeProvider,
   type MapRoutingProvider,
 } from "@/app/lib/config/mapStack";
+import {
+  LOCATION_SUGGESTIONS_CONFIG,
+  parseCoordinateQuery,
+  reorderQueryTokens,
+} from "@/app/lib/config/locationSuggestions";
 
 /**
  * Server-side map proxy (Sprint 19 keyless stack).
@@ -23,6 +28,14 @@ import {
  *   the index providers miss) merged + deduped, optionally re-ranked near
  *   the viewer.
  * - Reverse geocode: Nominatim reverse → Photon reverse fallback.
+ *
+ * Latency contract (broad-suggestion fix): the fast providers fire in
+ * PARALLEL inside LOCATION_SUGGESTIONS_CONFIG.providerTimeoutMs each, so a
+ * slow upstream can never starve suggestions past the serverless budget
+ * (the old sequential fan-out blanked every broad query). Overpass runs
+ * ONLY as a last-resort fallback when the fast merge is empty, and a
+ * token-reorder retry covers reversed input order — both in ONE fallback
+ * batch, so worst case stays ~2 budgets.
  *
  * Every method is never-throw: upstream failures degrade to the next
  * provider, and routing always resolves to at least a straight-line
@@ -291,10 +304,55 @@ function photonLabel(f: PhotonFeature): string | null {
   return rest ? `${p.name}, ${rest}` : p.name;
 }
 
-async function geocodeViaNominatim(query: string, limit: number): Promise<MapGeocodeHit[] | null> {
-  const url =
+/**
+ * Races an upstream leg against a config budget — slow providers resolve
+ * null instead of stalling the merge. Never throws; timer always cleared.
+ */
+function bounded<T>(fn: () => Promise<T | null>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(null);
+      }
+    }, Math.max(50, ms));
+    fn().then(
+      (value) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(value);
+        }
+      },
+      () => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(null);
+        }
+      }
+    );
+  });
+}
+
+async function geocodeViaNominatim(
+  query: string,
+  limit: number,
+  near?: MapPin | null
+): Promise<MapGeocodeHit[] | null> {
+  // Deliberately broad: no featuretype/country filter, so one query class
+  // covers addresses, streets, cities, postal codes, states and countries.
+  let url =
     `${MAP_STACK_CONFIG.upstreams.nominatim}/search?format=json` +
     `&q=${encodeURIComponent(query)}&limit=${limit}&accept-language=en&addressdetails=1&dedupe=1`;
+  // Upstream location bias (rank-only: bounded=0 never filters, the server
+  // re-rank stays the final word). Passes the granted-only viewer position
+  // so nearby streets/towns surface before far same-name matches.
+  if (near && Number.isFinite(near.lat) && Number.isFinite(near.lng)) {
+    const d = 0.75;
+    url += `&viewbox=${near.lng - d},${near.lat + d},${near.lng + d},${near.lat - d}&bounded=0`;
+  }
   const data = (await fetchJson(url)) as NominatimHit[] | null;
   if (!Array.isArray(data) || data.length === 0) return null;
   const hits = data
@@ -303,9 +361,17 @@ async function geocodeViaNominatim(query: string, limit: number): Promise<MapGeo
   return hits.length > 0 ? hits : null;
 }
 
-async function geocodeViaPhoton(query: string, limit: number): Promise<MapGeocodeHit[] | null> {
-  const url =
+async function geocodeViaPhoton(
+  query: string,
+  limit: number,
+  near?: MapPin | null
+): Promise<MapGeocodeHit[] | null> {
+  let url =
     `${MAP_STACK_CONFIG.upstreams.photon}/api/?q=${encodeURIComponent(query)}&limit=${limit}&lang=en`;
+  // Photon-native location bias (rank-only, same contract as viewbox above).
+  if (near && Number.isFinite(near.lat) && Number.isFinite(near.lng)) {
+    url += `&lat=${near.lat}&lon=${near.lng}`;
+  }
   const data = (await fetchJson(url)) as { features?: PhotonFeature[] } | null;
   const features = data?.features;
   if (!Array.isArray(features) || features.length === 0) return null;
@@ -486,15 +552,20 @@ export function rankGeocodeHits(hits: MapGeocodeHit[], near?: MapPin | null): Ma
 }
 
 /**
- * Forward geocode via server proxy — ALL keyless providers fire (in
- * geocodeOrder) and hits merge + dedupe into one suggestion list, so a place
- * buried in one source still surfaces from another. Optionally re-ranked near
- * the viewer's position when `near` is supplied (nearby first, never
- * filtered). Never throws.
+ * Forward geocode via server proxy — broad by design. The fast keyless
+ * providers fire in PARALLEL (one shared budget each) and hits merge +
+ * dedupe into one suggestion list, so a place buried in one source still
+ * surfaces from another. `lat, lng` coordinate queries resolve to an exact
+ * pin hit first (providers rarely answer raw coordinates). When the fast
+ * merge is empty, ONE fallback batch runs Overpass (last-resort landmark
+ * scan) plus a token-reorder retry of the fast providers (order-tolerant
+ * input like "Nigeria Lagos"). Optionally re-ranked near the viewer's
+ * position when `near` is supplied (nearby first, never filtered).
+ * Never throws.
  */
-export async function geocodeForward(query: string, limit = 5, near?: MapPin | null): Promise<MapGeocodeHit[]> {
-  const q = query.trim().slice(0, 200);
-  if (q.length < 2) return [];
+export async function geocodeForward(query: string, limit = LOCATION_SUGGESTIONS_CONFIG.limit, near?: MapPin | null): Promise<MapGeocodeHit[]> {
+  const q = query.trim().slice(0, LOCATION_SUGGESTIONS_CONFIG.maxQueryLength);
+  if (q.length < LOCATION_SUGGESTIONS_CONFIG.minQueryLength) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10);
   const key = geocodeCacheKey(q, safeLimit, near);
   try {
@@ -515,21 +586,69 @@ export async function geocodeForward(query: string, limit = 5, near?: MapPin | n
       merged.push(h);
     }
   };
-  // Round-robin one batch per provider (bounded fan-out, same timeout discipline).
-  // Overpass runs last and self-gates on query length; unknown future
-  // providers fall through safely (no branch = no crash, no missed merge).
-  for (const name of MAP_STACK_CONFIG.geocodeOrder) {
-    const attempt: MapGeocodeProvider = name;
-    if (attempt === "nominatim") pushAll(await geocodeViaNominatim(q, safeLimit));
-    else if (attempt === "photon") pushAll(await geocodeViaPhoton(q, safeLimit));
-    else if (attempt === "openmeteo") pushAll(await geocodeViaOpenMeteo(q, safeLimit));
-    else if (attempt === "overpass") pushAll(await geocodeViaOverpass(q, safeLimit));
-    else pushAll(await geocodeViaOpenMeteo(q, safeLimit));
-    if (merged.length >= safeLimit * MAP_STACK_CONFIG.geocodeOrder.length) break;
+  // Coordinate fast-path: raw "lat, lng" input is an exact pin — surface it
+  // first (labelled with what the user typed) and still merge provider hits
+  // after it. Range-gated by parseCoordinateQuery, so postal codes and
+  // house numbers never take this path.
+  const coords = parseCoordinateQuery(q);
+  if (coords) {
+    pushAll([
+      {
+        display_name: q,
+        lat: String(coords.lat),
+        lon: String(coords.lng),
+        provider: LOCATION_SUGGESTIONS_CONFIG.coordinateProviderName,
+      },
+    ]);
   }
-  const finalHits = rankGeocodeHits(merged, near).slice(0, safeLimit);
+  const budget = LOCATION_SUGGESTIONS_CONFIG.providerTimeoutMs;
+  const runProvider = (name: MapGeocodeProvider, text: string): Promise<MapGeocodeHit[] | null> => {
+    if (name === "nominatim") return bounded(() => geocodeViaNominatim(text, safeLimit, near), budget);
+    if (name === "photon") return bounded(() => geocodeViaPhoton(text, safeLimit, near), budget);
+    if (name === "openmeteo") return bounded(() => geocodeViaOpenMeteo(text, safeLimit), budget);
+    if (name === "overpass") return bounded(() => geocodeViaOverpass(text, safeLimit), budget);
+    // Unknown future providers fall through safely (no branch = no crash).
+    return bounded(() => geocodeViaOpenMeteo(text, safeLimit), budget);
+  };
+  const fastOrder = MAP_STACK_CONFIG.geocodeOrder.filter((n) => n !== "overpass");
+  // Round 1 — fast providers in PARALLEL (previously sequential: every broad
+  // query waited out the slowest upstream and blanked past the budget).
+  // Overpass joins round 1 only when explicitly configured out of
+  // fallback-only mode; by default it stays a last resort (see round 2).
+  const round1Order = LOCATION_SUGGESTIONS_CONFIG.overpassFallbackOnly
+    ? fastOrder
+    : MAP_STACK_CONFIG.geocodeOrder;
+  const round1 = await Promise.all(round1Order.map((name) => runProvider(name, q)));
+  round1.forEach(pushAll);
+  // Round 2 — only when nothing merged: Overpass fallback + token-reorder
+  // retry in ONE parallel batch (single extra budget, never two).
+  if (merged.length === 0) {
+    const round2: Promise<MapGeocodeHit[] | null>[] = [];
+    if (LOCATION_SUGGESTIONS_CONFIG.overpassFallbackOnly && MAP_STACK_CONFIG.geocodeOrder.includes("overpass")) {
+      round2.push(runProvider("overpass", q));
+    }
+    const reordered = LOCATION_SUGGESTIONS_CONFIG.tokenReorderFallback ? reorderQueryTokens(q) : null;
+    if (reordered) {
+      for (const name of fastOrder) round2.push(runProvider(name, reordered));
+    }
+    if (round2.length > 0) {
+      const round2Hits = await Promise.all(round2);
+      round2Hits.forEach(pushAll);
+    }
+  }
+  // Explicit coordinates are exact user intent — pin them first even when a
+  // viewer bias would otherwise rank nearer provider hits above them.
+  const coordName = LOCATION_SUGGESTIONS_CONFIG.coordinateProviderName;
+  const ranked = rankGeocodeHits(merged, near);
+  const finalHits = [
+    ...ranked.filter((h) => h.provider === coordName),
+    ...ranked.filter((h) => h.provider !== coordName),
+  ].slice(0, safeLimit);
   try {
-    await redis.set(key, finalHits, { ex: MAP_STACK_CONFIG.cacheTtlSec.geocode });
+    // Empty merges cache SHORT (OSM gains places daily; a 30-day empty
+    // would blank newly-mapped names). Hits keep the long geocode TTL.
+    const ttl = finalHits.length === 0 ? LOCATION_SUGGESTIONS_CONFIG.emptyTtlSec : MAP_STACK_CONFIG.cacheTtlSec.geocode;
+    await redis.set(key, finalHits, { ex: ttl });
   } catch {
     // Best-effort.
   }

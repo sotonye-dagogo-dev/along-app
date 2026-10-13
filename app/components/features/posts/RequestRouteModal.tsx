@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { ClipboardList, MapPin, Loader2 } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
+import { LOCATION_SUGGESTIONS_CONFIG, buildGeocodeUrl } from "@/app/lib/config/locationSuggestions"
 
 export interface RouteRequestBody {
   title: string
@@ -76,7 +77,7 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchLocHits = useCallback(async (q: string, which: "from" | "to") => {
-    if (!q || q.trim().length < 3) {
+    if (!q || q.trim().length < LOCATION_SUGGESTIONS_CONFIG.minQueryLength) {
       if (which === "from") setFromHits([]);
       else setToHits([]);
       return;
@@ -90,7 +91,7 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
       const { peekBiasCoords, getBiasCoordsQuick, biasQuerySuffix } = await import("@/app/lib/utils/geoBias");
       const bias = peekBiasCoords() ?? (await getBiasCoordsQuick());
       const res = await fetch(
-        `/api/maps/geocode?q=${encodeURIComponent(q.trim())}&limit=5${biasQuerySuffix(bias)}`,
+        `${buildGeocodeUrl(q.trim())}${biasQuerySuffix(bias)}`,
         { signal: controller.signal },
       );
       if (res.status === 429) return; // keep prior hits; next keystroke retries
@@ -111,14 +112,14 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
 
   const queueLocFetch = useCallback((q: string, which: "from" | "to") => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!q || q.trim().length < 3) {
+    if (!q || q.trim().length < LOCATION_SUGGESTIONS_CONFIG.minQueryLength) {
       if (which === "from") setFromHits([]);
       else setToHits([]);
       return;
     }
     if (which === "from") setFromLoading(true);
     else setToLoading(true);
-    debounceRef.current = setTimeout(() => void fetchLocHits(q, which), 400);
+    debounceRef.current = setTimeout(() => void fetchLocHits(q, which), LOCATION_SUGGESTIONS_CONFIG.debounceMs);
   }, [fetchLocHits]);
 
   useEffect(() => () => {

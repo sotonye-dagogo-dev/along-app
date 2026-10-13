@@ -1,7 +1,7 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 50 tightening: report screenshots, pagination controls, merged geo, floating lanes)
+> - last-updated-by: execute-feature 2026-10-13 (broad location suggestions: locationSuggestions config + parallel geocode fan-out)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -180,3 +180,4 @@
 - [x] Sprint 50 (2026-10-13) — Reports + pagination + geo + floating + README tightening (report screenshots 3/2MB along/reports via metadata.images + ReportImageUpload + admin thumbnails; ViewMoreButton/PageNavigator on notifications/search/comments/reviews/leaderboard/blog; openmeteo merge/dedupe/near-rank + geoBias + routes-JSON stop recall; floating lanes + mobile left dock; README service attributions) (sprint50 10 suites; node --check + strip-types green in-runner, full gate deferred to CI — no node_modules in runner)
 - [x] Sprint 51 (2026-10-13) — notification deep-routing, bug-report ACID + admin pagination/screenshots, table sort, validity-top correctness, reporter email lifecycle (all templates in Studio; deferred admin-table pagination closed bulk-safely via append-only cursor lists)
 - [x] Session 2026-10-13 — Right-dock rounds + upload-before-submit + landmark geocode (mobileDockSide right; ConfigDrivenForm.beforeSubmit + report-bug wiring + isLoading; overpass keyless fallback + LANDMARK_GEOCODE_CONFIG + photon street labels + nominatim addressdetails/dedupe) (sessionTightening 7 suites; strip-types --check green in-runner, full gate deferred to CI)
+- [x] Session 2026-10-13 — Broad location suggestions (LOCATION_SUGGESTIONS_CONFIG min2/debounce/limit/timeout + coordinate fast-path + parallel fast fan-out + empty-only overpass/reorder batch + Photon/Nominatim upstream bias + short empty TTL; route + RouteStepInput/ShareRouteModal/RequestRouteModal on shared config) (locationSuggestBroad 13 suites; node pure-logic green in-runner, full gate deferred to CI)
