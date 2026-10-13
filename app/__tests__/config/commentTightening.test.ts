@@ -47,6 +47,18 @@ describe("comment avatar consistency (AppAvatar everywhere)", () => {
   });
 });
 
+describe("comment delete visibility (owner-only)", () => {
+  it("CommentList gates the delete button on comment ownership only", () => {
+    const src = read("app/components/features/comments/CommentList.tsx");
+    // Owner-only gate (mirrors PostMenu: admins moderate via /admin, never inline).
+    expect(src).toContain("currentUser?.id !== comment.user.id");
+    expect(src).toContain("{isOwner && !editing && (");
+    // No admin/role bypass for the inline delete button.
+    expect(src).not.toContain("canModerate");
+    expect(src).not.toContain("isAdminRole");
+  });
+});
+
 describe("shared comment modal (feed parity)", () => {
   it("PostCommentsModal exists and is config-driven", () => {
     const src = read("app/components/features/comments/PostCommentsModal.tsx");

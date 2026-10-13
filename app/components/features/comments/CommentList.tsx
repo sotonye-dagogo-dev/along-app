@@ -10,7 +10,7 @@ import { commentParser } from "@/app/lib/utils/commentParser"
 import { useAuth } from "@/app/hooks/useAuth"
 import { toastService } from "@/app/lib/services/toastService"
 import { modalService } from "@/app/lib/services/modalService"
-import { deleteCommentWithConfirm, isAdminRole } from "@/app/lib/services/postModerationService"
+import { deleteCommentWithConfirm } from "@/app/lib/services/postModerationService"
 import { ReportDialog } from "@/app/components/features/moderation"
 
 interface CommentUser {
@@ -98,6 +98,11 @@ export default function CommentList({ comments, postId, onDeleted, onUpdated, on
 
   const handleDelete = (comment: Comment) => {
     if (!requireAuth("delete comments")) return
+    // Owner-only: a user must never see (or fire) delete for another user's
+    // comment. Admins moderate via /admin + the DELETE API (which still
+    // authorises admins server-side) — never via inline buttons, mirroring
+    // PostMenu where admins see exactly what any viewer sees.
+    if (currentUser?.id !== comment.user.id) return
     // Legacy parent-managed path (no confirm/undo of its own).
     if (onDelete && !onDeleted) {
       modalService.confirm({
@@ -126,13 +131,10 @@ export default function CommentList({ comments, postId, onDeleted, onUpdated, on
     })
   }
 
-  const isAdmin = isAdminRole((currentUser as { role?: string } | null)?.role)
-
   return (
     <div>
       {comments.map((comment) => {
         const isOwner = currentUser?.id === comment.user.id
-        const canModerate = isOwner || isAdmin
         const editing = editingId === comment.id
 
         return (
@@ -194,7 +196,7 @@ export default function CommentList({ comments, postId, onDeleted, onUpdated, on
                     <Pencil size={14} />
                   </button>
                 )}
-                {canModerate && !editing && (
+                {isOwner && !editing && (
                   <button
                     onClick={() => handleDelete(comment)}
                     className="flex items-center gap-1 border-none bg-transparent text-text-muted cursor-pointer p-0.5 hover:text-error-text transition-colors duration-fast"
