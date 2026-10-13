@@ -16,6 +16,7 @@ import {
   type StepFieldErrors,
 } from "@/app/lib/config/routeValidation"
 import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit"
+import { LOCATION_SUGGESTIONS_CONFIG, buildGeocodeUrl } from "@/app/lib/config/locationSuggestions"
 import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
 import { draftingCoachService } from "@/app/lib/services/DraftingCoachService"
 import { routeDraftsService, type RouteDraft } from "@/app/lib/services/routeDraftsService"
@@ -225,7 +226,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   const editInitRef = useRef<string | null>(null)
 
   const doGeocode = useCallback(async (query: string, stepIndex: number) => {
-    if (!query || query.length < 3) {
+    if (!query || query.length < LOCATION_SUGGESTIONS_CONFIG.minQueryLength) {
       setSteps((prev) => {
         const next = [...prev]
         next[stepIndex] = { ...next[stepIndex], _geoResults: [], _geoLoading: false }
@@ -239,15 +240,16 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       return next
     })
     try {
-      // Keyless stack: geocode via the internal server proxy (merged
-      // providers, cached, policy-compliant). Viewer bias (granted-only,
+      // Keyless stack: geocode via the internal server proxy (fast providers
+      // in parallel + Overpass/token-reorder fallback, merged, cached,
+      // policy-compliant). Viewer bias (granted-only,
       // never prompts) re-ranks nearby hits first on a ~120ms budget so a
       // cold GPS fix never stalls keystroke suggestions. Never call
       // upstream browser-direct.
       const { peekBiasCoords, getBiasCoordsQuick, biasQuerySuffix } = await import("@/app/lib/utils/geoBias")
       const bias = peekBiasCoords() ?? (await getBiasCoordsQuick());
       const res = await fetch(
-        `/api/maps/geocode?q=${encodeURIComponent(query)}&limit=5${biasQuerySuffix(bias)}`,
+        `${buildGeocodeUrl(query)}${biasQuerySuffix(bias)}`,
       )
       if (res.status === 429) {
         // Rate-limited: keep prior results visible; next keystroke retries.
@@ -291,7 +293,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     })
     clearStepError(index, "location")
     if (geoDebounceRef.current) clearTimeout(geoDebounceRef.current)
-    geoDebounceRef.current = setTimeout(() => doGeocode(value, index), 400)
+    geoDebounceRef.current = setTimeout(() => doGeocode(value, index), LOCATION_SUGGESTIONS_CONFIG.debounceMs)
   }
 
   /** Strict fare input: keeps the raw text so ranges are rejected with guidance. */

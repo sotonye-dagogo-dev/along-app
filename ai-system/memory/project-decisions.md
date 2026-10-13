@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+> - last-updated-by: execute-feature 2026-10-13 (broad suggestions: parallel bounded fan-out + fallback-only overpass + coordinate fast-path)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -794,3 +794,18 @@ First-provider-wins hid suggestions that existed in another source (the reported
 - New geocode consumers must call `/api/maps/geocode` (never upstream browser-direct) and should forward bias coords when available.
 - Adding a future provider = one `MapGeocodeProvider` entry + one `geocodeVia*` parser returning canonical `MapGeocodeHit` — callers never branch on provider.
 - Route-step stop names (community wording no map source knows) are recalled separately via the best-effort `routes::text` prefetch in `searchService`, not via geocoding.
+
+## Decision 2026-10-13: broad suggestions via parallel bounded fan-out + fallback-only Overpass + coordinate fast-path
+**Context:** suggestions blanked for everything but exact address starts.
+**Decision:** `geocodeForward` runs fast providers in parallel inside `LOCATION_SUGGESTIONS_CONFIG.providerTimeoutMs` (4s) each; Overpass + token-reorder retry run only when the fast merge is empty, in one batch (worst case ~8s < 10s budget); `lat, lng` input resolves to a pinned coordinate hit; Photon `lat/lon` + Nominatim `viewbox&bounded=0` carry the viewer position rank-only; empty merges cache 1h vs 30d for hits; route + all three autocomplete clients share min-2/debounce-350ms/limit-6 from the same config.
+**Reason:**
+Sequential awaiting turned provider latency into missing results; parallelism restores the full budget to the merge. Fallback-only Overpass keeps the slow global scan off the hot path while preserving landmark recall. Order-tolerance and coordinate support close the input classes users actually type. One shared config prevents gate drift across the four suggestion entry points.
+**Alternatives Considered:**
+- **Raising the serverless timeout / streaming partial hits**: Rejected — timeout is platform-fixed; streaming would change the route contract all clients share.
+- **Overpass in the parallel hot path**: Rejected — its global scan routinely exceeds the per-provider budget and would burn the fallback margin on every keystroke.
+- **Radius-filtering around the viewer**: Rejected (as before) — users share routes for places they aren't standing in; bias stays rank-only.
+**Implications:**
+- New suggestion consumers must use `buildGeocodeUrl` + `LOCATION_SUGGESTIONS_CONFIG` gates and forward `biasQuerySuffix` — never hardcode min-chars/debounce/limit.
+- Provider changes keep the canonical `MapGeocodeHit` shape; `overpassFallbackOnly=false` restores round-1 Overpass without code changes.
+**Supersedes:** None (extends the Sprint 50 merged-geocode decision).
+**Superseded by:** None
