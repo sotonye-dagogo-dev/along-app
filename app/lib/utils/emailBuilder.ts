@@ -75,6 +75,18 @@ function toPlainText(html: string): string {
   }
 }
 
+/**
+ * Plain-text view of a fragment for readability checks. toPlainText does the
+ * stripping; this alias keeps call sites expressive. Never throws.
+ */
+function hasReadableText(html: string): boolean {
+  try {
+    return toPlainText(html).length > 0 || /\{\{/.test(String(html ?? ""));
+  } catch {
+    return false;
+  }
+}
+
 /** Render blocks to an email-safe HTML fragment (wrapper applied separately). */
 export function blocksToHtml(blocks: EmailBlock[]): string {
   try {
@@ -185,20 +197,35 @@ export function textToBlocks(text: string): EmailBlock[] {
 
 /**
  * Parse stored HTML back to blocks. Unknown/complex markup degrades to
- * paragraph blocks carrying PLAIN TEXT (tags stripped) — content is never
+ * paragraph blocks carrying PLAIN TEXT (tags stripped) so content is never
  * dropped and paragraphs never display raw HTML. Handles headings,
- * paragraphs, divs, table cells, lists, images, links/CTAs, dividers.
+ * paragraphs, section/article/figure wrappers, table cells, lists, images,
+ * links/CTAs, dividers. Bare text between tags becomes its own paragraph,
+ * and wrappers holding block children recurse, so no readable content and
+ * no block structure is lost.
  */
 export function htmlToBlocks(html: string): EmailBlock[] {
   try {
     const blocks: EmailBlock[] = [];
     const src = String(html ?? "");
     // Order matters: lists + images + hrs first, then headings, then
-    // link/CTA and text containers (p/div/td/li/blockquote/center/span).
-    const re = /<(ul|ol)[^>]*>([\s\S]*?)<\/\1\s*>|<(img|hr)[^>]*\/?>|<(h1|h2|h3|p|div|td|th|blockquote|center|li|span)[^>]*>([\s\S]*?)<\/\4\s*>|<a[^>]*>([\s\S]*?)<\/a\s*>/gi;
+    // link/CTA and text containers (p/div/section/article/figure/td/li/...).
+    const re = /<(ul|ol)[^>]*>([\s\S]*?)<\/\1\s*>|<(img|hr|br)[^>]*\/?>|<(h1|h2|h3|h4|h5|h6|p|div|section|article|figure|figcaption|header|footer|main|aside|nav|td|th|blockquote|center|li|span|pre)[^>]*>([\s\S]*?)<\/\4\s*>|<a[^>]*>([\s\S]*?)<\/a\s*>/gi;
     let m: RegExpExecArray | null;
     let matched = false;
+    let lastEnd = 0;
+    const pushBareText = (gap: string) => {
+      const text = toPlainText(gap);
+      // Ignore pure whitespace and lone orphan closers between blocks.
+      if (text && /[A-Za-z0-9{{Ā-ɏ]/.test(text)) {
+        matched = true;
+        blocks.push({ id: newBlockId(), type: "paragraph", text });
+      }
+    };
     while ((m = re.exec(src)) !== null) {
+      // Capture readable text sitting between tags (no wrapper element).
+      if (m.index > lastEnd) pushBareText(src.slice(lastEnd, m.index));
+      lastEnd = m.index + m[0].length;
       const listTag = (m[1] ?? "").toLowerCase();
       const listInner = m[2] ?? "";
       const soloTag = (m[3] ?? "").toLowerCase();
@@ -229,11 +256,17 @@ export function htmlToBlocks(html: string): EmailBlock[] {
         blocks.push({ id: newBlockId(), type: "divider" });
         continue;
       }
-      if (boxTag === "h1" || boxTag === "h2" || boxTag === "h3") {
+      if (soloTag === "br") {
+        matched = true;
+        blocks.push({ id: newBlockId(), type: "spacer" });
+        continue;
+      }
+      if (boxTag === "h1" || boxTag === "h2" || boxTag === "h3" || boxTag === "h4" || boxTag === "h5" || boxTag === "h6") {
         matched = true;
         const text = toPlainText(boxInner);
         if (!text && !/\{\{/.test(boxInner)) continue;
-        blocks.push({ id: newBlockId(), type: "heading", level: boxTag === "h1" ? 1 : boxTag === "h2" ? 2 : 3, text });
+        const level = boxTag === "h1" ? 1 : boxTag === "h2" ? 2 : 3;
+        blocks.push({ id: newBlockId(), type: "heading", level: level as 1 | 2 | 3, text });
         continue;
       }
       if (boxTag) {
@@ -249,10 +282,15 @@ export function htmlToBlocks(html: string): EmailBlock[] {
           const s = (sM?.[1] ?? "").trim();
           if (s) blocks.push({ id: newBlockId(), type: "image", src: s, url: s, text: aM?.[1] ? unesc(aM[1]) : "" });
         }
-        const boxRest = boxInner.replace(/<img[^>]*>/gi, " ");
+        // Empty link remnants (e.g. a logo <img> wrapped in <a> that was
+        // lifted above) carry no readable text — drop them so they never
+        // become URL-labelled link blocks.
+        const boxRest = boxInner
+          .replace(/<img[^>]*>/gi, " ")
+          .replace(/<a[^>]*>\s*<\/a\s*>/gi, " ");
         // Skip pure layout wrappers with no readable text (empty spacers vanish).
         const textOnly = toPlainText(boxRest);
-        if (!textOnly && !/\{\{/.test(boxRest)) continue;
+        if (!hasReadableText(boxRest)) continue;
         // Standalone CTA link inside a container becomes a button block.
         const linkM = boxRest.match(/<a[^>]*href\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)[^>]*>([\s\S]*?)<\/a\s*>/i);
         if (linkM) {
@@ -280,10 +318,22 @@ export function htmlToBlocks(html: string): EmailBlock[] {
           if (items.length) blocks.push({ id: newBlockId(), type: "list", items });
           continue;
         }
-        // Skip containers that only wrap other blocks already captured
-        // (prevents duplicate wrapper paragraphs around tables).
-        if (/<(h1|h2|h3|p|ul|ol|img|hr|a)[\s>]/i.test(boxRest) && textOnly.length > 300) continue;
-        blocks.push({ id: newBlockId(), type: boxTag === "li" ? "paragraph" : "paragraph", text: textOnly });
+        // Wrapper holding real block children (section/div around headings,
+        // paragraphs, lists): recurse so block structure survives instead of
+        // flattening to one paragraph or dropping long content.
+        if (/<(h1|h2|h3|h4|h5|h6|p|ul|ol)[\s>]/i.test(boxRest)) {
+          const inner = htmlToBlocks(boxRest);
+          const useful = inner.filter((b) =>
+            (b.text ?? "").trim() ||
+            (b.items ?? []).length > 0 ||
+            b.type === "image" || b.type === "button" || b.type === "link",
+          );
+          if (useful.length > 0) {
+            blocks.push(...useful);
+            continue;
+          }
+        }
+        blocks.push({ id: newBlockId(), type: "paragraph", text: textOnly });
         continue;
       }
       // Bare <a> outside any container.
@@ -296,16 +346,18 @@ export function htmlToBlocks(html: string): EmailBlock[] {
         continue;
       }
     }
+    // Trailing readable text after the last tag (no wrapper element).
+    if (lastEnd < src.length) pushBareText(src.slice(lastEnd));
     if (!matched) {
       const text = toPlainText(src);
       if (text) return [{ id: newBlockId(), type: "paragraph", text }];
       return [{ id: newBlockId(), type: "paragraph", text: "" }];
     }
-    // Merge consecutive spacers/empties; drop empty non-spacer blocks.
+    // Drop empty non-spacer blocks. Spacer/divider/image passthrough kept.
     const cleaned = blocks.filter((b) => {
       if (b.type === "list") return (b.items ?? []).length > 0;
       if (b.type === "image") return Boolean((b.src ?? b.url ?? "").trim());
-      if (b.type === "divider") return true;
+      if (b.type === "divider" || b.type === "spacer") return true;
       return Boolean((b.text ?? b.url ?? "").trim());
     });
     return cleaned.length ? cleaned : [{ id: newBlockId(), type: "paragraph", text: "" }];

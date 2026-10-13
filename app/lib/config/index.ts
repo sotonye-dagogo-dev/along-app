@@ -147,6 +147,8 @@ export { DEFAULT_FAQ_ITEMS, FAQ_PCM } from "./faq";
 export type { FaqCategory } from "./faq";
 export { DEFAULT_BLOG_CATEGORIES, BLOG_LAYOUT_CONFIG } from "./blog";
 export type { BlogCategory, BlogLayoutConfig } from "./blog";
+export { FEATURED_BLOGS_CONFIG, pickFeaturedBlogs, featuredBlogHref } from "./featuredBlogs";
+export type { FeaturedBlogsConfig, FeaturedBlogItem } from "./featuredBlogs";
 export { EXPLORE_PIN_POPUP_CONFIG } from "./explore";
 export type { ExplorePinPopupConfig } from "./explore";
 export { COMMENTS_CONFIG } from "./comments";

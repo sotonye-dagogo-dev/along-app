@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-13 (broad location suggestions: locationSuggestions config + parallel geocode fan-out)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
@@ -1303,3 +1303,15 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `__tests__/services/blogShareVariables.test.ts` (share URL/fallback, guest fallbacks, leak-free render, defaults merge).
 **QA:** no node_modules in runner — brace/paren balance + full re-reads of all touched files, new-date guard + metadata cast reviewed; full tsc/jest/build deferred to CI.
 **Compliance:** non-breaking, no migration, no new deps, additive-only; config/metadata-driven throughout.
+
+**Sprint 52 (2026-10-13) — audit trail reports+blogs + enriched defaults + featured carousel + Studio parsing.**
+**Directive:** audit trail must capture report actions and blog actions; enrich default blogs (more posts, Blog Studio must parse without loss); ASD-STE100 writing, no emdashes; featured blogs section on landing (endless carousel, per-blog CTA + view-all CTA) reused on about (after reviews) and invite (after leaderboard); config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Found:** (1) report lifecycle wrote zero audit rows — `POST /api/reports`, `POST /api/bug-reports`, and admin bugs PATCH triage/moderation had no `logAudit` (blog upsert/delete/restore/bulk already audited); audit display had no `report` entity and no specific report/blog action labels. (2) only 2 shipped defaults, thin copy. (3) `htmlToBlocks` dropped bare inter-tag text, ignored section/article/figure/h4-h6/br tags, flattened block children in wrappers to one paragraph (or dropped them via the >300-char wrapper skip), and left empty logo-link remnants as URL-labelled link blocks. (4) no featured surface — blog discovery ended at /blog.
+**Implemented:**
+- Audit: `AUDIT_DISPLAY_CONFIG` += `report` entity + report.create/moderate/status + blog.upsert/delete/restore-default/bulk labels (specific prefixes ordered before generic `report.`/`blog.`); fire-and-forget `logAudit` in reports POST, bug-reports POST, admin bugs PATCH triage + moderation branches (never fail the request).
+- Defaults: `DEFAULT_BLOG_POSTS` 2 → 6 (welcome, routing tips, fare guide, safety, how-maps-work, trust; STE100 short sentences, emdash-free, every `{{var}}` carries `||fallback`); stored DB rows still win per-slug so existing admin edits are untouched.
+- Featured: NEW `FEATURED_BLOGS_CONFIG` (+ barrel) + NEW `FeaturedBlogsSection` (EndlessCarousel reuse, skeleton loading, null when empty, per-card Read CTA + section View-all CTA, tf() fallbacks with zero new locale keys); landing server-feeds `initialPosts` via `getPublicBlogPosts` + `pickFeaturedBlogs`; about renders after reviews; invite renders compact after leaderboard; `/api/blog?limit=` reused for client fetch.
+- Parsing: `htmlToBlocks` keeps bare text, new container tags, `br` → spacer, h4-h6 → heading, block-child recursion (section-wrapped headings survive), empty-anchor-remnant drop; paragraph plain-text contract unchanged (pre-existing emailStudio suites assert it — verified green).
+- Tests: NEW `__tests__/config/featuredBlogs.test.ts` (17 assertions: config/CTA/emdash, pick/cap/href, defaults coverage/vars, audit labels, parsing no-loss incl. section-heading + bare-text + logo-remnant cases).
+**QA:** no node_modules in runner — node strip-types executed 20+ pure-logic assertions green (featured pick/href, audit labels old+new, defaults count/emdash/fallbacks, builder round-trips for all 6 defaults + all 4 pre-existing emailStudio parser contract cases); full re-reads of all TSX/API diffs; full tsc/jest/build deferred to CI.
+**Compliance:** non-breaking, no migration, no new deps, additive-only; config/metadata-driven throughout; ASD-STE100 short-sentence copy on all new user-facing text; no emdashes in new copy.

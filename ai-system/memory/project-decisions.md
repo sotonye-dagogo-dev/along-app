@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (broad suggestions: parallel bounded fan-out + fallback-only overpass + coordinate fast-path)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -808,4 +808,19 @@ Sequential awaiting turned provider latency into missing results; parallelism re
 - New suggestion consumers must use `buildGeocodeUrl` + `LOCATION_SUGGESTIONS_CONFIG` gates and forward `biasQuerySuffix` — never hardcode min-chars/debounce/limit.
 - Provider changes keep the canonical `MapGeocodeHit` shape; `overpassFallbackOnly=false` restores round-1 Overpass without code changes.
 **Supersedes:** None (extends the Sprint 50 merged-geocode decision).
+**Superseded by:** None
+
+## Decision 2026-10-13 (Sprint 52): report audit on a new `report` entity; parser contract-first; zero new locale keys
+**Context:** report lifecycle had no audit rows; Studio parsing dropped content in edge cases; featured sections needed copy on three surfaces without breaking the en/pcm parity test.
+**Decision:** (1) audit report actions under a new `report` entity (blog hooks already existed and were kept), retaining the `bug` entity entry for backward compatibility; specific action prefixes ordered before generic ones since `auditActionMeta` is first-prefix-match. (2) `htmlToBlocks` hardening keeps the established plain-text paragraph contract (an existing suite explicitly asserts no raw HTML in paragraphs) — fidelity gains come from structure (bare-text capture, wrapper recursion, more container tags), not inline-HTML retention. (3) featured copy ships as `tf(key, configFallback)` with no dictionary additions, so locale parity suites stay green.
+**Reason:**
+A separate `report` entity reads clearly in the admin trail while old rows keep rendering. Overriding the tested strip contract would have traded one directive (no loss) against another (no raw HTML in paragraphs) and broken green suites; structure-level fidelity satisfies both. `tf()` fallbacks are the established offline-safe pattern for new surfaces.
+**Alternatives Considered:**
+- **Inline-HTML retention in paragraphs**: Rejected — contradicts the tested no-raw-HTML contract and risks markup leaking into Studio textareas.
+- **New en/pcm keys for featured copy**: Rejected — unnecessary; config fallbacks already satisfy offline rendering and parity tests.
+- **Featured via server component with direct DB reads on about/invite**: Rejected — about/invite are client pages; one client section with `initialPosts?` prop serves all three surfaces.
+**Implications:**
+- New auditable report/blog flows must `void logAudit(...)` with the `report.*`/`blog.*` action vocabulary; display-only additions need just `AUDIT_DISPLAY_CONFIG` entries.
+- Parser changes must keep the emailStudio `htmlToBlocks` contract cases green; bare-text/wrapper/recursion cases live in featuredBlogs.test.ts.
+**Supersedes:** None (extends the Sprint 37 audit-trail decision).
 **Superseded by:** None

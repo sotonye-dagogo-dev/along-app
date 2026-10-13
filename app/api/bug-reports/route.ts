@@ -203,6 +203,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Audit trail (non-critical, never fails the 201): platform bug reports
+    // appear in the admin trail alongside post reports.
+    try {
+      const { logAudit } = await import("@/app/lib/services/auditService");
+      void logAudit({
+        actorId: reporterId,
+        action: "report.create",
+        entity: "report",
+        entityId: created.id,
+        metadata: { kind: "bug-report", category, ...(linkedPostId ? { postId: linkedPostId } : {}) },
+      });
+    } catch {
+      /* audit writes are non-critical */
+    }
+
     return NextResponse.json({ success: true, id: created.id }, { status: 201 });
   } catch (error) {
     console.error("Bug report submission error:", error);

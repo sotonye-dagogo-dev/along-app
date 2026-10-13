@@ -118,6 +118,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: MODERATION_CONFIG.duplicateError, deduplicated: true }, { status: 409 });
     }
 
+    // Audit trail (non-critical, never fails the request): every filed
+    // report is recorded so admins can see who reported what and when.
+    try {
+      const { logAudit } = await import("@/app/lib/services/auditService");
+      void logAudit({
+        actorId: reporterId,
+        action: "report.create",
+        entity: "report",
+        entityId: result.reportId,
+        metadata: { postId, reason, ...(commentId ? { commentId } : {}) },
+      });
+    } catch {
+      /* audit writes are non-critical */
+    }
+
     // Single-admin assignment (non-critical, never fails the request):
     // exactly one admin owns the report and gets the ping + mail.
     // Resolved once and reused for the reviewer update, the in-app ping,
