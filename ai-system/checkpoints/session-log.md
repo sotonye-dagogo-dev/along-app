@@ -2333,3 +2333,33 @@ CI/Vercel build to confirm green (tsc + jest incl. extended blogCompliance suite
 **Notes / Blockers:**
 - None. Legacy stored posts carrying email inline styles render correctly on next read without any re-save (defensive strip at render + on store read).
 - Chain: execute-feature Steps 1-5 → sync-context drift check executed (no mutations) → in-progress cleared at close. No deep-sync trigger.
+
+## Session — 2026-10-13 (Execute-feature: train vehicle option)
+
+**Completed:**
+- Directive close-out ("vehicle option for trains, train icon in the UI, end to end") — same config/metadata-driven pattern as the boat session earlier today.
+- Implementation (non-breaking additive; no migration — vehicle stored as free string in routes JSON; no new deps; no removed APIs):
+  - `app/lib/types/index.ts` — `VehicleType` += `"train"`.
+  - `app/lib/config/vehicles.ts` — `train` entry (label "Train", Lucide `Train` icon — already imported by `mapIntegrations.ts`, so proven present in the installed lucide-react version; violet `#6D28D9` / `bg-violet-50` / `text-violet-800` + dark tokens; distinct from bus blue / car indigo / boat cyan).
+  - `app/lib/config/routeValidation.ts` — KNOWN_VEHICLES += `"train"`.
+  - `app/(dashboard)/explore/page.tsx` — `Train` filter chip + `activeVehicleFilters` allowlist entry (same hardcoded-subset catch as the boat session — chip would render but never filter without it).
+  - `app/(public)/page.tsx` — `VEHICLE_CHIPS` += `TRAIN` (`#EDE9FE`/`#5B21B6`).
+  - `ai-system/docs/DESIGN.md` — Train color + icon-map rows.
+  - `app/__tests__/config/vehicles.test.ts` — extended to 9 keys (boat assertions kept, train label/icon/color/classes + train-accepted assertions added; spaceship still rejected).
+- Surfaces (composer chips, PostCard, NavigationGuide, post detail, trust/validity) all read VEHICLE_REGISTRY dynamically — train picked up with zero per-surface changes.
+- QA: no node_modules in this runner — 10-point static parity grep all PASS (registry entry/label/icon/color, union member, validation mirror, explore chip + allowlist, landing chip, composer-from-registry); full tsc/jest/build deferred to CI/Vercel.
+- Docs: task-queue entry, this log; chained update-ai-system.md executed (task-queue + session-log + DESIGN.md reconciled; no architecture drift — additive registry entry, no new modules/dependencies).
+
+**Files Modified:**
+- Edited: `app/lib/types/index.ts`, `app/lib/config/vehicles.ts`, `app/lib/config/routeValidation.ts`, `app/(dashboard)/explore/page.tsx`, `app/(public)/page.tsx`, `app/__tests__/config/vehicles.test.ts`, `ai-system/docs/DESIGN.md`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry)
+
+**Next Task:**
+CI/Vercel build to confirm green (tsc + jest incl. extended vehicles suite).
+
+**Assumptions Made:**
+- Lucide `Train` present in the installed lucide-react (proven: `app/lib/config/mapIntegrations.ts` already imports `Train` from `lucide-react` — stronger evidence than the boat session's version reasoning; Vercel build will still confirm).
+- Explore vehicle-filter case behavior left as-is (pre-existing label-vs-value casing); train matches the same convention as the other five modes.
+
+**Notes / Blockers:**
+- None. Non-breaking, rail routes shareable end to end (composer → validation → feed/explore/landing/trust all generic over the registry).
+- Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + DESIGN.md).

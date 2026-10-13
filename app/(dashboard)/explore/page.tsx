@@ -123,6 +123,7 @@ export default function ExplorePage() {
     { label: "Trekking", active: false },
     { label: "Taxi", active: false },
     { label: "Boat", active: false },
+    { label: "Train", active: false },
     { label: "Verified", active: false },
     { label: "Trusted", active: false },
   ])
@@ -203,7 +204,7 @@ export default function ExplorePage() {
   )
 
   const activeVehicleFilters = filters.filter((f) =>
-    ["Bus", "Keke", "Trekking", "Taxi", "Boat"].includes(f.label) && f.active
+    ["Bus", "Keke", "Trekking", "Taxi", "Boat", "Train"].includes(f.label) && f.active
   ).map((f) => f.label)
   const showVerified = filters.find((f) => f.label === "Verified")?.active ?? false
   const showTrusted = filters.find((f) => f.label === "Trusted")?.active ?? false
