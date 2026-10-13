@@ -241,13 +241,23 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     try {
       // Keyless stack: geocode via the internal server proxy (merged
       // providers, cached, policy-compliant). Viewer bias (granted-only,
-      // never prompts) re-ranks nearby hits first. Never call upstream
-      // browser-direct.
-      const { getBiasCoords, biasQuerySuffix } = await import("@/app/lib/utils/geoBias")
-      const bias = await getBiasCoords()
+      // never prompts) re-ranks nearby hits first on a ~120ms budget so a
+      // cold GPS fix never stalls keystroke suggestions. Never call
+      // upstream browser-direct.
+      const { peekBiasCoords, getBiasCoordsQuick, biasQuerySuffix } = await import("@/app/lib/utils/geoBias")
+      const bias = peekBiasCoords() ?? (await getBiasCoordsQuick());
       const res = await fetch(
         `/api/maps/geocode?q=${encodeURIComponent(query)}&limit=5${biasQuerySuffix(bias)}`,
       )
+      if (res.status === 429) {
+        // Rate-limited: keep prior results visible; next keystroke retries.
+        setSteps((prev) => {
+          const next = [...prev]
+          next[stepIndex] = { ...next[stepIndex], _geoLoading: false }
+          return next
+        })
+        return
+      }
       if (!res.ok) throw new Error(`geocode ${res.status}`)
       const data = (await res.json()) as { results?: GeoResult[] }
       const results = Array.isArray(data.results) ? data.results : []

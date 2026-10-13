@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { ClipboardList, MapPin, Loader2 } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 
@@ -62,6 +62,70 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
   // One idempotency key per composer session (regenerated after each success).
   const [mutationKey, setMutationKey] = useState(() => newRequestKey())
 
+  // Location autocomplete (same keyless `/api/maps/geocode` proxy as the
+  // share composer: debounced, abortable, bias on a ~120ms budget, 429 and
+  // offline leave prior hits untouched so the dropdown never flashes empty).
+  interface LocHit { display_name: string; lat: string; lon: string }
+  const [fromHits, setFromHits] = useState<LocHit[]>([]);
+  const [toHits, setToHits] = useState<LocHit[]>([]);
+  const [fromLoading, setFromLoading] = useState(false);
+  const [toLoading, setToLoading] = useState(false);
+  const [fromFocused, setFromFocused] = useState(false);
+  const [toFocused, setToFocused] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchLocHits = useCallback(async (q: string, which: "from" | "to") => {
+    if (!q || q.trim().length < 3) {
+      if (which === "from") setFromHits([]);
+      else setToHits([]);
+      return;
+    }
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    if (which === "from") setFromLoading(true);
+    else setToLoading(true);
+    try {
+      const { peekBiasCoords, getBiasCoordsQuick, biasQuerySuffix } = await import("@/app/lib/utils/geoBias");
+      const bias = peekBiasCoords() ?? (await getBiasCoordsQuick());
+      const res = await fetch(
+        `/api/maps/geocode?q=${encodeURIComponent(q.trim())}&limit=5${biasQuerySuffix(bias)}`,
+        { signal: controller.signal },
+      );
+      if (res.status === 429) return; // keep prior hits; next keystroke retries
+      if (!res.ok) throw new Error(`geocode ${res.status}`);
+      const data = (await res.json()) as { results?: LocHit[] };
+      const hits = Array.isArray(data.results) ? data.results : [];
+      if (which === "from") setFromHits(hits);
+      else setToHits(hits);
+    } catch {
+      // Offline/aborted/transient: leave prior hits untouched.
+    } finally {
+      if (!controller.signal.aborted) {
+        if (which === "from") setFromLoading(false);
+        else setToLoading(false);
+      }
+    }
+  }, []);
+
+  const queueLocFetch = useCallback((q: string, which: "from" | "to") => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!q || q.trim().length < 3) {
+      if (which === "from") setFromHits([]);
+      else setToHits([]);
+      return;
+    }
+    if (which === "from") setFromLoading(true);
+    else setToLoading(true);
+    debounceRef.current = setTimeout(() => void fetchLocHits(q, which), 400);
+  }, [fetchLocHits]);
+
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    abortRef.current?.abort();
+  }, []);
+
   // Edit mode prefill: a ROUTE_REQUEST stays a request — fields map back to
   // the same from/to shape so the edit form matches the create form.
   useEffect(() => {
@@ -101,6 +165,10 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
     setTagInput("")
     setShowErrors(false)
     setSubmitting(false)
+    setFromHits([])
+    setToHits([])
+    setFromFocused(false)
+    setToFocused(false)
   }, [])
 
   const handleClose = useCallback(() => {
@@ -221,14 +289,43 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
                   <MapPin size={13} className="text-primary" /> From <span className="text-error-text">*</span>
                 </span>
               </label>
-              <input
-                type="text"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                placeholder="Starting point"
-                maxLength={120}
-                className={inputClass}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={from}
+                  onChange={(e) => { setFrom(e.target.value); queueLocFetch(e.target.value, "from"); }}
+                  onFocus={() => setFromFocused(true)}
+                  onBlur={() => setTimeout(() => setFromFocused(false), 160)}
+                  placeholder="Starting point"
+                  maxLength={120}
+                  autoComplete="off"
+                  aria-label="Starting point (location suggestions appear as you type)"
+                  className={inputClass}
+                />
+                {fromLoading && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
+                    <Loader2 size={14} className="animate-spin" />
+                  </span>
+                )}
+                {fromFocused && fromHits.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-bg-card border border-border radius-md shadow-lg max-h-[200px] overflow-y-auto">
+                    {fromHits.map((h, i) => (
+                      <button
+                        key={`${h.lat},${h.lon},${i}`}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { setFrom(h.display_name); setFromHits([]); setFromFocused(false); }}
+                        className="w-full text-left px-3 py-2 text-xs text-text-primary border-none bg-transparent cursor-pointer hover:bg-bg-elevated font-sans"
+                      >
+                        <span className="flex items-center gap-2">
+                          <MapPin size={12} className="shrink-0 text-text-muted" />
+                          <span className="truncate">{h.display_name}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {fieldError("from")}
             </div>
             <div>
@@ -237,14 +334,43 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
                   <MapPin size={13} className="text-error" /> To <span className="text-error-text">*</span>
                 </span>
               </label>
-              <input
-                type="text"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                placeholder="Destination"
-                maxLength={120}
-                className={inputClass}
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={to}
+                  onChange={(e) => { setTo(e.target.value); queueLocFetch(e.target.value, "to"); }}
+                  onFocus={() => setToFocused(true)}
+                  onBlur={() => setTimeout(() => setToFocused(false), 160)}
+                  placeholder="Destination"
+                  maxLength={120}
+                  autoComplete="off"
+                  aria-label="Destination (location suggestions appear as you type)"
+                  className={inputClass}
+                />
+                {toLoading && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none">
+                    <Loader2 size={14} className="animate-spin" />
+                  </span>
+                )}
+                {toFocused && toHits.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-bg-card border border-border radius-md shadow-lg max-h-[200px] overflow-y-auto">
+                    {toHits.map((h, i) => (
+                      <button
+                        key={`${h.lat},${h.lon},${i}`}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => { setTo(h.display_name); setToHits([]); setToFocused(false); }}
+                        className="w-full text-left px-3 py-2 text-xs text-text-primary border-none bg-transparent cursor-pointer hover:bg-bg-elevated font-sans"
+                      >
+                        <span className="flex items-center gap-2">
+                          <MapPin size={12} className="shrink-0 text-text-muted" />
+                          <span className="truncate">{h.display_name}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               {fieldError("to")}
             </div>
           </div>

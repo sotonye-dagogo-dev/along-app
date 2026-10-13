@@ -4,14 +4,26 @@ import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { DEFAULT_EMAIL_TEMPLATES } from "@/app/lib/config/email";
 import type { EmailTemplate } from "@/app/lib/config/email";
 import { isSystemTemplate } from "@/app/lib/config/emailManagement";
-import { sanitizeStoredBody, deriveBodyText } from "@/app/lib/utils/emailTemplates";
+import { sanitizeStoredBody, deriveBodyText, mergeEmailTemplatesWithDefaults } from "@/app/lib/utils/emailTemplates";
 import { extractVariables, stripTags } from "@/app/lib/utils/emailSanitize";
 
-async function readStored(): Promise<EmailTemplate[]> {
+async function readRawStored(): Promise<EmailTemplate[] | null> {
   try {
     const row = await prisma.siteConfig.findUnique({ where: { key: "emailTemplates" } });
     if (row?.value && Array.isArray(row.value)) return row.value as unknown as EmailTemplate[];
   } catch { /* fall through */ }
+  return null;
+}
+
+async function readStored(): Promise<EmailTemplate[]> {
+  const raw = await readRawStored();
+  if (raw) {
+    // Merge hardcoded defaults under stored customs: stored wins per-name,
+    // new system templates backfill automatically. Without this merge a DB
+    // seeded when fewer templates existed would hide every template added
+    // since (the reported "only one bug-report template in Studio" case).
+    return mergeEmailTemplatesWithDefaults(raw);
+  }
   return DEFAULT_EMAIL_TEMPLATES;
 }
 
@@ -75,7 +87,6 @@ export async function PUT(request: NextRequest) {
     const user = await getUserFromRequest();
     if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     const body = await request.json();
-    const templates = await readStored();
     if (body?.toggles && typeof body.toggles === "object") {
       // Toggle posting: record transition per template in EmailLog metadata.
       const next = body.toggles as Record<string, boolean>;
@@ -100,12 +111,14 @@ export async function PUT(request: NextRequest) {
     // the hardcoded config fallback shines through again. Hardcoded updates
     // NEVER overwrite DB-saved versions automatically (stored wins per-name
     // in getEmailTemplates); restore is the explicit opt-in path back.
+    // Persistence uses the RAW stored row (not the merged view) so
+    // backfilled defaults are never snapshotted into the DB.
     const restoreName = typeof body?.restore === "string" ? body.restore.trim() : "";
     if (restoreName) {
       const def = DEFAULT_EMAIL_TEMPLATES.find((t) => t.name === restoreName);
       if (!def) return NextResponse.json({ error: "No default for that template" }, { status: 404 });
-      const templates = (await readStored()).filter((t) => t.name !== restoreName);
-      await writeStored(templates);
+      const raw = (await readRawStored()) ?? [];
+      await writeStored(raw.filter((t) => t.name !== restoreName));
       try {
         await prisma.emailLog.create({ data: { to: "-", subject: `restore:${restoreName}`, type: "template_restore", status: "sent", metadata: { templateName: restoreName } as never } });
       } catch { /* ignore */ }
@@ -113,12 +126,17 @@ export async function PUT(request: NextRequest) {
     }
     const incoming = body?.template as Partial<EmailTemplate> | undefined;
     if (!incoming) return NextResponse.json({ error: "template required" }, { status: 400 });
+    const templates = await readStored();
     const idx = templates.findIndex((t) => t.name === incoming.name);
     const clean = sanitize(incoming, idx >= 0 ? templates[idx] : undefined);
     if (!clean) return NextResponse.json({ error: "Invalid template (name/subject/bodyHtml required)" }, { status: 400 });
-    if (idx >= 0) templates[idx] = clean;
-    else templates.push(clean);
-    await writeStored(templates);
+    // Persist against the RAW row so unedited backfilled defaults stay
+    // un-stored (future hardcoded updates still flow through for them).
+    const raw = (await readRawStored()) ?? [];
+    const rawIdx = raw.findIndex((t) => t.name === clean.name);
+    if (rawIdx >= 0) raw[rawIdx] = clean;
+    else raw.push(clean);
+    await writeStored(raw);
     try {
       const { logAudit } = await import("@/app/lib/services/auditService");
       await logAudit({ actorId: (user as { id: string }).id, action: "email.template.save", entity: "email-template", entityId: clean.name, metadata: { subject: clean.subject } });
@@ -137,8 +155,8 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const name = searchParams.get("name") ?? "";
     if (!name || isSystemTemplate(name)) return NextResponse.json({ error: "Only custom templates can be deleted (system templates: toggle instead)" }, { status: 400 });
-    const templates = (await readStored()).filter((t) => t.name !== name);
-    await writeStored(templates);
+    const raw = (await readRawStored()) ?? [];
+    await writeStored(raw.filter((t) => t.name !== name));
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (e) {
     console.error("admin email templates DELETE error:", e);

@@ -1269,3 +1269,15 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `__tests__/config/sessionTightening.test.ts` (7: right dock + lane clearance, order/upstream/tuning, photon street labels, overpass landmark surfacing, short-query gating, overpass-failure merge safety).
 **QA:** no node_modules in runner — `node --experimental-strip-types --check` green on all touched .ts files (mapStack, mapProxyService, floatingUi, config index, geocode route, new test); .tsx changes hand-verified (slot render order, page wiring); full tsc/jest/build deferred to CI (standing arrangement).
 **Compliance:** additive-only, non-breaking (no migration — overpass hits are runtime-merged, photon/nominatim shapes unchanged for callers, beforeSubmit optional, dock side is one config value; unknown future providers fall through safely).
+---
+**Session 2026-10-13 — location suggestions + Email Studio availability.**
+**Directive:** location search/input not bringing suggestions since recent changes; Studio still showing one bug-report template.
+**Implemented:**
+- `app/lib/utils/rateLimit.ts` — per-bucket counters (`ip::bucket`); maps budget no longer starved by auth/search/posts traffic (the silent-429 suggestion wipe).
+- `app/lib/utils/geoBias.ts` — NEW `peekBiasCoords()` + `getBiasCoordsQuick(120ms)`; keystroke suggestions never wait on a cold GPS fix.
+- `RouteStepInput.tsx` / `ShareRouteModal.tsx` — quick bias, 429 keeps prior hits, failures leave the dropdown untouched.
+- `RequestRouteModal.tsx` — From/To autocomplete dropdowns over `/api/maps/geocode` (debounced/abortable/bias-budgeted/429-safe); submit shape unchanged.
+- `app/api/admin/email/templates/route.ts` + `app/lib/utils/emailTemplates.ts` — Studio GET merges via NEW exported `mergeEmailTemplatesWithDefaults` (stored wins, defaults backfill); save/delete/restore persist the raw row so backfills never snapshot.
+- Tests: NEW `app/__tests__/config/locationSuggestions.test.ts` (7 suites).
+**QA:** no node_modules in runner — re-reads + balance-vs-baseline + diff-stat review green; full tsc/jest/build deferred to CI.
+**Compliance:** non-breaking, no migration, no new deps, additive-only.

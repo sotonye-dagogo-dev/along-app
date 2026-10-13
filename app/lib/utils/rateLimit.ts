@@ -21,11 +21,15 @@ export function checkRateLimit(
   if (!config) return { allowed: true };
 
   const ip = getIp(request);
+  // Per-bucket counters: the previous single-key map let unrelated buckets
+  // (auth/search/posts) consume the maps budget, so location autocomplete
+  // could 429 (and silently clear suggestions) under normal browsing.
+  const key = `${ip}::${String(bucket)}`;
   const now = Date.now();
-  const entry = ipMap.get(ip);
+  const entry = ipMap.get(key);
 
   if (!entry || now > entry.resetAt) {
-    ipMap.set(ip, { count: 1, resetAt: now + config.windowMs });
+    ipMap.set(key, { count: 1, resetAt: now + config.windowMs });
     return { allowed: true };
   }
 
