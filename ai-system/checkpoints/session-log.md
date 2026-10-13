@@ -2201,3 +2201,27 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **Notes / Blockers:** runner has no node_modules — full QA deferred to CI (standing arrangement); tsc output is missing-module noise only. update-ai-system deep sync: new components (AvatarMenu, ReviewsCarouselSection) + API enrichment = architecture impact → repo-map/dependency-graph/architecture freshness updated alongside this entry.
 **Compliance:** non-breaking (no migration/deps/API removals; superset shapes; stored-wins untouched).
 **Chain:** execute-feature → in-progress (written) → session-log (here) → dev-history + task-queue → update-ai-system terminal sync → in-progress cleared at close.
+
+## Session — 2026-10-13 (Feed de-glitch + profile tabQuery build fix)
+
+**Completed:**
+- Build fix: renamed colliding `tabQuery` identifiers in `app/(dashboard)/profile/page.tsx` + `profile/[username]/page.tsx` (search state → `tabFilter`, query URL → `tabPostsQuery`) — resolves the Vercel `Identifier 'tabQuery' has already been declared` failure.
+- Feed hardening: `excludeIds` stable pagination (service + route + guest path), deterministic id tie-break, `FEED_STREAM_CONFIG` knobs, exported `dedupePosts` invariant on all stream merges, poll cursor preservation, loadMore exclude + re-entrancy guard, retained geo boost, home single-subscription + single refresh, observer deps, useCachedFetch url dep.
+- Tests: new `app/__tests__/config/feedDedup.test.ts`.
+- Docs: dev-history entry, dependency-graph feed rows, task-queue last-synced, in-progress cleared (update-ai-system terminal sync).
+
+**Files Modified:**
+- Edited: `app/(dashboard)/profile/page.tsx`, `app/(dashboard)/profile/[username]/page.tsx`, `app/(dashboard)/home/page.tsx`, `app/api/posts/feed/route.ts`, `app/lib/services/feedService.ts`, `app/lib/streams/feedStream.ts`, `app/lib/config/feedAlgorithm.ts`, `app/lib/config/index.ts`, `app/lib/hooks/useCachedFetch.ts`
+- New: `app/__tests__/config/feedDedup.test.ts`
+- Docs: `summaries/dev-history.md`, `checkpoints/session-log.md` (this entry), `planning/task-queue.md` (last-synced), `index/dependency-graph.md`, `checkpoints/in-progress.md` (cleared)
+
+**Next Task:**
+CI build verification (tsc/jest/build in an env with node_modules); prod-verify no duplicate posts across feed pages + profile tabs render after the rename.
+
+**Assumptions Made:**
+- `exclude` ids match cuid-ish charset (alphanumeric/`_`/`-`, ≤64 chars); anything else is dropped server-side.
+- First-seen order is the render contract (older page wins on overlap).
+
+**Notes / Blockers:**
+- Runner has no node_modules — full QA deferred to CI (standing arrangement).
+- Chain: execute-feature → update-ai-system terminal sync executed in this session (not just sync-context).

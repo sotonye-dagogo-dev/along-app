@@ -4,7 +4,8 @@ export { NAV_REGISTRY, filterNavItems, isAdminRole, LIVE_NAVIGATION_CONFIG } fro
 export { ERROR_REPORTING_CONFIG, ERROR_SENSITIVE_PATTERNS } from "./errorReporting";
 export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, USERNAME_RULE, POST_CREATE_FIELDS, BUG_REPORT_FIELDS, CONTACT_FIELDS } from "./forms";
 export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
-export { DEFAULT_FEED_CONFIG } from "./feedAlgorithm";
+export { DEFAULT_FEED_CONFIG, FEED_STREAM_CONFIG } from "./feedAlgorithm";
+export type { FeedStreamConfig } from "./feedAlgorithm";
 export { QUALITY_CHECKPOINTS } from "./draftingCoach";
 export { DEFAULT_VALIDITY_CONFIG, VALIDITY_SIGNAL_BOUNDS, DETAIL_SCORING_CONFIG } from "./validityConfig";
 export { TRUST_DISPLAY_CONFIG, TRUST_BREAKDOWN_KEYS, TRUST_BREAKDOWN_LABELS, trustKeysForVariant, trustTierForScore } from "./trustDisplay";

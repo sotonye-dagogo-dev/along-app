@@ -90,6 +90,7 @@ Client Cache Layer (app/lib/cache/memoryCache + app/lib/hooks/useCachedFetch)
     → TTL Map with prefix invalidation, never-throw (mirrors redis.ts semantics)
     → read-through + stale-while-revalidate + in-flight request dedup
     → Consumers: home feed (hydrates feedStream, pauses poll when tab hidden), notifications, analytics, post detail, profile, explore
+    → FeedStream [2026-10-13]: dedupePosts invariant on every merge (initial/more/poll/refresh), poll keeps current cursor, loadMore sends exclude + loadingMore guard, refresh keeps geo boost, FEED_STREAM_CONFIG knobs
 
 Service Layer (app/lib/services/*)
     → BaseRepository<T>
@@ -140,6 +141,7 @@ FeedService
     → PostModel, UserModel, LikeModel, BookmarkModel (Prisma)
     → Redis (feed caching)
     → Config: feedAlgorithm, cache
+    → Stable pagination [2026-10-13]: excludeIds (server-side notIn before scoring/slicing + backfill over-fetch) + deterministic id tie-break; guest feed honors exclude too
 
 SearchService (`app/lib/services/searchService.ts`, live 2026-10-08 — powers `GET /api/search`)
     → PostModel, UserModel (Prisma `contains`/`insensitive`, no migration; P2022 avatarConfig fallback)
