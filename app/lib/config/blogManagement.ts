@@ -17,6 +17,12 @@ export const BLOG_MANAGEMENT_CONFIG = {
   maxTitle: 140,
   maxDescription: 300,
   maxContent: 100000,
+  /** Reading-time bounds (minutes). Studio input + server clamp share these. */
+  minReadingTime: 1,
+  maxReadingTime: 120,
+  defaultReadingTime: 3,
+  /** Words-per-minute used when no explicit reading time is stored. */
+  readingTimeWpm: 200,
 } as const;
 
 export type BlogPostStatus = (typeof BLOG_MANAGEMENT_CONFIG.statuses)[number];
@@ -59,6 +65,45 @@ export function normalizeSlug(raw: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
+}
+
+/**
+ * Studio field meta for the reading-time input — label/hint live in config
+ * (not hardcoded in the page) so copy stays consistent and non-programmer
+ * admins get guidance. Rendered as a number input with min/max/step.
+ */
+export const READING_TIME_FIELD_META = {
+  label: "Reading time (min)",
+  hint: "Shown as “N min read”. Leave the estimate or adjust it; whole minutes only.",
+  min: BLOG_MANAGEMENT_CONFIG.minReadingTime,
+  max: BLOG_MANAGEMENT_CONFIG.maxReadingTime,
+  step: 1,
+  placeholder: String(BLOG_MANAGEMENT_CONFIG.defaultReadingTime),
+} as const;
+
+/**
+ * Clamp an explicit reading-time value into the configured bounds.
+ * Returns null when the input is absent/invalid so callers can fall back
+ * to the word-count estimate (server) or the default (studio).
+ */
+export function normalizeReadingTime(raw: unknown): number | null {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.min(
+    BLOG_MANAGEMENT_CONFIG.maxReadingTime,
+    Math.max(BLOG_MANAGEMENT_CONFIG.minReadingTime, Math.round(n)),
+  );
+}
+
+/** Word-count fallback estimate when no explicit reading time is stored. */
+export function estimateReadingTime(text: string): number {
+  const words = String(text ?? "")
+    .split(/\s+/)
+    .filter(Boolean).length;
+  return Math.max(
+    BLOG_MANAGEMENT_CONFIG.minReadingTime,
+    Math.round(words / BLOG_MANAGEMENT_CONFIG.readingTimeWpm) || BLOG_MANAGEMENT_CONFIG.minReadingTime,
+  );
 }
 
 /**
