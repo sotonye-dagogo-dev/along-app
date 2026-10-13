@@ -8,6 +8,7 @@ import type { PlatformReviewItem } from "@/app/lib/config";
 import { useTranslation } from "@/app/providers/I18nProvider";
 import { useAuth } from "@/app/hooks/useAuth";
 import { EndlessCarousel } from "@/app/components/features/suggestions/EndlessCarousel";
+import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection";
 import { AppAvatar } from "@/app/components/ui";
 
 export default function AboutPageClient() {
@@ -62,10 +63,10 @@ export default function AboutPageClient() {
   );
 
   return (
-    <div className="flex flex-col gap-12 pb-16">
+    <div className="flex min-w-0 max-w-full flex-col gap-12 overflow-x-clip pb-16">
       {/* Hero */}
       <section
-        className="relative overflow-hidden rounded-2xl py-20 px-6 text-center text-white"
+        className="relative w-full min-w-0 max-w-full overflow-hidden rounded-2xl py-20 px-6 text-center text-white"
         style={{ background: "linear-gradient(135deg,var(--color-primary-dark),var(--color-primary) 50%,var(--color-primary-light))" }}
       >
         <div className="absolute opacity-8 pointer-events-none">
@@ -85,7 +86,7 @@ export default function AboutPageClient() {
       </section>
 
       {/* Features */}
-      <section className="max-w-[1100px] mx-auto px-6">
+      <section className="mx-auto w-full min-w-0 max-w-[1100px] px-6">
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">{tf("about.why.title", "Why Along")}</h2>
           <p className="text-sm text-text-secondary max-w-[500px] mx-auto">
@@ -108,7 +109,7 @@ export default function AboutPageClient() {
       </section>
 
       {/* Team Grid */}
-      <section className="max-w-[1100px] mx-auto px-6">
+      <section className="mx-auto w-full min-w-0 max-w-[1100px] px-6">
         <div className="text-center mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">{tf("about.team.title", "Meet the Team")}</h2>
           <p className="text-sm text-text-secondary max-w-[500px] mx-auto">
@@ -174,8 +175,8 @@ export default function AboutPageClient() {
 
       {/* Reviews Carousel — real moderated reviews + CTA panels, same
           EndlessCarousel design/animation as home */}
-      <section className="bg-primary-muted py-12">
-        <div className="max-w-[1100px] mx-auto px-6">
+      <section className="w-full min-w-0 max-w-full overflow-x-clip bg-primary-muted py-12">
+        <div className="mx-auto w-full min-w-0 max-w-[1100px] px-6">
           <div className="text-center mb-8">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">{tf("about.reviews.title", "What Commuters Say")}</h2>
             <p className="text-sm text-text-secondary max-w-[500px] mx-auto">
@@ -183,7 +184,7 @@ export default function AboutPageClient() {
             </p>
           </div>
           {reviews === null ? (
-            <div className="flex gap-4 overflow-hidden" aria-busy="true">
+            <div className="flex w-full min-w-0 max-w-full gap-4 overflow-hidden" aria-busy="true">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="w-[280px] sm:w-[320px] h-[180px] rounded-2xl bg-bg-card/60 animate-pulse shrink-0" />
               ))}
@@ -203,6 +204,11 @@ export default function AboutPageClient() {
             />
           )}
         </div>
+      </section>
+
+      {/* Featured Blogs: same endless tape as home, after reviews */}
+      <section className="mx-auto w-full min-w-0 max-w-[1100px] overflow-x-clip px-6">
+        <FeaturedBlogsSection />
       </section>
     </div>
   );

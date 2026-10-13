@@ -31,6 +31,7 @@ export default function AdminBlogPage() {
   const [category, setCategory] = useState<string>("updates");
   const [image, setImage] = useState<string>(BLOG_MANAGEMENT_CONFIG.defaultImage);
   const [status, setStatus] = useState<BlogPostStatus>(BLOG_MANAGEMENT_CONFIG.defaultStatus);
+  const [featured, setFeatured] = useState(false);
   const [blocks, setBlocks] = useState<EmailBlock[]>(defaultBlocks());
   const [defaults, setDefaults] = useState<ManagedBlogPost[]>([]);
   const [restoring, setRestoring] = useState(false);
@@ -61,7 +62,7 @@ export default function AdminBlogPage() {
     if (cur && !isNew) {
       setSlug(cur.slug); setTitle(cur.title); setDescription(cur.description);
       setAuthor(cur.author); setCategory(cur.category); setImage(cur.image);
-      setStatus(cur.status); setBlocks(htmlToBlocks(cur.content));
+      setStatus(cur.status); setFeatured(cur.featured === true); setBlocks(htmlToBlocks(cur.content));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, isNew]);
@@ -79,7 +80,7 @@ export default function AdminBlogPage() {
           post: {
             slug: cleanSlug, title, description, author, category, image,
             date: new Date().toISOString().slice(0, 10),
-            status, content: blocksToHtml(blocks),
+            status, featured, content: blocksToHtml(blocks),
           },
         }),
       });
@@ -140,6 +141,17 @@ export default function AdminBlogPage() {
     });
   };
 
+  /** Open a shipped config template in the editor without saving it first —
+   *  the admin can review/edit every field and block, then Create. */
+  const openTemplate = (tpl: ManagedBlogPost) => {
+    setIsNew(true);
+    setSelected(tpl.slug);
+    setSlug(tpl.slug); setTitle(tpl.title); setDescription(tpl.description);
+    setAuthor(tpl.author); setCategory(tpl.category); setImage(tpl.image);
+    setStatus(tpl.status); setFeatured(tpl.featured === true);
+    setBlocks(htmlToBlocks(tpl.content));
+  };
+
   /** Rollback a slug to its shipped default (DB row overwritten, audited server-side). */
   const handleRestoreDefault = async (slug: string) => {
     setRestoring(true);
@@ -172,7 +184,7 @@ export default function AdminBlogPage() {
           <div className="text-sm text-text-secondary">Draft · publish · archive · visual builder (no HTML needed)</div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => { setIsNew(true); setSlug(""); setTitle(""); setDescription(""); setStatus("draft"); setBlocks(defaultBlocks()); }}
+          <button onClick={() => { setIsNew(true); setSlug(""); setTitle(""); setDescription(""); setStatus("draft"); setFeatured(false); setBlocks(defaultBlocks()); }}
             className="inline-flex items-center gap-1.5 px-3 py-2 radius-md bg-primary text-white text-xs font-semibold border-none cursor-pointer">
             <Plus size={14} /> New post
           </button>
@@ -186,11 +198,32 @@ export default function AdminBlogPage() {
         {posts.map((p) => (
           <button key={p.slug} onClick={() => { setSelected(p.slug); setIsNew(false); }}
             className={`px-3 py-2 radius-md text-xs font-semibold border cursor-pointer ${selected === p.slug && !isNew ? "bg-primary text-white border-primary" : "bg-bg-card text-text-secondary border-border"} ${p.status !== "published" ? "opacity-60" : ""}`}>
-            {p.slug}{p.status !== "published" ? ` (${p.status})` : ""}
+            {p.featured === true ? "★ " : ""}{p.slug}{p.status !== "published" ? ` (${p.status})` : ""}
           </button>
         ))}
-        {posts.length === 0 && <span className="text-xs text-text-muted">No managed posts yet — filesystem seeds still serve publicly.</span>}
+        {posts.length === 0 && <span className="text-xs text-text-muted">No saved posts yet — pick a shipped template below to start, or create a new post.</span>}
       </div>
+
+      {/* Shipped config templates — openable even before anything is saved. */}
+      {defaults.filter((d) => !posts.some((p) => p.slug === d.slug)).length > 0 && (
+        <section className="bg-bg-card border border-border radius-lg p-4 flex flex-col gap-2">
+          <h2 className="text-sm font-semibold">Shipped templates (no save needed to preview)</h2>
+          <p className="text-xs text-text-muted">
+            Config posts bundled with the app. Open one to review it in the editor, edit freely, then Create to save your own version.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {defaults.filter((d) => !posts.some((p) => p.slug === d.slug)).map((d) => (
+              <button
+                key={d.slug}
+                onClick={() => openTemplate(d)}
+                className={`px-3 py-2 radius-md text-xs font-semibold border cursor-pointer ${selected === d.slug && isNew ? "bg-primary text-white border-primary" : "bg-bg-elevated text-text-secondary border-border"}`}
+              >
+                {d.slug} (template)
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Shipped defaults + rollback (mirrors Email Studio defaults panel). */}
       {defaults.length > 0 && (
@@ -258,6 +291,15 @@ export default function AdminBlogPage() {
               </select>
             </label>
           </div>
+          <label className="flex cursor-pointer items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={featured}
+              onChange={(e) => setFeatured(e.target.checked)}
+              className="h-4 w-4 accent-[var(--color-primary)]"
+            />
+            <span className="font-medium">Featured <span className="text-text-muted">(headlines the /blog hero and the featured tape)</span></span>
+          </label>
           <label className="text-xs flex flex-col gap-1">
             <span className="text-text-muted font-medium">Cover image URL</span>
             <input value={image} onChange={(e) => setImage(e.target.value)} className="rounded-md border border-border bg-bg-base px-3 py-2 text-sm font-mono" />

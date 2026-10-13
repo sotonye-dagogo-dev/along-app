@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 50 tightening: report screenshots, pagination controls, merged geo, floating lanes, README)
-> - last-synced: 2026-10-13 (Sprint 50 close-out)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
+> - last-synced: 2026-10-13 (Sprint 52 close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -664,3 +664,27 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 - [x] Session 2026-10-13 — Broad location suggestions (LOCATION_SUGGESTIONS_CONFIG + parse/reorder/URL helpers; parallel fast fan-out + coordinate fast-path + empty-only overpass/reorder batch + upstream bias params + short empty TTL; route + 3 clients on shared min2/debounce/limit) (locationSuggestBroad 13 suites; node pure-logic green in-runner, full gate deferred to CI — no node_modules in runner)
 
 - [x] Session 2026-10-13 — Blog share + dynamic SEO + defaults rollback + variables + bug action modal (BLOG_SHARE_CONFIG + blogShareService + BlogShareButtons on detail; buildMetadata ogType/publishedTime/authorName + resolveOgImage per-post; DEFAULT_BLOG_POSTS + mergeBlogPostsWithDefaults + GET defaults + PUT restoreSlug + Studio rollback panel; BLOG_VARIABLE_CATALOG + blogVariables guest fallbacks + BlogVariableInsert; BUG_REPORT_ACTION_MODAL + PATCH statusNote override + admin action modal with screenshots) (blogShareVariables suites; structural review in-runner, full gate deferred to CI — no node_modules in runner)
+
+## Sprint 52 — Audit Trail (Reports + Blogs) + Enriched Defaults + Featured Carousel + Studio Parsing (2026-10-13, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; stored-wins merges keep existing admin edits; audit writes fire-and-forget). QA in-runner: node strip-types executed 20+ assertions green (featured pick/href, audit labels, defaults count/emdash/vars, builder round-trips incl. pre-existing emailStudio contract cases); full tsc/jest/build deferred to CI — no node_modules in runner.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Audit config — `report` entity + report.create/moderate/status + blog.upsert/delete/restore-default/bulk action labels (specific prefixes ordered before generic) | [x] |
+| [M] | Audit hooks — `POST /api/reports` + `POST /api/bug-reports` log report.create; admin bugs PATCH logs report.status (triage) + report.moderate (DISMISS/ARCHIVE_POST/REMOVE_POST); blog hooks pre-existing verified | [x] |
+| [M] | Defaults enriched 2 → 6 posts (tips/updates/community/routes; STE100 short sentences; emdash-free; every `{{var}}` carries `\|\|fallback`) | [x] |
+| [M] | Studio parsing hardened — bare inter-tag text, section/article/figure/h4-h6/br containers, block-child recursion, empty-link-remnant drop; plain-text paragraph contract kept (existing suites green) | [x] |
+| [L] | Featured blogs — `FEATURED_BLOGS_CONFIG` + `pickFeaturedBlogs`/`featuredBlogHref` + `FeaturedBlogsSection` (EndlessCarousel reuse, per-card Read CTA + View-all CTA, tf() fallbacks, no new locale keys); landing (server-fed) + about (after reviews) + invite (after leaderboard) | [x] |
+| [S] | Tests — NEW `featuredBlogs.test.ts` (config/CTA/emdash, pick/cap/href, defaults coverage/vars, audit labels, parsing no-loss) | [x] |
+
+## Session 2026-10-13 — Blog carousel overflow + featured flag + Studio templates (execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive optional `featured`, no migration/deps/API removals; tape falls back to newest-first; templates prefill-only). QA in-runner: real-module strip-types green (featured-first order, legacy fallback, hrefs); balance identical to HEAD on 13 files; full tsc/jest/build deferred to CI — no node_modules in runner.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Carousel overflow — about flex-column guards + viewport width constraint + FeaturedBlogsSection/invite/landing caps (page no longer scrolls horizontally) | [x] |
+| [M] | Admin featured flag — type + store + `/api/blog` field + upsert/metadata + `preferFeatured` ordering + /blog hero preference + Studio checkbox/star + tape pill | [x] |
+| [S] | Studio templates — shipped defaults openable/editable without DB save (prefill incl. blocks, save creates row; empty-DB empty-editor fixed) | [x] |
+| [S] | Tests — extended `featuredBlogs.test.ts` (featured-first ordering, missing-field fallback) | [x] |

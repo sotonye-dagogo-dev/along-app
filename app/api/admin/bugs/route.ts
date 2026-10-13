@@ -97,6 +97,19 @@ export async function PATCH(request: NextRequest) {
         data: data as never,
       });
 
+      // Audit trail (non-critical): status-only triage transitions.
+      try {
+        const { logAudit } = await import("@/app/lib/services/auditService");
+        void logAudit({
+          actorId: user.id as string,
+          action: "report.status",
+          entity: "report",
+          metadata: { targets, status },
+        });
+      } catch {
+        /* audit writes are non-critical */
+      }
+
       // User-facing lifecycle emails + in-app ping for status transitions the
       // reporter cares about (IN_PROGRESS / RESOLVED / CLOSED). Best-effort,
       // never fails the PATCH — keeps admin UX snappy. An admin-entered
@@ -243,6 +256,20 @@ export async function PATCH(request: NextRequest) {
       }
     } catch (e) {
       console.error("[admin/bugs] outcome notification failed (non-critical):", e);
+    }
+
+    // Audit trail (non-critical): moderation outcome on a report.
+    try {
+      const { logAudit } = await import("@/app/lib/services/auditService");
+      void logAudit({
+        actorId: user.id as string,
+        action: "report.moderate",
+        entity: "report",
+        entityId: targetBugId,
+        metadata: { action, status, postId: report.postId ?? null },
+      });
+    } catch {
+      /* audit writes are non-critical */
     }
 
     return NextResponse.json({ success: true, action }, { status: 200 });

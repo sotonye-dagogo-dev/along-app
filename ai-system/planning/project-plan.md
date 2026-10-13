@@ -1,7 +1,7 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (broad location suggestions: locationSuggestions config + parallel geocode fan-out)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -183,3 +183,4 @@
 - [x] Session 2026-10-13 — Broad location suggestions (LOCATION_SUGGESTIONS_CONFIG min2/debounce/limit/timeout + coordinate fast-path + parallel fast fan-out + empty-only overpass/reorder batch + Photon/Nominatim upstream bias + short empty TTL; route + RouteStepInput/ShareRouteModal/RequestRouteModal on shared config) (locationSuggestBroad 13 suites; node pure-logic green in-runner, full gate deferred to CI)
 
 - [x] Session 2026-10-13 — Blog share/SEO/defaults/variables + bug action modal (share service + detail buttons; per-post article SEO; defaults-merge + restore rollback; guest-safe variables + Studio insert UI; status-note modal + API override) (blogShareVariables suites; structural review in-runner, full gate deferred to CI)
+- [x] Sprint 52 (2026-10-13) — Audit trail reports+blogs (report.create/status/moderate hooks + report entity + specific action labels) + defaults 2→6 (STE100, emdash-free, fallback vars) + featured blogs tape (config + shared section on landing/about/invite with Read + View-all CTAs) + Studio parsing without loss (bare text, wrappers, recursion, plain-text contract kept) (featuredBlogs 17 assertions; node strip-types green in-runner, full gate deferred to CI)

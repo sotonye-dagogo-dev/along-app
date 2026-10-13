@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (broad suggestions: sequential fan-out is a latency bug, not just slowness)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -782,5 +782,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** location suggestions fired only for near-exact address starts; every broad query (roads, towns, landmarks) returned blank despite healthy upstreams.
 - **Root causes:** (1) four providers awaited sequentially at 8s each inside a 10s budget — the merge could never complete for uncached queries, so latency became emptiness; cached address queries masked it. (2) suggestion gates (min chars, debounce, limit) were hardcoded in four places, so "loosen the lookup" meant hunting call sites. (3) bias applied only after fetch, leaving upstream result windows full of far matches before the slice.
 - **Fix pattern (reuse):** parallel bounded fan-out (`Promise.all` + per-leg timeout race) with slow legs as empty-only fallbacks in ONE extra batch; suggestion tuning (min/max/debounce/limit/timeout/fallbacks) in one config consumed by route + every client; bias at BOTH layers (upstream params rank-only + server re-rank, never filter); exact-intent inputs (coordinates) pinned ahead of ranking.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 52: unaudited lifecycles hide in plain sight; tests are the parser contract; one section serves three surfaces
+- **Symptom:** admin audit trail showed user/email/blog/post rows but zero report rows despite a full report lifecycle; Studio reopened stored posts with missing intros and flattened headings; blog had no discovery surface outside /blog.
+- **Root causes:** (1) audit hooks were added per-feature (users/email/blog/posts) with no checklist, so the newer report routes never got them — the trail looked complete but wasn't. (2) the block parser only matched its known tag set and consumed wrappers whole, so anything outside the set (bare text, section/figure/h4/br, nested blocks) silently vanished, including via the >300-char wrapper skip. (3) each public surface owned its own layout, so a new content section meant three implementations unless deliberately shared.
+- **Fix pattern (reuse):** audit every mutating lifecycle at creation time (`void logAudit`, new entity/action vocabulary + display entries); grow parsers by capturing gaps (inter-tag text), widening accepted tags, and recursing into wrappers — while keeping the byte-level contract existing suites assert; build one client section with an optional `initialPosts` prop so server and client pages share it (server feeds, clients fetch the same paginated API).
 - **Supersedes:** None
 - **Superseded by:** None

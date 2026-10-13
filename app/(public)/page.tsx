@@ -4,6 +4,9 @@ import { StructuredData } from "@/app/components/ui/StructuredData";
 import AppLogo from "../components/ui/AppLogo";
 import { HeroCtas, BottomCta, GuestContinueLink } from "@/app/components/ui/LandingCtas";
 import { LandingHeroCopy, LandingFeatures, LandingCtaHeading, LandingFeedPreviewHeading, LandingFeedEmpty } from "./LandingCopy";
+import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection";
+import { pickFeaturedBlogs } from "@/app/lib/config";
+import { getPublicBlogPosts } from "@/app/lib/utils/blogStore";
 import { prisma } from "@/app/lib/db/prisma";
 
 export const metadata = buildMetadata({
@@ -159,7 +162,12 @@ function toPreviewProps(post: LandingPost) {
 }
 
 export default async function LandingPage() {
-  const [landingPosts, stats] = await Promise.all([getLandingPosts(), getLandingStats()]);
+  const [landingPosts, stats, blogPosts] = await Promise.all([
+    getLandingPosts(),
+    getLandingStats(),
+    getPublicBlogPosts().catch(() => []),
+  ]);
+  const featuredBlogs = pickFeaturedBlogs(blogPosts);
   const regionLabel = stats.regions.length > 0 ? stats.regions.join(" · ") : "Lagos · Abuja · Port Harcourt";
   return (
     <>
@@ -207,6 +215,15 @@ export default async function LandingPage() {
           )}
         </div>
       </section>
+
+      {/* Featured Blogs: newest published posts, endless tape */}
+      {featuredBlogs.length > 0 && (
+        <section className="w-full min-w-0 max-w-full overflow-x-clip bg-bg-base py-6 sm:py-8 px-5">
+          <div className="mx-auto w-full min-w-0 max-w-[1100px]">
+            <FeaturedBlogsSection initialPosts={featuredBlogs} />
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section

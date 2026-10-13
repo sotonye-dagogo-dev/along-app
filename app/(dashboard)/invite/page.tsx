@@ -7,6 +7,7 @@ import { AppCard, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { buildInviteUrl } from "@/app/lib/config/inviteConfig"
 import { LEADERBOARD_LINKS_CONFIG } from "@/app/lib/config/leaderboardLinks"
+import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection"
 import { useTranslation } from "@/app/providers/I18nProvider"
 
 interface InviteData {
@@ -82,7 +83,7 @@ export default function InvitePage() {
   }
 
   return (
-    <div className="max-w-[680px] mx-auto px-4 py-8">
+    <div className="mx-auto w-full min-w-0 max-w-[680px] overflow-x-clip px-4 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight mb-1">{tf("invite.title", "Invite Friends")}</h1>
         <p className="text-sm text-text-secondary">{tf("invite.subtitle", "Share your invite link and earn rewards")}</p>
@@ -188,6 +189,9 @@ export default function InvitePage() {
           </div>
         )}
       </AppCard>
+
+      {/* Featured Blogs: same endless tape as home, after the leaderboard */}
+      <FeaturedBlogsSection compact />
     </div>
   )
 }

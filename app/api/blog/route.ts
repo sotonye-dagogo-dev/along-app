@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
           category: p.category,
           image: p.image,
           readingTime: p.readingTime,
+          featured: p.featured === true,
         })),
         page,
         totalPages: Math.max(1, Math.ceil(total / limit)),

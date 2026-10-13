@@ -26,7 +26,8 @@ export interface EndlessCarouselConfig {
   maxRepeat: number;
   /** Outer wrapper: owns the overflow so the feed column never grows. */
   wrapperClass: string;
-  /** Native scroll viewport: the element that actually scrolls. */
+  /** Native scroll viewport: the element that actually scrolls. Constrained to
+   *  the wrapper width so the w-max track can never push the page wider. */
   viewportClass: string;
   /** Track holding the (duplicated) cards. */
   trackClass: string;
@@ -50,7 +51,7 @@ export const ENDLESS_CAROUSEL_CONFIG: EndlessCarouselConfig = {
   maxRepeat: 3,
   wrapperClass: "w-full min-w-0 max-w-full overflow-hidden",
   viewportClass:
-    "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+    "w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
   trackClass: "flex w-max items-stretch",
   allowMockFallback: false,
 };

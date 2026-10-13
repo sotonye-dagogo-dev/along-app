@@ -42,6 +42,7 @@ function sanitizePost(p: Partial<ManagedBlogPost>): ManagedBlogPost | null {
     content: sanitizeEmailHtml(rawContent, BLOG_MANAGEMENT_CONFIG.maxContent),
     status,
     updatedAt: String(p.updatedAt ?? "") || new Date().toISOString(),
+    featured: (p as { featured?: unknown }).featured === true,
   };
 }
 
@@ -76,6 +77,7 @@ export function getDefaultBlogPosts(): ManagedBlogPost[] {
       content: d.content,
       status: d.status,
       updatedAt: now,
+      featured: (d as { featured?: unknown }).featured === true,
     }));
   } catch {
     return [];
@@ -127,6 +129,7 @@ export async function getPublicBlogPosts(): Promise<ManagedBlogPost[]> {
       status: "published" as const,
       updatedAt: s.date,
       readonly: true,
+      featured: false,
     }));
   return [...managed.filter((m) => m.status === "published"), ...seedMapped].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),

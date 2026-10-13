@@ -60,8 +60,13 @@ export default async function BlogPage({ searchParams }: Props) {
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const safePage = Math.min(page, totalPages);
   const posts = filtered.slice((safePage - 1) * perPage, safePage * perPage);
-  const featured = safePage === 1 && category === "all" ? posts.slice(0, BLOG_LAYOUT_CONFIG.featuredCount) : [];
-  const remaining = safePage === 1 && category === "all" ? posts.slice(BLOG_LAYOUT_CONFIG.featuredCount) : posts;
+  // Admin-flagged posts headline the page-1 hero slot; otherwise the
+  // newest post headlines (previous behaviour, unchanged).
+  const flagged = filtered.filter((p) => p.featured === true);
+  const heroPool = flagged.length > 0 ? flagged : filtered;
+  const featured = safePage === 1 && category === "all" ? heroPool.slice(0, BLOG_LAYOUT_CONFIG.featuredCount) : [];
+  const featuredSlugs = new Set(featured.map((p) => p.slug));
+  const remaining = safePage === 1 && category === "all" ? posts.filter((p) => !featuredSlugs.has(p.slug)) : posts;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">

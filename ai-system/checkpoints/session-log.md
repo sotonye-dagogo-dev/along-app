@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit reports+blogs, defaults, featured carousel, parsing)
 > - last-verified-against-code: 2026-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: append-only — never modify past entries
 
@@ -2148,3 +2148,19 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner — structural review only (balance + re-reads + date-guard + union cast); full tsc/jest/build deferred to CI (standing arrangement).
 **Compliance:** non-breaking (no migration/deps/API shape changes; stored-wins merges; modal is additive UI; all interpolation escaped + never-throws).
 **Chain:** execute-feature → session-log (here) → dev-history + task-queue + project-plan → update-ai-system terminal sync (new configs + services + API fields = architecture impact per contract).
+
+## Session 2026-10-13 — Sprint 52: audit reports+blogs, enriched defaults, featured carousel, Studio parsing (execute-feature)
+**Directive:** audit trail captures report + blog actions; enrich defaults (more posts, Studio parses without loss); ASD-STE100, no emdashes; featured blogs endless carousel on landing (per-blog + view-all CTAs) reused on about after reviews and invite after leaderboard; config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Found:** (1) report lifecycle wrote zero audit rows (reports POST, bug-reports POST, admin bugs PATCH triage/moderation unaudited; blog hooks already present); no `report` entity or specific report/blog action labels in display config. (2) 2 thin shipped defaults. (3) `htmlToBlocks` loss vectors: bare inter-tag text, section/article/figure/h4-h6/br tags, block-children flattening + >300-char wrapper drop, empty logo-link remnants. (4) no featured blog surface.
+**Implemented:** audit config entries + 4 fire-and-forget hooks; defaults 2 → 6 (STE100, emdash-free, fallback vars); NEW featuredBlogs config + NEW FeaturedBlogsSection on landing/about/invite; parser hardening with plain-text contract preserved; NEW featuredBlogs.test.ts (17 assertions).
+**QA:** no node_modules in runner — node strip-types 20+ assertions green (featured/audit/defaults/builder incl. all pre-existing emailStudio parser cases re-verified); TSX/API diffs re-read; full tsc/jest/build deferred to CI (standing arrangement).
+**Compliance:** non-breaking (no migration/deps/API shape changes; stored-wins; audit never-throws; tf() fallbacks add zero locale keys).
+**Chain:** execute-feature → in-progress (written) → session-log (here) → dev-history + task-queue + project-plan + decisions/lessons + system-architecture/repo-map/dependency-graph → update-ai-system terminal sync (new config + component + audit hooks = architecture impact per contract) → in-progress cleared at close.
+
+## Session 2026-10-13 — Blog carousel overflow + admin featured flag + Studio templates (execute-feature)
+**Directive:** about-page blog endless carousel causes page overflow (landing clean, invite maybe); add admin means to set a blog as featured; config blog templates must be openable in Blog Studio without a DB save.
+**Found:** (1) about root is `flex flex-col` whose section children lacked `min-w-0`/width guards, so the `w-max` tape track pushed the page wider — landing/invite roots are block layout, hence clean; carousel viewport class also lacked its own width constraint. (2) `pickFeaturedBlogs` was newest-only with no admin flag anywhere (type, store, APIs, Studio, /blog hero). (3) Studio only listed DB-saved rows; shipped `DEFAULT_BLOG_POSTS` were visible solely as rollback chips, unopenable when unsaved (and the editor sat empty on a fresh DB).
+**Implemented:** overflow guards (about root/sections `min-w-0 max-w-full overflow-x-clip`, viewport `w-full min-w-0 max-w-full`, section/skeleton caps in FeaturedBlogsSection, invite root + landing wrapper hardening); admin featured flag end-to-end (`ManagedBlogPost.featured?`, store preserve-through, `/api/blog` exposes it, upsert/medatata carry it, `FEATURED_BLOGS_CONFIG.preferFeatured` + featured-first ordering, /blog hero prefers flagged, Studio checkbox + list star + tape Featured pill); Studio shipped-templates panel (unsaved defaults open into the editor as new, prefilled incl. blocks, save creates the row).
+**QA:** no node_modules in runner — real-module node strip-types check green (featured-first order, legacy missing-field fallback, hrefs); brace/paren balance identical to HEAD on all 13 touched files; new user-facing copy emdash-free; full tsc/jest/build deferred to CI (standing arrangement).
+**Compliance:** non-breaking (additive optional field, no migration/deps/API removals; tape falls back to newest-first when nothing flagged; templates only prefill, never auto-save).
+**Chain:** execute-feature → session-log (here) + task-queue row; no architecture impact (no migration, no new routes/deps) so update-ai-system deep sync not triggered per contract.
