@@ -162,15 +162,6 @@ export default function PostDetailPage() {
   // + highlighted once comments load. Never throws on missing/invalid ids.
   const searchParams = useSearchParams()
   const highlightCommentId = searchParams?.get("comment") ?? null
-  useEffect(() => {
-    if (!highlightCommentId || commentsLoading || comments.length === 0) return
-    const t = setTimeout(() => {
-      try {
-        document.getElementById(`comment-${highlightCommentId}`)?.scrollIntoView({ behavior: "smooth", block: "center" })
-      } catch { /* non-critical */ }
-    }, 150)
-    return () => clearTimeout(t)
-  }, [highlightCommentId, commentsLoading, comments.length])
 
   const { data: postData, loading: postLoading, mutate: mutatePost } = useCachedFetch<{ post: PostDetail; archived?: boolean }>(
     ready ? `post:${viewerId}:${postId}` : null,
@@ -185,6 +176,17 @@ export default function PostDetailPage() {
 
   const post = postData?.post ?? null
   const comments = commentData?.comments ?? []
+
+  useEffect(() => {
+    if (!highlightCommentId || commentsLoading || comments.length === 0) return
+    const t = setTimeout(() => {
+      try {
+        document.getElementById(`comment-${highlightCommentId}`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+      } catch { /* non-critical */ }
+    }, 150)
+    return () => clearTimeout(t)
+  }, [highlightCommentId, commentsLoading, comments.length])
+
   const liked = post?._isLiked ?? false
   const likesCount = post?.likes ?? 0
   const disliked = post?._isDisliked ?? false
