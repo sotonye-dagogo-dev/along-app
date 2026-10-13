@@ -144,13 +144,13 @@ async function safeUserFindMany(args: any): Promise<any[]> {
 const VALID_TYPES = new Set<SearchType>(["all", "posts", "users"]);
 const VALID_POST_TYPES = new Set<SearchPostType>(["ROUTE", "ROUTE_REQUEST", "ROUTE_RESPONSE"]);
 
-export function normalizeSearchParams(input: SearchParams): Required<Omit<SearchParams, "cursor" | "region" | "postType">> & Pick<SearchParams, "cursor" | "region" | "postType"> {
+export function normalizeSearchParams(input: SearchParams): Required<Omit<SearchParams, "cursor" | "region" | "postType" | "viewerId">> & Pick<SearchParams, "cursor" | "region" | "postType" | "viewerId"> {
   const query = input.query.trim().slice(0, 100);
   const type = input.type && VALID_TYPES.has(input.type) ? input.type : "all";
   const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 50);
   const region = input.region?.trim().slice(0, 80) || undefined;
   const postType = input.postType && VALID_POST_TYPES.has(input.postType) ? input.postType : undefined;
-  return { query, type, limit, region, postType, cursor: input.cursor };
+  return { query, type, limit, region, postType, cursor: input.cursor, viewerId: input.viewerId };
 }
 
 class SearchService {

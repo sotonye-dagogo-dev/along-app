@@ -1097,6 +1097,53 @@ renderer; audit with a `firstName[0]` grep.
 
 ---
 
+## Build Failure — `normalizeSearchParams` Return Type Requires `viewerId`
+
+**Symptom:**
+Vercel build failed at type-check: `./app/lib/services/searchService.ts:153:3
+Type error: Type '{ query; type; limit; region; postType; cursor }' is not
+assignable to type 'Required<Omit<SearchParams, "cursor" | "region" | "postType">>
+& Pick<SearchParams, "cursor" | "region" | "postType">' — Property 'viewerId'
+is missing but required in type 'Required<Omit<...>>'`. `next build` exits 1.
+
+**Root Cause:**
+`SearchParams.viewerId` is optional (`viewerId?: string` — guests have none),
+but the `normalizeSearchParams` return type applied `Required<>` over the full
+`Omit<SearchParams, "cursor"|"region"|"postType">`, which promotes the optional
+`viewerId` to a required `string`. The function body (correctly) never returned
+`viewerId` — `search()` resolves the viewer separately from the raw input —
+so the annotation demanded a property the implementation never provides. Same
+class as the earlier `ReviewStatus`/`UserRole` enum-string errors: the type at
+the checked expression doesn't match the runtime contract.
+
+**Fix Applied:**
+Return type narrowed to exclude `viewerId` from the `Required<>` set and carry
+it as an optional passthrough instead:
+`Required<Omit<SearchParams, "cursor"|"region"|"postType"|"viewerId">> &
+Pick<SearchParams, "cursor"|"region"|"postType"|"viewerId">`, with
+`viewerId: input.viewerId` added to the returned object. `search()` behavior
+unchanged (it still reads `viewerId` from the raw input, not the normalized
+result). Verified: `npx tsc --noEmit` clean (0 errors); all 3 search suites
+pass (`searchService`, `api/search`, `searchLinks`); full jest 612/615 with the
+5 failing suites confirmed pre-existing on the base commit (stash-verified:
+identical failures without this change — locationSuggestBroad, dislikeSync,
+pwa, locationSuggestions, blogShareVariables ESM/env issues, all unrelated).
+
+**Prevention:**
+Never apply `Required<>` over a params type containing legitimately-optional
+fields (viewer/session context, pagination cursors). Either exclude optional
+keys from the `Required<Omit<...>>` set or type the normalizer output as its
+own interface. Run `npx tsc --noEmit` with node_modules installed before
+pushing — this runner now has them (`npm install` completed 2026-10-13).
+
+**Files Affected:**
+- app/lib/services/searchService.ts
+
+**Date:** 2026-10-13
+**Status:** Active
+
+---
+
 ## Resolved Errors Archive
 > **Section summary:** Errors that have been fully resolved and are unlikely to recur. Kept for reference.
 
