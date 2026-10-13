@@ -2246,3 +2246,30 @@ CI/Vercel build to confirm green; pre-existing 5-suite test failures are separat
 **Notes / Blockers:**
 - Runner now HAS node_modules (installed this session) — future sessions can run real tsc/jest instead of deferring to CI.
 - Chain: fix-build → repair-system pattern added → sync-context executed (drift check, no mutations) → in-progress cleared at close.
+
+## Session — 2026-10-13 (Execute-feature: QA hardening — 5 failing suites resolved)
+
+**Completed:**
+- Step 1 planning pass (task-queue/system-architecture/design-system/repair-system/project-context read) + Step 2 scope check passed (QA hardening in-scope, no architecture impact, no decision conflict); plan written to in-progress.md.
+- `npm install` (1518 packages, matches prior session) + real QA: `npx tsc --noEmit` clean (0 errors, the exact Vercel gate), jest reproduced 612/615 with the same 5 suites failing.
+- All 5 resolved, non-breaking, no migration/deps/API removals. Full gate now green: tsc 0 errors, jest 74/74 suites 630/630 tests (630 > 615 because the 2 unloadable suites now contribute their tests), `next lint` on touched files clean:
+  - locationSuggestBroad (code): `buildGeocodeUrl` limit-0/NaN folded to 1 — now invalid→configured default, oversized→10.
+  - pwa REVIEW (code): `resolveNotificationRoute` missing REVIEW case (doc comment + mirror already said /about) — added, push/in-app agree.
+  - dislikeSync (test): search assertion expected inline `avatarConfig:` in SearchPage, stale since the universal-card refactor — now asserts SearchPage renders ProfilePostCard, which forwards the useAuth viewer avatarConfig internally (behavior verified, intent preserved).
+  - locationSuggestions (test env): jsdom has no `Request` — added `@jest-environment node`.
+  - blogShareVariables (test env): uncrypto ESM via @upstash/redis — hoisted redis no-op stub (same pattern as emailStudio).
+- Docs: repair-system entries (limit-clamp/REVIEW + jest-env patterns), task-queue entry, this log; sync-context drift check (no new modules/imports/APIs — nothing to sync; no update-ai-system deep sync: no architecture impact, no [L]/[XL]).
+
+**Files Modified:**
+- Edited: `app/lib/config/locationSuggestions.ts`, `app/lib/config/notificationRoutes.ts`, `app/__tests__/config/dislikeSync.test.ts`, `app/__tests__/config/locationSuggestions.test.ts`, `app/__tests__/services/blogShareVariables.test.ts`, `ai-system/repair-system.md`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry), `ai-system/checkpoints/in-progress.md` (cleared)
+
+**Next Task:**
+Vercel/CI build to confirm green (tsc gate already clean locally); prod-verify REVIEW push lands on /about.
+
+**Assumptions Made:**
+- `buildGeocodeUrl` oversized-limit clamp to 10 matches the server's 1..10 clamp (existing comment contract).
+- Search-surface avatar parity rides on ProfilePostCard's internal useAuth viewer (which carries avatarConfig per AuthProvider) — no per-page prop needed.
+
+**Notes / Blockers:**
+- None. node_modules present (gitignored); full QA runnable in-runner from here on.
+- Chain: execute-feature Steps 1-5 → sync-context drift check executed (no mutations) → in-progress cleared at close. No deep-sync trigger (no architecture impact).

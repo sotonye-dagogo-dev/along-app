@@ -1,4 +1,6 @@
 /**
+ * @jest-environment node
+ *
  * Location suggestions + Email Studio availability (directive 2026-10-13).
  *
  * - Rate limiter must isolate per-bucket counters so maps/geocode (location

@@ -52,6 +52,9 @@ export function resolveNotificationRoute(input: NotificationRouteInput): string 
       return "/profile?tab=security";
     case "WELCOME":
       return "/home";
+    case "REVIEW":
+      // Platform-review thank-you mirror → the public reviews tape.
+      return "/about";
     case "REWARD":
     case "BADGE":
       // Self-addressed points/tier notices → profile rewards context.

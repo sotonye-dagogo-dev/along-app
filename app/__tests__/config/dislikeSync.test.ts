@@ -128,8 +128,11 @@ describe("comment composer avatar (same AppAvatar as everywhere else)", () => {
   it("feed, search and profile comment viewers pass the avatar config", () => {
     const home = read("app/(dashboard)/home/page.tsx");
     expect(home).toContain("avatarConfig:");
+    // Search renders the universal ProfilePostCard (not its own composer),
+    // which forwards the useAuth viewer's avatarConfig to PostCommentsModal
+    // internally — assert that wiring instead of a stale inline literal.
     const search = read("app/(dashboard)/search/SearchPage.tsx");
-    expect(search).toContain("avatarConfig:");
+    expect(search).toContain("ProfilePostCard");
     const profile = read("app/components/features/profile/ProfilePostCard.tsx");
     expect(profile).toContain("avatarConfig:");
   });

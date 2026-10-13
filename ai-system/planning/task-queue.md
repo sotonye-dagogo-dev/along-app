@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: execute-feature 2026-10-13 (blog design compliance + reading-time studio input)
-> - last-synced: 2026-10-13 (feed de-glitch + profile tabQuery build fix)
+> - last-synced: 2026-10-13 (QA hardening: 5 failing suites resolved, 630/630 green)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -712,3 +712,15 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | Avatar menu — NEW AvatarMenu + AvatarCameraBadge + AVATAR_MENU_CONFIG; camera badge + full-avatar click open menu (desktop + mobile); EditProfileModal += avatar row trigger (submit flow untouched) | [x] |
 | [M] | Reviews tape — NEW ReviewsCarouselSection (EndlessCarousel reuse, CTA cadence, null when empty); landing (below blogs) + invite (below blogs, compact); footer += Leave a Review → /profile#reviews; en/pcm locale keys | [x] |
 | [S] | FAQs — NEW post-menu-options + avatar-management + avatar-not-showing (+pcm); where-reviews-appear updated (landing/invite); new Profile & Avatar category | [x] |
+
+## Session 2026-10-13 — QA hardening: 5 failing suites resolved (execute-feature)
+
+> **Section summary:** Directive close-out ("assure quality by resolving the failing suites/tests"). Non-breaking (2 minimal code-alignment fixes, 3 test-only env/expectation fixes; no migration, no new deps, no removed APIs). QA gate fully green with node_modules installed: `npx tsc --noEmit` 0 errors, `npx jest` 74/74 suites 630/630 tests (up from 612/615 — the 2 unloadable suites now contribute their tests), `next lint` clean on touched files.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | `buildGeocodeUrl` limit clamp — invalid/zero/NaN → configured default, oversized → 10 (was folded to 1) | [x] |
+| [S] | `resolveNotificationRoute` REVIEW → `/about` (doc comment + push mirror already said so; push/in-app agree) | [x] |
+| [S] | dislikeSync search assertion — stale inline `avatarConfig:` expectation updated for the universal-card refactor (SearchPage renders ProfilePostCard, which forwards the viewer avatarConfig internally) | [x] |
+| [S] | locationSuggestions suite — `@jest-environment node` (jsdom has no `Request` for the `next/server` chain) | [x] |
+| [S] | blogShareVariables suite — hoisted redis no-op stub (uncrypto ESM; same pattern as emailStudio) | [x] |
