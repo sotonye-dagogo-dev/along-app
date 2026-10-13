@@ -1291,3 +1291,15 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `app/__tests__/config/locationSuggestBroad.test.ts` (13 suites).
 **QA:** no node_modules in runner — node-executed pure-logic port green, full re-reads + pre-existing-suite compat verified; full tsc/jest/build deferred to CI.
 **Compliance:** non-breaking, no migration, no new deps, additive-only.
+
+**Session 2026-10-13 — blog share/SEO/defaults/variables + bug action modal.**
+**Directive:** blogs need share + dynamic SEO (title/description/image); shipped defaults manageable in Blog Studio like Email Studio with rollback; Studio wants variables with guest fallbacks + insert-variable picker; bug reports need a modal for status + custom note + images/viewer.
+**Implemented:**
+- Share: NEW `BLOG_SHARE_CONFIG` (blogManagement) + NEW `blogShareService` (Web Share → clipboard → legacy, never throws) + NEW `BlogShareButtons` wired into `blog/[slug]` detail header (network links as progressive enhancement).
+- SEO: `buildMetadata` += `ogType/publishedTime/authorName` (additive, cast to OpenGraph union); blog detail `generateMetadata` now per-post title/description (160-cap)/cover via `resolveOgImage`, `article` type, safe date parse; not-found branch uses honest noIndex metadata.
+- Defaults: NEW `DEFAULT_BLOG_POSTS` (2 shipped posts with guest-safe `{{vars}}`) + `getDefaultBlogPosts/mergeBlogPostsWithDefaults/isDefaultBlogSlug` (stored-wins merge, same contract as emails); `GET /api/admin/blog` ships `{posts, defaults}`; `PUT {restoreSlug}` rollback (audited, cache-invalidated); Studio gains shipped-defaults rollback panel.
+- Variables: NEW `BLOG_VARIABLE_CATALOG` (9 vars with documented fallbacks) + NEW `blogVariables` (`buildBlogVarContext`/`renderBlogContent`, escaped, never throws, guest/traveller identity fallbacks); detail renders managed HTML through it; NEW `BlogVariableInsert` picker in Studio appends tokens with `||fallback` to the last text block.
+- Bugs: NEW `BUG_REPORT_ACTION_MODAL` copy; `PATCH /api/admin/bugs` accepts sanitized/capped `statusNote` overriding default copy in lifecycle emails + moderation outcome notifications; admin page gains action modal (status select + note + default preview + per-report screenshots opening the existing viewer); single/bulk/moderation all route through it (moderation keeps its confirm first).
+- Tests: NEW `__tests__/services/blogShareVariables.test.ts` (share URL/fallback, guest fallbacks, leak-free render, defaults merge).
+**QA:** no node_modules in runner — brace/paren balance + full re-reads of all touched files, new-date guard + metadata cast reviewed; full tsc/jest/build deferred to CI.
+**Compliance:** non-breaking, no migration, no new deps, additive-only; config/metadata-driven throughout.

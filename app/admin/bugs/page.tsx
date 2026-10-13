@@ -6,6 +6,7 @@ import { Bug, Flag, ExternalLink, X } from "lucide-react"
 import { modalService } from "@/app/lib/services/modalService"
 import { toastService } from "@/app/lib/services/toastService"
 import { MODERATION_CONFIG } from "@/app/lib/config"
+import { BUG_REPORT_ACTION_MODAL, BUG_REPORT_STATUS_COPY } from "@/app/lib/config/bugReports"
 import { ADMIN_BULK_SELECT_META, ADMIN_TABLE_SORT_META } from "@/app/lib/config/admin"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 import { useAdminCursorList } from "@/app/lib/hooks/useAdminCursorList"
@@ -44,9 +45,17 @@ export default function AdminBugsPage() {
   const [statusFilter, setStatusFilter] = useState("")
   const [kindFilter, setKindFilter] = useState<"all" | "reports" | "bugs">("all")
   const [sortId, setSortId] = useState(ADMIN_TABLE_SORT_META.bugs.defaultId)
-  const [bulkBusy, setBulkBusy] = useState(false)
   // Screenshot viewer: full-size overlay for report attachments.
   const [viewer, setViewer] = useState<{ images: string[]; index: number; title: string } | null>(null)
+  // Action modal: status change + custom reporter note + screenshot review.
+  // Single (bugs.length===1, optional moderation action) or bulk (ids only).
+  const [actionModal, setActionModal] = useState<{
+    bugs: AdminBug[];
+    status: string;
+    moderation?: "DISMISS" | "ARCHIVE_POST" | "REMOVE_POST";
+  } | null>(null)
+  const [modalNote, setModalNote] = useState("")
+  const [modalBusy, setModalBusy] = useState(false)
 
   const sortOption = ADMIN_TABLE_SORT_META.bugs.options.find((o) => o.id === sortId)
     ?? ADMIN_TABLE_SORT_META.bugs.options[0]
@@ -80,69 +89,87 @@ export default function AdminBugsPage() {
   }, [bugs, kindFilter])
   const bulk = useBulkSelection(visible, (b) => b.id)
 
-  const handleBulkStatus = async (status: string) => {
-    const ids = [...bulk.selected]
-    if (ids.length === 0) return
-    setBulkBusy(true)
-    try {
-      const res = await fetch("/api/admin/bugs", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bugIds: ids, status }),
-      })
-      if (!res.ok) throw new Error("Request failed")
-      bulk.clear()
-      toastService.success(`${ids.length} report(s) → ${status}`)
-      void list.load(true)
-    } catch (err) {
-      console.error("[AdminError]", err)
-      toastService.error("Bulk update failed")
-    } finally {
-      setBulkBusy(false)
+  const openActionModal = (
+    bugs: AdminBug[],
+    status: string,
+    moderation?: "DISMISS" | "ARCHIVE_POST" | "REMOVE_POST",
+  ) => {
+    if (bugs.length === 0) return
+    setModalNote("")
+    setActionModal({ bugs, status, moderation })
+  }
+
+  const closeActionModal = () => {
+    if (!modalBusy) {
+      setActionModal(null)
+      setModalNote("")
     }
   }
 
-  const handleStatusChange = async (bugId: string, status: string) => {
+  /** Confirm the action modal — single PATCH per bug (moderation is single-flow). */
+  const confirmActionModal = async () => {
+    if (!actionModal || modalBusy) return
+    setModalBusy(true)
     try {
-      const res = await fetch("/api/admin/bugs", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bugId, status }),
-      })
-      if (!res.ok) throw new Error("Request failed")
+      const note = modalNote.trim().slice(0, BUG_REPORT_ACTION_MODAL.noteMaxLength);
+      for (const bug of actionModal.bugs) {
+        const payload: Record<string, unknown> = { bugId: bug.id, status: actionModal.status }
+        if (note) payload.statusNote = note
+        if (actionModal.moderation) {
+          payload.action = actionModal.moderation
+          // Moderation resolves via fixed outcome statuses unless the admin
+          // explicitly picked another status in the modal.
+          if (!actionModal.status || actionModal.status === bug.status) {
+            payload.status = actionModal.moderation === "DISMISS" ? "CLOSED" : "RESOLVED"
+          }
+        }
+        const res = await fetch("/api/admin/bugs", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) throw new Error("Request failed")
+      }
+      bulk.clear()
+      toastService.success(
+        actionModal.bugs.length === 1
+          ? `Report → ${actionModal.status}`
+          : `${actionModal.bugs.length} report(s) → ${actionModal.status}`,
+      )
+      setActionModal(null)
+      setModalNote("")
       void list.load(true)
-    } catch (err) { console.error("[AdminError]", err) }
+    } catch (err) {
+      console.error("[AdminError]", err)
+      toastService.error(MODERATION_CONFIG.adminActionError)
+    } finally {
+      setModalBusy(false)
+    }
   }
 
-  /** End-to-end moderation: bug status + post action in one ACID transaction,
-   *  reporter notified of the outcome (anonymity kept both ways). */
+  const handleBulkStatus = (status: string) => {
+    const ids = new Set(bulk.selected)
+    const targets = visible.filter((b) => ids.has(b.id))
+    if (targets.length === 0) return
+    openActionModal(targets, status)
+  }
+
+  const handleStatusChange = (bug: AdminBug, status: string) => {
+    openActionModal([bug], status)
+  }
+
+  /** End-to-end moderation: opens the action modal (status + custom note +
+   *  screenshot review) instead of firing blindly — the reporter gets the
+   *  admin-entered note or the canned outcome copy (anonymity kept both ways). */
   const handleModeration = (bug: AdminBug, action: "DISMISS" | "ARCHIVE_POST" | "REMOVE_POST") => {
     const confirm = ACTION_CONFIRM[action]
     modalService.confirm({
       title: confirm.title,
-      description: confirm.description,
+      description: `${confirm.description} You can edit the reporter note before confirming.`,
       variant: action === "DISMISS" ? "sensitive" : "destructive",
       onConfirm: () => {
         modalService.close()
-        void (async () => {
-          try {
-            const res = await fetch("/api/admin/bugs", {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                bugId: bug.id,
-                status: action === "DISMISS" ? "CLOSED" : "RESOLVED",
-                action,
-              }),
-            })
-            if (!res.ok) throw new Error("Request failed")
-            toastService.success(MODERATION_CONFIG.adminActionSuccess)
-            void list.load(true)
-          } catch (err) {
-            console.error("[AdminError]", err)
-            toastService.error(MODERATION_CONFIG.adminActionError)
-          }
-        })()
+        openActionModal([bug], action === "DISMISS" ? "CLOSED" : "RESOLVED", action)
       },
     })
   }
@@ -205,9 +232,9 @@ export default function AdminBugsPage() {
         </span>
         <span className="flex-1" />
         <span className="inline-flex items-center gap-1.5 flex-wrap">
-          <button onClick={() => handleBulkStatus("TRIAGED")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary border border-border cursor-pointer disabled:opacity-50">Triage</button>
-          <button onClick={() => handleBulkStatus("RESOLVED")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-success text-success-text border-none cursor-pointer disabled:opacity-50">Resolve</button>
-          <button onClick={() => handleBulkStatus("CLOSED")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary border border-border cursor-pointer disabled:opacity-50">Close</button>
+          <button onClick={() => handleBulkStatus("TRIAGED")} disabled={bulk.count === 0 || modalBusy} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary border border-border cursor-pointer disabled:opacity-50">Triage</button>
+          <button onClick={() => handleBulkStatus("RESOLVED")} disabled={bulk.count === 0 || modalBusy} className="px-2 py-1 radius-sm bg-success text-success-text border-none cursor-pointer disabled:opacity-50">Resolve</button>
+          <button onClick={() => handleBulkStatus("CLOSED")} disabled={bulk.count === 0 || modalBusy} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary border border-border cursor-pointer disabled:opacity-50">Close</button>
         </span>
       </div>
 
@@ -290,7 +317,7 @@ export default function AdminBugsPage() {
                   STATUS_OPTIONS.map(s => (
                     <button
                       key={s}
-                      onClick={() => handleStatusChange(bug.id, s)}
+                      onClick={() => handleStatusChange(bug, s)}
                       className={`px-2 py-0.5 radius-sm text-[10px] font-semibold border-none cursor-pointer transition-all duration-fast ${
                         bug.status === s ? "bg-primary text-text-inverse" : "bg-bg-elevated text-text-secondary hover:bg-bg-elevated"
                       }`}
@@ -312,6 +339,120 @@ export default function AdminBugsPage() {
         total={null}
         hasMore={nextCursor !== null}
       />
+      {actionModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={BUG_REPORT_ACTION_MODAL.title}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={closeActionModal}
+        >
+          <div
+            className="relative max-w-lg w-full max-h-[90vh] overflow-auto bg-bg-card radius-lg p-4 flex flex-col gap-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h2 className="text-sm font-bold">{BUG_REPORT_ACTION_MODAL.title}</h2>
+                <p className="text-xs text-text-muted">{BUG_REPORT_ACTION_MODAL.description}</p>
+                <p className="text-xs text-text-secondary truncate mt-1">
+                  {actionModal.bugs.length === 1
+                    ? actionModal.bugs[0].title
+                    : `${actionModal.bugs.length} reports selected`}
+                  {actionModal.moderation ? ` · ${actionModal.moderation.replace("_", " ")}` : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeActionModal}
+                disabled={modalBusy}
+                className="p-1.5 radius-md border border-border bg-bg-base cursor-pointer disabled:opacity-50 shrink-0"
+                aria-label="Close action dialog"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <label className="text-xs flex flex-col gap-1">
+              <span className="text-text-muted font-medium">{BUG_REPORT_ACTION_MODAL.statusLabel}</span>
+              <select
+                value={actionModal.status}
+                onChange={(e) => setActionModal((m) => (m ? { ...m, status: e.target.value } : m))}
+                disabled={modalBusy}
+                className="rounded-md border border-border bg-bg-base px-3 py-2 text-sm"
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s.replace("_", " ")}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="text-xs flex flex-col gap-1">
+              <span className="text-text-muted font-medium">{BUG_REPORT_ACTION_MODAL.noteLabel}</span>
+              <textarea
+                value={modalNote}
+                onChange={(e) => setModalNote(e.target.value.slice(0, BUG_REPORT_ACTION_MODAL.noteMaxLength))}
+                rows={4}
+                disabled={modalBusy}
+                placeholder={BUG_REPORT_ACTION_MODAL.notePlaceholder}
+                className="rounded-md border border-border bg-bg-base p-2.5 text-sm w-full"
+              />
+              <span className="text-[11px] text-text-muted">
+                {modalNote.trim()
+                  ? `${modalNote.trim().length}/${BUG_REPORT_ACTION_MODAL.noteMaxLength} — this note will be sent.`
+                  : `${BUG_REPORT_ACTION_MODAL.useDefaultLabel(actionModal.status)}: “${(BUG_REPORT_STATUS_COPY as Record<string, string>)[actionModal.status] ?? BUG_REPORT_STATUS_COPY.DEFAULT}”`}
+              </span>
+            </label>
+
+            {actionModal.bugs.length === 1 && (() => {
+              const imgs = actionModal.bugs[0].metadata?.images;
+              const list = Array.isArray(imgs) ? imgs.filter((u): u is string => typeof u === "string" && u.length > 0) : [];
+              return (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-text-muted">{BUG_REPORT_ACTION_MODAL.screenshotsLabel}</span>
+                  {list.length === 0 ? (
+                    <span className="text-xs text-text-muted">{BUG_REPORT_ACTION_MODAL.noScreenshots}</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {list.map((url, i) => (
+                        <button
+                          key={`modal-shot-${i}`}
+                          type="button"
+                          onClick={() => setViewer({ images: list, index: i, title: actionModal.bugs[0].title })}
+                          className="p-0 border-none bg-transparent cursor-pointer"
+                          aria-label={`View screenshot ${i + 1}`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`Report screenshot ${i + 1}`} className="w-20 h-20 rounded-lg object-cover border border-border hover:opacity-90 transition-opacity" loading="lazy" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            <div className="flex gap-2 justify-end flex-wrap">
+              <button
+                type="button"
+                onClick={closeActionModal}
+                disabled={modalBusy}
+                className="px-3 py-2 radius-md border border-border text-xs font-semibold cursor-pointer disabled:opacity-50"
+              >
+                {BUG_REPORT_ACTION_MODAL.cancelLabel}
+              </button>
+              <button
+                type="button"
+                onClick={confirmActionModal}
+                disabled={modalBusy}
+                className="px-3 py-2 radius-md bg-primary text-white text-xs font-semibold border-none cursor-pointer disabled:opacity-50"
+              >
+                {modalBusy ? "Updating…" : BUG_REPORT_ACTION_MODAL.confirmLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {viewer && (
         <div
           role="dialog"

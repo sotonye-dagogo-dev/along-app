@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
-import { getManagedPosts, sanitizeBlogPost } from "@/app/lib/utils/blogStore";
+import { getManagedPosts, sanitizeBlogPost, getDefaultBlogPosts } from "@/app/lib/utils/blogStore";
 import { logAudit } from "@/app/lib/services/auditService";
 
 /**
@@ -17,7 +17,10 @@ export async function GET() {
     if (!user || user.role !== "ADMIN")
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     const posts = await getManagedPosts();
-    return NextResponse.json({ posts }, { status: 200 });
+    // Defaults ship alongside so the Studio can offer per-slug rollback
+    // without a second round-trip (DB rows still win — see blogStore merge).
+    const defaults = getDefaultBlogPosts();
+    return NextResponse.json({ posts, defaults }, { status: 200 });
   } catch (e) {
     console.error("admin blog GET error:", e);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -31,6 +34,32 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     const body = await request.json().catch(() => ({}));
     const posts = await getManagedPosts();
+
+    // Rollback: restore a shipped default over the DB row (or re-create it
+    // when deleted). Non-breaking additive branch.
+    if (typeof (body as { restoreSlug?: unknown }).restoreSlug === "string") {
+      const { normalizeSlug } = await import("@/app/lib/config/blogManagement");
+      const slug = normalizeSlug((body as { restoreSlug: string }).restoreSlug);
+      const def = getDefaultBlogPosts().find((d) => d.slug === slug);
+      if (!def) return NextResponse.json({ error: "No default for slug" }, { status: 404 });
+      const restored = sanitizeBlogPost({ ...def, updatedAt: new Date().toISOString() });
+      if (!restored) return NextResponse.json({ error: "Invalid default post" }, { status: 500 });
+      const idx = posts.findIndex((p) => p.slug === slug);
+      if (idx >= 0) posts[idx] = restored;
+      else posts.push(restored);
+      await prisma.siteConfig.upsert({
+        where: { key: "blogPosts" },
+        create: { key: "blogPosts", value: posts as never },
+        update: { value: posts as never },
+      });
+      try {
+        const { redis } = await import("@/app/lib/db/redis");
+        const { CACHE_KEYS } = await import("@/app/lib/config/cache");
+        await redis.del(CACHE_KEYS.siteConfig("blogPosts"));
+      } catch { /* ignore */ }
+      await logAudit({ actorId: (user as { id: string }).id, action: "blog.restore-default", entity: "blog", entityId: slug });
+      return NextResponse.json({ success: true, post: restored }, { status: 200 });
+    }
 
     // Bulk status change.
     if (Array.isArray((body as { slugs?: unknown }).slugs)) {

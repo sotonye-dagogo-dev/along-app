@@ -7,6 +7,10 @@ type BuildMetaOptions = {
   path: string;
   ogImage?: string;
   noIndex?: boolean;
+  /** OpenGraph type — defaults to website (article for blogs). */
+  ogType?: "website" | "article" | "profile" | "book";
+  publishedTime?: string;
+  authorName?: string;
 };
 
 export function buildMetadata({
@@ -15,23 +19,34 @@ export function buildMetadata({
   path,
   ogImage,
   noIndex = false,
+  ogType = "website",
+  publishedTime,
+  authorName,
 }: BuildMetaOptions): Metadata {
   const url = `${DEFAULT_META.url}${path}`;
   const image = ogImage ?? DEFAULT_META.ogImage;
+
+  // Article/profile extras are spread conditionally and cast to the
+  // OpenGraph union (website has no authors/publishedTime fields) so the
+  // shared builder stays callable for every page type without casts at
+  // call sites.
+  const openGraph = {
+    title: `${title} | Along`,
+    description,
+    url,
+    siteName: DEFAULT_META.siteName,
+    images: [{ url: image, width: 1200, height: 630 }],
+    type: ogType,
+    ...(publishedTime ? { publishedTime } : {}),
+    ...(authorName ? { authors: [authorName] } : {}),
+  } as Metadata["openGraph"];
 
   return {
     metadataBase: new URL(DEFAULT_META.url),
     title: `${title} | Along`,
     description,
     alternates: { canonical: url },
-    openGraph: {
-      title: `${title} | Along`,
-      description,
-      url,
-      siteName: DEFAULT_META.siteName,
-      images: [{ url: image, width: 1200, height: 630 }],
-      type: "website",
-    },
+    openGraph,
     twitter: {
       card: "summary_large_image",
       title: `${title} | Along`,
