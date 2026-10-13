@@ -10,6 +10,7 @@ import {
   blocksToHtml, htmlToBlocks, defaultBlocks, newBlockId,
   type EmailBlock, type EmailBlockType,
 } from "@/app/lib/utils/emailBuilder";
+import BlogVariableInsert from "@/app/components/features/blog/BlogVariableInsert";
 
 /**
  * Admin Blog Studio — draft / publish / archive / edit lifecycle with a
@@ -31,6 +32,8 @@ export default function AdminBlogPage() {
   const [image, setImage] = useState<string>(BLOG_MANAGEMENT_CONFIG.defaultImage);
   const [status, setStatus] = useState<BlogPostStatus>(BLOG_MANAGEMENT_CONFIG.defaultStatus);
   const [blocks, setBlocks] = useState<EmailBlock[]>(defaultBlocks());
+  const [defaults, setDefaults] = useState<ManagedBlogPost[]>([]);
+  const [restoring, setRestoring] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -40,6 +43,7 @@ export default function AdminBlogPage() {
         const data = await res.json();
         const list = (data.posts ?? []) as ManagedBlogPost[];
         setPosts(list);
+        setDefaults(((data.defaults ?? []) as ManagedBlogPost[]));
         if (!selected && list.length > 0) setSelected(list[0].slug);
       }
     } catch {
@@ -126,6 +130,38 @@ export default function AdminBlogPage() {
     setBlocks((p) => [...p, { id: newBlockId(), type, text: type === "paragraph" ? "New paragraph" : type === "heading" ? "New heading" : undefined }]);
   };
 
+  /** Append a {{variable}} token to the last text-capable block (or a new paragraph). */
+  const insertVariableToken = (token: string) => {
+    setBlocks((prev) => {
+      const idx = [...prev].map((b, i) => ({ b, i })).reverse()
+        .find(({ b }) => b.type === "paragraph" || b.type === "heading");
+      if (!idx) return [...prev, { id: newBlockId(), type: "paragraph", text: token } as EmailBlock];
+      return prev.map((x) => (x.id === idx.b.id ? { ...x, text: `${x.text ?? ""}${x.text ? " " : ""}${token}` } : x));
+    });
+  };
+
+  /** Rollback a slug to its shipped default (DB row overwritten, audited server-side). */
+  const handleRestoreDefault = async (slug: string) => {
+    setRestoring(true);
+    try {
+      const res = await fetch("/api/admin/blog", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restoreSlug: slug }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error((d as { error?: string }).error ?? "Restore failed");
+      }
+      toastService.success(`“${slug}” restored to default`);
+      await load();
+    } catch (e) {
+      toastService.error(e instanceof Error ? e.message : "Restore failed");
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   if (loading) return <div className="text-center py-12 text-text-muted">Loading blog studio…</div>;
 
   return (
@@ -155,6 +191,34 @@ export default function AdminBlogPage() {
         ))}
         {posts.length === 0 && <span className="text-xs text-text-muted">No managed posts yet — filesystem seeds still serve publicly.</span>}
       </div>
+
+      {/* Shipped defaults + rollback (mirrors Email Studio defaults panel). */}
+      {defaults.length > 0 && (
+        <section className="bg-bg-card border border-border radius-lg p-4 flex flex-col gap-2">
+          <h2 className="text-sm font-semibold">Shipped defaults (rollback)</h2>
+          <p className="text-xs text-text-muted">
+            Config defaults backfill new installs. Your saved versions always win — restore only overwrites when you ask.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            {defaults.map((d) => {
+              const overridden = posts.some((p) => p.slug === d.slug);
+              return (
+                <span key={d.slug} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 radius-md bg-bg-elevated text-xs">
+                  <span className="font-mono font-semibold">{d.slug}</span>
+                  <span className="text-text-muted">{overridden ? "customized" : "default"}</span>
+                  <button
+                    onClick={() => handleRestoreDefault(d.slug)}
+                    disabled={restoring}
+                    className="px-2 py-0.5 radius-sm border border-border bg-bg-card text-[11px] font-semibold cursor-pointer disabled:opacity-50 hover:text-primary"
+                  >
+                    {restoring ? "Restoring…" : "Restore to default"}
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <section className="bg-bg-card border border-border radius-lg p-4 flex flex-col gap-3">
@@ -205,6 +269,8 @@ export default function AdminBlogPage() {
               <button key={b} onClick={() => addBlock(b)} className="px-2 py-1 radius-sm bg-bg-elevated cursor-pointer border border-border font-medium">{b}</button>
             ))}
           </div>
+          {/* Insert-variable picker (catalog-driven, guest-safe fallbacks). */}
+          <BlogVariableInsert onInsert={insertVariableToken} />
           <div className="flex flex-col gap-2">
             {blocks.map((b) => (
               <div key={b.id} className="rounded-md border border-border bg-bg-base p-2.5 flex flex-col gap-1.5">

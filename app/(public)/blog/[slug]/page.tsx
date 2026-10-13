@@ -4,7 +4,9 @@ import { ArrowLeft, Clock, User } from "lucide-react";
 import { remark } from "remark";
 import html from "remark-html";
 import { getPublicBlogPosts, getPublicPostBySlug } from "@/app/lib/utils/blogStore";
-import { buildPublicMetadata } from "@/app/lib/utils/metadata";
+import { buildMetadata, resolveOgImage } from "@/app/lib/utils/metadata";
+import { buildBlogVarContext, renderBlogContent } from "@/app/lib/utils/blogVariables";
+import BlogShareButtons from "@/app/components/features/blog/BlogShareButtons";
 import {
   blogPostingSchema,
   breadcrumbSchema,
@@ -23,13 +25,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPublicPostBySlug(slug);
   if (!post) {
-    return buildPublicMetadata(
-      "Post Not Found",
-      "This blog post could not be found.",
-      `/blog/${slug}`,
-    );
+    return buildMetadata({
+      title: "Post Not Found",
+      description: "This blog post could not be found.",
+      path: `/blog/${slug}`,
+      noIndex: true,
+    });
   }
-  return buildPublicMetadata(post.title, post.description, `/blog/${slug}`);
+  // Dynamic SEO: per-post title + description + cover image (fallback-safe).
+  let publishedTime: string | undefined;
+  try {
+    const d = new Date(post.date);
+    if (!Number.isNaN(d.getTime())) publishedTime = d.toISOString();
+  } catch {
+    publishedTime = undefined;
+  }
+  return buildMetadata({
+    title: post.title,
+    description: (post.description || "").slice(0, 160) || `Read "${post.title}" on the Along blog.`,
+    path: `/blog/${post.slug}`,
+    ogImage: resolveOgImage(post.image),
+    ogType: "article",
+    ...(publishedTime ? { publishedTime } : {}),
+    authorName: post.author,
+  });
 }
 
 export default async function BlogPostPage({ params }: Props) {
@@ -50,10 +69,21 @@ export default async function BlogPostPage({ params }: Props) {
   }
 
   // Managed posts store sanitized HTML fragments (visual-builder output);
-  // filesystem seeds store markdown — render each accordingly.
-  const contentHtml = post.readonly === true || /<\w+/.test(post.content) === false
+  // filesystem seeds store markdown — render each accordingly, then
+  // interpolate {{variables}} with guest-safe fallbacks (never throws,
+  // never leaks raw {{identifier}} to readers).
+  const rawHtml = post.readonly === true || /<\w+/.test(post.content) === false
     ? String(await remark().use(html).process(post.content))
     : post.content;
+  let contentHtml = rawHtml;
+  try {
+    contentHtml = renderBlogContent(
+      rawHtml,
+      buildBlogVarContext({ title: post.title, author: post.author, category: post.category }, null),
+    );
+  } catch {
+    contentHtml = rawHtml;
+  }
 
   const jsonLd = blogPostingSchema({
     headline: post.title,
@@ -80,11 +110,14 @@ export default async function BlogPostPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
       />
       <article className="max-w-3xl mx-auto px-4 py-12">
-        <Link
-          href="/blog"
-          className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-text-primary transition-colors mb-6">
-          <ArrowLeft size={14} /> Back to Blog
-        </Link>
+        <div className="flex items-center justify-between gap-3 mb-6">
+          <Link
+            href="/blog"
+            className="inline-flex items-center gap-1 text-sm text-text-muted hover:text-text-primary transition-colors">
+            <ArrowLeft size={14} /> Back to Blog
+          </Link>
+          <BlogShareButtons slug={post.slug} title={post.title} />
+        </div>
 
         <header className="mb-8">
           <div className="flex items-center gap-3 text-xs text-text-muted mb-3">
