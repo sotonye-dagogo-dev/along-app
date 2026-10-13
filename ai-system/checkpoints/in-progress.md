@@ -1,9 +1,9 @@
 # In progress — none
 
-No active work. Last session (2026-10-13, execute-feature boat vehicle option)
-is closed: `boat` added end to end via VEHICLE_REGISTRY (Ship icon, cyan) —
-types, validation, landing chips, explore filter + allowlist, VehicleChip
-null-guard, DESIGN.md rows, new vehicles.test.ts. Route-validation smoke
-executed green in-runner (boat valid / spaceship rejected); full tsc/jest/lint
-deferred to CI (no node_modules in runner). Docs closed out (task-queue,
-session-log, sync-context drift check, in-progress).
+No active work. Last session (2026-10-13, execute-feature blog article-body
+deep compliance) is closed: `blocksToBlogHtml` + `sanitizeBlogHtml` added,
+store/public-page/Studio all on the article pipeline (Email Studio untouched),
+`blogCompliance.test.ts` extended with 4 suites. Real-module strip-types QA
+green (23 checks); full tsc/jest/build deferred to CI (no node_modules in
+runner). Docs closed out (task-queue, session-log, repair-system pitfall,
+sync-context drift check, in-progress).

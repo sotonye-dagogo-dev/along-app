@@ -7,9 +7,11 @@ import { BLOG_MANAGEMENT_CONFIG, READING_TIME_FIELD_META, normalizeSlug, normali
 import type { ManagedBlogPost, BlogPostStatus } from "@/app/lib/config/blogManagement";
 import { BLOG_CONTENT_PROSE_CLASSES, DEFAULT_BLOG_CATEGORIES } from "@/app/lib/config/blog";
 import {
-  blocksToHtml, htmlToBlocks, defaultBlocks, newBlockId,
+  blocksToBlogHtml, htmlToBlocks, defaultBlocks, newBlockId,
   type EmailBlock, type EmailBlockType,
 } from "@/app/lib/utils/emailBuilder";
+import { sanitizeBlogHtml } from "@/app/lib/utils/emailSanitize";
+import { buildBlogVarContext, renderBlogContent } from "@/app/lib/utils/blogVariables";
 import BlogVariableInsert from "@/app/components/features/blog/BlogVariableInsert";
 
 /**
@@ -89,7 +91,7 @@ export default function AdminBlogPage() {
             slug: cleanSlug, title, description, author, category, image,
             date: new Date().toISOString().slice(0, 10),
             readingTime: cleanReadingTime,
-            status, featured, content: blocksToHtml(blocks),
+            status, featured, content: blocksToBlogHtml(blocks),
           },
         }),
       });
@@ -406,7 +408,19 @@ export default function AdminBlogPage() {
             <p className="text-xs text-text-muted mb-3">{readingTime.trim() || READING_TIME_FIELD_META.placeholder} min read · live preview</p>
             <div
               className={BLOG_CONTENT_PROSE_CLASSES}
-              dangerouslySetInnerHTML={{ __html: blocksToHtml(blocks) }}
+              dangerouslySetInnerHTML={{ __html: (() => {
+                // Mirror the public [slug] render exactly (article HTML +
+                // style-strip + variable interpolation) so the preview shows
+                // what readers see — never raw {{tokens}} or email styling.
+                try {
+                  return renderBlogContent(
+                    sanitizeBlogHtml(blocksToBlogHtml(blocks)),
+                    buildBlogVarContext({ title: title || "Preview", author, category }, null),
+                  );
+                } catch {
+                  return "";
+                }
+              })() }}
             />
           </div>
         </section>

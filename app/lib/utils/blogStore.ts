@@ -2,12 +2,12 @@
  * Blog store — SiteConfig-backed managed posts merged over filesystem MDX.
  * Public readers see published managed posts + filesystem seeds;
  * admin sees everything (drafts/archived included). All managed content is
- * sanitized on write (same allowlist pipeline as email templates) and
- * re-sanitized defensively on read — never throws.
+ * sanitized on write (blog article pipeline: allowlist + inline-style strip
+ * so prose classes apply) and re-sanitized defensively on read — never throws.
  */
 import { getSiteConfig } from "@/app/lib/utils/siteConfig";
 import { getAllPosts as getSeedPosts } from "@/app/lib/utils/blog";
-import { sanitizeEmailHtml, stripTags } from "@/app/lib/utils/emailSanitize";
+import { sanitizeBlogHtml, stripTags } from "@/app/lib/utils/emailSanitize";
 import {
   BLOG_MANAGEMENT_CONFIG,
   DEFAULT_BLOG_POSTS,
@@ -39,7 +39,7 @@ function sanitizePost(p: Partial<ManagedBlogPost>): ManagedBlogPost | null {
     category: stripTags(String(p.category ?? "updates")).slice(0, 40).toLowerCase() || "updates",
     image: String(p.image ?? BLOG_MANAGEMENT_CONFIG.defaultImage).slice(0, 500) || BLOG_MANAGEMENT_CONFIG.defaultImage,
     readingTime,
-    content: sanitizeEmailHtml(rawContent, BLOG_MANAGEMENT_CONFIG.maxContent),
+    content: sanitizeBlogHtml(rawContent, BLOG_MANAGEMENT_CONFIG.maxContent),
     status,
     updatedAt: String(p.updatedAt ?? "") || new Date().toISOString(),
     featured: (p as { featured?: unknown }).featured === true,
