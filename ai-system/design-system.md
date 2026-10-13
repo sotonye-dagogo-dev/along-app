@@ -1,8 +1,8 @@
 # Design System
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 47 PWA notice icon/theme compliance + avatar consistency)
-> - last-verified-against-code: 2026-10-12 (PWA notices on --color-* tokens + lucide icons; platform emoji sweep clean in UI code; Panel/Rail/UserList + admin dashboard/users/analytics on AppAvatar/AppUserLabel)
+> - last-updated-by: execute-feature 2026-10-13 (blog/terms/privacy article-body prose compliance: p/li/strong on text-primary)
+> - last-verified-against-code: 2026-10-13 (BLOG_CONTENT_PROSE_CLASSES consumed by public blog page + studio preview; zero prose-p:text-text-secondary in app code)
 > - staleness-policy: re-verify if UI components or styling dependencies change
 
 > **Overview:** Along uses Tailwind CSS 4 (CSS-first `@theme` tokens in `app/globals.css`) plus a universal library of App* components (`app/components/ui/`, 42 files) built on Tailwind + Lucide React. `antd@^5.23.3` remains a declared dependency in `package.json` but is NOT imported anywhere in `app/` (verified 2026-10-08: zero `antd` / `@ant-design` imports) — App* wrappers do not wrap Ant Design in the current code. Color tokens are defined as CSS custom properties supporting light and dark modes via a `class`-based dark mode toggle (`ThemeProvider` toggles `dark` on document root). Zero emoji policy — all icons use Lucide React exclusively (72 `lucide-react` imports across `app/`).

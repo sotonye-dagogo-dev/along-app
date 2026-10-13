@@ -13,6 +13,8 @@ import {
   DEFAULT_BLOG_POSTS,
   normalizeSlug,
   isBlogStatus,
+  normalizeReadingTime,
+  estimateReadingTime,
 } from "@/app/lib/config/blogManagement";
 import type { ManagedBlogPost } from "@/app/lib/config/blogManagement";
 
@@ -27,9 +29,7 @@ function sanitizePost(p: Partial<ManagedBlogPost>): ManagedBlogPost | null {
   const rawContent = String(p.content ?? "").slice(0, BLOG_MANAGEMENT_CONFIG.maxContent);
   if (!rawContent.trim()) return null;
   const readingTime =
-    Number.isFinite(Number(p.readingTime)) && Number(p.readingTime) > 0
-      ? Math.min(120, Math.max(1, Math.round(Number(p.readingTime))))
-      : Math.max(1, Math.round(stripTags(rawContent).split(/\s+/).length / 200));
+    normalizeReadingTime(p.readingTime) ?? estimateReadingTime(stripTags(rawContent));
   return {
     slug,
     title,

@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, RefreshCw, Eye } from "lucide-react";
 import { toastService } from "@/app/lib/services/toastService";
-import { BLOG_MANAGEMENT_CONFIG, normalizeSlug } from "@/app/lib/config/blogManagement";
+import { BLOG_MANAGEMENT_CONFIG, READING_TIME_FIELD_META, normalizeSlug, normalizeReadingTime } from "@/app/lib/config/blogManagement";
 import type { ManagedBlogPost, BlogPostStatus } from "@/app/lib/config/blogManagement";
-import { DEFAULT_BLOG_CATEGORIES } from "@/app/lib/config/blog";
+import { BLOG_CONTENT_PROSE_CLASSES, DEFAULT_BLOG_CATEGORIES } from "@/app/lib/config/blog";
 import {
   blocksToHtml, htmlToBlocks, defaultBlocks, newBlockId,
   type EmailBlock, type EmailBlockType,
@@ -32,6 +32,7 @@ export default function AdminBlogPage() {
   const [image, setImage] = useState<string>(BLOG_MANAGEMENT_CONFIG.defaultImage);
   const [status, setStatus] = useState<BlogPostStatus>(BLOG_MANAGEMENT_CONFIG.defaultStatus);
   const [featured, setFeatured] = useState(false);
+  const [readingTime, setReadingTime] = useState<string>(String(BLOG_MANAGEMENT_CONFIG.defaultReadingTime));
   const [blocks, setBlocks] = useState<EmailBlock[]>(defaultBlocks());
   const [defaults, setDefaults] = useState<ManagedBlogPost[]>([]);
   const [restoring, setRestoring] = useState(false);
@@ -62,7 +63,7 @@ export default function AdminBlogPage() {
     if (cur && !isNew) {
       setSlug(cur.slug); setTitle(cur.title); setDescription(cur.description);
       setAuthor(cur.author); setCategory(cur.category); setImage(cur.image);
-      setStatus(cur.status); setFeatured(cur.featured === true); setBlocks(htmlToBlocks(cur.content));
+      setStatus(cur.status); setFeatured(cur.featured === true); setReadingTime(String(cur.readingTime)); setBlocks(htmlToBlocks(cur.content));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, isNew]);
@@ -71,6 +72,13 @@ export default function AdminBlogPage() {
     const cleanSlug = normalizeSlug(slug);
     if (!cleanSlug) { toastService.error("Slug required (letters/numbers/dashes)"); return; }
     if (!title.trim()) { toastService.error("Title required"); return; }
+    const cleanReadingTime = readingTime.trim() === ""
+      ? BLOG_MANAGEMENT_CONFIG.defaultReadingTime
+      : normalizeReadingTime(readingTime);
+    if (cleanReadingTime === null) {
+      toastService.error(`Reading time must be ${READING_TIME_FIELD_META.min}–${READING_TIME_FIELD_META.max} minutes`);
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/admin/blog", {
@@ -80,6 +88,7 @@ export default function AdminBlogPage() {
           post: {
             slug: cleanSlug, title, description, author, category, image,
             date: new Date().toISOString().slice(0, 10),
+            readingTime: cleanReadingTime,
             status, featured, content: blocksToHtml(blocks),
           },
         }),
@@ -149,6 +158,7 @@ export default function AdminBlogPage() {
     setSlug(tpl.slug); setTitle(tpl.title); setDescription(tpl.description);
     setAuthor(tpl.author); setCategory(tpl.category); setImage(tpl.image);
     setStatus(tpl.status); setFeatured(tpl.featured === true);
+    setReadingTime(String(tpl.readingTime));
     setBlocks(htmlToBlocks(tpl.content));
   };
 
@@ -184,7 +194,7 @@ export default function AdminBlogPage() {
           <div className="text-sm text-text-secondary">Draft · publish · archive · visual builder (no HTML needed)</div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => { setIsNew(true); setSlug(""); setTitle(""); setDescription(""); setStatus("draft"); setFeatured(false); setBlocks(defaultBlocks()); }}
+          <button onClick={() => { setIsNew(true); setSlug(""); setTitle(""); setDescription(""); setStatus("draft"); setFeatured(false); setReadingTime(String(BLOG_MANAGEMENT_CONFIG.defaultReadingTime)); setBlocks(defaultBlocks()); }}
             className="inline-flex items-center gap-1.5 px-3 py-2 radius-md bg-primary text-white text-xs font-semibold border-none cursor-pointer">
             <Plus size={14} /> New post
           </button>
@@ -304,6 +314,22 @@ export default function AdminBlogPage() {
             <span className="text-text-muted font-medium">Cover image URL</span>
             <input value={image} onChange={(e) => setImage(e.target.value)} className="rounded-md border border-border bg-bg-base px-3 py-2 text-sm font-mono" />
           </label>
+          <label className="text-xs flex flex-col gap-1">
+            <span className="text-text-muted font-medium">{READING_TIME_FIELD_META.label}</span>
+            <input
+              value={readingTime}
+              onChange={(e) => setReadingTime(e.target.value)}
+              inputMode="numeric"
+              type="number"
+              min={READING_TIME_FIELD_META.min}
+              max={READING_TIME_FIELD_META.max}
+              step={READING_TIME_FIELD_META.step}
+              placeholder={READING_TIME_FIELD_META.placeholder}
+              aria-describedby="blog-reading-time-hint"
+              className="rounded-md border border-border bg-bg-base px-3 py-2 text-sm w-40"
+            />
+            <span id="blog-reading-time-hint" className="text-text-muted">{READING_TIME_FIELD_META.hint}</span>
+          </label>
 
           <div className="flex gap-1 flex-wrap items-center text-xs">
             <span className="text-text-muted">Add block:</span>
@@ -376,9 +402,10 @@ export default function AdminBlogPage() {
             <span className="text-sm font-semibold">Live preview (sanitized, styled)</span>
           </div>
           <div className="max-h-[560px] overflow-auto p-4">
-            <h3 className="text-lg font-bold mb-2">{title || "Untitled"}</h3>
+            <h3 className="text-lg font-bold mb-2 text-text-primary">{title || "Untitled"}</h3>
+            <p className="text-xs text-text-muted mb-3">{readingTime.trim() || READING_TIME_FIELD_META.placeholder} min read · live preview</p>
             <div
-              className="prose prose-sm max-w-none prose-headings:text-text-primary prose-p:text-text-secondary prose-a:text-primary"
+              className={BLOG_CONTENT_PROSE_CLASSES}
               dangerouslySetInnerHTML={{ __html: blocksToHtml(blocks) }}
             />
           </div>

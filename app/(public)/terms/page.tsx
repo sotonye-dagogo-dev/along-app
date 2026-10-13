@@ -61,8 +61,8 @@ export default function TermsPage() {
         prose-headings:text-text-primary prose-headings:font-semibold
         prose-h1:text-2xl prose-h1:font-bold prose-h1:tracking-tight
         prose-h2:text-lg prose-h2:font-semibold prose-h2:mt-8
-        prose-p:text-text-secondary prose-p:leading-relaxed
-        prose-li:text-text-secondary
+        prose-p:text-text-primary prose-p:leading-relaxed
+        prose-li:text-text-primary
         prose-strong:text-text-primary
         prose-a:text-primary prose-a:no-underline hover:prose-a:underline
         prose-ul:my-4
