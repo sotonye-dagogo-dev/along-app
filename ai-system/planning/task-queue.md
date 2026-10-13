@@ -724,3 +724,16 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | dislikeSync search assertion — stale inline `avatarConfig:` expectation updated for the universal-card refactor (SearchPage renders ProfilePostCard, which forwards the viewer avatarConfig internally) | [x] |
 | [S] | locationSuggestions suite — `@jest-environment node` (jsdom has no `Request` for the `next/server` chain) | [x] |
 | [S] | blogShareVariables suite — hoisted redis no-op stub (uncrypto ESM; same pattern as emailStudio) | [x] |
+
+## Session 2026-10-13 — Boat vehicle option (execute-feature)
+
+> **Section summary:** Directive close-out ("water vessels" transport mode end to end, boat + boat icon). Non-breaking additive (union member + registry entry only; no migration — vehicle stored as free string in routes JSON and `z.string().max(30)` already accepts it; no new deps; no removed APIs). Surfaces derive from VEHICLE_REGISTRY dynamically, so composer chips, PostCard, NavigationGuide, and post detail pick up boat with zero per-surface changes. QA in-runner: no node_modules — routeValidation smoke executed via node strip-types (boat valid, spaceship rejected, PASS) + 11-point static parity grep all PASS; full tsc/jest/build deferred to CI/Vercel.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | `VehicleType` += `"boat"`; `VEHICLE_REGISTRY.boat` (label Boat, Lucide `Ship`, cyan `#0E7490` / `bg-cyan-50` / `text-cyan-800`, token dark classes) | [x] |
+| [S] | `routeValidation` KNOWN_VEHICLES += `"boat"` (zero-dep mirror kept in sync) | [x] |
+| [S] | Landing `VEHICLE_CHIPS` += `BOAT` (`#ECFEFF`/`#155E75`); explore += `Boat` filter chip + `activeVehicleFilters` allowlist entry (chip rendered but never filtered without it) | [x] |
+| [S] | `VehicleChip` null-guard for unknown/legacy strings (renders nothing instead of crashing on `config.icon`) | [x] |
+| [S] | DESIGN.md — Boat vehicle-color row + `Ship` icon-map row | [x] |
+| [S] | Tests — NEW `app/__tests__/config/vehicles.test.ts` (8 keys, boat label/icon/color/classes, per-entry UI-safety, boat accepted / spaceship rejected) | [x] |

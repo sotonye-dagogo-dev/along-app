@@ -13,6 +13,9 @@ export function VehicleChip({
   size = "default",
 }: VehicleChipProps) {
   const config = VEHICLE_REGISTRY[type];
+  // Unknown/legacy strings render nothing instead of crashing on
+  // `config.icon` (callers cast free-form route JSON to VehicleType).
+  if (!config) return null;
   const Icon = config.icon;
 
   return (
