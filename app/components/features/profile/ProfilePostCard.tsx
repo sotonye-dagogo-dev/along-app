@@ -135,8 +135,9 @@ export function ProfilePostCard({ post, onRemoved, onEdited }: ProfilePostCardPr
   const handleEdit = useCallback((p: React.ComponentProps<typeof PostCard>["post"]) => {
     const typed = p as unknown as AnyPost
     if (typed.type === "ROUTE_REQUEST") {
-      const steps = Array.isArray((typed as { routes?: unknown }).routes)
-        ? ((typed as { routes: unknown[] }).routes as { location?: string; description?: string }[])
+      const rawRoutes = (typed as unknown as { routes?: unknown }).routes
+      const steps = Array.isArray(rawRoutes)
+        ? (rawRoutes as { location?: string; description?: string }[])
         : []
       setEditRequest({
         id: typed.id,
