@@ -750,3 +750,15 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Public `[slug]` page — defensive `sanitizeBlogHtml` at render before interpolation (covers legacy rows; terms/privacy pattern) | [x] |
 | [S] | Studio — save sends `blocksToBlogHtml`; live preview mirrors public render exactly (article HTML + style-strip + interpolation, no raw tokens) | [x] |
 | [S] | Tests — extended `blogCompliance.test.ts` (renderer semantics/no-styles, escaping, sanitizer strip/keep, pipeline no-leak) | [x] |
+
+## Session 2026-10-13 — Train vehicle option (execute-feature)
+
+> **Section summary:** Directive close-out ("vehicle option for trains, train icon in the UI, end to end"). Non-breaking additive mirroring the boat session (union member + registry entry only; no migration — vehicle stored as free string in routes JSON; no new deps; no removed APIs). Surfaces derive from VEHICLE_REGISTRY dynamically, so composer chips, PostCard, NavigationGuide, and post detail pick up train with zero per-surface changes. QA in-runner: no node_modules — 10-point static parity grep all PASS; full tsc/jest/build deferred to CI/Vercel.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | `VehicleType` += `"train"`; `VEHICLE_REGISTRY.train` (label Train, Lucide `Train` — already imported in `mapIntegrations.ts`, proven present in installed lucide-react — violet `#6D28D9` / `bg-violet-50` / `text-violet-800`, token dark classes; distinct from bus blue / car indigo / boat cyan) | [x] |
+| [S] | `routeValidation` KNOWN_VEHICLES += `"train"` (zero-dep mirror kept in sync) | [x] |
+| [S] | Landing `VEHICLE_CHIPS` += `TRAIN` (`#EDE9FE`/`#5B21B6`); explore += `Train` filter chip + `activeVehicleFilters` allowlist entry (chip rendered but never filtered without it) | [x] |
+| [S] | DESIGN.md — Train vehicle-color row + `Train` icon-map row | [x] |
+| [S] | Tests — extended `app/__tests__/config/vehicles.test.ts` (9 keys, train label/icon/color/classes, train accepted alongside boat, spaceship still rejected) | [x] |

@@ -38,6 +38,7 @@ const VEHICLE_CHIPS: Record<string, { bg: string; color: string }> = {
   TREK: { bg: "#F5F5F4", color: "#44403C" },
   CAR: { bg: "#EEF2FF", color: "#3730A3" },
   BOAT: { bg: "#ECFEFF", color: "#155E75" },
+  TRAIN: { bg: "#EDE9FE", color: "#5B21B6" },
 };
 
 async function getLandingPosts(): Promise<LandingPost[]> {

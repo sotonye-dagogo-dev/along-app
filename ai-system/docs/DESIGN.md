@@ -85,6 +85,7 @@ All colors are defined as CSS custom properties in `globals.css` inside a Tailwi
 | Car | `bg-indigo-50` | `text-indigo-800` |
 | Bolt Ride | `bg-lime-50` | `text-lime-800` |
 | Boat | `bg-cyan-50` | `text-cyan-800` |
+| Train | `bg-violet-50` | `text-violet-800` |
 
 ### 2.5 Glass Morphism
 
@@ -280,6 +281,7 @@ Base unit: 4px. All spacing values are multiples.
 | Vehicle: Car | `Car` |
 | Vehicle: Bolt | `Truck` |
 | Vehicle: Boat | `Ship` |
+| Vehicle: Train | `Train` |
 | Drag handle | `GripVertical` |
 | Upload | `Upload`, `ImagePlus` |
 | Camera | `Camera` |
