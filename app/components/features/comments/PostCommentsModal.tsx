@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AppModal } from "@/app/components/ui/AppModal";
+import { ViewMoreButton } from "@/app/components/ui/ViewMoreButton";
 import CommentInput from "./CommentInput";
 import CommentList from "./CommentList";
 import { COMMENTS_CONFIG } from "@/app/lib/config/comments";
@@ -56,17 +57,21 @@ export function PostCommentsModal({
 }: PostCommentsModalProps) {
   const [comments, setComments] = useState<ModalComment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     if (!open || !postId) return;
     let cancelled = false;
     setLoading(true);
+    setNextCursor(null);
     void (async () => {
       try {
         const res = await fetch(`/api/posts/${postId}/comments`);
         if (res.ok && !cancelled) {
           const data = await res.json();
           setComments(data.comments ?? []);
+          setNextCursor(data.nextCursor ?? null);
         }
       } catch {
         // Modal still renders with the expand-post fallback.
@@ -78,6 +83,27 @@ export function PostCommentsModal({
       cancelled = true;
     };
   }, [open, postId]);
+
+  /** Cursor "View more" — appends the next (older) comment window. */
+  const loadMore = useCallback(async () => {
+    if (!postId || !nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments?cursor=${encodeURIComponent(nextCursor)}`);
+      if (!res.ok) throw new Error("view more failed");
+      const data = await res.json();
+      const incoming: ModalComment[] = Array.isArray(data.comments) ? data.comments : [];
+      setComments((prev) => {
+        const seen = new Set(prev.map((c) => c.id));
+        return [...prev, ...incoming.filter((c) => !seen.has(c.id))];
+      });
+      setNextCursor(data.nextCursor ?? null);
+    } catch {
+      // Silent — the button stays so the user can retry.
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [postId, nextCursor, loadingMore]);
 
   const handleSubmit = useCallback(
     async (text: string) => {
@@ -122,12 +148,23 @@ export function PostCommentsModal({
       {loading ? (
         <p className="text-sm text-text-muted py-4 text-center">{COMMENTS_CONFIG.modalLoadingLabel}</p>
       ) : (
-        <CommentList
-          comments={comments}
-          postId={postId}
-          onDeleted={(id) => setComments((prev) => prev.filter((c) => c.id !== id))}
-          onUpdated={(c) => setComments((prev) => prev.map((p) => (p.id === c.id ? { ...p, text: c.text } : p)))}
-        />
+        <>
+          <CommentList
+            comments={comments}
+            postId={postId}
+            onDeleted={(id) => setComments((prev) => prev.filter((c) => c.id !== id))}
+            onUpdated={(c) => setComments((prev) => prev.map((p) => (p.id === c.id ? { ...p, text: c.text } : p)))}
+          />
+          {comments.length > 0 && (
+            <ViewMoreButton
+              onViewMore={() => void loadMore()}
+              loading={loadingMore}
+              shown={comments.length}
+              total={null}
+              hasMore={nextCursor !== null}
+            />
+          )}
+        </>
       )}
       <div className="pt-3 mt-1 border-t border-border">
         <Link

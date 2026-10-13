@@ -2,6 +2,7 @@
 
 import React, { useCallback, useRef, useState } from 'react'
 import { MapPin, Navigation } from 'lucide-react'
+import { getBiasCoords, biasQuerySuffix } from '@/app/lib/utils/geoBias'
 
 interface RoutePin {
   lat: number
@@ -52,10 +53,13 @@ function RouteStepInput({
     setLoading(true)
     try {
       // Keyless stack: geocode via the internal server proxy (Nominatim +
-      // Photon fallback, cached). Browser-direct Nominatim calls violate
-      // usage policy and are banned — never call upstream from the client.
+      // Photon + Open-Meteo merged, cached). Viewer bias (granted-only, never
+      // prompts) re-ranks nearby hits first server-side. Browser-direct
+      // upstream calls violate usage policy and are banned — never call
+      // upstream from the client.
+      const bias = await getBiasCoords()
       const res = await fetch(
-        `/api/maps/geocode?q=${encodeURIComponent(q)}&limit=5`,
+        `/api/maps/geocode?q=${encodeURIComponent(q)}&limit=5${biasQuerySuffix(bias)}`,
         { signal: controller.signal }
       )
       if (!res.ok) throw new Error(`geocode ${res.status}`)

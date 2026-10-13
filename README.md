@@ -299,6 +299,17 @@ Offline-first: recently viewed pages (Home, Explore, Search, FAQ, About, Blog), 
 - [Ant Design](https://ant.design/) - UI Component Library
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS
 - [Vercel](https://vercel.com/) - Deployment Platform
+- [Cloudinary](https://cloudinary.com/) - Image upload and optimization
+- [Resend](https://resend.com/) - Transactional email delivery
+- [Sentry](https://sentry.io/) - Error tracking and performance monitoring
+- [Upstash](https://upstash.com/) - Redis caching and QStash background workers
+- [MapLibre GL](https://maplibre.org/) - Open-source map rendering
+- [OpenFreeMap](https://openfreemap.org/) - Keyless vector map tiles
+- [OpenStreetMap](https://www.openstreetmap.org/copyright) - Map data, Nominatim geocoding, and raster tiles
+- [Photon](https://photon.komoot.io/) - Keyless place search (Komoot)
+- [Open-Meteo](https://open-meteo.com/) - Keyless geocoding API
+- [OSRM](http://project-osrm.org/) - Keyless route tracing
+- [CARTO](https://carto.com/) - Basemap raster tiles
 
 ## ðŸ“§ Contact
 

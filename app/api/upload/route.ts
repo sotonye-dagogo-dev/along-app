@@ -1,10 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { v2 as cloudinary } from "cloudinary";
+import { REPORT_ATTACHMENTS_CONFIG } from "@/app/lib/config/reportAttachments";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_FILES = 10;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg"];
+
+/**
+ * Per-folder upload policy (config-driven). `posts` keeps the legacy limits;
+ * `reports` enforces the report-attachment contract (≤3 files, ≤2MB each)
+ * from REPORT_ATTACHMENTS_CONFIG. Unknown folders are rejected — uploads can
+ * only land where the cleanup allowlist can later purge them.
+ */
+const FOLDER_POLICIES: Record<string, { folder: string; maxFiles: number; maxBytes: number; allowedTypes: string[] }> = {
+  posts: { folder: "along/posts", maxFiles: MAX_FILES, maxBytes: MAX_FILE_SIZE, allowedTypes: ALLOWED_TYPES },
+  reports: {
+    folder: REPORT_ATTACHMENTS_CONFIG.folder,
+    maxFiles: REPORT_ATTACHMENTS_CONFIG.maxImages,
+    maxBytes: REPORT_ATTACHMENTS_CONFIG.maxBytesPerImage,
+    allowedTypes: REPORT_ATTACHMENTS_CONFIG.allowedTypes,
+  },
+};
+
+function resolveFolderPolicy(raw: string | null) {
+  const key = (raw ?? "posts").trim().toLowerCase();
+  return FOLDER_POLICIES[key] ?? null;
+}
 
 function configureCloudinary() {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -31,22 +53,32 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const files = formData.getAll("file") as File[];
+    const folderParam =
+      (formData.get("folder") as string | null) ?? new URL(request.url).searchParams.get("folder");
+    const policy = resolveFolderPolicy(folderParam);
+    if (!policy) {
+      return NextResponse.json({ error: "Unknown upload folder." }, { status: 400 });
+    }
+    if (policy.folder === REPORT_ATTACHMENTS_CONFIG.folder && !REPORT_ATTACHMENTS_CONFIG.enabled) {
+      return NextResponse.json({ error: "Report attachments are disabled." }, { status: 400 });
+    }
 
     if (!files || files.length === 0) {
       return NextResponse.json({ error: "No files provided" }, { status: 400 });
     }
-    if (files.length > MAX_FILES) {
-      return NextResponse.json({ error: `Too many files. Maximum is ${MAX_FILES}` }, { status: 400 });
+    if (files.length > policy.maxFiles) {
+      return NextResponse.json({ error: `Too many files. Maximum is ${policy.maxFiles}` }, { status: 400 });
     }
 
     const urls: string[] = [];
 
     for (const file of files) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
+      if (!policy.allowedTypes.includes(file.type)) {
         return NextResponse.json({ error: `Unsupported file type: ${file.type}. Use JPEG, PNG, WebP or GIF.` }, { status: 400 });
       }
-      if (file.size > MAX_FILE_SIZE) {
-        return NextResponse.json({ error: `File ${file.name} exceeds 5MB limit` }, { status: 400 });
+      if (file.size > policy.maxBytes) {
+        const mb = policy.maxBytes / (1024 * 1024);
+        return NextResponse.json({ error: `File ${file.name} exceeds ${Number.isInteger(mb) ? mb : mb.toFixed(1)}MB limit` }, { status: 400 });
       }
       if (file.size === 0) {
         return NextResponse.json({ error: `File ${file.name} is empty` }, { status: 400 });
@@ -57,7 +89,7 @@ export async function POST(request: NextRequest) {
       const base64 = `data:${file.type};base64,${buffer.toString("base64")}`;
 
       const result = await cloudinary.uploader.upload(base64, {
-        folder: "along/posts",
+        folder: policy.folder,
         resource_type: "image",
         transformation: [{ width: 1200, height: 1200, crop: "limit", quality: "auto", fetch_format: "auto" }],
       });

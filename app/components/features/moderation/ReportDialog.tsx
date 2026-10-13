@@ -4,6 +4,7 @@ import { useState, useCallback } from "react"
 import { AppModal } from "@/app/components/ui"
 import { POST_ACTIONS_CONFIG, MODERATION_CONFIG } from "@/app/lib/config"
 import { toastService } from "@/app/lib/services/toastService"
+import { ReportImageUpload } from "./ReportImageUpload"
 
 interface ReportDialogProps {
   open: boolean
@@ -24,7 +25,14 @@ interface ReportDialogProps {
 export function ReportDialog({ open, postId, postTitle, commentId, onClose, onSubmitted }: ReportDialogProps) {
   const [reason, setReason] = useState(POST_ACTIONS_CONFIG.reportReasons[0]?.value ?? "other")
   const [details, setDetails] = useState("")
+  const [images, setImages] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
+
+  const reset = useCallback(() => {
+    setReason(POST_ACTIONS_CONFIG.reportReasons[0]?.value ?? "other")
+    setDetails("")
+    setImages([])
+  }, [])
 
   const submit = useCallback(async () => {
     if (!reason) {
@@ -41,6 +49,7 @@ export function ReportDialog({ open, postId, postTitle, commentId, onClose, onSu
           reason,
           ...(details.trim() ? { details: details.trim() } : {}),
           ...(commentId ? { commentId } : {}),
+          ...(images.length > 0 ? { images } : {}),
         }),
       })
       const payload = await res.json().catch(() => null)
@@ -51,8 +60,7 @@ export function ReportDialog({ open, postId, postTitle, commentId, onClose, onSu
       }
       if (!res.ok) throw new Error("report failed")
       onClose()
-      setReason(POST_ACTIONS_CONFIG.reportReasons[0]?.value ?? "other")
-      setDetails("")
+      reset()
       toastService.success((payload?.message as string | undefined) ?? MODERATION_CONFIG.reportReceived)
       onSubmitted?.()
     } catch {
@@ -60,7 +68,7 @@ export function ReportDialog({ open, postId, postTitle, commentId, onClose, onSu
     } finally {
       setSubmitting(false)
     }
-  }, [reason, details, postId, commentId, onClose, onSubmitted])
+  }, [reason, details, images, postId, commentId, onClose, onSubmitted, reset])
 
   return (
     <AppModal open={open} onClose={onClose} size="sm">
@@ -98,6 +106,7 @@ export function ReportDialog({ open, postId, postTitle, commentId, onClose, onSu
             className="w-full min-h-[72px] px-3 py-2 border border-border radius-sm text-sm font-sans resize-y bg-bg-base text-text-primary outline-none focus:border-primary placeholder:text-text-muted"
           />
         </div>
+        <ReportImageUpload images={images} onChange={setImages} disabled={submitting} />
         <div className="flex items-center justify-end gap-2">
           <button
             type="button"

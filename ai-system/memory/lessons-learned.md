@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 50: metadata-JSON attachments + merged geo + floating lanes)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -754,5 +754,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** PWA worked offline and push fired, but installed clients ran stale shells indefinitely: `sw.js` install called `skipWaiting()` unconditionally, the registrar never called `registration.update()`, and no UI ever told the user a new version existed — the project-plan even claimed "service worker update flow" done when only the silent path existed.
 - **Root causes:** (1) auto-`skipWaiting()` + `clients.claim()` takes control without reloading, so the loaded page keeps running OLD hashed JS until the next navigation — the update is "applied" but invisible; (2) browsers only revalidate `/sw.js` on navigation, so day-long installed sessions never discover updates without explicit `registration.update()` polling (interval + visible/focus/online); (3) `controllerchange` reloads must be guarded (first install none→worker must NOT reload; one reload per episode via sessionStorage) or they loop.
 - **Fix pattern (reuse):** SW installs WITHOUT skipWaiting and broadcasts readiness; the client detects `updatefound`→waiting (only when already controlled) and shows a collapsible, snoozable Update prompt; the user's tap posts SKIP_WAITING and `controllerchange` reloads exactly once; bump the mirrored CACHE_VERSION in both `pwa.ts` and `sw.js` on every SW change so old caches purge. Keep the whole vocabulary (`PWA_UPDATE_CONFIG` + `PWA_SW_MESSAGES`) in config so copy/timing/TTLs stay metadata-driven.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 50: metadata-JSON beats a migration for optional attachments; merge beats replace for recall
+- **Symptom:** reports needed screenshots; suggestions buried in one geo source never surfaced; per-step stop names invisible to search; floating cards covered the mobile Profile tab.
+- **Root causes:** (1) first instinct was a new `images` column — but every reader would need a P2022 window for zero query benefit (images are render-inline, never filtered); the existing `metadata` JSON was already the absent-tolerant channel. (2) first-provider-wins geocoding made recall = coverage of ONE source; each free source has different gaps, so any single pick (even a "better" one) keeps a miss class — only merging removes it. (3) floating surfaces each picked their own `bottom:` in isolation, so lanes collided by construction; the tab bar they had to clear lived in a different component with no shared contract.
+- **Fix pattern (reuse):** optional, render-only attachments ride in existing JSON columns with a sanitizer (no migration when nothing is ever queried by the field); recall problems get merge+dedupe across all free sources with rank-only bias (never filter, never prompt); floating surfaces share one lane registry (`FLOATING_UI_CONFIG`) where every bottom offset is declared once with the navbar height it must clear. Verify with node --check + strip-types execution of pure helpers when jest can't run.
 - **Supersedes:** None
 - **Superseded by:** None

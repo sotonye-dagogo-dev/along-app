@@ -15,8 +15,10 @@
  *             ~1 req/s with no SLA — never call browser-direct), then
  *             env-gated ORS / Mapbox, then straight-line fallback.
  * - Geocode → `/api/maps/*` server proxy (Nominatim server-side with
- *             proper User-Agent/Referer + Photon fallback). Browser-direct
- *             Nominatim calls violate usage policy and are banned.
+ *             proper User-Agent/Referer + Photon + keyless Open-Meteo
+ *             fallbacks, merged + deduped, optionally re-ranked near the
+ *             viewer). Browser-direct Nominatim calls violate usage policy
+ *             and are banned.
  *
  * Single source of truth for: tile style URLs, dark-mode mapping,
  * raster fallback chain, provider orders, cache TTLs, attributions,
@@ -26,7 +28,7 @@
 
 export type MapVectorStyleName = "liberty" | "bright" | "positron";
 export type MapRoutingProvider = "osrm" | "ors" | "mapbox" | "straight";
-export type MapGeocodeProvider = "nominatim" | "photon";
+export type MapGeocodeProvider = "nominatim" | "photon" | "openmeteo";
 
 export interface MapStackConfig {
   /** Keyless vector tile styles (OpenFreeMap, no registration). */
@@ -50,6 +52,8 @@ export interface MapStackConfig {
     osrm: string;
     nominatim: string;
     photon: string;
+    /** Keyless Open-Meteo geocoding (no key, no registration). */
+    openmeteo: string;
     ors: string;
     mapbox: string;
   };
@@ -86,11 +90,12 @@ export const MAP_STACK_CONFIG: MapStackConfig = {
     ],
   },
   routingOrder: ["osrm", "ors", "mapbox", "straight"],
-  geocodeOrder: ["nominatim", "photon"],
+  geocodeOrder: ["nominatim", "photon", "openmeteo"],
   upstreams: {
     osrm: "https://router.project-osrm.org/route/v1/driving",
     nominatim: "https://nominatim.openstreetmap.org",
     photon: "https://photon.komoot.io",
+    openmeteo: "https://geocoding-api.open-meteo.com/v1",
     ors: "https://api.openrouteservice.org/v2/directions/driving-car",
     mapbox: "https://api.mapbox.com/directions/v5/mapbox/driving",
   },

@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Search as SearchIcon } from "lucide-react";
 import { PostCard } from "@/app/components/features/posts";
 import { PostCommentsModal } from "@/app/components/features/comments";
-import { AppEmptyState, PostCardSkeleton, AppAvatar } from "@/app/components/ui";
+import { AppEmptyState, PostCardSkeleton, AppAvatar, ViewMoreButton } from "@/app/components/ui";
 import { EMPTY_STATES } from "@/app/lib/config";
 import { FollowButton } from "@/app/components/features/suggestions/FollowButton";
 import { usePostShare } from "@/app/hooks/usePostShare";
@@ -52,6 +52,7 @@ function SearchContent() {
   const [tab, setTab] = useState<Tab>("all");
   const [data, setData] = useState<SearchPayload | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,6 +127,34 @@ function SearchContent() {
   useEffect(() => {
     void runSearch(query, tab);
   }, [query, tab, runSearch]);
+
+  /** Cursor "View more" — appends the next post window (users stay top-N per query). */
+  const loadMore = useCallback(async () => {
+    const cursor = data?.nextCursor;
+    if (!cursor || loadingMore || !query || query.length < 2) return;
+    setLoadingMore(true);
+    try {
+      const res = await fetch(
+        `/api/search?q=${encodeURIComponent(query)}&type=${tab}&limit=10&cursor=${encodeURIComponent(cursor)}`,
+        { headers: { Accept: "application/json" } }
+      );
+      const payload = (await res.text().then((t) => (t ? JSON.parse(t) : null)).catch(() => null)) as SearchPayload | null;
+      if (!res.ok || !payload) throw new Error("view more failed");
+      setData((prev) => {
+        if (!prev) return prev;
+        const seen = new Set(prev.posts.map((p) => p.id));
+        return {
+          ...prev,
+          posts: [...prev.posts, ...(payload.posts ?? []).filter((p) => !seen.has(p.id))],
+          nextCursor: payload.nextCursor ?? null,
+        };
+      });
+    } catch {
+      // Silent — the button stays so the user can retry.
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [data?.nextCursor, loadingMore, query, tab]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -247,6 +276,13 @@ function SearchContent() {
                 }}
               />
             ))}
+            <ViewMoreButton
+              onViewMore={() => void loadMore()}
+              loading={loadingMore}
+              shown={data.posts.length}
+              total={null}
+              hasMore={data.nextCursor !== null}
+            />
           </section>
         )}
 

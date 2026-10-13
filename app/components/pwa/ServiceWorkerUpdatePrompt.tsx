@@ -8,6 +8,7 @@ import {
   PWA_UPDATE_CONFIG,
   PWA_SW_MESSAGES,
 } from "@/app/lib/config/pwa";
+import { FLOATING_UI_CONFIG, laneBottom } from "@/app/lib/config/floatingUi";
 
 function readLocal(key: string): string | null {
   try {
@@ -36,8 +37,9 @@ function writeLocal(key: string, value: string): void {
  *   registrar). No force-reload, no loops, session preserved (auth APIs are
  *   never cached by the SW).
  * - Recently-dismissed (TTL) → renders nothing; re-prompts after the TTL.
- * - Fixed bottom card above the offline banner slot, collapsible to a corner
- *   pill, capped width, safe-area aware. Guests included. Never throws.
+ * - Fixed bottom card on the transient lane (above install/offline),
+ *   collapsible to a corner pill, capped width, safe-area aware. Guests
+ *   included. Never throws.
  */
 export function ServiceWorkerUpdatePrompt() {
   const { t } = useTranslation();
@@ -182,6 +184,7 @@ export function ServiceWorkerUpdatePrompt() {
 
   if (!ready || dismissed) return null;
 
+  const transientLane = laneBottom(FLOATING_UI_CONFIG.lanes.transientBottomPx);
   const copy = PWA_UPDATE_CONFIG.copy;
   const title = tt("pwa.updateTitle", copy.title);
   const body = tt("pwa.updateBody", copy.body);
@@ -196,11 +199,11 @@ export function ServiceWorkerUpdatePrompt() {
         aria-expanded={false}
         aria-label={title}
         title={title}
-        style={{
-          position: "fixed",
-          right: 12,
-          bottom: 140,
-          zIndex: 55,
+          style={{
+            position: "fixed",
+            right: 12,
+            bottom: transientLane,
+            zIndex: 55,
           display: "inline-flex",
           alignItems: "center",
           gap: 6,
@@ -232,7 +235,7 @@ export function ServiceWorkerUpdatePrompt() {
         position: "fixed",
         left: 12,
         right: 12,
-        bottom: 140,
+        bottom: transientLane,
         zIndex: 55,
         margin: "0 auto",
         maxWidth: 480,

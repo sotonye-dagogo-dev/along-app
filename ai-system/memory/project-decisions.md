@@ -754,3 +754,43 @@ Showing Archive/Delete to admins on other users' posts leaks moderation affordan
 **Implications:**
 - Every future `sw.js` change MUST bump `PWA_CACHE_VERSION` in both `app/lib/config/pwa.ts` and `public/sw.js` or old caches won't purge on activate.
 - Tuning update behaviour = editing `PWA_UPDATE_CONFIG` only (interval, TTLs, copy, event name); the registrar/prompt/SW read it, so no logic edits are needed.
+
+## Sprint 50: Report Images Ride in metadata.images (No New Column)
+
+**Decision:** Optional report screenshots (≤3, ≤2MB, Cloudinary `along/reports`) are stored in `BugReport.metadata.images`, validated by `sanitizeReportImageUrls` (https Cloudinary URLs under the reports folder only). No `images` column, no migration.
+**Date:** 2026-10-13
+**Made by:** AI agent (opencode — execute-feature Sprint 50)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+A new column would need a migration plus a P2022-tolerant read window across every bug-report reader (admin list, triage actions, notifications) for zero behavioral gain — `metadata` is already JSON, already read everywhere, and already absent-tolerant. Folder separation (`along/reports` vs `along/posts`) keeps post-image pipelines and cleanup guards disjoint; the cleanup allowlist + `report-discard` source reuses the Sprint 33 orphan-prevention machinery instead of inventing another.
+
+**Alternatives Considered:**
+- **`images String[]` column + migration**: Rejected — migration + P2022 window for identical behavior; revisit only if reports need indexed image queries (they don't — admin renders them inline).
+- **Storing data-URLs/base64 in metadata**: Rejected — blows up row size and bypasses Cloudinary optimization/cleanup entirely.
+
+**Implications:**
+- Report readers must treat `metadata.images` as optional (may be absent); writers must go through `sanitizeReportImageUrls`.
+- New upload folders must be added to both the upload `FOLDER_POLICIES` allowlist and `MEDIA_CLEANUP_CONFIG.allowedFolderPrefixes` together, or uploads land where cleanup cannot purge them.
+
+## Sprint 50: Geocode Merges All Keyless Providers; Bias Is a Re-rank, Never a Filter
+
+**Decision:** `geocodeForward` queries every provider in `geocodeOrder` (nominatim → photon → openmeteo, all keyless, server-side only) and merges + dedupes into one list capped at `limit`; an optional viewer position re-ranks nearby-first but never removes hits. The client bias helper (`geoBias`) only reads position when permission is already granted (or a cached fix exists) — it never prompts.
+**Date:** 2026-10-13
+**Made by:** AI agent (opencode — execute-feature Sprint 50)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+First-provider-wins hid suggestions that existed in another source (the reported "Google finds it, we don't" gap). Merging keeps the response shape identical while strictly increasing recall; dedupe keys (normalized label + 3dp coords) collapse the same place across providers. Ranking-without-filtering means a stale/missing bias degrades to the unranked list, never to an empty one; promptless bias means suggestion typing can never trigger a permission sheet.
+
+**Alternatives Considered:**
+- **Replacing Nominatim with a single "better" source**: Rejected — uproots the working stack the directive explicitly protected; every free source has coverage gaps, merging dominates any single pick.
+- **Keyed provider (Mapbox/Geoapify/Stadia) as primary**: Rejected — reintroduces the API-key failure class Sprint 19 eliminated; keyed providers stay optional overrides.
+- **Filtering to a radius around the viewer**: Rejected — would hide valid distant results (users share routes for places they aren't standing in).
+
+**Implications:**
+- New geocode consumers must call `/api/maps/geocode` (never upstream browser-direct) and should forward bias coords when available.
+- Adding a future provider = one `MapGeocodeProvider` entry + one `geocodeVia*` parser returning canonical `MapGeocodeHit` — callers never branch on provider.
+- Route-step stop names (community wording no map source knows) are recalled separately via the best-effort `routes::text` prefetch in `searchService`, not via geocoding.
