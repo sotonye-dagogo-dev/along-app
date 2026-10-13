@@ -48,6 +48,27 @@ describe("featured blogs config (Sprint 52)", () => {
     expect(featuredBlogHref("")).toBe("/blog");
     expect(featuredBlogHref(null)).toBe("/blog");
   });
+
+  it("sorts admin-flagged posts first, newest-first within each group", () => {
+    const posts = [
+      { slug: "new-plain", title: "N", description: "", date: "2026-09-01", author: "A", category: "tips", image: "", readingTime: 1 },
+      { slug: "old-flagged", title: "O", description: "", date: "2026-01-01", author: "A", category: "tips", image: "", readingTime: 1, featured: true },
+      { slug: "new-flagged", title: "F", description: "", date: "2026-08-01", author: "A", category: "tips", image: "", readingTime: 1, featured: true },
+    ];
+    expect(pickFeaturedBlogs(posts).map((p) => p.slug)).toEqual([
+      "new-flagged",
+      "old-flagged",
+      "new-plain",
+    ]);
+  });
+
+  it("treats a missing featured field as unfeatured (never throws)", () => {
+    const posts = [
+      { slug: "a", title: "A", description: "", date: "2026-02-01", author: "A", category: "tips", image: "", readingTime: 1 },
+      { slug: "b", title: "B", description: "", date: "2026-03-01", author: "A", category: "tips", image: "", readingTime: 1, featured: false },
+    ];
+    expect(pickFeaturedBlogs(posts).map((p) => p.slug)).toEqual(["b", "a"]);
+  });
 });
 
 describe("default blogs enrichment (Sprint 52)", () => {

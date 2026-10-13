@@ -99,7 +99,7 @@ export async function PUT(request: NextRequest) {
       const { CACHE_KEYS } = await import("@/app/lib/config/cache");
       await redis.del(CACHE_KEYS.siteConfig("blogPosts"));
     } catch { /* ignore */ }
-    await logAudit({ actorId: (user as { id: string }).id, action: "blog.upsert", entity: "blog", entityId: clean.slug, metadata: { status: clean.status, title: clean.title } });
+    await logAudit({ actorId: (user as { id: string }).id, action: "blog.upsert", entity: "blog", entityId: clean.slug, metadata: { status: clean.status, title: clean.title, featured: clean.featured === true } });
     return NextResponse.json({ success: true, post: clean }, { status: 200 });
   } catch (e) {
     console.error("admin blog PUT error:", e);
