@@ -21,6 +21,13 @@ export async function GET(request: NextRequest) {
     // `active` (non-deleted) = neither anonymized nor inside the grace window.
     const deletionFilter = searchParams.get("deletion");
     const oldestFirst = searchParams.get("order") === "oldest";
+    // Config-driven sort (?sort=&dir= validated; default preserves legacy
+    // newest-first; ?order=oldest still wins for first-N-by-signup flows).
+    const sortParam = (searchParams.get("sort") ?? "createdAt").trim();
+    const dirParam = (searchParams.get("dir") ?? "desc").trim().toLowerCase();
+    const allowedUserSort = ["createdAt", "userName", "rewardPoints", "email"] as const;
+    const userSortField = (allowedUserSort as readonly string[]).includes(sortParam) ? sortParam : "createdAt";
+    const userSortDir = dirParam === "asc" ? "asc" : "desc";
 
     const where: Record<string, unknown> = {};
     if (search) {
@@ -131,7 +138,9 @@ export async function GET(request: NextRequest) {
         _count: { select: { posts: true } },
         createdAt: true,
       },
-      orderBy: oldestFirst ? [{ createdAt: "asc" }, { id: "asc" }] : { createdAt: "desc" },
+      orderBy: oldestFirst
+        ? [{ createdAt: "asc" }, { id: "asc" }]
+        : ([{ [userSortField]: userSortDir }, { id: userSortDir }] as never),
     });
 
     const hasMore = users.length > limit;

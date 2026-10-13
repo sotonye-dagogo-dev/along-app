@@ -1237,3 +1237,25 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `pwa.test.ts` +2 (update registry shape, message vocabulary), `locales.test.ts` +4 required keys (en/pcm parity).
 **QA:** no node_modules in runner (full tsc/jest/build deferred to CI — standing arrangement); executed: `node --check sw.js` OK, en/pcm JSON parse OK, CACHE_VERSION v5 both sides, precache/message parity script OK (11/11 routes + 5/5 tokens); tsc shows only pre-existing missing-module noise (react/jest types), zero errors attributable to touched files.
 **Compliance:** additive-only, non-breaking, no migration/deps/API removals (SW message additions backward-compatible — old pages ignore unknown broadcasts; prompt renders only when an update is actually waiting; first-install path unchanged in behaviour).
+
+## Sprint 50 (2026-10-13) — Reports+screenshots, pagination controls, merged geo, floating lanes, README
+**Directive:** report screenshot uploads, view-more/page controls on paginated surfaces, second keyless geo source + location-biased suggestions + description/stop recall in search, floating-button overlap fix, README service credits. Config/metadata-driven, non-breaking + update-ai-system chain.
+**Implemented:**
+- NEW `reportAttachments` / `paginationUi` / `floatingUi` configs + barrel; upload `folder=` policies; `along/reports` cleanup source; `ReportImageUpload` + dialog/page wiring; `metadata.images` on both report APIs (no migration); admin thumbnails.
+- NEW `ViewMoreButton` + `PageNavigator`; view-more on notifications/search/comments/reviews; navigators on leaderboard/blog.
+- `openmeteo` merged geocode + near-rank + `?lat=&lng=` + granted-only `geoBias` helper; routes-JSON stop-name recall in search.
+- Floating lanes (offline/install/transient) + mobile left dock; README +11 service attributions.
+- Tests: `config/sprint50.test.ts` (10).
+**QA:** node --check + strip-types pure-logic green in-runner; full gate deferred to CI (no node_modules).
+**Compliance:** additive-only, non-breaking, no migration/deps/API removals.
+
+## Sprint 51 (2026-10-13) — Notification routing + bug-report ACID + admin tables + validity top + bug emails
+**Directive:** appropriate notification targets, table asc/desc sort, top-route correctness, bug-report ACID + pagination + screenshot viewing, user bug-email lifecycle with Studio visibility, deferred admin pagination bulk-safely, Vercel metadata type fix.
+**Implemented:**
+- `notificationRoutes` resolver (comment/post/follow/queue fallbacks) + notifications page + CommentList highlight + detail `?comment=` scroll + push payload via resolver.
+- Bug-report Json cast fix + `BUG_REPORT_DEDUP_CONFIG` idempotency/dedup + atomic assign + `{id}` response + clientToken/error UI.
+- `bugReportReceived` + `bugReportStatusUpdate` templates (service senders, status copy, studio samples, var catalog/sources); PATCH lifecycle fan-out.
+- `ADMIN_TABLE_SORT_META` + `ADMIN_PAGINATION_META` + `useAdminCursorList`; `?sort=&dir=` on 4 admin APIs; sort + ViewMore on 4 pages; AppTable `aria-sort`; bugs screenshot viewer.
+- Top-posts correctness filter + deterministic order (analytics + stats).
+**QA:** structural review in-runner (no node_modules); full gate deferred to CI.
+**Compliance:** additive-only, non-breaking, no migration.

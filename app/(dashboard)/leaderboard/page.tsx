@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Trophy, Medal, Award, TrendingUp, Users, MapPin } from "lucide-react"
 import { useTranslation } from "@/app/providers/I18nProvider"
+import { PageNavigator } from "@/app/components/ui/PageNavigator"
 
 interface LeaderboardEntry {
   rank: number
@@ -227,27 +228,15 @@ export default function LeaderboardPage() {
         )}
       </div>
 
-      {/* Pagination */}
-      {!loading && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page <= 1}
-            className="px-3 py-1.5 radius-md text-xs font-semibold border border-border bg-bg-card cursor-pointer disabled:opacity-40"
-          >
-            {tf("leaderboard.prev", "Prev")}
-          </button>
-          <span className="text-xs text-text-muted">
-            {tf("leaderboard.pageStatus", "Page {page} of {totalPages} · {total} ranked", { page, totalPages, total })}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page >= totalPages}
-            className="px-3 py-1.5 radius-md text-xs font-semibold border border-border bg-bg-card cursor-pointer disabled:opacity-40"
-          >
-            {tf("leaderboard.next", "Next")}
-          </button>
-        </div>
+      {/* Pagination — shared specific-page navigator (prev / numbers / next). */}
+      {!loading && (
+        <PageNavigator
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onChange={(p) => setPage(Math.min(Math.max(1, p), Math.max(1, totalPages)))}
+        />
       )}
     </div>
   )

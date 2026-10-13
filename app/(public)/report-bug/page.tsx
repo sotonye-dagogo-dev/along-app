@@ -6,10 +6,21 @@ import { Suspense } from "react";
 import { BUG_REPORT_FIELDS } from "@/app/lib/config";
 import { ConfigDrivenForm } from "@/app/components/ui/ConfigDrivenForm";
 import { AppEmptyState } from "@/app/components/ui/AppEmptyState";
+import { ReportImageUpload } from "@/app/components/features/moderation";
 import { CheckCircle } from "lucide-react";
 
 function ReportBugForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Stable idempotency key per form instance: retries / double-clicks after
+  // a timeout present the same key so the API dedups instead of duplicating.
+  const [clientToken] = useState(() =>
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
   const searchParams = useSearchParams();
 
   // Prefill from error boundaries (sanitized ?title=&description=): fed into
@@ -33,16 +44,27 @@ function ReportBugForm() {
   const hasPrefill = Boolean(initialValues.title || initialValues.description);
 
   const handleSubmit = async (_data: Record<string, unknown>) => {
+    if (sending) return;
+    setSending(true);
+    setError(null);
     try {
-      await fetch("/api/bug-reports", {
+      const res = await fetch("/api/bug-reports", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(_data),
+        headers: {
+          "Content-Type": "application/json",
+          "x-idempotency-key": clientToken,
+        },
+        body: JSON.stringify({ ..._data, clientToken, ...(images.length > 0 ? { images } : {}) }),
       });
-    } catch {
-      // handle silently
-    } finally {
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error((payload as { error?: string } | null)?.error ?? "Submission failed. Please try again.");
+      }
       setSubmitted(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Submission failed. Please try again.");
+    } finally {
+      setSending(false);
     }
   };
 
@@ -75,8 +97,16 @@ function ReportBugForm() {
         fields={BUG_REPORT_FIELDS}
         initialValues={initialValues}
         onSubmit={handleSubmit}
-        submitLabel="Submit Report"
+        submitLabel={sending ? "Submitting…" : "Submit Report"}
       />
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-error-text bg-error radius-md px-3 py-2.5">
+          {error}
+        </p>
+      )}
+      <div className="mt-5">
+        <ReportImageUpload images={images} onChange={setImages} disabled={sending} />
+      </div>
     </div>
   );
 }

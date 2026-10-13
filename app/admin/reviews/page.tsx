@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { Shield, Check, X } from "lucide-react"
-import { ADMIN_BULK_SELECT_META } from "@/app/lib/config/admin"
+import { ADMIN_BULK_SELECT_META, ADMIN_TABLE_SORT_META } from "@/app/lib/config/admin"
 import { reviewAuthorName } from "@/app/lib/config/reviews"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 import { toastService } from "@/app/lib/services/toastService"
@@ -33,20 +33,48 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState("PENDING")
   const [bulkBusy, setBulkBusy] = useState(false)
+  // Bulk-safe cursor pagination (append-only) + config-driven sort.
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [sortId, setSortId] = useState(ADMIN_TABLE_SORT_META.reviews.defaultId)
   const bulk = useBulkSelection(reviews, (r) => r.id)
 
-  const load = async (status?: string) => {
-    setLoading(true)
+  const load = async (status?: string, cursor: string | null = null) => {
+    if (cursor) {
+      if (!nextCursor || loadingMore) return
+      setLoadingMore(true)
+    } else {
+      setLoading(true)
+    }
     try {
-      const url = status ? `/api/admin/reviews?status=${status}` : "/api/admin/reviews"
+      const sortOpt = ADMIN_TABLE_SORT_META.reviews.options.find((o) => o.id === sortId)
+        ?? ADMIN_TABLE_SORT_META.reviews.options[0]
+      const params = new URLSearchParams()
+      const s = status ?? statusFilter
+      if (s) params.set("status", s)
+      params.set("sort", sortOpt.sort)
+      params.set("dir", sortOpt.dir)
+      params.set("limit", "20")
+      if (cursor) params.set("cursor", cursor)
+      const url = `/api/admin/reviews?${params.toString()}`
       const res = await fetch(url)
       if (!res.ok) throw new Error("Request failed")
       const data = await res.json()
-      setReviews(data.reviews ?? [])
-    } catch (err) { console.error("[AdminError]", err) } finally { setLoading(false) }
+      const fresh = (data.reviews ?? []) as AdminReview[]
+      setReviews((prev) => {
+        if (!cursor) return fresh
+        const seen = new Set(prev.map((r) => r.id))
+        return [...prev, ...fresh.filter((r) => !seen.has(r.id))]
+      })
+      setNextCursor(data.nextCursor ?? null)
+    } catch (err) { console.error("[AdminError]", err) } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
   }
 
-  useEffect(() => { load("PENDING") }, [])
+  useEffect(() => { bulk.clear(); load(statusFilter || undefined) }, [statusFilter, sortId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const handleStatus = async (reviewId: string, status: string) => {
     try {
@@ -96,7 +124,7 @@ export default function AdminReviewsPage() {
           {["PENDING", "APPROVED", "REJECTED", ""].map(s => (
             <button
               key={s}
-              onClick={() => { setStatusFilter(s); load(s || undefined) }}
+              onClick={() => { bulk.clear(); setStatusFilter(s) }}
               className={`px-3 py-1.5 radius-md text-xs font-semibold border-none cursor-pointer transition-all duration-fast ${
                 statusFilter === s ? "bg-primary text-text-inverse" : "bg-bg-elevated text-text-secondary hover:bg-bg-elevated"
               }`}
@@ -104,6 +132,16 @@ export default function AdminReviewsPage() {
               {s || "All"}
             </button>
           ))}
+          <select
+            value={sortId}
+            onChange={(e) => setSortId(e.target.value)}
+            className="px-3 py-1.5 radius-md border border-border text-xs font-medium font-sans bg-bg-card text-text-primary cursor-pointer"
+            aria-label="Sort reviews"
+          >
+            {ADMIN_TABLE_SORT_META.reviews.options.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -191,6 +229,18 @@ export default function AdminReviewsPage() {
           </div>
         ))}
       </div>
+      {nextCursor && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => void load(statusFilter || undefined, nextCursor)}
+            disabled={loadingMore}
+            className="px-4 py-2 radius-md border border-border bg-bg-card text-xs font-semibold text-text-primary cursor-pointer disabled:opacity-50"
+          >
+            {loadingMore ? "Loading more…" : "View more"}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

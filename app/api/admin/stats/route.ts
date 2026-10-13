@@ -105,7 +105,11 @@ export async function GET(request: NextRequest) {
       })(),
       prisma.post.findMany({
         select: { id: true, title: true, validityScore: true },
-        orderBy: { validityScore: "desc" },
+        // Top-route correctness: only live ROUTEs qualify (archived + route
+        // requests excluded), deterministic tie-break so the true top-N can
+        // never be skipped by unstable ordering.
+        where: { isArchived: false, type: { not: "ROUTE_REQUEST" } } as never,
+        orderBy: [{ validityScore: "desc" }, { likes: "desc" }, { id: "asc" }],
         take: 5,
       }),
       prisma.user.findMany({

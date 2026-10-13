@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Heart, ThumbsDown, MessageCircle, UserPlus, AtSign, Star, Award, CheckCircle, Sparkles, ClipboardList, Reply, Route as RouteIcon, Bell, ShieldCheck } from "lucide-react"
-import { AppEmptyState } from "@/app/components/ui"
+import { AppEmptyState, ViewMoreButton } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { resolveNotificationRoute } from "@/app/lib/config/notificationRoutes"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { PushManager } from "@/app/components/pwa/PushManager"
@@ -28,6 +29,9 @@ interface NotificationItem {
     | "NEW_ROUTE"
     | "REPORT"
     | "MODERATION"
+    | "ACCOUNT_DELETION_REQUESTED"
+    | "ACCOUNT_DELETION_CANCELLED"
+    | "ACCOUNT_DELETION_COMPLETED"
   message: string
   createdAt: string
   actor: {
@@ -39,6 +43,7 @@ interface NotificationItem {
     avatarConfig?: unknown
   }
   post?: { id: string; title: string } | null
+  commentId?: string | null
   recipients: { read: boolean }[]
 }
 
@@ -74,6 +79,7 @@ const TYPE_ICONS: Record<string, { icon: React.ElementType; color: string }> = {
 interface NotificationsResponse {
   notifications: NotificationItem[]
   unreadCount: number
+  nextCursor?: string | null
 }
 
 export default function NotificationsPage() {
@@ -90,9 +96,44 @@ export default function NotificationsPage() {
     { ttlSec: 30, enabled: !authLoading }
   )
 
-  const notifications = data?.notifications ?? []
+  // Cursor "View more" — appended windows live outside the cached first page
+  // (cache stays first-page-only per the API contract); tab switches reset.
+  const [more, setMore] = useState<NotificationItem[]>([])
+  const [moreCursor, setMoreCursor] = useState<string | null | undefined>(undefined)
+  const [loadingMore, setLoadingMore] = useState(false)
+  useEffect(() => {
+    setMore([])
+    setMoreCursor(undefined)
+  }, [activeTab])
+
+  const notifications = [...(data?.notifications ?? []), ...more]
   const unreadCount = data?.unreadCount ?? 0
   const isLoading = authLoading || loading
+  const nextCursor = moreCursor !== undefined ? moreCursor : (data?.nextCursor ?? null)
+
+  const handleViewMore = async () => {
+    if (!nextCursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const params = new URLSearchParams()
+      if (activeTab !== "all") params.set("filter", activeTab)
+      params.set("cursor", nextCursor)
+      const res = await fetch(`/api/notifications?${params.toString()}`, {
+        headers: { Accept: "application/json" },
+      })
+      const payload = (await res.json().catch(() => null)) as NotificationsResponse | null
+      if (!res.ok || !payload) throw new Error("view more failed")
+      setMore((prev) => {
+        const seen = new Set([...(data?.notifications ?? []), ...prev].map((n) => n.id))
+        return [...prev, ...(payload.notifications ?? []).filter((n) => !seen.has(n.id))]
+      })
+      setMoreCursor(payload.nextCursor ?? null)
+    } catch {
+      // Silent — the button stays so the user can retry.
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const markAllRead = async () => {
     try {
@@ -101,6 +142,7 @@ export default function NotificationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ markAll: true }),
       })
+      setMore((prev) => prev.map((n) => ({ ...n, recipients: n.recipients.map((r) => ({ ...r, read: true })) })))
       mutate((prev) => ({
         notifications: (prev?.notifications ?? []).map((n) => ({
           ...n,
@@ -115,6 +157,11 @@ export default function NotificationsPage() {
 
   /** Called when a row marks itself read — keep state + cache in sync. */
   const handleMarkedRead = (id: string) => {
+    setMore((prev) =>
+      prev.map((n) =>
+        n.id === id ? { ...n, recipients: n.recipients.map((r) => ({ ...r, read: true })) } : n
+      )
+    )
     mutate((prev) => {
       if (!prev) return { notifications: [], unreadCount: 0 }
       const target = prev.notifications.find((n) => n.id === id)
@@ -238,6 +285,13 @@ export default function NotificationsPage() {
               ))}
             </>
           )}
+          <ViewMoreButton
+            onViewMore={() => void handleViewMore()}
+            loading={loadingMore}
+            shown={filteredNotifications.length}
+            total={null}
+            hasMore={nextCursor !== null}
+          />
         </>
       )}
     </div>
@@ -268,15 +322,17 @@ function NotificationRow({
         body: JSON.stringify({ notificationId: notification.id }),
       }).catch(() => undefined)
     }
-    if (notification.post?.id) {
-      router.push(`/posts/${notification.post.id}`)
-    } else if (notification.type === "VERIFIED") {
-      // Email-verification prompts CTA to the profile security tab where
-      // the verify allocation lives (edge-case unverified logins).
-      router.push(`/profile?tab=security`)
-    } else {
-      router.push(`/profile/${notification.actor.userName}`)
-    }
+    // Config-driven deep routing: post → /posts/:id (+?comment= anchor),
+    // follow → actor profile, reports/queue → /notifications or admin queue,
+    // never a misleading profile fallback.
+    router.push(
+      resolveNotificationRoute({
+        type: notification.type,
+        postId: notification.post?.id ?? null,
+        commentId: notification.commentId ?? null,
+        actorUserName: notification.actor.userName,
+      })
+    )
   }
 
   return (

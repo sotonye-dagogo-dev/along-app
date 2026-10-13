@@ -44,6 +44,8 @@ export const EMAIL_MANAGEMENT_CONFIG = {
     "changePassword",
     "contactNotification",
     "bugReportNotification",
+    "bugReportReceived",
+    "bugReportStatusUpdate",
     "accountDeletionRequested",
     "accountDeletionCompleted",
     "adminDeletionAlert",
@@ -114,6 +116,9 @@ export const EMAIL_BUILDER_CONFIG = {
     { name: "title", label: "Title", example: "Route map not loading" },
     { name: "category", label: "Category", example: "UI" },
     { name: "description", label: "Description", example: "Steps to reproduce…" },
+    { name: "reportId", label: "Report ID", example: "cm3x8k2abc0001" },
+    { name: "status", label: "Status", example: "IN PROGRESS" },
+    { name: "statusNote", label: "Status note", example: "Our team is actively working on this." },
   ],
 } as const;
 

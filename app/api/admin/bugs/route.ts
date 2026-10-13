@@ -14,6 +14,13 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const cursor = searchParams.get("cursor");
     const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
+    // Config-driven sort (?sort=&dir= validated against allow-list;
+    // default preserves legacy newest-first, non-breaking).
+    const sortParam = (searchParams.get("sort") ?? "createdAt").trim();
+    const dirParam = (searchParams.get("dir") ?? "desc").trim().toLowerCase();
+    const allowedSort = ["createdAt", "title", "status", "category"] as const;
+    const sortField = (allowedSort as readonly string[]).includes(sortParam) ? sortParam : "createdAt";
+    const sortDir = dirParam === "asc" ? "asc" : "desc";
 
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
@@ -25,7 +32,7 @@ export async function GET(request: NextRequest) {
         reviewer: { select: { id: true, firstName: true, lastName: true, userName: true } },
         post: { select: { id: true, title: true, userId: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ [sortField]: sortDir } as never, { id: sortDir } as never],
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
     });
@@ -83,12 +90,54 @@ export async function PATCH(request: NextRequest) {
       if (reviewerId) data.reviewerId = reviewerId;
       if (status === "RESOLVED" || status === "CLOSED") data.resolvedAt = new Date();
 
-      await prisma.bugReport.updateMany({
+      const updated = await prisma.bugReport.updateMany({
         where: { id: { in: targets } },
         data: data as never,
       });
 
-      return NextResponse.json({ success: true, updated: targets.length }, { status: 200 });
+      // User-facing lifecycle emails + in-app ping for status transitions the
+      // reporter cares about (IN_PROGRESS / RESOLVED / CLOSED). Best-effort,
+      // never fails the PATCH — keeps admin UX snappy.
+      if (["IN_PROGRESS", "RESOLVED", "CLOSED"].includes(String(status))) {
+        void (async () => {
+          try {
+            const reports = await prisma.bugReport.findMany({
+              where: { id: { in: targets } },
+              select: {
+                id: true, title: true, status: true, reporterId: true,
+                reporter: { select: { email: true, firstName: true } },
+              },
+              take: 50,
+            });
+            const { sendBugReportStatusEmail } = await import("@/app/lib/services/emailService");
+            const { createNotification } = await import("@/app/lib/services/notificationService");
+            const { BUG_REPORT_STATUS_COPY } = await import("@/app/lib/config/bugReports");
+            for (const r of reports) {
+              if (!r.reporterId) continue;
+              const note = (BUG_REPORT_STATUS_COPY as Record<string, string>)[String(r.status)] ?? (BUG_REPORT_STATUS_COPY as Record<string, string>).DEFAULT;
+              void createNotification({
+                type: "REPORT",
+                actorId: (user.id as string) ?? r.reporterId,
+                message: `Your bug report "${r.title.slice(0, 100)}" is now ${String(r.status).replace("_", " ")}.`,
+                recipientIds: [r.reporterId],
+                allowSelf: true,
+              });
+              const email = (r as { reporter?: { email?: string | null; firstName?: string | null } | null }).reporter?.email;
+              if (email) {
+                void sendBugReportStatusEmail(email, {
+                  firstName: (r as { reporter?: { firstName?: string | null } | null }).reporter?.firstName ?? "there",
+                  title: r.title.slice(0, 200),
+                  status: String(r.status).replace("_", " "),
+                  statusNote: note,
+                  reportId: r.id,
+                });
+              }
+            }
+          } catch { /* lifecycle fan-out is non-critical */ }
+        })();
+      }
+
+      return NextResponse.json({ success: true, updated: updated.count ?? targets.length }, { status: 200 });
     }
 
     // Bulk moderation actions only support single-report flow (post linkage

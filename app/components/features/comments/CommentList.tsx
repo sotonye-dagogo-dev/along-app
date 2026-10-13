@@ -38,6 +38,8 @@ interface CommentListProps {
   onRestored?: () => void
   /** @deprecated Use postId + cache callbacks instead; kept for compatibility. */
   onDelete?: (commentId: string) => void
+  /** Deep-link target from notification routing (?comment=). Highlighted + scrolled into view. */
+  highlightId?: string | null
 }
 
 function getTimeAgo(date: string | Date): string {
@@ -52,7 +54,7 @@ function getTimeAgo(date: string | Date): string {
   return new Date(date).toLocaleDateString()
 }
 
-export default function CommentList({ comments, postId, onDeleted, onUpdated, onRestored, onDelete }: CommentListProps) {
+export default function CommentList({ comments, postId, onDeleted, onUpdated, onRestored, onDelete, highlightId }: CommentListProps) {
   const { user: currentUser, requireAuth } = useAuth()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState("")
@@ -134,7 +136,7 @@ export default function CommentList({ comments, postId, onDeleted, onUpdated, on
         const editing = editingId === comment.id
 
         return (
-          <div key={comment.id} className="flex gap-2.5 py-3 border-b border-border last:border-b-0">
+          <div key={comment.id} id={`comment-${comment.id}`} className={`flex gap-2.5 py-3 border-b border-border last:border-b-0 radius-md scroll-mt-24 ${highlightId === comment.id ? "bg-primary-muted ring-1 ring-primary px-2" : ""}`}>
             <AppAvatar
               src={comment.user.avatar ?? undefined}
               alt={`${comment.user.firstName} ${comment.user.lastName}`}

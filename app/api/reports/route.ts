@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { MODERATION_CONFIG, POST_ACTIONS_CONFIG } from "@/app/lib/config";
+import { sanitizeReportImageUrls } from "@/app/lib/config/reportAttachments";
 import { createNotification } from "@/app/lib/services/notificationService";
 import { sendBugReportNotification } from "@/app/lib/services/emailService";
 
@@ -18,11 +19,12 @@ import { sendBugReportNotification } from "@/app/lib/services/emailService";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { postId, reason, details, commentId } = body as {
+    const { postId, reason, details, commentId, images } = body as {
       postId?: unknown;
       reason?: unknown;
       details?: unknown;
       commentId?: unknown;
+      images?: unknown;
     };
 
     if (typeof postId !== "string" || postId.length === 0) {
@@ -65,6 +67,9 @@ export async function POST(request: NextRequest) {
     const reasonLabel =
       POST_ACTIONS_CONFIG.reportReasons.find((r) => r.value === reason)?.label ?? reason;
     const trimmedDetails = typeof details === "string" ? details.trim() : "";
+    // Optional screenshots (Cloudinary along/reports URLs only, ≤3) ride in
+    // metadata.images — no migration; readers tolerate absence.
+    const reportImages = sanitizeReportImageUrls(images);
     const windowStart = new Date(Date.now() - MODERATION_CONFIG.duplicateWindowHours * 3600_000);
 
     // Transaction: dedup check + insert are atomic (no duplicate rows on retry).
@@ -97,7 +102,12 @@ export async function POST(request: NextRequest) {
             .join("\n"),
           reporterId,
           postId,
-          metadata: { kind: "post-report", reason, ...(commentId ? { commentId } : {}) },
+          metadata: {
+            kind: "post-report",
+            reason,
+            ...(commentId ? { commentId } : {}),
+            ...(reportImages.length > 0 ? { images: reportImages } : {}),
+          },
         },
         select: { id: true },
       });

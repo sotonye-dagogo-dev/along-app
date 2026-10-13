@@ -8,6 +8,7 @@ import { AuthContext } from "@/app/providers/AuthProvider";
 import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
 import { toastService } from "@/app/lib/services/toastService";
 import { PWA_FAQ_LINKS } from "@/app/lib/config/pwa";
+import { FLOATING_UI_CONFIG, laneBottom } from "@/app/lib/config/floatingUi";
 import {
   getPushSupport,
   subscribeToPushDetailed,
@@ -169,9 +170,10 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
       ? copy.iosHelp
       : copy.deniedHelp;
 
-  // Floating variant: fixed bottom card above the install prompt slot,
-  // collapsible to a pill so it never blocks interaction. Same event
-  // handling, same local flags — only the chrome differs.
+  // Floating variant: fixed bottom card on the transient lane (above the
+  // install/offline lanes), collapsible to a pill so it never blocks
+  // interaction. Same event handling, same local flags — only the chrome differs.
+  const transientLane = laneBottom(FLOATING_UI_CONFIG.lanes.transientBottomPx);
   if (variant === "floating") {
     if (collapsed) {
       return (
@@ -184,7 +186,7 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
           style={{
             position: "fixed",
             right: 12,
-            bottom: 140,
+            bottom: transientLane,
             zIndex: 55,
             display: "inline-flex",
             alignItems: "center",
@@ -215,7 +217,7 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
           position: "fixed",
           left: 12,
           right: 12,
-          bottom: 140,
+          bottom: transientLane,
           zIndex: 55,
           margin: "0 auto",
           maxWidth: 480,

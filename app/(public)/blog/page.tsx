@@ -4,6 +4,7 @@ import { ArrowRight, Clock, User } from "lucide-react";
 import { PAGE_META, BLOG_LAYOUT_CONFIG, DEFAULT_BLOG_CATEGORIES } from "@/app/lib/config";
 import { buildPublicMetadata } from "@/app/lib/utils/metadata";
 import { getPublicBlogPosts } from "@/app/lib/utils/blogStore";
+import { BlogPager } from "./BlogPager";
 import type { ManagedBlogPost } from "@/app/lib/utils/blogStore";
 
 export const metadata: Metadata = buildPublicMetadata(
@@ -116,25 +117,13 @@ export default async function BlogPage({ searchParams }: Props) {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-8">
-              {safePage > 1 && (
-                <Link
-                  href={safePage === 2 && category === "all" ? "/blog" : `/blog?page=${safePage - 1}${category !== "all" ? `&category=${category}` : ""}`}
-                  className="px-3 py-1.5 radius-md text-xs font-semibold border border-border bg-bg-card"
-                >
-                  Prev
-                </Link>
-              )}
-              <span className="text-xs text-text-muted">Page {safePage} of {totalPages}</span>
-              {safePage < totalPages && (
-                <Link
-                  href={`/blog?page=${safePage + 1}${category !== "all" ? `&category=${category}` : ""}`}
-                  className="px-3 py-1.5 radius-md text-xs font-semibold border border-border bg-bg-card"
-                >
-                  Next
-                </Link>
-              )}
-            </div>
+            <BlogPager
+              page={safePage}
+              totalPages={totalPages}
+              total={filtered.length}
+              pageSize={perPage}
+              category={category}
+            />
           )}
         </>
       )}

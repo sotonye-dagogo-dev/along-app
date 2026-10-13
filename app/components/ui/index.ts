@@ -25,6 +25,8 @@ export { AppTableRowActions } from "./AppTableRowActions";
 export type { DropdownItem } from "./AppDropdown";
 export type { TableRowAction, AppTableRowActionsProps } from "./AppTableRowActions";
 export { AppPagination } from "./AppPagination";
+export { ViewMoreButton } from "./ViewMoreButton";
+export { PageNavigator } from "./PageNavigator";
 export { AppTag } from "./AppTag";
 export { ConfigDrivenForm } from "./ConfigDrivenForm";
 export { ConfigDrivenList } from "./ConfigDrivenList";

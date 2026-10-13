@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Star, Loader2 } from "lucide-react";
 import { AppAvatar } from "@/app/components/ui";
+import { ViewMoreButton } from "@/app/components/ui/ViewMoreButton";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useTranslation } from "@/app/providers/I18nProvider";
 import { toastService } from "@/app/lib/services/toastService";
@@ -12,6 +13,7 @@ import { REVIEWS_CONFIG, reviewAuthorName, type PlatformReviewItem } from "@/app
 
 interface MineResponse {
   reviews: PlatformReviewItem[];
+  nextCursor?: string | null;
 }
 
 /**
@@ -36,6 +38,8 @@ export function ReviewsPanel({ showList = true, showForm = true, authorId }: { s
   const [mine, setMine] = useState<PlatformReviewItem | null>(null);
   const [reviews, setReviews] = useState<PlatformReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -50,6 +54,7 @@ export function ReviewsPanel({ showList = true, showForm = true, authorId }: { s
       if (pubRes && pubRes.ok) {
         const data = (await pubRes.json()) as MineResponse;
         setReviews(data.reviews ?? []);
+        setNextCursor(data.nextCursor ?? null);
       }
       if (mineRes && mineRes.ok) {
         const data = (await mineRes.json()) as MineResponse;
@@ -70,6 +75,30 @@ export function ReviewsPanel({ showList = true, showForm = true, authorId }: { s
   useEffect(() => {
     if (!authLoading) void load();
   }, [authLoading, load]);
+
+  /** Cursor "View more" — appends the next community-review window. */
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const base = authorId
+        ? `/api/reviews?limit=${REVIEWS_CONFIG.listLimit}&authorId=${encodeURIComponent(authorId)}`
+        : `/api/reviews?limit=${REVIEWS_CONFIG.listLimit}`;
+      const res = await fetch(`${base}&cursor=${encodeURIComponent(nextCursor)}`);
+      if (!res.ok) throw new Error("view more failed");
+      const data = (await res.json()) as MineResponse;
+      const incoming = data.reviews ?? [];
+      setReviews((prev) => {
+        const seen = new Set(prev.map((r) => r.id));
+        return [...prev, ...incoming.filter((r) => !seen.has(r.id))];
+      });
+      setNextCursor(data.nextCursor ?? null);
+    } catch {
+      // Silent — the button stays so the user can retry.
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [nextCursor, loadingMore, authorId]);
 
   const submit = async () => {
     if (!requireOnline("leave a review")) return;
@@ -228,6 +257,15 @@ export function ReviewsPanel({ showList = true, showForm = true, authorId }: { s
                 </div>
               );
             })
+          )}
+          {reviews.length > 0 && (
+            <ViewMoreButton
+              onViewMore={() => void loadMore()}
+              loading={loadingMore}
+              shown={reviews.length}
+              total={null}
+              hasMore={nextCursor !== null}
+            />
           )}
         </div>
       )}
