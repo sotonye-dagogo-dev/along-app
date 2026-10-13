@@ -5,7 +5,8 @@ import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 /**
  * GET /api/maps/geocode?q=&limit=&lat=&lng= — forward geocode proxy.
  * All keyless providers merged server-side (Nominatim with server identity
- * headers + Photon + Open-Meteo), deduped, optionally re-ranked near the
+ * headers + Photon + Open-Meteo + Overpass landmark/building fallback),
+ * deduped, optionally re-ranked near the
  * viewer's ?lat=&lng= (nearby first, never filtered). Redis cached.
  * Keeps browser clients off upstream geocoders directly (usage-policy
  * compliance). Guest-accessible; bucket-limited.

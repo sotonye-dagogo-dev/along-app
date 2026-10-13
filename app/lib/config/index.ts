@@ -59,6 +59,7 @@ export type { LocationFeedbackConfig } from "./locationFeedback";
 export {
   MAP_STACK_CONFIG,
   MAP_EXPAND_CONFIG,
+  LANDMARK_GEOCODE_CONFIG,
   vectorStyleUrl,
   rasterFallbackTile,
   rasterFallbackDepth,
@@ -67,7 +68,7 @@ export {
   hasOrsKey,
   hasMapboxKey,
 } from "./mapStack";
-export type { MapStackConfig, MapVectorStyleName, MapRoutingProvider, MapGeocodeProvider, MapLibreRasterStyle, MapExpandConfig } from "./mapStack";
+export type { MapStackConfig, MapVectorStyleName, MapRoutingProvider, MapGeocodeProvider, MapLibreRasterStyle, MapExpandConfig, LandmarkGeocodeConfig } from "./mapStack";
 export { REWARD_TIERS, POINTS_CONFIG } from "./rewards";
 export { INVITE_CONFIG } from "./inviteConfig";
 export { LEADERBOARD_LINKS_CONFIG } from "./leaderboardLinks";

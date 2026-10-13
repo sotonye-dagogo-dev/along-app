@@ -67,7 +67,7 @@ describe("Sprint 50: floating lanes clear the mobile tab bar", () => {
     expect(FLOATING_UI_CONFIG.lanes.transientBottomPx).toBeGreaterThan(
       FLOATING_UI_CONFIG.lanes.installBottomOfflinePx
     );
-    expect(FLOATING_UI_CONFIG.mobileDockSide).toBe("left");
+    expect(FLOATING_UI_CONFIG.mobileDockSide).toBe("right");
     expect(laneBottom(76)).toMatch("76px");
     expect(laneBottom(76)).toMatch("safe-area-inset-bottom");
   });

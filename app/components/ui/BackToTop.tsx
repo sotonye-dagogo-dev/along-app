@@ -16,8 +16,8 @@ export default function BackToTop() {
 
   if (!visible) return null
 
-  // Mobile docks LEFT (the Profile tab lives on the right of the bottom tab
-  // bar — right-docked rounds covered it); desktop keeps the right stack.
+  // Mobile + desktop dock RIGHT (FLOATING_UI_CONFIG.mobileDockSide); other
+  // floating surfaces keep their own lanes, so only these round buttons move.
   // The lane rides a CSS var so the lg: override still applies (inline bottom
   // would win over responsive classes at every breakpoint).
   const { mobileDockSide, roundButtons } = FLOATING_UI_CONFIG

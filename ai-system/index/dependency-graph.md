@@ -198,7 +198,7 @@ RouteTracingService
 
 MapProxyService (`app/lib/services/mapProxyService.ts` — Sprint 19 keyless stack, owns ALL upstream map calls)
     → OSRM demo (keyless, GeoJSON → polyline5) → env-gated ORS → env-gated Mapbox → straight-line guarantee (never throws)
-    → Nominatim server-side (identity UA/Referer) + Photon + keyless Open-Meteo merged + deduped, optional near-rank (forward); Nominatim → Photon fallback (reverse) [Sprint 50]
+    → Nominatim server-side (identity UA/Referer, addressdetails+dedupe) + Photon (street-level labels) + keyless Open-Meteo + keyless Overpass landmark/building fallback (LANDMARK_GEOCODE_CONFIG-gated, last) merged + deduped, optional near-rank (forward); Nominatim → Photon fallback (reverse) [Sprint 50; landmark power-up this session]
     → Redis (route/geocode/reverse read-through caches; never-throw wrapper)
     → Config: mapStack (orders, upstreams, identity, TTLs), cache (CACHE_TTL maps*), rateLimits (maps bucket via API routes)
 
