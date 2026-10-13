@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-export type VehicleType = "taxi" | "bike" | "keke" | "bus" | "trekking" | "car" | "bolt";
+export type VehicleType = "taxi" | "bike" | "keke" | "bus" | "trekking" | "car" | "bolt" | "boat" | "train";
 
 export interface VehicleConfig {
   label: string;

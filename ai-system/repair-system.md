@@ -1255,3 +1255,31 @@ New server-side suites: start with the node docblock; if the import chain touche
 
 **Date:** 2026-10-13
 **Status:** Active
+
+---
+
+### Email Inline Styles Beating `prose-*` Classes (Blog Rendered Unstyled Despite Compliant Classes)
+
+**Symptom:**
+Blog post pages and the Blog Studio live preview carried the compliant `BLOG_CONTENT_PROSE_CLASSES` (`prose-p:text-text-primary`, etc.) yet body text rendered in hardcoded grey (`#444`), ignored design tokens, and broke dark mode — while terms/privacy (same class pattern) rendered correctly.
+
+**Root Cause:**
+The visual builder reused the *email* renderer (`blocksToHtml`) for article bodies. It emits hardcoded light-mode inline styles (`color:#444`, `color:#1a1a1a`, `background:#00A862`, `font-size:14px`) that outrank Tailwind typography classes and don't respond to `.dark` token flips. Additionally the Studio preview rendered raw builder output (no sanitize, no variable interpolation) while the public page rendered stored HTML + interpolation — preview != public. Classes were applied but could never win: a styling problem *under* the classes, not in them.
+
+**Fix Applied:**
+- NEW `blocksToBlogHtml` (semantic h1/p/ul/li/a/img/hr, no color/font-size styles, escaped text, `{{vars}}` verbatim; buttons degrade to prose links) — used by Studio save + preview.
+- NEW `sanitizeBlogHtml` (allowlist + strip every `style=`) — used by `blogStore` on write/read and defensively at public render, so legacy email-styled rows heal without re-save.
+- Preview mirrors the public render exactly (article HTML + style-strip + interpolation).
+
+**Prevention:**
+Never reuse an email-safe renderer for article bodies — email needs inline styles (no stylesheets in inboxes), articles need semantic tags (prose classes + theme tokens do the styling). When a `prose-*` wrapper "doesn't work", inspect the inner HTML for inline `style=` before touching the classes.
+
+**Files Affected:**
+- `app/lib/utils/emailBuilder.ts`
+- `app/lib/utils/emailSanitize.ts`
+- `app/lib/utils/blogStore.ts`
+- `app/(public)/blog/[slug]/page.tsx`
+- `app/admin/blog/page.tsx`
+
+**Date:** 2026-10-13
+**Status:** Active

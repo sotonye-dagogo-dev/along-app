@@ -724,3 +724,41 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | dislikeSync search assertion — stale inline `avatarConfig:` expectation updated for the universal-card refactor (SearchPage renders ProfilePostCard, which forwards the viewer avatarConfig internally) | [x] |
 | [S] | locationSuggestions suite — `@jest-environment node` (jsdom has no `Request` for the `next/server` chain) | [x] |
 | [S] | blogShareVariables suite — hoisted redis no-op stub (uncrypto ESM; same pattern as emailStudio) | [x] |
+
+## Session 2026-10-13 — Boat vehicle option (execute-feature)
+
+> **Section summary:** Directive close-out ("water vessels" transport mode end to end, boat + boat icon). Non-breaking additive (union member + registry entry only; no migration — vehicle stored as free string in routes JSON and `z.string().max(30)` already accepts it; no new deps; no removed APIs). Surfaces derive from VEHICLE_REGISTRY dynamically, so composer chips, PostCard, NavigationGuide, and post detail pick up boat with zero per-surface changes. QA in-runner: no node_modules — routeValidation smoke executed via node strip-types (boat valid, spaceship rejected, PASS) + 11-point static parity grep all PASS; full tsc/jest/build deferred to CI/Vercel.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | `VehicleType` += `"boat"`; `VEHICLE_REGISTRY.boat` (label Boat, Lucide `Ship`, cyan `#0E7490` / `bg-cyan-50` / `text-cyan-800`, token dark classes) | [x] |
+| [S] | `routeValidation` KNOWN_VEHICLES += `"boat"` (zero-dep mirror kept in sync) | [x] |
+| [S] | Landing `VEHICLE_CHIPS` += `BOAT` (`#ECFEFF`/`#155E75`); explore += `Boat` filter chip + `activeVehicleFilters` allowlist entry (chip rendered but never filtered without it) | [x] |
+| [S] | `VehicleChip` null-guard for unknown/legacy strings (renders nothing instead of crashing on `config.icon`) | [x] |
+| [S] | DESIGN.md — Boat vehicle-color row + `Ship` icon-map row | [x] |
+| [S] | Tests — NEW `app/__tests__/config/vehicles.test.ts` (8 keys, boat label/icon/color/classes, per-entry UI-safety, boat accepted / spaceship rejected) | [x] |
+
+## Session 2026-10-13 — Blog article-body deep compliance (execute-feature)
+
+> **Section summary:** Directive close-out ("text in blogs + Blog Studio preview not design-system compliant — deeper than classes"). Non-breaking (2 additive exports + render-path swaps only; no migration/deps/API removals; Email Studio untouched; stored-wins + restore-default contracts preserved). QA in-runner: real-module strip-types green (23 checks: semantic renderer, style-strip, escaping, pipeline no-leak, email path unchanged, round-trip re-render stable); wiring grep-verified; full tsc/jest/build deferred to CI — no node_modules in runner.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Article renderer — NEW `blocksToBlogHtml` (semantic h1/p/ul/li/a/img/hr, no color/font-size inline styles, escaped text, {{vars}} verbatim; button CTAs degrade to prose links) | [x] |
+| [S] | Article sanitizer — NEW `sanitizeBlogHtml` (allowlist + strips all `style=` incl. unquoted; scripts/handlers gone; {{vars}} survive) | [x] |
+| [S] | Store — `blogStore.sanitizePost` content via `sanitizeBlogHtml` (cleans on write + defensive re-sanitize on read; legacy email-styled rows heal) | [x] |
+| [S] | Public `[slug]` page — defensive `sanitizeBlogHtml` at render before interpolation (covers legacy rows; terms/privacy pattern) | [x] |
+| [S] | Studio — save sends `blocksToBlogHtml`; live preview mirrors public render exactly (article HTML + style-strip + interpolation, no raw tokens) | [x] |
+| [S] | Tests — extended `blogCompliance.test.ts` (renderer semantics/no-styles, escaping, sanitizer strip/keep, pipeline no-leak) | [x] |
+
+## Session 2026-10-13 — Train vehicle option (execute-feature)
+
+> **Section summary:** Directive close-out ("vehicle option for trains, train icon in the UI, end to end"). Non-breaking additive mirroring the boat session (union member + registry entry only; no migration — vehicle stored as free string in routes JSON; no new deps; no removed APIs). Surfaces derive from VEHICLE_REGISTRY dynamically, so composer chips, PostCard, NavigationGuide, and post detail pick up train with zero per-surface changes. QA in-runner: no node_modules — 10-point static parity grep all PASS; full tsc/jest/build deferred to CI/Vercel.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | `VehicleType` += `"train"`; `VEHICLE_REGISTRY.train` (label Train, Lucide `Train` — already imported in `mapIntegrations.ts`, proven present in installed lucide-react — violet `#6D28D9` / `bg-violet-50` / `text-violet-800`, token dark classes; distinct from bus blue / car indigo / boat cyan) | [x] |
+| [S] | `routeValidation` KNOWN_VEHICLES += `"train"` (zero-dep mirror kept in sync) | [x] |
+| [S] | Landing `VEHICLE_CHIPS` += `TRAIN` (`#EDE9FE`/`#5B21B6`); explore += `Train` filter chip + `activeVehicleFilters` allowlist entry (chip rendered but never filtered without it) | [x] |
+| [S] | DESIGN.md — Train vehicle-color row + `Train` icon-map row | [x] |
+| [S] | Tests — extended `app/__tests__/config/vehicles.test.ts` (9 keys, train label/icon/color/classes, train accepted alongside boat, spaceship still rejected) | [x] |

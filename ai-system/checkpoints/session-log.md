@@ -2273,3 +2273,93 @@ Vercel/CI build to confirm green (tsc gate already clean locally); prod-verify R
 **Notes / Blockers:**
 - None. node_modules present (gitignored); full QA runnable in-runner from here on.
 - Chain: execute-feature Steps 1-5 → sync-context drift check executed (no mutations) → in-progress cleared at close. No deep-sync trigger (no architecture impact).
+
+## Session — 2026-10-13 (Execute-feature: boat vehicle option)
+
+**Completed:**
+- Step 1 planning pass (task-queue/system-architecture/DESIGN.md/repair-system read) + Step 2 scope check passed (transport modes are core domain, no decision conflict, no architecture impact — vehicle is a free string in routes JSON + `z.string().max(30)`, so additive union member only, no plan-feature sign-off); plan written to in-progress.md.
+- Implementation, config-driven via VEHICLE_REGISTRY (composer chips, PostCard, NavigationGuide, post detail all derive dynamically — zero per-surface changes):
+  - `app/lib/types/index.ts` — `VehicleType` += `"boat"`.
+  - `app/lib/config/vehicles.ts` — `boat` entry (label "Boat", Lucide `Ship` icon, cyan `#0E7490` / `bg-cyan-50` / `text-cyan-800` + dark tokens; distinct from bus blue / keke green).
+  - `app/lib/config/routeValidation.ts` — KNOWN_VEHICLES += `"boat"`.
+  - `app/(public)/page.tsx` — `VEHICLE_CHIPS` += `BOAT` (`#ECFEFF`/`#155E75`).
+  - `app/(dashboard)/explore/page.tsx` — `Boat` filter chip + `activeVehicleFilters` allowlist entry (caught hardcoded subset — chip would render but never filter without it).
+  - `app/components/ui/VehicleChip.tsx` — null-guard for unknown/legacy strings.
+  - `ai-system/docs/DESIGN.md` — Boat color + icon-map rows.
+  - NEW `app/__tests__/config/vehicles.test.ts` (registry keys/label/icon/color, per-entry UI-safety, boat accepted / spaceship rejected).
+- QA: no node_modules in this runner — routeValidation smoke executed via node strip-types (boat valid, spaceship rejected, PASS) + 11-point static parity grep all PASS; full tsc/jest/lint/build deferred to CI/Vercel.
+- Docs: task-queue entry, this log; sync-context drift check (no new modules/imports/APIs beyond the registry member + 1 test file — nothing to sync; no update-ai-system deep sync: no architecture impact, size [S]) → in-progress cleared at close.
+
+**Files Modified:**
+- Edited: `app/lib/types/index.ts`, `app/lib/config/vehicles.ts`, `app/lib/config/routeValidation.ts`, `app/(public)/page.tsx`, `app/(dashboard)/explore/page.tsx`, `app/components/ui/VehicleChip.tsx`, `ai-system/docs/DESIGN.md`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/__tests__/config/vehicles.test.ts`
+
+**Next Task:**
+CI/Vercel build to confirm green (tsc + jest incl. new vehicles suite).
+
+**Assumptions Made:**
+- Lucide `Ship` present in lucide-react 0.469.0 (long-standing icon; no node_modules in runner to import-verify — Vercel build will confirm; fallback would be `Sailboat`).
+- Explore vehicle-filter case behavior left as-is (pre-existing label-vs-value casing); boat matches the same convention as the other four modes.
+
+**Notes / Blockers:**
+- None. Non-breaking, ferry/boat routes shareable end to end (composer → validation → feed/explore/landing/trust all generic over the registry).
+- Chain: execute-feature Steps 1-5 → sync-context drift check executed (no mutations) → in-progress cleared at close. No deep-sync trigger.
+
+## Session — 2026-10-13 (Execute-feature: blog article-body deep compliance)
+
+**Completed:**
+- Step 1 planning pass (task-queue/design-system/repair-system read; prior prose-token session reviewed) + Step 2 scope check passed (blog rendering is in-scope UI, no decision conflict, no architecture impact — additive exports + render-path swaps, no plan-feature sign-off); plan written to in-progress.md.
+- Root cause (verified in code, deeper than classes as the directive suspected): `blocksToHtml` (email renderer) emits hardcoded light-mode inline styles (`color:#444`, `color:#1a1a1a`, `background:#00A862`, `font-size:14px`) that outrank Tailwind `prose-*` classes, ignore design tokens, and break dark mode — so the wrapper div carried compliant classes that never applied. Studio preview additionally used raw `blocksToHtml` output (no sanitize, no variable interpolation) while the public page used stored HTML + interpolation — preview != public != terms/privacy (ReactMarkdown clean semantic HTML). Shipped `DEFAULT_BLOG_POSTS` are already style-free semantic HTML, proving the fix direction.
+- Implementation (config-driven, modular, non-breaking; Email Studio keeps `blocksToHtml` untouched):
+  - `app/lib/utils/emailBuilder.ts` — NEW `blocksToBlogHtml`: semantic h1/p/ul/li/a/img/hr, zero color/font-size inline styles, HTML-escaped text, `{{vars}}` verbatim; button CTAs degrade to prose-styled links.
+  - `app/lib/utils/emailSanitize.ts` — NEW `sanitizeBlogHtml`: shared allowlist then strips every `style=` (quoted + unquoted); scripts/handlers dropped; `{{vars}}` survive.
+  - `app/lib/utils/blogStore.ts` — `sanitizePost` content via `sanitizeBlogHtml` (heals legacy email-styled rows on write and on defensive re-read).
+  - `app/(public)/blog/[slug]/page.tsx` — defensive `sanitizeBlogHtml` at render before `renderBlogContent` (legacy-row cover).
+  - `app/admin/blog/page.tsx` — save sends `blocksToBlogHtml`; live preview mirrors the public render exactly (article HTML + style-strip + interpolation with preview context — never raw tokens or email styling).
+  - `app/__tests__/config/blogCompliance.test.ts` — 4 new suites (renderer semantics/no-styles, escaping, sanitizer strip/keep, pipeline no-leak).
+  - `ai-system/repair-system.md` — new pitfall entry (email inline styles beating prose classes).
+- QA: no node_modules in this runner — real-module strip-types execution green (23 checks: semantic tags, no hex/font-size, escaping, style/script strip, pipeline no `{{` leak + fallbacks, email renderer unchanged, `htmlToBlocks` round-trip re-render stable); wiring grep-verified (blog paths use article pipeline, email paths unchanged); full tsc/jest/build deferred to CI/Vercel.
+- Docs: task-queue entry, repair-system entry, this log; sync-context drift check (no new modules — 2 additive exports in existing utils, no import-graph/architecture change; no update-ai-system deep sync: no architecture impact, size [S]) → in-progress cleared at close.
+
+**Files Modified:**
+- Edited: `app/lib/utils/emailBuilder.ts`, `app/lib/utils/emailSanitize.ts`, `app/lib/utils/blogStore.ts`, `app/(public)/blog/[slug]/page.tsx`, `app/admin/blog/page.tsx`, `app/__tests__/config/blogCompliance.test.ts`, `ai-system/planning/task-queue.md`, `ai-system/repair-system.md`, `ai-system/checkpoints/session-log.md` (this entry)
+
+**Next Task:**
+CI/Vercel build to confirm green (tsc + jest incl. extended blogCompliance suite).
+
+**Assumptions Made:**
+- None load-bearing. `case "paragraph": default:` stacking in `blocksToBlogHtml` is valid TS/JS (shared body); test literals rely on contextual `EmailBlock[]` typing (same pattern as existing suites) — Vercel tsc will confirm.
+
+**Notes / Blockers:**
+- None. Legacy stored posts carrying email inline styles render correctly on next read without any re-save (defensive strip at render + on store read).
+- Chain: execute-feature Steps 1-5 → sync-context drift check executed (no mutations) → in-progress cleared at close. No deep-sync trigger.
+
+## Session — 2026-10-13 (Execute-feature: train vehicle option)
+
+**Completed:**
+- Directive close-out ("vehicle option for trains, train icon in the UI, end to end") — same config/metadata-driven pattern as the boat session earlier today.
+- Implementation (non-breaking additive; no migration — vehicle stored as free string in routes JSON; no new deps; no removed APIs):
+  - `app/lib/types/index.ts` — `VehicleType` += `"train"`.
+  - `app/lib/config/vehicles.ts` — `train` entry (label "Train", Lucide `Train` icon — already imported by `mapIntegrations.ts`, so proven present in the installed lucide-react version; violet `#6D28D9` / `bg-violet-50` / `text-violet-800` + dark tokens; distinct from bus blue / car indigo / boat cyan).
+  - `app/lib/config/routeValidation.ts` — KNOWN_VEHICLES += `"train"`.
+  - `app/(dashboard)/explore/page.tsx` — `Train` filter chip + `activeVehicleFilters` allowlist entry (same hardcoded-subset catch as the boat session — chip would render but never filter without it).
+  - `app/(public)/page.tsx` — `VEHICLE_CHIPS` += `TRAIN` (`#EDE9FE`/`#5B21B6`).
+  - `ai-system/docs/DESIGN.md` — Train color + icon-map rows.
+  - `app/__tests__/config/vehicles.test.ts` — extended to 9 keys (boat assertions kept, train label/icon/color/classes + train-accepted assertions added; spaceship still rejected).
+- Surfaces (composer chips, PostCard, NavigationGuide, post detail, trust/validity) all read VEHICLE_REGISTRY dynamically — train picked up with zero per-surface changes.
+- QA: no node_modules in this runner — 10-point static parity grep all PASS (registry entry/label/icon/color, union member, validation mirror, explore chip + allowlist, landing chip, composer-from-registry); full tsc/jest/build deferred to CI/Vercel.
+- Docs: task-queue entry, this log; chained update-ai-system.md executed (task-queue + session-log + DESIGN.md reconciled; no architecture drift — additive registry entry, no new modules/dependencies).
+
+**Files Modified:**
+- Edited: `app/lib/types/index.ts`, `app/lib/config/vehicles.ts`, `app/lib/config/routeValidation.ts`, `app/(dashboard)/explore/page.tsx`, `app/(public)/page.tsx`, `app/__tests__/config/vehicles.test.ts`, `ai-system/docs/DESIGN.md`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry)
+
+**Next Task:**
+CI/Vercel build to confirm green (tsc + jest incl. extended vehicles suite).
+
+**Assumptions Made:**
+- Lucide `Train` present in the installed lucide-react (proven: `app/lib/config/mapIntegrations.ts` already imports `Train` from `lucide-react` — stronger evidence than the boat session's version reasoning; Vercel build will still confirm).
+- Explore vehicle-filter case behavior left as-is (pre-existing label-vs-value casing); train matches the same convention as the other five modes.
+
+**Notes / Blockers:**
+- None. Non-breaking, rail routes shareable end to end (composer → validation → feed/explore/landing/trust all generic over the registry).
+- Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + DESIGN.md).

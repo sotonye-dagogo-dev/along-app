@@ -1,4 +1,4 @@
-import { Car, Bike, Tractor, Bus, PersonStanding, Truck } from "lucide-react";
+import { Car, Bike, Tractor, Bus, PersonStanding, Truck, Ship, Train } from "lucide-react";
 import type { VehicleType, VehicleConfig } from "@/app/lib/types";
 
 export const VEHICLE_REGISTRY: Record<VehicleType, VehicleConfig> = {
@@ -50,5 +50,19 @@ export const VEHICLE_REGISTRY: Record<VehicleType, VehicleConfig> = {
     color: "#65A30D",
     bgClass: "bg-lime-50 dark:bg-lime-900/10",
     textClass: "text-lime-800 dark:text-lime-300",
+  },
+  boat: {
+    label: "Boat",
+    icon: Ship,
+    color: "#0E7490",
+    bgClass: "bg-cyan-50 dark:bg-cyan-900/10",
+    textClass: "text-cyan-800 dark:text-cyan-300",
+  },
+  train: {
+    label: "Train",
+    icon: Train,
+    color: "#6D28D9",
+    bgClass: "bg-violet-50 dark:bg-violet-900/10",
+    textClass: "text-violet-800 dark:text-violet-300",
   },
 };
