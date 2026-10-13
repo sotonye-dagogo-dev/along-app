@@ -6,7 +6,7 @@ import { BadgeCheck } from 'lucide-react'
 import { buildAvatarUrl, getFallbackAvatarUrl } from '@/app/lib/config/avatar'
 import type { AvatarConfig } from '@/app/lib/types'
 
-type AvatarSize = 20 | 24 | 32 | 40 | 56 | 80 | 120
+type AvatarSize = 20 | 24 | 32 | 40 | 56 | 80 | 96 | 120 | 200
 
 const sizeMap: Record<AvatarSize, { dim: number; font: number }> = {
   20: { dim: 20, font: 9 },
@@ -15,7 +15,9 @@ const sizeMap: Record<AvatarSize, { dim: number; font: number }> = {
   40: { dim: 40, font: 14 },
   56: { dim: 56, font: 20 },
   80: { dim: 80, font: 28 },
+  96: { dim: 96, font: 34 },
   120: { dim: 120, font: 42 },
+  200: { dim: 200, font: 68 },
 }
 
 interface AppAvatarProps {
