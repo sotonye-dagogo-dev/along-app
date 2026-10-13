@@ -7,6 +7,7 @@ import { getPublicBlogPosts, getPublicPostBySlug } from "@/app/lib/utils/blogSto
 import { BLOG_CONTENT_PROSE_CLASSES } from "@/app/lib/config/blog";
 import { buildMetadata, resolveOgImage } from "@/app/lib/utils/metadata";
 import { buildBlogVarContext, renderBlogContent } from "@/app/lib/utils/blogVariables";
+import { sanitizeBlogHtml } from "@/app/lib/utils/emailSanitize";
 import BlogShareButtons from "@/app/components/features/blog/BlogShareButtons";
 import {
   blogPostingSchema,
@@ -70,20 +71,22 @@ export default async function BlogPostPage({ params }: Props) {
   }
 
   // Managed posts store sanitized HTML fragments (visual-builder output);
-  // filesystem seeds store markdown — render each accordingly, then
+  // filesystem seeds store markdown — render each accordingly, then strip any
+  // legacy email-style inline styles (stored before the article pipeline) so
+  // BLOG_CONTENT_PROSE_CLASSES actually applies like terms/privacy, then
   // interpolate {{variables}} with guest-safe fallbacks (never throws,
   // never leaks raw {{identifier}} to readers).
   const rawHtml = post.readonly === true || /<\w+/.test(post.content) === false
     ? String(await remark().use(html).process(post.content))
     : post.content;
-  let contentHtml = rawHtml;
+  let contentHtml = sanitizeBlogHtml(rawHtml);
   try {
     contentHtml = renderBlogContent(
-      rawHtml,
+      contentHtml,
       buildBlogVarContext({ title: post.title, author: post.author, category: post.category }, null),
     );
   } catch {
-    contentHtml = rawHtml;
+    contentHtml = sanitizeBlogHtml(rawHtml);
   }
 
   const jsonLd = blogPostingSchema({

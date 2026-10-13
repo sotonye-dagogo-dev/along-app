@@ -135,6 +135,28 @@ export function sanitizeEmailHtml(dirty: string, maxLen = 100000): string {
   }
 }
 
+/**
+ * Article-body sanitizer for blog posts. Runs the shared allowlist pipeline
+ * (`sanitizeEmailHtml` — scripts/event-handlers/javascript: URLs dropped) then
+ * strips ALL `style="..."` attributes. Rationale: the visual builder's email
+ * renderer historically emitted hardcoded light-mode inline styles
+ * (`color:#444`, `color:#1a1a1a`, `background:#00A862`, `font-size:14px`) that
+ * outrank Tailwind `prose-*` classes, ignore design tokens, and break dark
+ * mode. Stored rows carrying those styles render wrong even though the wrapper
+ * div carries the compliant classes (same failure as "classes applied but not
+ * rendering"). Clean semantic tags let `BLOG_CONTENT_PROSE_CLASSES` apply —
+ * the terms/privacy pattern. {{variables}} contain no `<`/`>`/`style` so they
+ * survive verbatim for later interpolation. Pure, never throws.
+ */
+export function sanitizeBlogHtml(dirty: string, maxLen = 100000): string {
+  try {
+    const clean = sanitizeEmailHtml(dirty, maxLen);
+    return clean.replace(/\sstyle\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "").slice(0, maxLen);
+  } catch {
+    return "";
+  }
+}
+
 /** Extract {{variable}} identifiers from subject + html + text.
  * Supports fallback syntax `{{name||fallback}}` / `{{name|fallback}}` /
  * `{{ name }}` — only the variable name is returned. */

@@ -133,6 +133,61 @@ export function blocksToHtml(blocks: EmailBlock[]): string {
   }
 }
 
+/**
+ * Render blocks to article-body HTML for blog posts (public page + Studio
+ * live preview). Unlike `blocksToHtml` (email-safe, hardcoded light-mode
+ * colors like #444/#1a1a1a that beat `prose-*` classes and break dark mode),
+ * this emits plain semantic tags with NO color/font-size inline styles so
+ * `BLOG_CONTENT_PROSE_CLASSES` (design tokens, theme-aware via CSS vars)
+ * actually applies — the same pattern as terms/privacy (ReactMarkdown output
+ * + prose classes). Text is HTML-escaped ({{variables}} contain no HTML chars
+ * so tokens survive verbatim for `renderBlogContent`). Button CTAs degrade to
+ * prose-styled links (article bodies use links, not email button chrome).
+ * Pure, dependency-free, never throws.
+ */
+export function blocksToBlogHtml(blocks: EmailBlock[]): string {
+  try {
+    return (Array.isArray(blocks) ? blocks : []).map((b) => {
+      switch (b?.type) {
+        case "heading": {
+          const lvl = b.level === 2 ? "h2" : b.level === 3 ? "h3" : "h1";
+          return `<${lvl}>${esc(b.text ?? "")}</${lvl}>`;
+        }
+        case "button":
+        case "link": {
+          const href = esc(b.url ?? "#");
+          return `<p><a href="${href}">${esc(b.text ?? href)}</a></p>`;
+        }
+        case "image": {
+          const rawSrc = (b.src ?? b.url ?? "").trim();
+          if (!rawSrc) return "";
+          const src = esc(rawSrc);
+          const altRaw = (b.text ?? "").trim() || "{{appName}}";
+          return `<div><img src="${src}" alt="${esc(altRaw)}" /></div>`;
+        }
+        case "list": {
+          const items = (b.items ?? [])
+            .map((i) => String(i ?? "").trim())
+            .filter(Boolean)
+            .map((i) => `<li>${esc(i)}</li>`)
+            .join("");
+          if (!items) return "";
+          return `<ul>${items}</ul>`;
+        }
+        case "divider":
+          return `<hr />`;
+        case "spacer":
+          return `<div></div>`;
+        case "paragraph":
+        default:
+          return `<p>${esc((b as EmailBlock | undefined)?.text ?? "")}</p>`;
+      }
+    }).filter(Boolean).join("\n");
+  } catch {
+    return "";
+  }
+}
+
 /** Render blocks to editable plain text (variables preserved verbatim). */
 export function blocksToText(blocks: EmailBlock[]): string {
   try {
