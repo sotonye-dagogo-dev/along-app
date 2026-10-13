@@ -123,3 +123,39 @@ export function biasQuerySuffix(coords: BiasCoords | null): string {
   if (!coords) return "";
   return `&lat=${coords.lat}&lng=${coords.lng}`;
 }
+
+/** Sync peek at cached bias only (memory → localStorage, never geolocation). */
+export function peekBiasCoords(): BiasCoords | null {
+  try {
+    const mem = freshMemory();
+    if (mem) return mem;
+    if (typeof window === "undefined") return null;
+    const stored = readStored();
+    if (stored) {
+      memoryBias = { coords: stored, at: Date.now() };
+      return stored;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/**
+ * Fast bias for autocomplete keystrokes: cached coords resolve immediately;
+ * a cold lookup races the permission/geolocation path against `timeoutMs`
+ * (default 120ms) so suggestions never wait on a 2.5s GPS fix. Never rejects.
+ */
+export async function getBiasCoordsQuick(timeoutMs = 120): Promise<BiasCoords | null> {
+  try {
+    const fast = peekBiasCoords();
+    if (fast) return fast;
+    const raced = await Promise.race([
+      getBiasCoords(),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), Math.max(0, timeoutMs))),
+    ]);
+    return raced;
+  } catch {
+    return null;
+  }
+}
