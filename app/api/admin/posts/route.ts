@@ -24,6 +24,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor");
     const limit = Math.min(Number(searchParams.get("limit")) || 20, 100);
+    // Config-driven sort (?sort=&dir= validated; default preserves legacy
+    // newest-first, non-breaking).
+    const postSortParam = (searchParams.get("sort") ?? "createdAt").trim();
+    const postDirParam = (searchParams.get("dir") ?? "desc").trim().toLowerCase();
+    const allowedPostSort = ["createdAt", "validityScore", "likes", "views", "title"] as const;
+    const postSortField = (allowedPostSort as readonly string[]).includes(postSortParam) ? postSortParam : "createdAt";
+    const postSortDir = postDirParam === "asc" ? "asc" : "desc";
+    const postOrderBy = [{ [postSortField]: postSortDir }, { id: postSortDir }] as never;
 
     let posts: unknown[];
     try {
@@ -36,7 +44,7 @@ export async function GET(request: NextRequest) {
           },
           _count: { select: { bugReports: true } },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: postOrderBy,
       } as never);
     } catch (e) {
       if (!isMissingColumnError(e)) throw e;
@@ -48,7 +56,7 @@ export async function GET(request: NextRequest) {
             select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: postOrderBy,
       });
     }
 

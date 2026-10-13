@@ -17,13 +17,20 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
 
+    // Config-driven sort (?sort=&dir= validated; default preserves legacy
+    // newest-first, non-breaking).
+    const reviewSortParam = (searchParams.get("sort") ?? "createdAt").trim();
+    const reviewDirParam = (searchParams.get("dir") ?? "desc").trim().toLowerCase();
+    const reviewSortField = reviewSortParam === "rating" ? "rating" : "createdAt";
+    const reviewSortDir = reviewDirParam === "asc" ? "asc" : "desc";
+
     const reviews = await prisma.userReview.findMany({
       where: where as never,
       include: {
         reviewer: { select: { id: true, firstName: true, lastName: true, userName: true, avatar: true } },
         reviewee: { select: { id: true, firstName: true, lastName: true, userName: true, avatar: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ [reviewSortField]: reviewSortDir } as never, { id: reviewSortDir } as never],
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
     });

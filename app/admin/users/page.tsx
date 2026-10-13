@@ -7,6 +7,7 @@ import { AppInput, AppTableRowActions, AppAvatar, type TableRowAction } from "@/
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 import {
   ADMIN_BULK_SELECT_META,
+  ADMIN_TABLE_SORT_META,
   ADMIN_USER_DELETION_META,
   ADMIN_USER_FILTERS,
   allowedUserRowActions,
@@ -43,6 +44,11 @@ export default function AdminUsersPage() {
   const [bulkBusy, setBulkBusy] = useState(false)
   const [deletionFilter, setDeletionFilter] = useState<AdminUserFilterId>("all")
   const [rowDeletionBusy, setRowDeletionBusy] = useState<string | null>(null)
+  // Bulk-safe cursor pagination (append-only; selection Set survives view-more)
+  // + config-driven asc/desc sort (?sort=&dir= validated server-side).
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [sortId, setSortId] = useState(ADMIN_TABLE_SORT_META.users.defaultId)
 
   const bulk = useBulkSelection(users, (u) => u.id)
 
@@ -77,29 +83,47 @@ export default function AdminUsersPage() {
 
   const loadRef = useRef<AbortController | null>(null)
 
-  const load = async (q?: string, deletion?: string) => {
-    loadRef.current?.abort()
-    loadRef.current = new AbortController()
-    const signal = loadRef.current.signal
-    setLoading(true)
+  const load = async (q?: string, deletion?: string, append = false, cursor: string | null = null) => {
+    if (append) {
+      if (!cursor || loadingMore) return
+      setLoadingMore(true)
+    } else {
+      loadRef.current?.abort()
+      loadRef.current = new AbortController()
+      setLoading(true)
+    }
+    const signal = loadRef.current?.signal
     try {
       const params = new URLSearchParams()
       if (q) params.set("q", q)
       const d = deletion ?? deletionFilter
       const query = deletionQueryForFilter(parseAdminUserFilter(d))
       if (query) params.set("deletion", query)
+      const sortOpt = ADMIN_TABLE_SORT_META.users.options.find((o) => o.id === sortId)
+        ?? ADMIN_TABLE_SORT_META.users.options[0]
+      params.set("sort", sortOpt.sort)
+      params.set("dir", sortOpt.dir)
+      params.set("limit", "20")
+      if (append && cursor) params.set("cursor", cursor)
       const qs = params.toString()
       const url = qs ? `/api/admin/users?${qs}` : "/api/admin/users"
       const res = await fetch(url, { signal })
       if (res.ok) {
         const data = await res.json()
-        setUsers(data.users ?? [])
+        const fresh = (data.users ?? []) as AdminUser[]
+        setUsers((prev) => {
+          if (!append) return fresh
+          const seen = new Set(prev.map((u) => u.id))
+          return [...prev, ...fresh.filter((u) => !seen.has(u.id))]
+        })
+        setNextCursor(data.nextCursor ?? null)
       }
     } catch (err: unknown) {
       if ((err as Error)?.name === "AbortError") return
       console.error("Failed to load users")
     } finally {
-      setLoading(false)
+      if (append) setLoadingMore(false)
+      else setLoading(false)
     }
   }
 
@@ -115,9 +139,10 @@ export default function AdminUsersPage() {
   }, [search])
 
   useEffect(() => {
+    bulk.clear()
     load(search || undefined, deletionFilter)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deletionFilter])
+  }, [deletionFilter, sortId])
 
   /** First-N quick presets = earliest N signups (createdAt asc), not the on-screen order. */
   const handleSelectFirstNBySignup = async (n: number) => {
@@ -737,6 +762,16 @@ export default function AdminUsersPage() {
               icon={<Search size={14} />}
             />
           </div>
+          <select
+            value={sortId}
+            onChange={(e) => setSortId(e.target.value)}
+            className="px-3 py-1.5 radius-md border border-border text-xs font-medium font-sans bg-bg-card text-text-primary cursor-pointer"
+            aria-label="Sort users"
+          >
+            {ADMIN_TABLE_SORT_META.users.options.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -863,6 +898,18 @@ export default function AdminUsersPage() {
           </tbody>
         </table>
       </div>
+      {nextCursor && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => void load(search || undefined, deletionFilter, true, nextCursor)}
+            disabled={loadingMore}
+            className="px-4 py-2 radius-md border border-border bg-bg-card text-xs font-semibold text-text-primary cursor-pointer disabled:opacity-50"
+          >
+            {loadingMore ? "Loading more…" : `View more (${bulk.count} selected kept)`}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

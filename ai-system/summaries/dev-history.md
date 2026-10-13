@@ -1248,3 +1248,14 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: `config/sprint50.test.ts` (10).
 **QA:** node --check + strip-types pure-logic green in-runner; full gate deferred to CI (no node_modules).
 **Compliance:** additive-only, non-breaking, no migration/deps/API removals.
+
+## Sprint 51 (2026-10-13) — Notification routing + bug-report ACID + admin tables + validity top + bug emails
+**Directive:** appropriate notification targets, table asc/desc sort, top-route correctness, bug-report ACID + pagination + screenshot viewing, user bug-email lifecycle with Studio visibility, deferred admin pagination bulk-safely, Vercel metadata type fix.
+**Implemented:**
+- `notificationRoutes` resolver (comment/post/follow/queue fallbacks) + notifications page + CommentList highlight + detail `?comment=` scroll + push payload via resolver.
+- Bug-report Json cast fix + `BUG_REPORT_DEDUP_CONFIG` idempotency/dedup + atomic assign + `{id}` response + clientToken/error UI.
+- `bugReportReceived` + `bugReportStatusUpdate` templates (service senders, status copy, studio samples, var catalog/sources); PATCH lifecycle fan-out.
+- `ADMIN_TABLE_SORT_META` + `ADMIN_PAGINATION_META` + `useAdminCursorList`; `?sort=&dir=` on 4 admin APIs; sort + ViewMore on 4 pages; AppTable `aria-sort`; bugs screenshot viewer.
+- Top-posts correctness filter + deterministic order (analytics + stats).
+**QA:** structural review in-runner (no node_modules); full gate deferred to CI.
+**Compliance:** additive-only, non-breaking, no migration.

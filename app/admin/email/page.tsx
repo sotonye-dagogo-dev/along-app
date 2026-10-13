@@ -69,6 +69,8 @@ function liveSamplesFor(templateName: string): Record<string, string> {
     changePassword: { firstName: "Adaobi", changedAt: new Date().toUTCString() },
     contactNotification: { senderName: "Chidi Okonkwo", senderEmail: "chidi@example.com", message: "I love the app! Would love to see more routes in Lagos mainland." },
     bugReportNotification: { title: "Route map not loading", category: "UI", description: "When I open the route map on the post page, the map stays blank." },
+    bugReportReceived: { firstName: "Adaobi", title: "Route map not loading", category: "UI", reportId: "cm3x8k2abc0001" },
+    bugReportStatusUpdate: { firstName: "Adaobi", title: "Route map not loading", status: "IN PROGRESS", statusNote: "Our team is actively working on this.", reportId: "cm3x8k2abc0001" },
     accountDeletionRequested: { firstName: "Adaobi", scheduledDate: "October 16, 2026", cancelLink: `${d.appUrl}/profile` },
     accountDeletionCompleted: { firstName: "Adaobi", completedDate: "October 16, 2026", supportEmail: "alongtoanywhere@gmail.com" },
     adminDeletionAlert: { displayName: "Adaobi Eze", userName: "adaobi", email: "adaobi@example.com", scheduledDate: "October 16, 2026", reasonLine: "Reason: leaving for now" },

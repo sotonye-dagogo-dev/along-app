@@ -2,12 +2,14 @@
 
 import Link from "next/link"
 import React, { useState, useEffect, useMemo } from "react"
-import { Bug, Flag, ExternalLink } from "lucide-react"
+import { Bug, Flag, ExternalLink, X } from "lucide-react"
 import { modalService } from "@/app/lib/services/modalService"
 import { toastService } from "@/app/lib/services/toastService"
 import { MODERATION_CONFIG } from "@/app/lib/config"
-import { ADMIN_BULK_SELECT_META } from "@/app/lib/config/admin"
+import { ADMIN_BULK_SELECT_META, ADMIN_TABLE_SORT_META } from "@/app/lib/config/admin"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
+import { useAdminCursorList } from "@/app/lib/hooks/useAdminCursorList"
+import { ViewMoreButton } from "@/app/components/ui"
 
 interface AdminBug {
   id: string
@@ -39,24 +41,36 @@ const ACTION_CONFIRM: Record<string, { title: string; description: string }> = {
 }
 
 export default function AdminBugsPage() {
-  const [bugs, setBugs] = useState<AdminBug[]>([])
-  const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState("")
   const [kindFilter, setKindFilter] = useState<"all" | "reports" | "bugs">("all")
+  const [sortId, setSortId] = useState(ADMIN_TABLE_SORT_META.bugs.defaultId)
   const [bulkBusy, setBulkBusy] = useState(false)
+  // Screenshot viewer: full-size overlay for report attachments.
+  const [viewer, setViewer] = useState<{ images: string[]; index: number; title: string } | null>(null)
 
-  const load = async (status?: string) => {
-    setLoading(true)
-    try {
-      const url = status ? `/api/admin/bugs?status=${status}` : "/api/admin/bugs"
-      const res = await fetch(url)
-      if (!res.ok) throw new Error("Request failed")
-      const data = await res.json()
-      setBugs(data.bugs ?? [])
-    } catch (err) { console.error("[AdminError]", err) } finally { setLoading(false) }
-  }
+  const sortOption = ADMIN_TABLE_SORT_META.bugs.options.find((o) => o.id === sortId)
+    ?? ADMIN_TABLE_SORT_META.bugs.options[0]
 
-  useEffect(() => { load() }, [])
+  // Bulk-safe cursor pagination: windows APPEND so selection survives
+  // "view more" (no page-replacement context loss). Filter/sort changes
+  // reset the list and clear stale selection.
+  const list = useAdminCursorList<AdminBug>({
+    buildUrl: (cursor) => {
+      const params = new URLSearchParams()
+      if (statusFilter) params.set("status", statusFilter)
+      params.set("sort", sortOption.sort)
+      params.set("dir", sortOption.dir)
+      params.set("limit", "20")
+      if (cursor) params.set("cursor", cursor)
+      return `/api/admin/bugs?${params.toString()}`
+    },
+    getItems: (payload) => (payload as { bugs?: AdminBug[] }).bugs ?? [],
+    getCursor: (payload) => (payload as { nextCursor?: string | null }).nextCursor ?? null,
+  })
+  const { items: bugs, loading, loadingMore, nextCursor } = list
+
+  useEffect(() => { void list.load(true) }, [statusFilter, sortId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 
   const visible = useMemo(() => {
     if (kindFilter === "all") return bugs
@@ -79,7 +93,7 @@ export default function AdminBugsPage() {
       if (!res.ok) throw new Error("Request failed")
       bulk.clear()
       toastService.success(`${ids.length} report(s) → ${status}`)
-      load(statusFilter || undefined)
+      void list.load(true)
     } catch (err) {
       console.error("[AdminError]", err)
       toastService.error("Bulk update failed")
@@ -96,7 +110,7 @@ export default function AdminBugsPage() {
         body: JSON.stringify({ bugId, status }),
       })
       if (!res.ok) throw new Error("Request failed")
-      load(statusFilter || undefined)
+      void list.load(true)
     } catch (err) { console.error("[AdminError]", err) }
   }
 
@@ -123,7 +137,7 @@ export default function AdminBugsPage() {
             })
             if (!res.ok) throw new Error("Request failed")
             toastService.success(MODERATION_CONFIG.adminActionSuccess)
-            load(statusFilter || undefined)
+            void list.load(true)
           } catch (err) {
             console.error("[AdminError]", err)
             toastService.error(MODERATION_CONFIG.adminActionError)
@@ -153,11 +167,22 @@ export default function AdminBugsPage() {
           </select>
           <select
             value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); load(e.target.value || undefined) }}
+            onChange={(e) => { bulk.clear(); setStatusFilter(e.target.value) }}
             className="px-3 py-1.5 radius-md border border-border text-xs font-medium font-sans bg-bg-card text-text-primary cursor-pointer"
+            aria-label="Filter by status"
           >
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            value={sortId}
+            onChange={(e) => setSortId(e.target.value)}
+            className="px-3 py-1.5 radius-md border border-border text-xs font-medium font-sans bg-bg-card text-text-primary cursor-pointer"
+            aria-label="Sort reports"
+          >
+            {ADMIN_TABLE_SORT_META.bugs.options.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
           </select>
         </div>
       </div>
@@ -208,12 +233,28 @@ export default function AdminBugsPage() {
             <p className="text-xs text-text-secondary mb-3 line-clamp-2 overflow-hidden text-ellipsis">{bug.description}</p>
             {Array.isArray(bug.metadata?.images) && bug.metadata.images.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
-                {bug.metadata.images.slice(0, 3).map((url, i) => (
-                  <a key={`${bug.id}-shot-${i}`} href={url} target="_blank" rel="noreferrer" aria-label={`Open screenshot ${i + 1} for ${bug.title}`}>
+                {(bug.metadata.images as string[]).slice(0, 3).map((url, i) => (
+                  <button
+                    key={`${bug.id}-shot-${i}`}
+                    type="button"
+                    onClick={() => setViewer({ images: bug.metadata!.images as string[], index: i, title: bug.title })}
+                    className="p-0 border-none bg-transparent cursor-pointer"
+                    aria-label={`View screenshot ${i + 1} for ${bug.title}`}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={url} alt={`Report screenshot ${i + 1}`} className="w-20 h-20 rounded-lg object-cover border border-border hover:opacity-90 transition-opacity" loading="lazy" />
-                  </a>
+                  </button>
                 ))}
+                {(bug.metadata.images as string[]).length > 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setViewer({ images: bug.metadata!.images as string[], index: 3, title: bug.title })}
+                    className="w-20 h-20 rounded-lg border border-border bg-bg-elevated text-xs font-semibold text-text-secondary cursor-pointer"
+                    aria-label={`View all ${(bug.metadata.images as string[]).length} screenshots`}
+                  >
+                    +{(bug.metadata.images as string[]).length - 3} more
+                  </button>
+                )}
               </div>
             )}
             {isReport && bug.post && (
@@ -264,6 +305,64 @@ export default function AdminBugsPage() {
           )
         })}
       </div>
+      <ViewMoreButton
+        onViewMore={() => void list.load(false, nextCursor)}
+        loading={loadingMore}
+        shown={visible.length}
+        total={null}
+        hasMore={nextCursor !== null}
+      />
+      {viewer && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Screenshots for ${viewer.title}`}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setViewer(null)}
+        >
+          <div
+            className="relative max-w-3xl w-full bg-bg-card radius-lg p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3 gap-2">
+              <p className="text-sm font-semibold truncate">{viewer.title} — {viewer.index + 1} of {viewer.images.length}</p>
+              <button
+                type="button"
+                onClick={() => setViewer(null)}
+                className="p-1.5 radius-md border border-border bg-bg-base cursor-pointer"
+                aria-label="Close screenshot viewer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={viewer.images[viewer.index]} alt={`Report screenshot ${viewer.index + 1}`} className="w-full max-h-[70vh] object-contain radius-md bg-black" />
+            {viewer.images.length > 1 && (
+              <div className="flex items-center justify-between mt-3 gap-2">
+                <button
+                  type="button"
+                  disabled={viewer.index === 0}
+                  onClick={() => setViewer((v) => (v ? { ...v, index: Math.max(0, v.index - 1) } : v))}
+                  className="px-3 py-1.5 radius-md border border-border text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <a href={viewer.images[viewer.index]} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                  Open original
+                </a>
+                <button
+                  type="button"
+                  disabled={viewer.index >= viewer.images.length - 1}
+                  onClick={() => setViewer((v) => (v ? { ...v, index: Math.min(v.images.length - 1, v.index + 1) } : v))}
+                  className="px-3 py-1.5 radius-md border border-border text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

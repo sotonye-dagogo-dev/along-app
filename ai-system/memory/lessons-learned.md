@@ -763,3 +763,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** optional, render-only attachments ride in existing JSON columns with a sanitizer (no migration when nothing is ever queried by the field); recall problems get merge+dedupe across all free sources with rank-only bias (never filter, never prompt); floating surfaces share one lane registry (`FLOATING_UI_CONFIG`) where every bottom offset is declared once with the navbar height it must clear. Verify with node --check + strip-types execution of pure helpers when jest can't run.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 51: one resolver for every notification click; append-only beats page numbers for bulk state
+- **Symptom:** notifications mostly landed on profiles; push and in-app disagreed; admin "view more" was deferred over bulk-selection loss; bug duplicates appeared despite a single admin mail.
+- **Root causes:** (1) routing lived inline in the click handler with a profile fallback, while push had a second independent table — two truths diverged; commentId was stored but never consumed. (2) page-number pagination replaces the row array, discarding the selection Set's context; cursor-append preserves it by construction. (3) at-most-once submit needs both a client key AND a server content-window — a boolean `sending` flag covers neither retries-after-timeout nor multi-tab.
+- **Fix pattern (reuse):** single `resolveXRoute(input)` in config consumed by every surface (in-app + push + future); admin lists paginate cursor-append with id-dedupe and keep selection outside the list; mutating submits take `Idempotency-Key` (header or body) plus a short same-actor+content dedup window, stored in existing JSON columns when no migration is warranted.
+- **Supersedes:** Sprint 50 follow-up "remaining admin tables deferred (bulk-select state risk)".
+- **Superseded by:** None

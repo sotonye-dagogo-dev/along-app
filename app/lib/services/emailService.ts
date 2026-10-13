@@ -373,6 +373,14 @@ function renderTemplateSubject(subject: string, vars: Record<string, string>): s
   return renderEmailSubject(subject, vars);
 }
 
+export async function sendBugReportReceivedEmail(to: string, vars: { firstName: string; title: string; category: string; reportId: string }) {
+  return sendTemplatedEmail("bugReportReceived", to, { ...vars, appUrl: APP_URL_FALLBACK }, "bugReportReceived");
+}
+
+export async function sendBugReportStatusEmail(to: string, vars: { firstName: string; title: string; status: string; statusNote: string; reportId: string }) {
+  return sendTemplatedEmail("bugReportStatusUpdate", to, { ...vars, appUrl: APP_URL_FALLBACK }, "bugReportStatusUpdate");
+}
+
 const APP_URL_FALLBACK = getAppUrl();
 
 export async function sendAccountDeletionRequestedEmail(to: string, vars: { firstName: string; scheduledDate: string; cancelLink: string }) {
@@ -399,7 +407,7 @@ export const EMAIL_VAR_SOURCES: Record<string, "platform" | "user" | "generated"
   firstName: "user", lastName: "user", userName: "user", email: "user", displayName: "user", newEmail: "user",
   otp: "generated", verifyLink: "generated", resetLink: "generated", confirmLink: "generated",
   cancelLink: "generated", changedAt: "generated", scheduledDate: "generated", completedDate: "generated",
-  reasonLine: "generated",
+  reasonLine: "generated", reportId: "generated", status: "generated", statusNote: "generated",
 };
 
 export function emailVarSource(name: string): "platform" | "user" | "generated" | "manual" {

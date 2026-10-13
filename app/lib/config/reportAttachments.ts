@@ -67,6 +67,20 @@ export function reportMaxSizeLabel(): string {
 }
 
 /**
+ * ACID / idempotency config for bug-report submission (config-driven).
+ * - `dedupWindowSec`: same reporter + same title/description within this
+ *   window returns the existing row instead of creating a duplicate
+ *   (covers double-click, retry-after-timeout, multi-tab submits).
+ * - `idempotencyHeader`: clients may send Idempotency-Key; the key is stored
+ *   in metadata.idempotencyKey and re-presenting it returns the original row.
+ */
+export const BUG_REPORT_DEDUP_CONFIG = {
+  dedupWindowSec: 600,
+  idempotencyHeader: "x-idempotency-key",
+  maxKeyLength: 128,
+} as const;
+
+/**
  * Validates report image URLs server-side (never throws).
  * Accepts only https Cloudinary URLs under the report folder so callers can
  * never smuggle third-party / seed / avatar URLs into report metadata.

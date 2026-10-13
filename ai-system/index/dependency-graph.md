@@ -102,7 +102,7 @@ Service Layer (app/lib/services/*)
     → GlobalToastProvider (single-timer owner: GlobalUndoToast auto-close + progress bar share one duration, remount per toast) → GlobalUndoToast
     → PostCard + post detail (`POST_ACTIONS_CONFIG`, `MODERATION_CONFIG`) → PostMenu/ReportDialog (+ReportImageUpload screenshots → metadata.images) → PATCH/DELETE/archive + POST /api/reports (transactional dedup, reporter receipt + admin triage notifications); PostMenu management actions owner-only — admins moderate via /admin/posts (PUT edit + PATCH archive + DELETE, all `logAudit`-audited) and read the trail on /admin/audit (`AUDIT_DISPLAY_CONFIG` + AppTable/AppTag) [Sprint 37]
     → Platform reviews: POST /api/reviews (self-pair upsert, PENDING) → `notifyReviewThanks` (REWARD+allowSelf) → Prisma Notification + push mirror (REVIEW entry); GET /api/reviews (APPROVED + own PENDING, authorId scope, SW-cached) → About tape + ReviewsPanel + profile tabs [Sprint 25]
-    → Notification fan-out: posts route (ROUTE_REQUEST/NEW_ROUTE/ROUTE_RESPONSE) + like route (LIKE/DISLIKE) + comments routes (COMMENT/MENTION) → `notificationService.createNotification` (+ `mentionService` extract/diff/resolve) → Prisma Notification + Redis invalidation
+    → Notification fan-out: posts route (ROUTE_REQUEST/NEW_ROUTE/ROUTE_RESPONSE) + like route (LIKE/DISLIKE) + comments routes (COMMENT/MENTION) + bug-reports/admin-bugs REPORT lifecycle → `notificationService.createNotification` → clicks resolve via `notificationRoutes.resolveNotificationRoute` (post/comment/queue targets) + push mirror [Sprint 51] (+ `mentionService` extract/diff/resolve) → Prisma Notification + Redis invalidation
     → Referrals (auth-agnostic): register page + login/register Google buttons (`?ref=` → `state=ref:`) → register route + google callback → `referralService` (unlimited linking, send-credit cap via INVITE_CONFIG) → QStash rewards worker
     → Early adopters: `earlyAdopterConfig` SiteConfig row (seeded, admin-editable via /api/admin/config with validation + Redis invalidation) → `earlyAdopterService` (createdAt-asc rank, Redis-cached; `listEarlyAdopters`) → profile badge + admin `?earlyAdopter=true` user filter
     → Error boundaries: `global-error`/`error` → `errorReportService` (sanitized capture + prefill builder + bug-report URL, never throws) → POST /api/bug-reports (category OTHER, `ERROR_REPORTING_CONFIG`) → BugReport rows for admin triage; boundaries also toast the CTA (toastService action slot) + inline prefilled link → `/report-bug` (?title=&description= → initialValues) [Sprint 40]
@@ -224,7 +224,7 @@ NotificationService
     → Config: notifications, rateLimits
 
 EmailService
-    → Resend (transactional: otp, welcome incl. Google OAuth, password reset, verify/change-email/change-password, contact/bug, deletion lifecycle)
+    → Resend (transactional: otp, welcome incl. Google OAuth, password reset, verify/change-email/change-password, contact/bug incl. bugReportReceived/StatusUpdate reporter lifecycle [Sprint 51], deletion lifecycle)
     → Shared wrapper (logo/header/CTA/footer) + escaped interpolation (missing→"") + toggle-pauses-send + EmailLog audit
     → Awaited with bounded timeouts + honest sent flag on gate-critical paths (register 6s/mail via REGISTER_EMAIL_DISPATCH_CONFIG, forgot-password 6s, resend/verify-email trigger awaited, google welcome 5s); only non-critical notices via Next after()
 
