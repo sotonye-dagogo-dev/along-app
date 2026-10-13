@@ -2273,3 +2273,34 @@ Vercel/CI build to confirm green (tsc gate already clean locally); prod-verify R
 **Notes / Blockers:**
 - None. node_modules present (gitignored); full QA runnable in-runner from here on.
 - Chain: execute-feature Steps 1-5 → sync-context drift check executed (no mutations) → in-progress cleared at close. No deep-sync trigger (no architecture impact).
+
+## Session — 2026-10-13 (Execute-feature: boat vehicle option)
+
+**Completed:**
+- Step 1 planning pass (task-queue/system-architecture/DESIGN.md/repair-system read) + Step 2 scope check passed (transport modes are core domain, no decision conflict, no architecture impact — vehicle is a free string in routes JSON + `z.string().max(30)`, so additive union member only, no plan-feature sign-off); plan written to in-progress.md.
+- Implementation, config-driven via VEHICLE_REGISTRY (composer chips, PostCard, NavigationGuide, post detail all derive dynamically — zero per-surface changes):
+  - `app/lib/types/index.ts` — `VehicleType` += `"boat"`.
+  - `app/lib/config/vehicles.ts` — `boat` entry (label "Boat", Lucide `Ship` icon, cyan `#0E7490` / `bg-cyan-50` / `text-cyan-800` + dark tokens; distinct from bus blue / keke green).
+  - `app/lib/config/routeValidation.ts` — KNOWN_VEHICLES += `"boat"`.
+  - `app/(public)/page.tsx` — `VEHICLE_CHIPS` += `BOAT` (`#ECFEFF`/`#155E75`).
+  - `app/(dashboard)/explore/page.tsx` — `Boat` filter chip + `activeVehicleFilters` allowlist entry (caught hardcoded subset — chip would render but never filter without it).
+  - `app/components/ui/VehicleChip.tsx` — null-guard for unknown/legacy strings.
+  - `ai-system/docs/DESIGN.md` — Boat color + icon-map rows.
+  - NEW `app/__tests__/config/vehicles.test.ts` (registry keys/label/icon/color, per-entry UI-safety, boat accepted / spaceship rejected).
+- QA: no node_modules in this runner — routeValidation smoke executed via node strip-types (boat valid, spaceship rejected, PASS) + 11-point static parity grep all PASS; full tsc/jest/lint/build deferred to CI/Vercel.
+- Docs: task-queue entry, this log; sync-context drift check (no new modules/imports/APIs beyond the registry member + 1 test file — nothing to sync; no update-ai-system deep sync: no architecture impact, size [S]) → in-progress cleared at close.
+
+**Files Modified:**
+- Edited: `app/lib/types/index.ts`, `app/lib/config/vehicles.ts`, `app/lib/config/routeValidation.ts`, `app/(public)/page.tsx`, `app/(dashboard)/explore/page.tsx`, `app/components/ui/VehicleChip.tsx`, `ai-system/docs/DESIGN.md`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/__tests__/config/vehicles.test.ts`
+
+**Next Task:**
+CI/Vercel build to confirm green (tsc + jest incl. new vehicles suite).
+
+**Assumptions Made:**
+- Lucide `Ship` present in lucide-react 0.469.0 (long-standing icon; no node_modules in runner to import-verify — Vercel build will confirm; fallback would be `Sailboat`).
+- Explore vehicle-filter case behavior left as-is (pre-existing label-vs-value casing); boat matches the same convention as the other four modes.
+
+**Notes / Blockers:**
+- None. Non-breaking, ferry/boat routes shareable end to end (composer → validation → feed/explore/landing/trust all generic over the registry).
+- Chain: execute-feature Steps 1-5 → sync-context drift check executed (no mutations) → in-progress cleared at close. No deep-sync trigger.

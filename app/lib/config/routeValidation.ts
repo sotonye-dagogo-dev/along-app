@@ -150,6 +150,7 @@ const KNOWN_VEHICLES = new Set([
   "trekking",
   "car",
   "bolt",
+  "boat",
 ]);
 
 /**
