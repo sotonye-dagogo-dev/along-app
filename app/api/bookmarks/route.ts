@@ -35,7 +35,36 @@ export async function GET(request: NextRequest) {
     const nextCursor = hasMore ? page[page.length - 1].id : null;
     // `isBookmarked` kept for backward compat; `_isBookmarked` is the
     // canonical key PostCard reads (PROFILE_POSTS_CONFIG.interactionFields).
-    const posts = page.map((row) => ({ ...row.post, isBookmarked: true, _isBookmarked: true }));
+    // bookmarkedAt preserves the save time (post createdAt is the post's own
+    // time — clients must render Saved · bookmarkedAt, not createdAt).
+    const viewerId = user.id as string;
+    const posts = page.map((row) => ({
+      ...row.post,
+      isBookmarked: true,
+      _isBookmarked: true,
+      bookmarkedAt: row.createdAt,
+      // Bookmark saves imply no vote state yet — enriched below when present.
+      _isLiked: false,
+      _isDisliked: false,
+    }));
+
+    // Viewer-scoped like/dislike enrichment so bookmarked cards render the
+    // same filled icons + firing actions as feed/profile tabs. Never throws.
+    try {
+      const ids = posts.map((p) => (p as { id: string }).id).filter(Boolean);
+      if (ids.length > 0) {
+        const [likes, dislikes] = await Promise.all([
+          prisma.like.findMany({ where: { postId: { in: ids }, userId: viewerId, type: "LIKE" }, select: { postId: true } }).catch(() => [] as { postId: string }[]),
+          prisma.like.findMany({ where: { postId: { in: ids }, userId: viewerId, type: "DISLIKE" }, select: { postId: true } }).catch(() => [] as { postId: string }[]),
+        ]);
+        const liked = new Set(likes.map((l) => l.postId));
+        const disliked = new Set(dislikes.map((l) => l.postId));
+        for (const p of posts as unknown as Record<string, unknown>[]) {
+          p._isLiked = liked.has(p.id as string);
+          p._isDisliked = disliked.has(p.id as string);
+        }
+      }
+    } catch { /* plain rows */ }
 
     // Canonical live trust (same service as feed/detail) so bookmarked
     // cards carry identical breakdown values. Best-effort, never fails.

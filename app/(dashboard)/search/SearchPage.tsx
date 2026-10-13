@@ -4,13 +4,10 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Search as SearchIcon } from "lucide-react";
-import { PostCard } from "@/app/components/features/posts";
-import { PostCommentsModal } from "@/app/components/features/comments";
 import { AppEmptyState, PostCardSkeleton, AppAvatar, ViewMoreButton } from "@/app/components/ui";
 import { EMPTY_STATES } from "@/app/lib/config";
 import { FollowButton } from "@/app/components/features/suggestions/FollowButton";
-import { usePostShare } from "@/app/hooks/usePostShare";
-import { useAuth } from "@/app/hooks/useAuth";
+import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard";
 
 type Tab = "all" | "posts" | "users";
 
@@ -44,8 +41,6 @@ const TABS: { key: Tab; label: string }[] = [
 
 function SearchContent() {
   const searchParams = useSearchParams();
-  const { sharePost } = usePostShare();
-  const { user } = useAuth();
   const initialQ = searchParams.get("q") ?? "";
   const [input, setInput] = useState(initialQ);
   const [query, setQuery] = useState(initialQ);
@@ -56,17 +51,6 @@ function SearchContent() {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Shared comment modal (parity with feed/profile): comment icon opens the
-  // modal with an expand-post link instead of being a dead control.
-  const [commentPostId, setCommentPostId] = useState<string | null>(null);
-  const commentPost = commentPostId ? data?.posts.find((p) => p.id === commentPostId) ?? null : null;
-  const commentViewer = {
-    userName: (user as { userName?: string } | null)?.userName ?? "guest",
-    displayName:
-      `${(user as { firstName?: string } | null)?.firstName ?? ""} ${(user as { lastName?: string } | null)?.lastName ?? ""}`.trim() || "You",
-    avatar: (user as { avatar?: string } | null)?.avatar ?? null,
-    avatarConfig: (user as { avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null } | null)?.avatarConfig ?? null,
-  };
 
   // Debounce typing → committed query (300ms)
   useEffect(() => {
@@ -264,16 +248,14 @@ function SearchContent() {
           <section aria-label="Routes" className="flex flex-col gap-3">
             {tab === "all" && <h2 className="text-sm font-semibold text-text-secondary">Routes</h2>}
             {data.posts.map((post) => (
-              <PostCard
+              // Universal interactive card (parity with feed/profile): full
+              // menu (copy/edit/delete/archive/report) + working
+              // like/dislike/bookmark/share/comment. Search API enriches
+              // _isLiked/_isDisliked/_isBookmarked viewer-scoped.
+              <ProfilePostCard
                 key={post.id}
                 post={post as never}
-                onShare={(postId) => void sharePost(postId, (post as { title?: string }).title)}
-                onComment={(postId) => setCommentPostId(postId)}
-                onDeleted={(postId) => setData((prev) => (prev ? { ...prev, posts: prev.posts.filter((p) => p.id !== postId) } : prev))}
-                onRestored={() => {}}
-                onArchivedChanged={(postId, archived) => {
-                  if (archived) setData((prev) => (prev ? { ...prev, posts: prev.posts.filter((p) => p.id !== postId) } : prev))
-                }}
+                onRemoved={(postId) => setData((prev) => (prev ? { ...prev, posts: prev.posts.filter((p) => p.id !== postId) } : prev))}
               />
             ))}
             <ViewMoreButton
@@ -303,13 +285,6 @@ function SearchContent() {
           </section>
         )}
       </div>
-      <PostCommentsModal
-        open={commentPostId !== null}
-        postId={commentPostId}
-        postTitle={(commentPost as { title?: string } | null)?.title}
-        viewer={commentViewer}
-        onClose={() => setCommentPostId(null)}
-      />
     </div>
   );
 }
