@@ -677,3 +677,14 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | Studio parsing hardened — bare inter-tag text, section/article/figure/h4-h6/br containers, block-child recursion, empty-link-remnant drop; plain-text paragraph contract kept (existing suites green) | [x] |
 | [L] | Featured blogs — `FEATURED_BLOGS_CONFIG` + `pickFeaturedBlogs`/`featuredBlogHref` + `FeaturedBlogsSection` (EndlessCarousel reuse, per-card Read CTA + View-all CTA, tf() fallbacks, no new locale keys); landing (server-fed) + about (after reviews) + invite (after leaderboard) | [x] |
 | [S] | Tests — NEW `featuredBlogs.test.ts` (config/CTA/emdash, pick/cap/href, defaults coverage/vars, audit labels, parsing no-loss) | [x] |
+
+## Session 2026-10-13 — Blog carousel overflow + featured flag + Studio templates (execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive optional `featured`, no migration/deps/API removals; tape falls back to newest-first; templates prefill-only). QA in-runner: real-module strip-types green (featured-first order, legacy fallback, hrefs); balance identical to HEAD on 13 files; full tsc/jest/build deferred to CI — no node_modules in runner.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Carousel overflow — about flex-column guards + viewport width constraint + FeaturedBlogsSection/invite/landing caps (page no longer scrolls horizontally) | [x] |
+| [M] | Admin featured flag — type + store + `/api/blog` field + upsert/metadata + `preferFeatured` ordering + /blog hero preference + Studio checkbox/star + tape pill | [x] |
+| [S] | Studio templates — shipped defaults openable/editable without DB save (prefill incl. blocks, save creates row; empty-DB empty-editor fixed) | [x] |
+| [S] | Tests — extended `featuredBlogs.test.ts` (featured-first ordering, missing-field fallback) | [x] |

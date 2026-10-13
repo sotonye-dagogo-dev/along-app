@@ -45,8 +45,15 @@ function BlogCard({ post, readLabel }: { post: FeaturedBlogItem; readLabel: stri
         loading="lazy"
       />
       <div className="flex flex-1 flex-col gap-1.5 p-4">
-        <span className="w-fit rounded-full bg-bg-elevated px-2 py-0.5 text-[11px] font-medium capitalize text-text-secondary">
-          {post.category}
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className="w-fit rounded-full bg-bg-elevated px-2 py-0.5 text-[11px] font-medium capitalize text-text-secondary">
+            {post.category}
+          </span>
+          {post.featured === true && (
+            <span className="w-fit rounded-full bg-primary-muted px-2 py-0.5 text-[11px] font-semibold text-primary">
+              Featured
+            </span>
+          )}
         </span>
         <span className="text-sm font-semibold leading-snug text-text-primary group-hover:text-primary">
           {post.title}
@@ -101,8 +108,8 @@ export function FeaturedBlogsSection({ initialPosts, limit, compact = false }: P
   const viewAllLabel = tf("blog.featured.viewAll", FEATURED_BLOGS_CONFIG.viewAllLabel);
 
   return (
-    <section aria-label={title} className={compact ? "py-2" : "py-6 sm:py-8"}>
-      <div className="mb-4 flex items-end justify-between gap-3">
+    <section aria-label={title} className={`w-full min-w-0 max-w-full overflow-x-clip ${compact ? "py-2" : "py-6 sm:py-8"}`}>
+      <div className="mb-4 flex min-w-0 items-end justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-text-primary sm:text-2xl">{title}</h2>
           <p className="mt-1 flex items-center gap-1 text-sm text-text-secondary">
@@ -117,7 +124,7 @@ export function FeaturedBlogsSection({ initialPosts, limit, compact = false }: P
         </Link>
       </div>
       {posts === null ? (
-        <div className="flex gap-4 overflow-hidden" aria-busy="true">
+        <div className="flex w-full min-w-0 max-w-full gap-4 overflow-hidden" aria-busy="true">
           {[0, 1, 2].map((i) => (
             <div key={i} className={`h-[240px] shrink-0 animate-pulse rounded-xl bg-bg-card/60 ${FEATURED_BLOGS_CONFIG.cardWidthClass}`} />
           ))}

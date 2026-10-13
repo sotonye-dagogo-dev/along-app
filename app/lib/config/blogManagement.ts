@@ -36,6 +36,12 @@ export interface ManagedBlogPost {
   updatedAt: string;
   /** True when seeded from filesystem MDX (read-only in admin). */
   readonly?: boolean;
+  /**
+   * Admin featured flag. Featured published posts sort first in the
+   * featured tape (`pickFeaturedBlogs`) and the /blog hero slot.
+   * Optional + additive so existing stored rows read as unfeatured.
+   */
+  featured?: boolean;
 }
 
 export function isBlogStatus(v: unknown): v is BlogPostStatus {

@@ -8,6 +8,11 @@
 export interface FeaturedBlogsConfig {
   /** Max posts shown in the tape. */
   maxItems: number;
+  /**
+   * When true, admin-flagged posts (`featured: true`) sort before
+   * unflagged ones; newest-first still orders within each group.
+   */
+  preferFeatured: boolean;
   /** Section heading on each surface. */
   sectionTitle: string;
   /** Section subheading on each surface. */
@@ -27,6 +32,7 @@ export interface FeaturedBlogsConfig {
 
 export const FEATURED_BLOGS_CONFIG: FeaturedBlogsConfig = {
   maxItems: 6,
+  preferFeatured: true,
   sectionTitle: "From the Blog",
   sectionSubtitle: "Route tips, platform news, and community stories.",
   readPostLabel: "Read post",
@@ -46,9 +52,12 @@ export interface FeaturedBlogItem {
   category: string;
   image: string;
   readingTime: number;
+  /** Admin featured flag (see ManagedBlogPost.featured). Optional so
+   *  older API payloads without the field still sort newest-first. */
+  featured?: boolean;
 }
 
-/** Newest first, capped at maxItems. Pure and never throws. */
+/** Featured first (when configured), then newest first, capped at maxItems. Pure and never throws. */
 export function pickFeaturedBlogs(
   posts: FeaturedBlogItem[],
   maxItems = FEATURED_BLOGS_CONFIG.maxItems,
@@ -56,6 +65,11 @@ export function pickFeaturedBlogs(
   try {
     const list = Array.isArray(posts) ? [...posts] : [];
     list.sort((a, b) => {
+      if (FEATURED_BLOGS_CONFIG.preferFeatured) {
+        const fa = (a as { featured?: unknown }).featured === true ? 0 : 1;
+        const fb = (b as { featured?: unknown }).featured === true ? 0 : 1;
+        if (fa !== fb) return fa - fb;
+      }
       const ta = new Date(a?.date ?? "").getTime();
       const tb = new Date(b?.date ?? "").getTime();
       const sa = Number.isNaN(ta) ? 0 : ta;

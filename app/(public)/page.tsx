@@ -218,8 +218,8 @@ export default async function LandingPage() {
 
       {/* Featured Blogs: newest published posts, endless tape */}
       {featuredBlogs.length > 0 && (
-        <section className="py-6 sm:py-8 px-5 bg-bg-base">
-          <div className="max-w-[1100px] mx-auto">
+        <section className="w-full min-w-0 max-w-full overflow-x-clip bg-bg-base py-6 sm:py-8 px-5">
+          <div className="mx-auto w-full min-w-0 max-w-[1100px]">
             <FeaturedBlogsSection initialPosts={featuredBlogs} />
           </div>
         </section>
