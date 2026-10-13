@@ -105,7 +105,7 @@ interface ProfileApiResponse {
 export default function OtherProfilePage() {
   const params = useParams()
   const [activeTab, setActiveTab] = useState("posts")
-  const [tabQuery, setTabQuery] = useState("")
+  const [tabFilter, setTabFilter] = useState("")
   const [mutualCount] = useState(0)
 
   const userName = params.username as string
@@ -124,7 +124,9 @@ export default function OtherProfilePage() {
   // their own tab so they never masquerade as routes. The reviews tab owns
   // no post query — ReviewsPanel fetches the author's platform review.
   const profileId = profileRes?.user?.id
-  const tabQuery = !profileId
+  // NOTE: named `tabPostsQuery` (not `tabQuery`) — `tabFilter` owns the search
+  // box state. A same-name collision here broke the production build.
+  const tabPostsQuery = !profileId
     ? "/api/posts?limit=20"
     : activeTab === "reviews"
       ? "/api/reviews?limit=1"
@@ -137,7 +139,7 @@ export default function OtherProfilePage() {
           : `/api/posts?limit=20&userId=${profileId}`
   const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
     ready && profileId ? `profile-tab:${profileId}:${activeTab}` : null,
-    tabQuery,
+    tabPostsQuery,
     { ttlSec: 120, enabled: ready && activeTab !== "reviews" }
   )
 
@@ -177,14 +179,14 @@ export default function OtherProfilePage() {
   }, [postsData, userName, profileRes, activeTab])
 
   const visiblePosts = useMemo(() => {
-    const q = tabQuery.trim().toLowerCase()
+    const q = tabFilter.trim().toLowerCase()
     if (!q) return posts
     return posts.filter((p) =>
       (p.title ?? "").toLowerCase().includes(q) ||
       (p.description ?? "").toLowerCase().includes(q) ||
       (p.tags ?? []).some((t) => t.toLowerCase().includes(q)),
     )
-  }, [posts, tabQuery])
+  }, [posts, tabFilter])
 
   const loading = authLoading || profileLoading
 
@@ -340,7 +342,7 @@ export default function OtherProfilePage() {
               key={tab}
               role="tab"
               aria-selected={activeTab === tab}
-              onClick={() => { setActiveTab(tab); setTabQuery("") }}
+              onClick={() => { setActiveTab(tab); setTabFilter("") }}
               className={`flex-1 min-w-[96px] sm:min-w-[120px] shrink-0 px-3 sm:px-4 py-3 text-center border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast relative whitespace-nowrap overflow-hidden text-ellipsis ${
                 activeTab === tab ? "text-primary" : "text-text-secondary hover:text-text-primary"
               }`}
@@ -362,8 +364,8 @@ export default function OtherProfilePage() {
             <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
               <input
-                value={tabQuery}
-                onChange={(e) => setTabQuery(e.target.value)}
+                value={tabFilter}
+                onChange={(e) => setTabFilter(e.target.value)}
                 placeholder={`Search ${activeTab}…`}
                 aria-label={`Search ${activeTab}`}
                 className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-bg-card text-sm outline-none focus:border-primary"
@@ -374,7 +376,7 @@ export default function OtherProfilePage() {
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
           {visiblePosts.length === 0 && posts.length > 0 && !postsLoading && (
-            <AppEmptyState {...EMPTY_STATES.search} title="No matches" description={`Nothing in ${activeTab} matches “${tabQuery.trim()}”.`} />
+            <AppEmptyState {...EMPTY_STATES.search} title="No matches" description={`Nothing in ${activeTab} matches “${tabFilter.trim()}”.`} />
           )}
           {visiblePosts.map((post) => (
             <ProfilePostCard

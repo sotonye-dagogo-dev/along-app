@@ -126,7 +126,7 @@ export function useCachedFetch<T>(
       void fetchNow(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, enabled, ttlSec]);
+  }, [key, url, enabled, ttlSec]);
 
   const refetch = useCallback(async () => {
     await fetchNow(false);

@@ -791,3 +791,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** audit every mutating lifecycle at creation time (`void logAudit`, new entity/action vocabulary + display entries); grow parsers by capturing gaps (inter-tag text), widening accepted tags, and recursing into wrappers — while keeping the byte-level contract existing suites assert; build one client section with an optional `initialPosts` prop so server and client pages share it (server feeds, clients fetch the same paginated API).
 - **Supersedes:** None
 - **Superseded by:** None
+
+## 2026-10-13: same-name state + derived value in one component scope breaks the build; score-ordered feeds need exclusion-based pagination
+- **Symptom:** Vercel build failed with `Identifier 'tabQuery' has already been declared` in both profile pages; feed showed the same post twice across pages/poll cycles.
+- **Root causes:** (1) a search-box `useState` and a derived query-string `const` were given the same name in the same function scope — legal while only one existed, fatal once the second was added. (2) the feed ranks by score but paginates on a createdAt cursor, so consecutive pages inherently overlap; client appends without dedup turned overlap into visible duplicates, and poll merges rewound the cursor.
+- **Fix pattern (reuse):** name state and derived values in disjoint namespaces (`tabFilter` vs `tabPostsQuery`) with a collision note at the declaration; make id-dedup a single exported invariant every merge path funnels through; pass rendered ids as `exclude` for score-ordered pagination; never overwrite a pagination cursor with a page-one poll result.
+- **Supersedes:** None
+- **Superseded by:** None

@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: execute-feature 2026-10-13 (blog design compliance + reading-time studio input)
-> - last-synced: 2026-10-13 (blog design compliance close-out)
+> - last-synced: 2026-10-13 (feed de-glitch + profile tabQuery build fix)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.

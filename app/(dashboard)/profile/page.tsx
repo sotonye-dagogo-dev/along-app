@@ -122,7 +122,7 @@ export default function OwnProfilePage() {
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
   const [showAvatarMenu, setShowAvatarMenu] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
-  const [tabQuery, setTabQuery] = useState("")
+  const [tabFilter, setTabFilter] = useState("")
 
   // Deep link: /profile#reviews (About CTA panel) opens the Reviews tab;
   // ?tab=security (unverified-login + notification CTA) opens Email & Security.
@@ -179,9 +179,11 @@ export default function OwnProfilePage() {
     "/api/rewards/history",
     { ttlSec: 300, enabled: ready }
   )
-  // Per-tab post lists (posts / routes / requests / liked / bookmarks / archived).
+  // Per-tab post query URL (posts / routes / requests / liked / bookmarks / archived).
   // The reviews tab owns no post query — ReviewsPanel fetches its own data.
-  const tabQuery =
+  // NOTE: named `tabPostsQuery` (not `tabQuery`) — `tabFilter` owns the search
+  // box state below. A same-name collision here broke the production build.
+  const tabPostsQuery =
     activeTab === "reviews"
       ? "/api/reviews?limit=1"
       : activeTab === "bookmarks"
@@ -197,7 +199,7 @@ export default function OwnProfilePage() {
               : `/api/posts?limit=20&userId=${userId}`
   const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
     ready ? `profile-tab:${userId}:${activeTab}` : null,
-    tabQuery,
+    tabPostsQuery,
     { ttlSec: 120, enabled: ready && activeTab !== "reviews" }
   )
 
@@ -459,7 +461,7 @@ export default function OwnProfilePage() {
               key={tab}
               role="tab"
               aria-selected={activeTab === tab}
-              onClick={() => { setActiveTab(tab); setTabQuery("") }}
+              onClick={() => { setActiveTab(tab); setTabFilter("") }}
               className={`flex-1 min-w-[96px] sm:min-w-[110px] shrink-0 px-3 sm:px-4 py-3 text-center border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast relative whitespace-nowrap overflow-hidden text-ellipsis ${
                 activeTab === tab ? "text-primary" : "text-text-secondary hover:text-text-primary"
               }`}
@@ -477,8 +479,8 @@ export default function OwnProfilePage() {
           <div className="relative mb-3">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
             <input
-              value={tabQuery}
-              onChange={(e) => setTabQuery(e.target.value)}
+              value={tabFilter}
+              onChange={(e) => setTabFilter(e.target.value)}
               placeholder={`Search ${activeTab}…`}
               aria-label={`Search ${activeTab}`}
               className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-bg-card text-sm outline-none focus:border-primary"
@@ -495,14 +497,14 @@ export default function OwnProfilePage() {
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
           {(() => {
-            const q = tabQuery.trim().toLowerCase()
+            const q = tabFilter.trim().toLowerCase()
             const visible = !q ? posts : posts.filter((p) =>
               (p.title ?? "").toLowerCase().includes(q) ||
               (p.description ?? "").toLowerCase().includes(q) ||
               (p.tags ?? []).some((t) => t.toLowerCase().includes(q)),
             )
             if (visible.length === 0 && posts.length > 0 && !postsLoading) {
-              return <AppEmptyState {...EMPTY_STATES.search} title="No matches" description={`Nothing in ${activeTab} matches “${tabQuery.trim()}”.`} />
+              return <AppEmptyState {...EMPTY_STATES.search} title="No matches" description={`Nothing in ${activeTab} matches “${tabFilter.trim()}”.`} />
             }
             return visible.map((post) => (
             <ProfilePostCard

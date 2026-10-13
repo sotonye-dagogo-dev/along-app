@@ -47,6 +47,13 @@ interface FeedOptions {
   limit?: number;
   /** Optional viewer fix (client lat/lng). Behind-the-scenes nearby boost only; absent = no-op. */
   viewerLocation?: { lat: number; lng: number } | null;
+  /**
+   * Ids the client already renders. Score-ordered pages are otherwise
+   * unstable (cursor is createdAt-based while ranking is score-based), so
+   * previously-seen rows can resurface as "new" — the source of the
+   * redundant-render glitch. Excluded server-side before scoring/slicing.
+   */
+  excludeIds?: string[];
 }
 
 /** Haversine distance (km) — local copy so the service stays dependency-light. */
@@ -223,37 +230,47 @@ class FeedService {
     }
     const cursorFilter = cursorCreatedAt ? { createdAt: { lt: cursorCreatedAt } } : {};
     const recentCursorFilter = cursorCreatedAt ? { createdAt: { lt: cursorCreatedAt } } : {};
+    // Stable score-order pagination: never re-score rows the client already
+    // holds. Capped + sanitized (alphanumeric/cuid-ish only) so a hostile
+    // query string cannot blow up the Prisma where clause.
+    const seenIds = Array.isArray(options.excludeIds)
+      ? [...new Set(options.excludeIds.filter((id) => typeof id === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(id)))].slice(0, 200)
+      : [];
+    const excludeFilter = seenIds.length > 0 ? { id: { notIn: seenIds } } : {};
+    // Excluded rows shrink each candidate pool — over-fetch to still fill pages.
+    const backfill = Math.min(seenIds.length, limit);
 
     // Fetch posts in parallel: following, trending, tag-matched, plus recent fallback for cold-start
     const [followingPosts, trendingPosts, tagPosts, recentPosts] = await Promise.all([
       followingIds.length > 0 ? safeFindManyPosts({
-        where: { userId: { in: followingIds }, ...cursorFilter },
+        where: { userId: { in: followingIds }, ...excludeFilter, ...cursorFilter },
         include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
         orderBy: { createdAt: "desc" },
-        take: Math.ceil(limit * 2),
+        take: Math.ceil(limit * 2) + backfill,
       }) : Promise.resolve([]),
       safeFindManyPosts({
         where: {
+          ...excludeFilter,
           ...cursorFilter,
           ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}),
           createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), ...(cursorCreatedAt ? { lt: cursorCreatedAt } : {}) },
         },
         include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
         orderBy: [{ likes: "desc" }, { comments: "desc" }],
-        take: Math.ceil(limit * 1.5),
+        take: Math.ceil(limit * 1.5) + backfill,
       }),
       activeTags.length > 0 ? safeFindManyPosts({
-        where: { tags: { hasSome: activeTags }, ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}), ...cursorFilter },
+        where: { tags: { hasSome: activeTags }, ...(followingIds.length > 0 ? { userId: { notIn: followingIds } } : {}), ...excludeFilter, ...cursorFilter },
         include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
         orderBy: { createdAt: "desc" },
-        take: Math.ceil(limit * 1.5),
+        take: Math.ceil(limit * 1.5) + backfill,
       }) : Promise.resolve([]),
       // Recent posts fallback ensures new posts always surface, even for cold-start users
       safeFindManyPosts({
-        where: { ...recentCursorFilter },
+        where: { ...excludeFilter, ...recentCursorFilter },
         include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
         orderBy: { createdAt: "desc" },
-        take: limit,
+        take: limit + backfill,
       }),
     ]);
 
@@ -365,7 +382,11 @@ class FeedService {
         const aTrust = typeof a.post.validityScore === "number" ? a.post.validityScore : 0;
         const bTrust = typeof b.post.validityScore === "number" ? b.post.validityScore : 0;
         if (bTrust !== aTrust) return bTrust - aTrust;
-        return new Date(b.post.createdAt).getTime() - new Date(a.post.createdAt).getTime();
+        const timeDiff = new Date(b.post.createdAt).getTime() - new Date(a.post.createdAt).getTime();
+        // Final id tie-break keeps arrangement deterministic across pages —
+        // without it, equal-score rows shuffle between fetches (visual glitch).
+        if (timeDiff !== 0) return timeDiff;
+        return String(a.post.id).localeCompare(String(b.post.id));
       })
       .slice(0, limit);
 
