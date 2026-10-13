@@ -2225,3 +2225,24 @@ CI build verification (tsc/jest/build in an env with node_modules); prod-verify 
 **Notes / Blockers:**
 - Runner has no node_modules — full QA deferred to CI (standing arrangement).
 - Chain: execute-feature → update-ai-system terminal sync executed in this session (not just sync-context).
+
+## Session — 2026-10-13 (Fix-build: searchService viewerId type error)
+
+**Completed:**
+- Build fix: `normalizeSearchParams` return type excluded optional `viewerId` from the `Required<>` set (`Required<Omit<SearchParams,"cursor"|"region"|"postType"|"viewerId">> & Pick<...,"viewerId">`) + `viewerId: input.viewerId` passthrough — resolves the Vercel `Property 'viewerId' is missing` type failure. `search()` behavior unchanged (viewer still resolved from raw input).
+- QA per user directive (first real run with deps): `npm install` (1518 packages, prisma generate warn on missing DIRECT_LOCAL_DB only), `npx tsc --noEmit` clean (0 errors), jest 612/615 (74 suites; all 3 search suites pass), eslint N/A (no flat config in repo; Vercel skips linting).
+- Pre-existing failures documented, not touched: 5 suites (locationSuggestBroad limit-clamp, dislikeSync avatarConfig-text, pwa REVIEW url, locationSuggestions Request-undefined, blogShareVariables uncrypto ESM) fail identically on base via git-stash A/B — unrelated to this fix, minimal-fix contract.
+- Docs: repair-system entry, test-results row, this session-log entry; sync-context drift check (no module/import/structure/task-queue drift from a one-line type fix — nothing to sync).
+
+**Files Modified:**
+- Edited: `app/lib/services/searchService.ts`, `ai-system/repair-system.md`, `ai-system/testing/test-results.md`, `ai-system/checkpoints/session-log.md` (this entry), `ai-system/checkpoints/in-progress.md` (cleared)
+
+**Next Task:**
+CI/Vercel build to confirm green; pre-existing 5-suite test failures are separate work (owner to triage).
+
+**Assumptions Made:**
+- `viewerId` passthrough on the normalized result is additive convenience; no caller depends on it yet.
+
+**Notes / Blockers:**
+- Runner now HAS node_modules (installed this session) — future sessions can run real tsc/jest instead of deferring to CI.
+- Chain: fix-build → repair-system pattern added → sync-context executed (drift check, no mutations) → in-progress cleared at close.
