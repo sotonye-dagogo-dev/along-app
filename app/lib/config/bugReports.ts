@@ -10,3 +10,23 @@ export const BUG_REPORT_STATUS_COPY: Record<string, string> = {
   CLOSED: "This report is now closed. Thanks for helping improve Along — file a new report if anything resurfaces.",
   DEFAULT: "The status of your report changed. Thanks for helping improve Along.",
 } as const;
+
+/**
+ * Admin action-modal copy (config-driven). The modal handles status changes
+ * + custom note entry + screenshot review in one place so admins never have
+ * to accept the default note blindly. Custom notes are sanitized + capped
+ * server-side; empty input falls back to the status default copy.
+ */
+export const BUG_REPORT_ACTION_MODAL = {
+  title: "Update report",
+  description: "Change status, optionally replace the reporter note, and review screenshots before confirming.",
+  noteLabel: "Note sent to reporter (optional — blank uses the default)",
+  notePlaceholder: "e.g. Fixed in the latest release — please refresh and confirm…",
+  noteMaxLength: 1000,
+  useDefaultLabel: (status: string) => `Use default note for ${status.replace("_", " ")}`,
+  confirmLabel: "Confirm update",
+  cancelLabel: "Cancel",
+  statusLabel: "Status",
+  screenshotsLabel: "Screenshots",
+  noScreenshots: "No screenshots attached to this report.",
+} as const;

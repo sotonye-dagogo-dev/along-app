@@ -10,6 +10,7 @@ import { getAllPosts as getSeedPosts } from "@/app/lib/utils/blog";
 import { sanitizeEmailHtml, stripTags } from "@/app/lib/utils/emailSanitize";
 import {
   BLOG_MANAGEMENT_CONFIG,
+  DEFAULT_BLOG_POSTS,
   normalizeSlug,
   isBlogStatus,
 } from "@/app/lib/config/blogManagement";
@@ -53,6 +54,48 @@ export async function getManagedPosts(): Promise<ManagedBlogPost[]> {
       .filter((p): p is ManagedBlogPost => p !== null);
   } catch {
     return [];
+  }
+}
+
+/**
+ * Hardcoded default posts (config-driven fallbacks). Returned sanitized and
+ * never throws — powers the admin "restore to default" rollback.
+ */
+export function getDefaultBlogPosts(): ManagedBlogPost[] {
+  try {
+    const now = new Date().toISOString();
+    return DEFAULT_BLOG_POSTS.map((d) => ({
+      slug: d.slug,
+      title: d.title,
+      description: d.description,
+      date: d.date,
+      author: d.author,
+      category: d.category,
+      image: d.image,
+      readingTime: d.readingTime,
+      content: d.content,
+      status: d.status,
+      updatedAt: now,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Merge hardcoded defaults UNDER stored rows (stored wins per-slug, new
+ * defaults backfill) — same contract as mergeEmailTemplatesWithDefaults so
+ * config updates never overwrite DB-saved admin edits.
+ */
+export function mergeBlogPostsWithDefaults(stored: ManagedBlogPost[]): ManagedBlogPost[] {
+  try {
+    const bySlug = new Map((Array.isArray(stored) ? stored : []).map((p) => [p.slug, p]));
+    for (const d of getDefaultBlogPosts()) {
+      if (!bySlug.has(d.slug)) bySlug.set(d.slug, d);
+    }
+    return [...bySlug.values()];
+  } catch {
+    return Array.isArray(stored) ? stored : [];
   }
 }
 

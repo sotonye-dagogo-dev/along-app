@@ -68,8 +68,10 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { bugId, bugIds, status, reviewerId, action } = body as {
+    const { bugId, bugIds, status, reviewerId, action, statusNote } = body as {
       bugId?: string; bugIds?: string[]; status?: string; reviewerId?: string; action?: string;
+      /** Optional admin-entered reporter note (sanitized + capped server-side). */
+      statusNote?: string;
     };
     const targets: string[] = bugIds?.length ? bugIds : bugId ? [bugId] : [];
 
@@ -97,7 +99,12 @@ export async function PATCH(request: NextRequest) {
 
       // User-facing lifecycle emails + in-app ping for status transitions the
       // reporter cares about (IN_PROGRESS / RESOLVED / CLOSED). Best-effort,
-      // never fails the PATCH — keeps admin UX snappy.
+      // never fails the PATCH — keeps admin UX snappy. An admin-entered
+      // `statusNote` overrides the default copy (sanitized + capped here so
+      // the modal input can never inject HTML or blow up email layout).
+      const customNote = typeof statusNote === "string" && statusNote.trim()
+        ? statusNote.trim().slice(0, 1000)
+        : null;
       if (["IN_PROGRESS", "RESOLVED", "CLOSED"].includes(String(status))) {
         void (async () => {
           try {
@@ -112,13 +119,15 @@ export async function PATCH(request: NextRequest) {
             const { sendBugReportStatusEmail } = await import("@/app/lib/services/emailService");
             const { createNotification } = await import("@/app/lib/services/notificationService");
             const { BUG_REPORT_STATUS_COPY } = await import("@/app/lib/config/bugReports");
+            const { stripTags } = await import("@/app/lib/utils/emailSanitize");
             for (const r of reports) {
               if (!r.reporterId) continue;
-              const note = (BUG_REPORT_STATUS_COPY as Record<string, string>)[String(r.status)] ?? (BUG_REPORT_STATUS_COPY as Record<string, string>).DEFAULT;
+              const fallback = (BUG_REPORT_STATUS_COPY as Record<string, string>)[String(r.status)] ?? (BUG_REPORT_STATUS_COPY as Record<string, string>).DEFAULT;
+              const note = customNote ? stripTags(customNote).slice(0, 1000) || fallback : fallback;
               void createNotification({
                 type: "REPORT",
                 actorId: (user.id as string) ?? r.reporterId,
-                message: `Your bug report "${r.title.slice(0, 100)}" is now ${String(r.status).replace("_", " ")}.`,
+                message: `Your bug report "${r.title.slice(0, 100)}" is now ${String(r.status).replace("_", " ")}. ${note.slice(0, 200)}`,
                 recipientIds: [r.reporterId],
                 allowSelf: true,
               });
@@ -214,15 +223,21 @@ export async function PATCH(request: NextRequest) {
     } catch { /* non-critical */ }
 
     // Outcome notification to the reporter (non-critical; anonymity kept —
-    // message carries no admin or author identity).
+    // message carries no admin or author identity). Admin-entered note
+    // overrides the canned outcome copy when provided.
     try {
       if (report.reporterId) {
         const { createNotification } = await import("@/app/lib/services/notificationService");
+        const { stripTags } = await import("@/app/lib/utils/emailSanitize");
+        const outcomeDefault = OUTCOME_COPY[action as string] ?? OUTCOME_COPY.DISMISS;
+        const outcome = typeof statusNote === "string" && statusNote.trim()
+          ? stripTags(statusNote.trim()).slice(0, 1000) || outcomeDefault
+          : outcomeDefault;
         await createNotification({
           type: "MODERATION",
           actorId: user.id as string,
           postId: report.postId ?? undefined,
-          message: OUTCOME_COPY[action as string] ?? OUTCOME_COPY.DISMISS,
+          message: outcome,
           recipientIds: [report.reporterId],
         });
       }
