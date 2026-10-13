@@ -17,7 +17,6 @@
   "nav.admin": "Admin",
   "nav.dashboard": "Dashboard",
   "nav.moderation": "Moderation",
-
   "auth.welcomeBack": "You don come back o",
   "auth.signInToContinue": "Sign in make you continue for Along",
   "auth.email": "Email",
@@ -29,7 +28,6 @@
   "auth.noAccount": "You no get account?",
   "auth.createOne": "Create one",
   "auth.continueAsGuest": "Continue as guest",
-
   "auth.createAccount": "Create account",
   "auth.joinCommunity": "Join the Along community",
   "auth.firstName": "First name",
@@ -37,7 +35,6 @@
   "auth.username": "Username",
   "auth.signUpWithGoogle": "Sign up with Google",
   "auth.haveAccount": "You don get account?",
-
   "landing.hero.title": "Navigate Together.",
   "landing.hero.subtitle": "Share routes. Find beta waka. Together.",
   "landing.hero.getStarted": "Begin →",
@@ -54,12 +51,10 @@
   "landing.feedPreview": "Fresh gist from community",
   "landing.feedEmpty": "Route never land yet —",
   "landing.feedEmptyCta": "na you go first share one",
-
   "feed.shareRoute": "How far? Where we wan go?",
   "feed.newPosts": "{count} new post",
   "feed.newPosts_plural": "{count} new posts",
   "feed.empty": "No posts yet. Be the first to share a route!",
-
   "common.loading": "Dey load...",
   "common.error": "Something scatter",
   "common.tryAgain": "Try again",
@@ -70,7 +65,6 @@
   "common.search": "Search",
   "common.back": "Back",
   "common.copy": "Copy",
-
   "footer.about": "About",
   "footer.contact": "Holla Us",
   "footer.privacy": "Privacy",
@@ -83,24 +77,19 @@
   "footer.blog": "Blog",
   "footer.faq": "FAQ",
   "footer.reportBug": "Report Bug",
-
   "theme.light": "Switch to light mode",
   "theme.dark": "Switch to dark mode",
-
   "guest.banner": "You dey browse as guest — sign up make you share routes, earn rewards, and join community.",
   "guest.signIn": "Sign In",
   "guest.signUp": "Sign Up",
-
   "offline.title": "You offline o",
   "offline.description": "Check your connection and try again.",
-
   "forgotPassword.title": "You forget password?",
   "forgotPassword.description": "Enter your email make we send you reset instructions.",
   "forgotPassword.emailSent": "Check your email",
   "forgotPassword.emailSentDesc": "If account dey for {email}, we don send password reset message.",
   "forgotPassword.sendReset": "Send Reset Link",
   "forgotPassword.backToSignIn": "Back to sign in",
-
   "common.retry": "Try again",
   "common.refresh": "Refresh am",
   "common.close": "Close",
@@ -122,7 +111,6 @@
   "common.passwordPlaceholder": "Enter your password",
   "common.usernamePlaceholder": "Choose username",
   "common.offlineBlocked": "You dey offline. Dis one need connection — try again when you don come back online.",
-
   "pwa.offlineBanner": "You dey offline. We dey show wetin we save — your changes go sync when you reconnect.",
   "pwa.backOnline": "You don come back online. Refresh make you stay updated.",
   "pwa.cachedNotice": "Na saved data we dey show offline. Refresh when you come back online make you current.",
@@ -138,7 +126,6 @@
   "pwa.updateBody": "New version of Along don ready. Update am make you get di latest fixes and features.",
   "pwa.updateCta": "Update now",
   "pwa.updateLater": "Later",
-
   "push.enablePrompt": "On push notifications make you no miss replies, mentions, and rewards.",
   "push.enable": "On am",
   "push.enabling": "E dey on…",
@@ -154,18 +141,15 @@
   "push.unavailable": "Push service never set now. In-app notifications still dey work.",
   "push.unsupported": "Dis device or browser no support push notifications.",
   "push.needsOnline": "Connect internet first make you fit on notifications.",
-
   "otp.expiryNote": "Code go expire in 15 minutes.",
   "otp.newestOnly": "If you request new code, old ones no go work again — use di newest email.",
   "otp.resendIn": "Resend code in",
   "otp.resend": "You no see am? Resend",
   "otp.sending": "E dey send…",
   "otp.waitBeforeResend": "Abeg wait small before you request anoda code.",
-
   "offline.cachedFeed": "Na your saved feed we dey show. New posts go show when you reconnect.",
   "offline.cachedExplore": "Na saved routes we dey show. Refresh when you come back online for latest.",
   "offline.queueNote": "Wetin you do offline go sync by itself when you reconnect.",
-
   "post.like": "Like",
   "post.dislike": "Dislike",
   "post.comment": "Comment",
@@ -177,21 +161,17 @@
   "post.delete": "Delete",
   "post.archive": "Archive",
   "post.unarchive": "Unarchive",
-
   "notifications.title": "Notifications",
   "notifications.empty": "Everywhere don set, nothing remain.",
   "notifications.markAllRead": "Mark all as read",
-
   "profile.editProfile": "Edit profile",
   "profile.signOut": "Sign out",
   "profile.leaderboard": "Leaderboard",
   "profile.bioPlaceholder": "Tell community who you be…",
-
   "pwa.collapse": "Reduce am",
   "pwa.expand": "Offline gist",
   "pwa.collapsedLabel": "Offline",
   "pwa.offlineBannerCollapsed": "You dey offline",
-
   "about.hero.title": "Our Tori",
   "about.hero.subtitle": "Dem born Along for Lagos, for di millions of daily commuters wey dey waka West Africa most correct cities. We dey turn wetin people don experience to correct route sense.",
   "about.why.title": "Why Along",
@@ -212,23 +192,19 @@
   "about.reviewCta.body": "Tell commuters how e go — your rating dey keep routes honest.",
   "about.reviewCta.signIn": "Sign in make you drop review",
   "about.reviewCta.leave": "Drop review",
-
   "faq.title": "Questions Wey People Dey Ask",
   "faq.subtitle": "Everything you suppose know about Along.",
   "faq.searchPlaceholder": "Find question...",
   "faq.noResults": "We no see anything. Try anoda word.",
-
   "feed.title": "Home",
   "feed.subtitle": "Fresh routes from people you dey follow",
   "feed.refresh": "Refresh feed",
   "feed.offlineHint": "Na saved posts you dey see. Reconnect come refresh for latest.",
-
   "landing.stats.routes": "Routes wey people don share",
   "landing.stats.commuters": "Commuters",
   "landing.stats.cities": "Lagos · Abuja · Port Harcourt",
   "landing.cta.signIn": "Sign in",
   "landing.cta.continueToFeed": "Enter feed",
-
   "leaderboard.title": "Leaderboard",
   "leaderboard.subtitle": "Ogas wey don gather pass with reward points",
   "leaderboard.empty": "Nobody don rank yet. Share route make you top di board.",
@@ -238,7 +214,6 @@
   "leaderboard.prev": "Prev",
   "leaderboard.next": "Next",
   "leaderboard.pageStatus": "Page {page} of {totalPages} · {total} ranked",
-
   "invite.title": "Invite Friends",
   "invite.subtitle": "Share your invite link take earn rewards",
   "invite.perInvite": "{sent} pts per invite you send · {accepted} pts per pesin wey gree",
@@ -252,7 +227,6 @@
   "invite.copied": "Don copy invite link",
   "invite.yourCode": "Your invite code",
   "invite.viewLeaderboard": "See full leaderboard",
-
   "reviews.tab": "Reviews",
   "reviews.title": "Wetin People Talk About Platform",
   "reviews.subtitle": "Wetin community dey feel about Along",
@@ -273,21 +247,24 @@
   "reviews.onePerUser": "You fit drop one review — if you send again e go update am.",
   "reviews.faqTitle": "How reviews take dey work",
   "reviews.faqBody": "Go your profile, open Reviews tab, pick star rating come write small tori. Dem dey check reviews before e show for public, and you go get tank-you notification once your own don enter.",
-
   "common.submit": "Send am",
   "common.send": "Send",
   "common.signIn": "Sign in",
   "common.getStarted": "Start now",
   "common.viewProfile": "See profile",
-
   "footer.company": "Along",
   "footer.features": "Wetin You Fit Do",
   "footer.community": "Community",
   "footer.joinDiscord": "Join Discord",
   "footer.rights": "All rights reserved.",
   "footer.builtBy": "Na",
-
   "empty.feed.title": "Post never land yet",
   "empty.feed.desc": "Follow some people or explore routes make your feed full.",
-  "empty.feed.action": "Find Routes"
+  "empty.feed.action": "Find Routes",
+  "footer.leaveReview": "Drop Review",
+  "avatar.menu.change": "Change avatar",
+  "avatar.menu.view": "View am big",
+  "avatar.menu.title": "Profile photo",
+  "avatar.menu.hint": "Pick style, seed & background",
+  "avatar.menu.camera": "Avatar options"
 }

@@ -2172,3 +2172,32 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner — node logic check green (normalize/estimate cases), grep confirms zero `prose-p:text-text-secondary` left in app code, wiring grep confirms both renderers consume the shared classes + Studio sends readingTime; full tsc/jest/build deferred to CI (standing arrangement).
 **Compliance:** non-breaking (no migration/deps/API removals; config additions only; stored-wins + word-count fallback preserved).
 **Chain:** execute-feature → in-progress (written) → session-log (here) + task-queue row + design-system/architecture freshness → in-progress cleared at close; no architecture impact (no migration/routes/deps) so update-ai-system deep sync not triggered per contract.
+---
+## Session 2026-10-13 — Universal post cards + avatar menu + reviews tape (execute-feature)
+**Directive:** user post interactions available across the platform (menu copy/edit/delete/archive/report with owner-logic on every surface, functional everywhere); liked/bookmark fill + firing parity on profile tabs; bookmarks page on the universal card with search; profile tabs with search; desktop camera trigger + full-avatar trigger + edit-modal avatar entry (flows separate); reviews carousel on landing/invite + footer review-form link; avatar + post-menu FAQs. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Found:** bookmarks custom list (no card/menu/actions, wrong Saved time); search cards interaction-dead + unenriched API; ProfilePostCard missing onEdit (Edit hidden on profiles); other-profile liked tab self-filtered to empty + missing alias + misattribution; no AvatarMenu (direct-to-editor, inert avatar, no modal entry); reviews tape About-only, footer link absent, FAQ gaps.
+**Implemented:**
+- `ProfilePostCard` — full interaction parity + in-place edit (Share/Request modals, PATCH, feedStream + local update, toasts); used by bookmarks page, search results, both profile pages.
+- `bookmarks/page.tsx` — rewritten on ProfilePostCard + Saved bookmarkedAt + search filter.
+- `search/SearchPage.tsx` — ProfilePostCard (menu + firing actions), dead comment-modal state removed.
+- `api/bookmarks` — viewer like/dislike enrichment + bookmarkedAt; `searchService` + `api/search` — viewerId enrichment (fresh + cached).
+- `profile/page.tsx` + `profile/[username]/page.tsx` — tab search boxes, liked-tab fix, alias + attribution fixes, avatar menu wiring.
+- `AvatarMenu.tsx` (NEW) + `avatar.ts` AVATAR_MENU_CONFIG + `EditProfileModal` avatar row (flow untouched).
+- `ReviewsCarouselSection.tsx` (NEW) on landing (below blogs) + invite (compact below blogs); footer Leave a Review; en/pcm keys.
+- `faq.ts` — post-menu-options, Profile & Avatar category (2), where-reviews-appear update, pcm twins.
+**Files Modified:**
+- app/components/features/profile/ProfilePostCard.tsx — interactions + edit modals
+- app/(dashboard)/bookmarks/page.tsx — universal card + search + bookmarkedAt
+- app/(dashboard)/search/SearchPage.tsx — universal card, dead code removed
+- app/api/bookmarks/route.ts — like/dislike + bookmarkedAt enrichment
+- app/lib/services/searchService.ts + app/api/search/route.ts — viewerId enrichment
+- app/(dashboard)/profile/page.tsx — search, avatar menu, modal trigger
+- app/(dashboard)/profile/[username]/page.tsx — search, liked-tab/alias/attribution fixes
+- app/components/features/profile/AvatarMenu.tsx (NEW) + index.ts + avatar.ts config + EditProfileModal.tsx
+- app/components/features/reviews/ReviewsCarouselSection.tsx (NEW) + index.ts + (public)/page.tsx + invite/page.tsx + footer.ts + en/pcm locales
+- app/lib/config/faq.ts — 4 FAQ entries + category + pcm
+**Next Task:** CI build verification (tsc/jest/build in an env with node_modules); manual click-through of edit-on-profile, bookmark search, avatar menu, review tapes.
+**Assumptions Made:** search API rows carry counts at runtime (interface extended, no select change); cached search enrichment per-request is cheap enough (3 small IN-queries, same as /api/posts); IIFE filter in own-profile is acceptable (matches codebase inline style).
+**Notes / Blockers:** runner has no node_modules — full QA deferred to CI (standing arrangement); tsc output is missing-module noise only. update-ai-system deep sync: new components (AvatarMenu, ReviewsCarouselSection) + API enrichment = architecture impact → repo-map/dependency-graph/architecture freshness updated alongside this entry.
+**Compliance:** non-breaking (no migration/deps/API removals; superset shapes; stored-wins untouched).
+**Chain:** execute-feature → in-progress (written) → session-log (here) → dev-history + task-queue → update-ai-system terminal sync → in-progress cleared at close.

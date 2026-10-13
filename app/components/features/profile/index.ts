@@ -1,6 +1,7 @@
 export { RewardsPanel } from "./RewardsPanel"
 export { EditProfileModal } from "./EditProfileModal"
 export { AvatarEditor } from "./AvatarEditor"
+export { AvatarMenu, AvatarCameraBadge } from "./AvatarMenu"
 export { UserList } from "./UserList"
 export { ProfilePostCard } from "./ProfilePostCard"
 export { EarlyAdopterBadge, EarlyAdopterBadgeFromStatus } from "./EarlyAdopterBadge"
