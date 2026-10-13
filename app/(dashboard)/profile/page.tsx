@@ -2,13 +2,13 @@
 
 import React, { useState } from "react"
 import Link from "next/link"
-import { Camera, LogOut, Link2, Trophy, MailCheck, AlertTriangle } from "lucide-react"
+import { LogOut, Link2, Trophy, MailCheck, AlertTriangle, Search } from "lucide-react"
 import { isAdminRole } from "@/app/lib/config/navigation"
 import { PROFILE_QUICK_LINKS_CONFIG } from "@/app/lib/config/profileQuickLinks"
 import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import dynamic from "next/dynamic"
-import { RewardsPanel, EditProfileModal, EarlyAdopterBadgeFromStatus } from "@/app/components/features/profile"
+import { RewardsPanel, EditProfileModal, EarlyAdopterBadgeFromStatus, AvatarMenu, AvatarCameraBadge } from "@/app/components/features/profile"
 import { ReviewsPanel } from "@/app/components/features/reviews"
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 import { AuthLinkPanel } from "@/app/components/features/profile/AuthLinkPanel"
@@ -120,7 +120,9 @@ export default function OwnProfilePage() {
   const [accountTab, setAccountTab] = useState<AccountTab>("connected")
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAvatarEditor, setShowAvatarEditor] = useState(false)
+  const [showAvatarMenu, setShowAvatarMenu] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
+  const [tabFilter, setTabFilter] = useState("")
 
   // Deep link: /profile#reviews (About CTA panel) opens the Reviews tab;
   // ?tab=security (unverified-login + notification CTA) opens Email & Security.
@@ -177,9 +179,11 @@ export default function OwnProfilePage() {
     "/api/rewards/history",
     { ttlSec: 300, enabled: ready }
   )
-  // Per-tab post lists (posts / routes / requests / liked / bookmarks / archived).
+  // Per-tab post query URL (posts / routes / requests / liked / bookmarks / archived).
   // The reviews tab owns no post query — ReviewsPanel fetches its own data.
-  const tabQuery =
+  // NOTE: named `tabPostsQuery` (not `tabQuery`) — `tabFilter` owns the search
+  // box state below. A same-name collision here broke the production build.
+  const tabPostsQuery =
     activeTab === "reviews"
       ? "/api/reviews?limit=1"
       : activeTab === "bookmarks"
@@ -195,7 +199,7 @@ export default function OwnProfilePage() {
               : `/api/posts?limit=20&userId=${userId}`
   const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
     ready ? `profile-tab:${userId}:${activeTab}` : null,
-    tabQuery,
+    tabPostsQuery,
     { ttlSec: 120, enabled: ready && activeTab !== "reviews" }
   )
 
@@ -274,22 +278,25 @@ export default function OwnProfilePage() {
       <div className="relative px-5">
         <div className="flex items-end gap-4 -mt-10 mb-3">
           <div className="relative">
-            <AppAvatar
-              src={profile.avatar ?? undefined}
-              alt={`${profile.firstName} ${profile.lastName}`}
-              size={80}
-              config={profile.avatarConfig ?? undefined}
-              verified={profile.verified}
-              linkToProfile={false}
-              className="border-3 border-bg-base"
-            />
+            {/* Entire avatar triggers the avatar menu (camera badge too) —
+                visible on desktop and mobile alike. */}
             <button
-              onClick={() => setShowAvatarEditor(true)}
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-circle bg-bg-card border-2 border-bg-base flex items-center justify-center cursor-pointer text-text-secondary hover:text-primary transition-colors duration-fast"
-              aria-label="Edit avatar"
+              onClick={() => setShowAvatarMenu(true)}
+              className="block rounded-circle cursor-pointer border-none bg-transparent p-0"
+              aria-label="Open avatar options"
+              title="Avatar options"
             >
-              <Camera size={13} />
+              <AppAvatar
+                src={profile.avatar ?? undefined}
+                alt={`${profile.firstName} ${profile.lastName}`}
+                size={80}
+                config={profile.avatarConfig ?? undefined}
+                verified={profile.verified}
+                linkToProfile={false}
+                className="border-3 border-bg-base"
+              />
             </button>
+            <AvatarCameraBadge onOpen={() => setShowAvatarMenu(true)} />
           </div>
         </div>
 
@@ -454,7 +461,7 @@ export default function OwnProfilePage() {
               key={tab}
               role="tab"
               aria-selected={activeTab === tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => { setActiveTab(tab); setTabFilter("") }}
               className={`flex-1 min-w-[96px] sm:min-w-[110px] shrink-0 px-3 sm:px-4 py-3 text-center border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast relative whitespace-nowrap overflow-hidden text-ellipsis ${
                 activeTab === tab ? "text-primary" : "text-text-secondary hover:text-text-primary"
               }`}
@@ -467,6 +474,20 @@ export default function OwnProfilePage() {
           ))}
         </div>
 
+        {/* Search through this tab's posts (parity with bookmarks page). */}
+        {activeTab !== "reviews" && posts.length > 0 && (
+          <div className="relative mb-3">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+            <input
+              value={tabFilter}
+              onChange={(e) => setTabFilter(e.target.value)}
+              placeholder={`Search ${activeTab}…`}
+              aria-label={`Search ${activeTab}`}
+              className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-bg-card text-sm outline-none focus:border-primary"
+            />
+          </div>
+        )}
+
         <div className="flex flex-col gap-3 sm:gap-4 pb-8 min-w-0">
           {activeTab === "reviews" ? (
             <ReviewsPanel />
@@ -475,7 +496,17 @@ export default function OwnProfilePage() {
           {posts.length === 0 && !postsLoading && (
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
-          {posts.map((post) => (
+          {(() => {
+            const q = tabFilter.trim().toLowerCase()
+            const visible = !q ? posts : posts.filter((p) =>
+              (p.title ?? "").toLowerCase().includes(q) ||
+              (p.description ?? "").toLowerCase().includes(q) ||
+              (p.tags ?? []).some((t) => t.toLowerCase().includes(q)),
+            )
+            if (visible.length === 0 && posts.length > 0 && !postsLoading) {
+              return <AppEmptyState {...EMPTY_STATES.search} title="No matches" description={`Nothing in ${activeTab} matches “${tabFilter.trim()}”.`} />
+            }
+            return visible.map((post) => (
             <ProfilePostCard
               key={post.id}
               post={
@@ -522,7 +553,8 @@ export default function OwnProfilePage() {
                 )
               }
             />
-          ))}
+            ))
+            })()}
             </>
           )}
         </div>
@@ -538,6 +570,20 @@ export default function OwnProfilePage() {
           bio: profile.bio ?? "",
         }}
         onSubmit={handleEditProfile}
+        avatarSrc={profile.avatar ?? undefined}
+        avatarAlt={`${profile.firstName} ${profile.lastName}`}
+        avatarConfig={profile.avatarConfig ?? undefined}
+        onAvatarEdit={() => { setShowEditModal(false); setShowAvatarMenu(true) }}
+      />
+
+      <AvatarMenu
+        open={showAvatarMenu}
+        onClose={() => setShowAvatarMenu(false)}
+        src={profile.avatar ?? undefined}
+        alt={`${profile.firstName} ${profile.lastName}`}
+        config={profile.avatarConfig ?? undefined}
+        verified={profile.verified}
+        onChange={() => setShowAvatarEditor(true)}
       />
 
       <AvatarEditor

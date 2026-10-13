@@ -102,3 +102,19 @@ export function randomAvatarSeed(): string {
   const suffix = Math.floor(Math.random() * 99) + 1;
   return `${pick}-${suffix}`;
 }
+
+/**
+ * Avatar-menu registry (config-driven). The camera badge + avatar click open
+ * this menu — never the editor directly — so View / Change / (future) Upload
+ * stay in one metadata-driven place. Labels are dictionary-overridable.
+ */
+export const AVATAR_MENU_CONFIG = {
+  changeLabel: "Change avatar",
+  changeHint: "Pick a style, seed & background",
+  viewLabel: "View larger",
+  editProfileLabel: "Change avatar…",
+  cameraAriaLabel: "Avatar options",
+  avatarButtonAriaLabel: "Open avatar options",
+} as const;
+
+export type AvatarMenuConfig = typeof AVATAR_MENU_CONFIG;

@@ -29,7 +29,7 @@ Page Components (app/(auth|dashboard|admin|public|admin)/)
     → Feature Components (app/components/features/*)
         → posts/RequestRouteModal (route-request composer, response-mode ShareRouteModal)
         → suggestions/EndlessCarousel (scroll-based autoplay, own overflow wrapper, ENDLESS_CAROUSEL_CONFIG) + SuggestionsRail (mobile, xl:hidden, feed-owned) + FollowButton + About reviews tape (same wrapper, real /api/reviews + ReviewCtaPanel cadence [Sprint 25]) + blog/FeaturedBlogsSection (same wrapper, FEATURED_BLOGS_CONFIG + /api/blog; landing server-fed, about after reviews, invite after leaderboard [Sprint 52])
-        → reviews/ReviewsPanel (star form + guest gate + FAQ + list; own profile reviews tab + #reviews deep link; other-profile read-only authorId scope [Sprint 25])
+        → reviews/ReviewsPanel (star form + guest gate + FAQ + list; own profile reviews tab + #reviews deep link; other-profile read-only authorId scope [Sprint 25]) + reviews/ReviewsCarouselSection (same EndlessCarousel + CTA cadence; landing below blogs, invite compact below blogs [Sprint 53])
         → (public)/LandingCopy (landing i18n islands: hero/features/CTA/feed-preview [Sprint 25])
         → ui/SuggestionsPanel (live /api/suggestions: who-to-follow, open requests, trending tags)
     → App-level Hooks (app/hooks/useAuth, useFeedInteractions)
@@ -90,6 +90,7 @@ Client Cache Layer (app/lib/cache/memoryCache + app/lib/hooks/useCachedFetch)
     → TTL Map with prefix invalidation, never-throw (mirrors redis.ts semantics)
     → read-through + stale-while-revalidate + in-flight request dedup
     → Consumers: home feed (hydrates feedStream, pauses poll when tab hidden), notifications, analytics, post detail, profile, explore
+    → FeedStream [2026-10-13]: dedupePosts invariant on every merge (initial/more/poll/refresh), poll keeps current cursor, loadMore sends exclude + loadingMore guard, refresh keeps geo boost, FEED_STREAM_CONFIG knobs
 
 Service Layer (app/lib/services/*)
     → BaseRepository<T>
@@ -140,6 +141,7 @@ FeedService
     → PostModel, UserModel, LikeModel, BookmarkModel (Prisma)
     → Redis (feed caching)
     → Config: feedAlgorithm, cache
+    → Stable pagination [2026-10-13]: excludeIds (server-side notIn before scoring/slicing + backfill over-fetch) + deterministic id tie-break; guest feed honors exclude too
 
 SearchService (`app/lib/services/searchService.ts`, live 2026-10-08 — powers `GET /api/search`)
     → PostModel, UserModel (Prisma `contains`/`insensitive`, no migration; P2022 avatarConfig fallback)

@@ -1097,6 +1097,53 @@ renderer; audit with a `firstName[0]` grep.
 
 ---
 
+## Build Failure — `normalizeSearchParams` Return Type Requires `viewerId`
+
+**Symptom:**
+Vercel build failed at type-check: `./app/lib/services/searchService.ts:153:3
+Type error: Type '{ query; type; limit; region; postType; cursor }' is not
+assignable to type 'Required<Omit<SearchParams, "cursor" | "region" | "postType">>
+& Pick<SearchParams, "cursor" | "region" | "postType">' — Property 'viewerId'
+is missing but required in type 'Required<Omit<...>>'`. `next build` exits 1.
+
+**Root Cause:**
+`SearchParams.viewerId` is optional (`viewerId?: string` — guests have none),
+but the `normalizeSearchParams` return type applied `Required<>` over the full
+`Omit<SearchParams, "cursor"|"region"|"postType">`, which promotes the optional
+`viewerId` to a required `string`. The function body (correctly) never returned
+`viewerId` — `search()` resolves the viewer separately from the raw input —
+so the annotation demanded a property the implementation never provides. Same
+class as the earlier `ReviewStatus`/`UserRole` enum-string errors: the type at
+the checked expression doesn't match the runtime contract.
+
+**Fix Applied:**
+Return type narrowed to exclude `viewerId` from the `Required<>` set and carry
+it as an optional passthrough instead:
+`Required<Omit<SearchParams, "cursor"|"region"|"postType"|"viewerId">> &
+Pick<SearchParams, "cursor"|"region"|"postType"|"viewerId">`, with
+`viewerId: input.viewerId` added to the returned object. `search()` behavior
+unchanged (it still reads `viewerId` from the raw input, not the normalized
+result). Verified: `npx tsc --noEmit` clean (0 errors); all 3 search suites
+pass (`searchService`, `api/search`, `searchLinks`); full jest 612/615 with the
+5 failing suites confirmed pre-existing on the base commit (stash-verified:
+identical failures without this change — locationSuggestBroad, dislikeSync,
+pwa, locationSuggestions, blogShareVariables ESM/env issues, all unrelated).
+
+**Prevention:**
+Never apply `Required<>` over a params type containing legitimately-optional
+fields (viewer/session context, pagination cursors). Either exclude optional
+keys from the `Required<Omit<...>>` set or type the normalizer output as its
+own interface. Run `npx tsc --noEmit` with node_modules installed before
+pushing — this runner now has them (`npm install` completed 2026-10-13).
+
+**Files Affected:**
+- app/lib/services/searchService.ts
+
+**Date:** 2026-10-13
+**Status:** Active
+
+---
+
 ## Resolved Errors Archive
 > **Section summary:** Errors that have been fully resolved and are unlikely to recur. Kept for reference.
 
@@ -1165,4 +1212,46 @@ Any input hidden by config must also be skipped by validation — mirror hide ru
 - `app/components/features/posts/ShareRouteModal.tsx`
 
 **Date:** 2026-10-11
+**Status:** Active
+
+## QA Hardening 2026-10-13 — buildGeocodeUrl Limit-0 Clamp + REVIEW Resolver Omission
+
+**Symptom:**
+`locationSuggestBroad` suite: `buildGeocodeUrl("Lagos, Nigeria", 0)` produced `limit=1`, test (and the client contract) expected the configured default (`limit=6`). `pwa` suite: `resolvePushPayload("REVIEW", …)` returned `/notifications`, test + mirror + resolver doc comment all said `/about`.
+
+**Root Cause:**
+`buildGeocodeUrl` clamped with `Math.min(Math.max(parsed, 1), 10)`, folding invalid/zero limits to 1 instead of the configured default. `resolveNotificationRoute` documented `REVIEW → /about` and the push mirror had it, but the switch had no `REVIEW` case so it fell through to the generic default.
+
+**Fix Applied:**
+Clamp rule is now "finite && >= 1 ? min(parsed, 10) : default" (0/NaN/negative → default, oversized → 10). Added `case "REVIEW": return "/about"`. Both non-breaking (server clamps 1..10 regardless; REVIEW had no prior route).
+
+**Prevention:**
+Clamp helpers must distinguish "invalid → default" from "valid → clamp" — never fold garbage into a valid-looking boundary value. When a resolver's doc comment lists a case, the switch must contain it (review docs vs code).
+
+**Files Affected:**
+- `app/lib/config/locationSuggestions.ts`
+- `app/lib/config/notificationRoutes.ts`
+
+**Date:** 2026-10-13
+**Status:** Active
+
+## Jest Env Patterns — jsdom `Request is not defined` + uncrypto ESM (reused 2026-10-13)
+
+**Symptom:**
+`locationSuggestions` suite failed to load: `ReferenceError: Request is not defined` (imports `next/server` via `rateLimit.ts`; jsdom env has no fetch globals). `blogShareVariables` suite failed to load: `SyntaxError: Unexpected token 'export'` from `uncrypto` via `@upstash/redis` (same chain that broke `emailStudio` before).
+
+**Root Cause:**
+Server-helper suites default to the repo's jsdom test env. `next/server` needs fetch globals (present in node env); `@upstash/redis` pulls ESM `uncrypto` the CJS transform can't parse.
+
+**Fix Applied:**
+Pure server-helper suites get `/** @jest-environment node */` (same as `locationSuggestBroad`). Suites importing through `db/redis` get the hoisted `jest.mock("@/app/lib/db/redis")` no-op stub (mirrors safe-wrapper unconfigured behaviour; production untouched) — same stub as `emailStudio.test.ts`.
+
+**Prevention:**
+New server-side suites: start with the node docblock; if the import chain touches `@/app/lib/db/redis`, copy the emailStudio redis stub. Never touch production code to satisfy the jest transform.
+
+**Files Affected:**
+- `app/__tests__/config/locationSuggestions.test.ts`
+- `app/__tests__/services/blogShareVariables.test.ts`
+
+**Date:** 2026-10-13
 **Status:** Active

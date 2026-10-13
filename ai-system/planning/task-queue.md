@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: execute-feature 2026-10-13 (blog design compliance + reading-time studio input)
-> - last-synced: 2026-10-13 (blog design compliance close-out)
+> - last-synced: 2026-10-13 (QA hardening: 5 failing suites resolved, 630/630 green)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -698,3 +698,29 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Design compliance — `BLOG_CONTENT_PROSE_CLASSES` single source (body/li/strong/headings = text-primary); public `[slug]` page + Studio preview consume it; terms/privacy same-pattern sweep (p/li → primary) | [x] |
 | [S] | Reading-time studio input — bounds/meta/normalize/estimate in `blogManagement`; Studio number input wired through load/new/template/save (PUT sends readingTime); `blogStore` delegates clamp/estimate to helpers | [x] |
 | [S] | Tests — NEW `blogCompliance.test.ts` (prose tokens, bounds/meta, normalize clamp/reject, estimate fallback) | [x] |
+
+## Session 2026-10-13 — Universal post cards + avatar menu + reviews tape (execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration/deps/API removals; additive enrichment + components; stored shapes superset). QA in-runner: no node_modules — tsc shows only missing-module noise (pre-existing, all files); targeted re-reads + grep checks (no PostCard direct use outside feed/detail, menu on every card, locale keys present); full tsc/jest/build deferred to CI.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Universal card everywhere — bookmarks page rewritten on ProfilePostCard (menu + like/dislike/bookmark/share/comment all fire); search results switched PostCard → ProfilePostCard; feed/detail untouched | [x] |
+| [S] | Interaction parity — /api/bookmarks += _isLiked/_isDisliked + bookmarkedAt; searchService += viewerId enrichment (fresh + cached rows, guests false); /api/search threads viewer; profile liked-tab filter + isBookmarked alias + liked-row attribution fixed | [x] |
+| [M] | Profile edit in place — ProfilePostCard += onEdit → ShareRouteModal/RequestRouteModal edit mode (nature preserved), PATCH + feedStream.updatePost + local override + toast | [x] |
+| [S] | Tab search boxes — bookmarks page + own/other profile tabs get client filter (title/desc/tags/author) with no-match empty state | [x] |
+| [M] | Avatar menu — NEW AvatarMenu + AvatarCameraBadge + AVATAR_MENU_CONFIG; camera badge + full-avatar click open menu (desktop + mobile); EditProfileModal += avatar row trigger (submit flow untouched) | [x] |
+| [M] | Reviews tape — NEW ReviewsCarouselSection (EndlessCarousel reuse, CTA cadence, null when empty); landing (below blogs) + invite (below blogs, compact); footer += Leave a Review → /profile#reviews; en/pcm locale keys | [x] |
+| [S] | FAQs — NEW post-menu-options + avatar-management + avatar-not-showing (+pcm); where-reviews-appear updated (landing/invite); new Profile & Avatar category | [x] |
+
+## Session 2026-10-13 — QA hardening: 5 failing suites resolved (execute-feature)
+
+> **Section summary:** Directive close-out ("assure quality by resolving the failing suites/tests"). Non-breaking (2 minimal code-alignment fixes, 3 test-only env/expectation fixes; no migration, no new deps, no removed APIs). QA gate fully green with node_modules installed: `npx tsc --noEmit` 0 errors, `npx jest` 74/74 suites 630/630 tests (up from 612/615 — the 2 unloadable suites now contribute their tests), `next lint` clean on touched files.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | `buildGeocodeUrl` limit clamp — invalid/zero/NaN → configured default, oversized → 10 (was folded to 1) | [x] |
+| [S] | `resolveNotificationRoute` REVIEW → `/about` (doc comment + push mirror already said so; push/in-app agree) | [x] |
+| [S] | dislikeSync search assertion — stale inline `avatarConfig:` expectation updated for the universal-card refactor (SearchPage renders ProfilePostCard, which forwards the viewer avatarConfig internally) | [x] |
+| [S] | locationSuggestions suite — `@jest-environment node` (jsdom has no `Request` for the `next/server` chain) | [x] |
+| [S] | blogShareVariables suite — hoisted redis no-op stub (uncrypto ESM; same pattern as emailStudio) | [x] |

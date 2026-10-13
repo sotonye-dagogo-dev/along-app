@@ -2172,3 +2172,104 @@ Vercel deploy must confirm `next build` green (webpack CSS resolution + type-che
 **QA:** no node_modules in runner — node logic check green (normalize/estimate cases), grep confirms zero `prose-p:text-text-secondary` left in app code, wiring grep confirms both renderers consume the shared classes + Studio sends readingTime; full tsc/jest/build deferred to CI (standing arrangement).
 **Compliance:** non-breaking (no migration/deps/API removals; config additions only; stored-wins + word-count fallback preserved).
 **Chain:** execute-feature → in-progress (written) → session-log (here) + task-queue row + design-system/architecture freshness → in-progress cleared at close; no architecture impact (no migration/routes/deps) so update-ai-system deep sync not triggered per contract.
+---
+## Session 2026-10-13 — Universal post cards + avatar menu + reviews tape (execute-feature)
+**Directive:** user post interactions available across the platform (menu copy/edit/delete/archive/report with owner-logic on every surface, functional everywhere); liked/bookmark fill + firing parity on profile tabs; bookmarks page on the universal card with search; profile tabs with search; desktop camera trigger + full-avatar trigger + edit-modal avatar entry (flows separate); reviews carousel on landing/invite + footer review-form link; avatar + post-menu FAQs. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Found:** bookmarks custom list (no card/menu/actions, wrong Saved time); search cards interaction-dead + unenriched API; ProfilePostCard missing onEdit (Edit hidden on profiles); other-profile liked tab self-filtered to empty + missing alias + misattribution; no AvatarMenu (direct-to-editor, inert avatar, no modal entry); reviews tape About-only, footer link absent, FAQ gaps.
+**Implemented:**
+- `ProfilePostCard` — full interaction parity + in-place edit (Share/Request modals, PATCH, feedStream + local update, toasts); used by bookmarks page, search results, both profile pages.
+- `bookmarks/page.tsx` — rewritten on ProfilePostCard + Saved bookmarkedAt + search filter.
+- `search/SearchPage.tsx` — ProfilePostCard (menu + firing actions), dead comment-modal state removed.
+- `api/bookmarks` — viewer like/dislike enrichment + bookmarkedAt; `searchService` + `api/search` — viewerId enrichment (fresh + cached).
+- `profile/page.tsx` + `profile/[username]/page.tsx` — tab search boxes, liked-tab fix, alias + attribution fixes, avatar menu wiring.
+- `AvatarMenu.tsx` (NEW) + `avatar.ts` AVATAR_MENU_CONFIG + `EditProfileModal` avatar row (flow untouched).
+- `ReviewsCarouselSection.tsx` (NEW) on landing (below blogs) + invite (compact below blogs); footer Leave a Review; en/pcm keys.
+- `faq.ts` — post-menu-options, Profile & Avatar category (2), where-reviews-appear update, pcm twins.
+**Files Modified:**
+- app/components/features/profile/ProfilePostCard.tsx — interactions + edit modals
+- app/(dashboard)/bookmarks/page.tsx — universal card + search + bookmarkedAt
+- app/(dashboard)/search/SearchPage.tsx — universal card, dead code removed
+- app/api/bookmarks/route.ts — like/dislike + bookmarkedAt enrichment
+- app/lib/services/searchService.ts + app/api/search/route.ts — viewerId enrichment
+- app/(dashboard)/profile/page.tsx — search, avatar menu, modal trigger
+- app/(dashboard)/profile/[username]/page.tsx — search, liked-tab/alias/attribution fixes
+- app/components/features/profile/AvatarMenu.tsx (NEW) + index.ts + avatar.ts config + EditProfileModal.tsx
+- app/components/features/reviews/ReviewsCarouselSection.tsx (NEW) + index.ts + (public)/page.tsx + invite/page.tsx + footer.ts + en/pcm locales
+- app/lib/config/faq.ts — 4 FAQ entries + category + pcm
+**Next Task:** CI build verification (tsc/jest/build in an env with node_modules); manual click-through of edit-on-profile, bookmark search, avatar menu, review tapes.
+**Assumptions Made:** search API rows carry counts at runtime (interface extended, no select change); cached search enrichment per-request is cheap enough (3 small IN-queries, same as /api/posts); IIFE filter in own-profile is acceptable (matches codebase inline style).
+**Notes / Blockers:** runner has no node_modules — full QA deferred to CI (standing arrangement); tsc output is missing-module noise only. update-ai-system deep sync: new components (AvatarMenu, ReviewsCarouselSection) + API enrichment = architecture impact → repo-map/dependency-graph/architecture freshness updated alongside this entry.
+**Compliance:** non-breaking (no migration/deps/API removals; superset shapes; stored-wins untouched).
+**Chain:** execute-feature → in-progress (written) → session-log (here) → dev-history + task-queue → update-ai-system terminal sync → in-progress cleared at close.
+
+## Session — 2026-10-13 (Feed de-glitch + profile tabQuery build fix)
+
+**Completed:**
+- Build fix: renamed colliding `tabQuery` identifiers in `app/(dashboard)/profile/page.tsx` + `profile/[username]/page.tsx` (search state → `tabFilter`, query URL → `tabPostsQuery`) — resolves the Vercel `Identifier 'tabQuery' has already been declared` failure.
+- Feed hardening: `excludeIds` stable pagination (service + route + guest path), deterministic id tie-break, `FEED_STREAM_CONFIG` knobs, exported `dedupePosts` invariant on all stream merges, poll cursor preservation, loadMore exclude + re-entrancy guard, retained geo boost, home single-subscription + single refresh, observer deps, useCachedFetch url dep.
+- Tests: new `app/__tests__/config/feedDedup.test.ts`.
+- Docs: dev-history entry, dependency-graph feed rows, task-queue last-synced, in-progress cleared (update-ai-system terminal sync).
+
+**Files Modified:**
+- Edited: `app/(dashboard)/profile/page.tsx`, `app/(dashboard)/profile/[username]/page.tsx`, `app/(dashboard)/home/page.tsx`, `app/api/posts/feed/route.ts`, `app/lib/services/feedService.ts`, `app/lib/streams/feedStream.ts`, `app/lib/config/feedAlgorithm.ts`, `app/lib/config/index.ts`, `app/lib/hooks/useCachedFetch.ts`
+- New: `app/__tests__/config/feedDedup.test.ts`
+- Docs: `summaries/dev-history.md`, `checkpoints/session-log.md` (this entry), `planning/task-queue.md` (last-synced), `index/dependency-graph.md`, `checkpoints/in-progress.md` (cleared)
+
+**Next Task:**
+CI build verification (tsc/jest/build in an env with node_modules); prod-verify no duplicate posts across feed pages + profile tabs render after the rename.
+
+**Assumptions Made:**
+- `exclude` ids match cuid-ish charset (alphanumeric/`_`/`-`, ≤64 chars); anything else is dropped server-side.
+- First-seen order is the render contract (older page wins on overlap).
+
+**Notes / Blockers:**
+- Runner has no node_modules — full QA deferred to CI (standing arrangement).
+- Chain: execute-feature → update-ai-system terminal sync executed in this session (not just sync-context).
+
+## Session — 2026-10-13 (Fix-build: searchService viewerId type error)
+
+**Completed:**
+- Build fix: `normalizeSearchParams` return type excluded optional `viewerId` from the `Required<>` set (`Required<Omit<SearchParams,"cursor"|"region"|"postType"|"viewerId">> & Pick<...,"viewerId">`) + `viewerId: input.viewerId` passthrough — resolves the Vercel `Property 'viewerId' is missing` type failure. `search()` behavior unchanged (viewer still resolved from raw input).
+- QA per user directive (first real run with deps): `npm install` (1518 packages, prisma generate warn on missing DIRECT_LOCAL_DB only), `npx tsc --noEmit` clean (0 errors), jest 612/615 (74 suites; all 3 search suites pass), eslint N/A (no flat config in repo; Vercel skips linting).
+- Pre-existing failures documented, not touched: 5 suites (locationSuggestBroad limit-clamp, dislikeSync avatarConfig-text, pwa REVIEW url, locationSuggestions Request-undefined, blogShareVariables uncrypto ESM) fail identically on base via git-stash A/B — unrelated to this fix, minimal-fix contract.
+- Docs: repair-system entry, test-results row, this session-log entry; sync-context drift check (no module/import/structure/task-queue drift from a one-line type fix — nothing to sync).
+
+**Files Modified:**
+- Edited: `app/lib/services/searchService.ts`, `ai-system/repair-system.md`, `ai-system/testing/test-results.md`, `ai-system/checkpoints/session-log.md` (this entry), `ai-system/checkpoints/in-progress.md` (cleared)
+
+**Next Task:**
+CI/Vercel build to confirm green; pre-existing 5-suite test failures are separate work (owner to triage).
+
+**Assumptions Made:**
+- `viewerId` passthrough on the normalized result is additive convenience; no caller depends on it yet.
+
+**Notes / Blockers:**
+- Runner now HAS node_modules (installed this session) — future sessions can run real tsc/jest instead of deferring to CI.
+- Chain: fix-build → repair-system pattern added → sync-context executed (drift check, no mutations) → in-progress cleared at close.
+
+## Session — 2026-10-13 (Execute-feature: QA hardening — 5 failing suites resolved)
+
+**Completed:**
+- Step 1 planning pass (task-queue/system-architecture/design-system/repair-system/project-context read) + Step 2 scope check passed (QA hardening in-scope, no architecture impact, no decision conflict); plan written to in-progress.md.
+- `npm install` (1518 packages, matches prior session) + real QA: `npx tsc --noEmit` clean (0 errors, the exact Vercel gate), jest reproduced 612/615 with the same 5 suites failing.
+- All 5 resolved, non-breaking, no migration/deps/API removals. Full gate now green: tsc 0 errors, jest 74/74 suites 630/630 tests (630 > 615 because the 2 unloadable suites now contribute their tests), `next lint` on touched files clean:
+  - locationSuggestBroad (code): `buildGeocodeUrl` limit-0/NaN folded to 1 — now invalid→configured default, oversized→10.
+  - pwa REVIEW (code): `resolveNotificationRoute` missing REVIEW case (doc comment + mirror already said /about) — added, push/in-app agree.
+  - dislikeSync (test): search assertion expected inline `avatarConfig:` in SearchPage, stale since the universal-card refactor — now asserts SearchPage renders ProfilePostCard, which forwards the useAuth viewer avatarConfig internally (behavior verified, intent preserved).
+  - locationSuggestions (test env): jsdom has no `Request` — added `@jest-environment node`.
+  - blogShareVariables (test env): uncrypto ESM via @upstash/redis — hoisted redis no-op stub (same pattern as emailStudio).
+- Docs: repair-system entries (limit-clamp/REVIEW + jest-env patterns), task-queue entry, this log; sync-context drift check (no new modules/imports/APIs — nothing to sync; no update-ai-system deep sync: no architecture impact, no [L]/[XL]).
+
+**Files Modified:**
+- Edited: `app/lib/config/locationSuggestions.ts`, `app/lib/config/notificationRoutes.ts`, `app/__tests__/config/dislikeSync.test.ts`, `app/__tests__/config/locationSuggestions.test.ts`, `app/__tests__/services/blogShareVariables.test.ts`, `ai-system/repair-system.md`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry), `ai-system/checkpoints/in-progress.md` (cleared)
+
+**Next Task:**
+Vercel/CI build to confirm green (tsc gate already clean locally); prod-verify REVIEW push lands on /about.
+
+**Assumptions Made:**
+- `buildGeocodeUrl` oversized-limit clamp to 10 matches the server's 1..10 clamp (existing comment contract).
+- Search-surface avatar parity rides on ProfilePostCard's internal useAuth viewer (which carries avatarConfig per AuthProvider) — no per-page prop needed.
+
+**Notes / Blockers:**
+- None. node_modules present (gitignored); full QA runnable in-runner from here on.
+- Chain: execute-feature Steps 1-5 → sync-context drift check executed (no mutations) → in-progress cleared at close. No deep-sync trigger (no architecture impact).

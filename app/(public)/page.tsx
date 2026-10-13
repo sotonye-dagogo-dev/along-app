@@ -5,6 +5,7 @@ import AppLogo from "../components/ui/AppLogo";
 import { HeroCtas, BottomCta, GuestContinueLink } from "@/app/components/ui/LandingCtas";
 import { LandingHeroCopy, LandingFeatures, LandingCtaHeading, LandingFeedPreviewHeading, LandingFeedEmpty } from "./LandingCopy";
 import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection";
+import { ReviewsCarouselSection } from "@/app/components/features/reviews/ReviewsCarouselSection";
 import { pickFeaturedBlogs } from "@/app/lib/config";
 import { getPublicBlogPosts } from "@/app/lib/utils/blogStore";
 import { prisma } from "@/app/lib/db/prisma";
@@ -224,6 +225,9 @@ export default async function LandingPage() {
           </div>
         </section>
       )}
+
+      {/* Community reviews: same endless tape as About, below blogs */}
+      <ReviewsCarouselSection />
 
       {/* CTA Section */}
       <section

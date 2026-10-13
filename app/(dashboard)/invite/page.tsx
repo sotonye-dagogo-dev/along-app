@@ -8,6 +8,7 @@ import { EMPTY_STATES } from "@/app/lib/config"
 import { buildInviteUrl } from "@/app/lib/config/inviteConfig"
 import { LEADERBOARD_LINKS_CONFIG } from "@/app/lib/config/leaderboardLinks"
 import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection"
+import { ReviewsCarouselSection } from "@/app/components/features/reviews/ReviewsCarouselSection"
 import { useTranslation } from "@/app/providers/I18nProvider"
 
 interface InviteData {
@@ -192,6 +193,11 @@ export default function InvitePage() {
 
       {/* Featured Blogs: same endless tape as home, after the leaderboard */}
       <FeaturedBlogsSection compact />
+
+      {/* Community reviews: same endless tape as About/landing, below blogs */}
+      <div className="mt-4 -mx-4">
+        <ReviewsCarouselSection compact />
+      </div>
     </div>
   )
 }

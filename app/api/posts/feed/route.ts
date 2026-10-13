@@ -9,6 +9,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor") ?? undefined;
     const limit = Math.min(Number(searchParams.get("limit")) || 10, 50);
+    // Stable pagination: client sends ids it already renders so score-ordered
+    // pages never resurface them (see feedService excludeIds).
+    const excludeIds = (searchParams.get("exclude") ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => /^[A-Za-z0-9_-]{1,64}$/.test(s))
+      .slice(0, 200);
+    const excludeSet = new Set(excludeIds);
 
     if (user) {
       // Optional behind-the-scenes nearby boost: ?lat=&lng= are best-effort
@@ -21,15 +29,18 @@ export async function GET(request: NextRequest) {
         Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180
           ? { lat, lng }
           : undefined;
-      const result = await feedService.getFeed(user.id as string, { cursor, limit, ...(viewerLocation ? { viewerLocation } : {}) });
+      const result = await feedService.getFeed(user.id as string, { cursor, limit, excludeIds, ...(viewerLocation ? { viewerLocation } : {}) });
       return NextResponse.json(result, { status: 200 });
     }
 
     // Guest access: return public posts (most recent). Archived posts are excluded.
+    // `exclude` is honored here too so infinite scroll never repeats rows.
+    const guestWhere =
+      excludeSet.size > 0 ? { isArchived: false, id: { notIn: [...excludeSet] } } : { isArchived: false };
     let posts: any[];
     try {
       posts = await (prisma.post.findMany as any)({
-        where: { isArchived: false },
+        where: guestWhere,
         take: limit + 1,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
         include: {

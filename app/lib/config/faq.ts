@@ -52,6 +52,12 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
           "Yes. Open the menu (⋯) on any of your posts — in the feed, on the post page, or on your profile — and choose Edit, Archive, or Delete. Destructive actions ask for confirmation first and can be undone. Edits may reset the recency component of your post's validity score, and a post's nature (route, request, or response) is always preserved through edits.",
       },
       {
+        id: "post-menu-options",
+        question: "What options are in the post menu (⋯) and who sees what?",
+        answer:
+          "Every post card — in the feed, on the post page, in search, in your bookmarks, and on profile tabs — has the same menu (⋯) with the same working actions. Everyone sees Copy link (copies the post URL for sharing). Visitors on someone else's post see Report (anonymous, goes to moderation with a thank-you notification on outcome). The author additionally sees Edit (reopens the matching composer, preserving route/request/response nature), Archive/Unarchive (hides from feeds, explore and search until restored), and Delete (confirmed first, undoable right after). Like, dislike, bookmark, share, and comment work from every surface too — comment opens the comment sheet with an expand-post link.",
+      },
+      {
         id: "share-route-validation",
         question: "Why is the Share button disabled, or why did my route not publish?",
         answer:
@@ -62,6 +68,24 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         question: "What happens to my draft if sharing fails?",
         answer:
           "Nothing is lost. Your composer input stays exactly as it was and any saved draft is kept, so you can fix the highlighted fields and try again. Drafts are only cleared after the server confirms your post was created — at which point it appears in your feed, on Explore, and in post management.",
+      },
+    ],
+  },
+  {
+    id: "profile-avatar",
+    category: "Profile & Avatar",
+    items: [
+      {
+        id: "avatar-management",
+        question: "How do I manage my profile photo / avatar?",
+        answer:
+          "Tap your avatar photo (or the small camera badge on it) anywhere on your profile to open avatar options — on desktop and mobile alike. Choose View larger to preview it, or Change avatar to open the avatar editor: pick a style first (People styles look like you; Robots and Fun are playful), type any word as the seed (your name, a nickname, or a city — the same word always gives the same avatar), try the one-tap ideas or Surprise me, then tweak the background and save. You can also reach the same editor from the Edit Profile modal via the Change avatar row — profile text editing and avatar editing stay separate, so saving one never clobbers the other.",
+      },
+      {
+        id: "avatar-not-showing",
+        question: "My avatar looks stale on old posts. What gives?",
+        answer:
+          "Posts store the avatar from when they were rendered, but profile tabs and cards always prefer the live avatar from the post row and fall back to your current profile header — so the newest avatar wins. If you still see an old image, pull to refresh or reopen the tab; cached lists refresh within about two minutes.",
       },
     ],
   },
@@ -175,7 +199,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "where-reviews-appear",
         question: "Where can I read other people's reviews?",
         answer:
-          "The About page carries the community reviews carousel — real, moderated reviews from commuters. Every so often you'll also see a small panel inviting you to add your own voice.",
+          "The About page carries the community reviews carousel — real, moderated reviews from commuters — and the same carousel now also appears on the landing page and the Invite page below the blogs. Every so often you'll also see a small panel inviting you to add your own voice (it links to your profile Reviews tab, or to sign-up for guests).",
       },
     ],
   },
@@ -235,6 +259,21 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     question: "I fit edit or delete post?",
     answer:
       "Yes. Open di menu (⋯) for any of your posts — for feed, for post page, or for your profile — come choose Edit, Archive, or Delete. For di ones wey dey pain body we go first ask you to confam and you fit undo am. Edit fit reset di recency part of your validity score, and di nature of post (route, request, or response) must remain di same even after edits.",
+  },
+  "post-menu-options": {
+    question: "Wetin dey inside post menu (⋯) and who dey see wetin?",
+    answer:
+      "Every post card — for feed, for post page, for search, for your bookmarks, and for profile tabs — get di same menu (⋯) with di same working actions. Everybody dey see Copy link (e dey copy post URL make you share). For pesin else post you go see Report (e dey anonymous, e dey go moderation). Di owner go still see Edit (e go reopen di correct composer, route/request/response nature go remain), Archive/Unarchive (e dey hide from feed, explore and search till you restore am), and Delete (we go confam first, you fit undo am after). Like, dislike, bookmark, share and comment dey work from everywhere too — comment dey open comment sheet with expand-post link.",
+  },
+  "avatar-management": {
+    question: "How I go take manage my profile photo / avatar?",
+    answer:
+      "Tap your avatar photo (or di small camera badge on top am) for anywhere for your profile to open avatar options — for desktop and mobile di same. Choose View larger to preview am, or Change avatar to open avatar editor: pick style first (People styles resemble you; Robots and Fun dey playful), type any word as seed (your name, nickname, or city — di same word go always give di same avatar), try one-tap ideas or Surprise me, den take background set am and save. You fit still reach di same editor from Edit Profile modal via Change avatar row — profile text editing and avatar editing dey separate, so to save one no go touch di oda.",
+  },
+  "avatar-not-showing": {
+    question: "My avatar look old for old posts. Wetin happen?",
+    answer:
+      "Posts dey store avatar from when dem render am, but profile tabs and cards dey always prefer live avatar from post row and dem dey fall back to your current profile header — so di newest avatar dey win. If you still dey see old image, pull to refresh or reopen di tab; cached lists dey refresh within about two minutes.",
   },
   "share-route-validation": {
     question: "Why Share button take lock, or why my route no publish?",
@@ -329,6 +368,6 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "where-reviews-appear": {
     question: "Where I fit read oda people reviews?",
     answer:
-      "About page dey carry community reviews carousel — real, moderated reviews from commuters. Once-once you go still see small panel wey dey invite you make you add your own voice.",
+      "About page dey carry community reviews carousel — real, moderated reviews from commuters — and di same carousel dey also for landing page and Invite page below blogs. Once-once you go still see small panel wey dey invite you make you add your own voice (e dey link to your profile Reviews tab, or to sign-up for guests).",
   },
 };

@@ -11,6 +11,8 @@ export interface SearchParams {
   postType?: SearchPostType;
   limit?: number;
   cursor?: string;
+  /** Viewer for interaction enrichment (_isLiked/_isDisliked/_isBookmarked). Optional — guests get false. */
+  viewerId?: string;
 }
 
 export interface SearchPostHit {
@@ -21,6 +23,14 @@ export interface SearchPostHit {
   region: string | null;
   tags: string[];
   images: string[];
+  likes: number;
+  dislikes: number;
+  comments: number;
+  bookmarks: number;
+  _isLiked?: boolean;
+  _isDisliked?: boolean;
+  _isBookmarked?: boolean;
+  isArchived?: boolean;
   validityScore: number;
   validityTier: string | null;
   validityBreakdown?: {
@@ -134,13 +144,13 @@ async function safeUserFindMany(args: any): Promise<any[]> {
 const VALID_TYPES = new Set<SearchType>(["all", "posts", "users"]);
 const VALID_POST_TYPES = new Set<SearchPostType>(["ROUTE", "ROUTE_REQUEST", "ROUTE_RESPONSE"]);
 
-export function normalizeSearchParams(input: SearchParams): Required<Omit<SearchParams, "cursor" | "region" | "postType">> & Pick<SearchParams, "cursor" | "region" | "postType"> {
+export function normalizeSearchParams(input: SearchParams): Required<Omit<SearchParams, "cursor" | "region" | "postType" | "viewerId">> & Pick<SearchParams, "cursor" | "region" | "postType" | "viewerId"> {
   const query = input.query.trim().slice(0, 100);
   const type = input.type && VALID_TYPES.has(input.type) ? input.type : "all";
   const limit = Math.min(Math.max(Number(input.limit) || 10, 1), 50);
   const region = input.region?.trim().slice(0, 80) || undefined;
   const postType = input.postType && VALID_POST_TYPES.has(input.postType) ? input.postType : undefined;
-  return { query, type, limit, region, postType, cursor: input.cursor };
+  return { query, type, limit, region, postType, cursor: input.cursor, viewerId: input.viewerId };
 }
 
 class SearchService {
@@ -169,6 +179,9 @@ class SearchService {
 
   async search(input: SearchParams): Promise<SearchResult> {
     const { query, type, limit, region, postType, cursor } = normalizeSearchParams(input);
+    const viewerId = typeof (input as { viewerId?: unknown }).viewerId === "string"
+      ? ((input as { viewerId?: string }).viewerId as string)
+      : undefined;
 
     if (!query || query.length < 2) {
       return { posts: [], users: [], tags: [], nextCursor: null };
@@ -195,7 +208,23 @@ class SearchService {
               prisma,
               (cached.posts ?? []) as unknown as { id: string }[]
             );
-            return { ...cached, posts: fresh as unknown as SearchPostHit[] };
+            let posts = fresh as unknown as SearchPostHit[];
+            // Per-viewer interaction overlay on cached rows (cache is shared).
+            if (viewerId) {
+              try {
+                const ids = posts.map((p) => p.id).filter(Boolean);
+                const [likes, dislikes, bookmarks] = await Promise.all([
+                  (prisma.like.findMany({ where: { postId: { in: ids }, userId: viewerId, type: "LIKE" }, select: { postId: true } }) as Promise<{ postId: string }[]>).catch(() => [] as { postId: string }[]),
+                  (prisma.like.findMany({ where: { postId: { in: ids }, userId: viewerId, type: "DISLIKE" }, select: { postId: true } }) as Promise<{ postId: string }[]>).catch(() => [] as { postId: string }[]),
+                  (prisma.bookmark.findMany({ where: { postId: { in: ids }, userId: viewerId }, select: { postId: true } }) as Promise<{ postId: string }[]>).catch(() => [] as { postId: string }[]),
+                ]);
+                const liked = new Set(likes.map((l) => l.postId));
+                const disliked = new Set(dislikes.map((l) => l.postId));
+                const saved = new Set(bookmarks.map((b) => b.postId));
+                posts = posts.map((p) => ({ ...p, _isLiked: liked.has(p.id), _isDisliked: disliked.has(p.id), _isBookmarked: saved.has(p.id) }));
+              } catch { /* keep fresh rows */ }
+            }
+            return { ...cached, posts };
           } catch {
             return cached;
           }
@@ -283,6 +312,38 @@ class SearchService {
         pagePosts as unknown as { id: string }[]
       )) as unknown as SearchPostHit[];
     } catch { /* stored rows */ }
+
+    // Viewer-scoped interaction enrichment (parity with GET /api/posts) so
+    // search cards render the same filled like/bookmark state and fire the
+    // same actions as feed/profile. Never throws — failures keep plain rows.
+    if (viewerId) {
+      try {
+        const ids = trustedPosts.map((p) => p.id).filter(Boolean);
+        if (ids.length > 0) {
+          const [likes, dislikes, bookmarks] = await Promise.all([
+            (prisma.like.findMany({ where: { postId: { in: ids }, userId: viewerId, type: "LIKE" }, select: { postId: true } }) as Promise<{ postId: string }[]>).catch(() => [] as { postId: string }[]),
+            (prisma.like.findMany({ where: { postId: { in: ids }, userId: viewerId, type: "DISLIKE" }, select: { postId: true } }) as Promise<{ postId: string }[]>).catch(() => [] as { postId: string }[]),
+            (prisma.bookmark.findMany({ where: { postId: { in: ids }, userId: viewerId }, select: { postId: true } }) as Promise<{ postId: string }[]>).catch(() => [] as { postId: string }[]),
+          ]);
+          const liked = new Set(likes.map((l) => l.postId));
+          const disliked = new Set(dislikes.map((l) => l.postId));
+          const saved = new Set(bookmarks.map((b) => b.postId));
+          trustedPosts = trustedPosts.map((p) => ({
+            ...p,
+            _isLiked: liked.has(p.id),
+            _isDisliked: disliked.has(p.id),
+            _isBookmarked: saved.has(p.id),
+          }));
+        }
+      } catch { /* plain rows */ }
+    } else {
+      trustedPosts = trustedPosts.map((p) => ({
+        ...p,
+        _isLiked: false,
+        _isDisliked: false,
+        _isBookmarked: false,
+      }));
+    }
 
     const users: SearchUserHit[] = (userRows as Array<Record<string, unknown>>).map((u) => ({
       id: u.id as string,

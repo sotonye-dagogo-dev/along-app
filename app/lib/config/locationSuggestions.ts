@@ -115,6 +115,9 @@ export function reorderQueryTokens(raw: string): string | null {
 export function buildGeocodeUrl(query: string, limit: number = LOCATION_SUGGESTIONS_CONFIG.limit): string {
   const fallback = LOCATION_SUGGESTIONS_CONFIG.limit;
   const parsed = Math.floor(Number(limit));
-  const safe = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 10) : fallback;
+  // Non-positive / non-numeric limits fall back to the configured default
+  // (the server still clamps 1..10, but the client contract is "default
+  // unless a valid positive limit was asked for"); oversized limits clamp.
+  const safe = Number.isFinite(parsed) && parsed >= 1 ? Math.min(parsed, 10) : fallback;
   return `/api/maps/geocode?q=${encodeURIComponent((query ?? "").trim())}&limit=${safe}`;
 }

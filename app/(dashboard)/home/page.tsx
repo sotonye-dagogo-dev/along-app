@@ -194,7 +194,13 @@ function HomeContent() {
 
     const sub = feedStream.feedState$.subscribe((state) => {
       if (cancelled) return
-      setPosts(state.posts)
+      // Dedup guard: the stream already dedups, but a re-emitted identical
+      // array (poll with no new rows, interaction echo) must not churn
+      // rendering. Skip state updates when the id sequence is unchanged.
+      setPosts((prev) => {
+        if (prev.length === state.posts.length && prev.every((p, i) => p.id === state.posts[i]?.id)) return prev
+        return state.posts
+      })
       setHasMore(state.hasMore)
       setLoading(state.loading)
     })
@@ -223,10 +229,19 @@ function HomeContent() {
     })()
   }, [passiveFix, authLoading, user?.id])
 
+  // Fresh-post counter without re-subscribing on every render: postsRef
+  // tracks the current list so the single stream subscription below never
+  // churns (the old [posts]-dep effect re-subscribed per render — glitchy).
+  const postsRef = useRef<FeedPost[]>([])
+  useEffect(() => {
+    postsRef.current = posts
+  }, [posts])
+
   useEffect(() => {
     const sub = feedStream.feedState$.subscribe((state) => {
-      if (state.posts.length > 0 && posts.length > 0 && !state.loading) {
-        const currentIds = new Set(posts.map((p) => p.id))
+      const rendered = postsRef.current
+      if (state.posts.length > 0 && rendered.length > 0 && !state.loading) {
+        const currentIds = new Set(rendered.map((p) => p.id))
         const fresh = state.posts.filter((p) => !currentIds.has(p.id))
         if (fresh.length > 0) {
           setNewPostsCount(fresh.length)
@@ -234,7 +249,7 @@ function HomeContent() {
       }
     })
     return () => sub.unsubscribe()
-  }, [posts])
+  }, [])
 
   // --- Scroll-aware "new posts" prompt (F1) ---
   const [promptVisible, setPromptVisible] = useState(false)
@@ -302,7 +317,7 @@ function HomeContent() {
 
     observer.observe(el)
     return () => observer.disconnect()
-  }, [hasMore, loading])
+  }, [hasMore, loading, passiveFix])
 
   const refreshFeed = async () => {
     setNewPostsCount(0)
@@ -387,10 +402,9 @@ function HomeContent() {
         payload = { error: "Unexpected server response. Please try again." }
       }
       if (res.ok) {
-        // Force bust cache then reload
+        // Single refresh — the stream dedups + persists, so a second
+        // timed refresh only re-rendered identical rows (the flash glitch).
         await refreshFeed()
-        // Also reload directly as backup in case feed cache still stale (cold-start)
-        setTimeout(() => { refreshFeed() }, 800)
         return true
       }
       const { toastService } = await import("@/app/lib/services/toastService")

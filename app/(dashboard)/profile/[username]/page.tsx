@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { UserMinus, UserPlus, UserCheck } from "lucide-react"
+import { UserMinus, UserPlus, UserCheck, Search } from "lucide-react"
 import { AppAvatar, AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { useAuth } from "@/app/hooks/useAuth"
@@ -105,6 +105,7 @@ interface ProfileApiResponse {
 export default function OtherProfilePage() {
   const params = useParams()
   const [activeTab, setActiveTab] = useState("posts")
+  const [tabFilter, setTabFilter] = useState("")
   const [mutualCount] = useState(0)
 
   const userName = params.username as string
@@ -123,7 +124,9 @@ export default function OtherProfilePage() {
   // their own tab so they never masquerade as routes. The reviews tab owns
   // no post query — ReviewsPanel fetches the author's platform review.
   const profileId = profileRes?.user?.id
-  const tabQuery = !profileId
+  // NOTE: named `tabPostsQuery` (not `tabQuery`) — `tabFilter` owns the search
+  // box state. A same-name collision here broke the production build.
+  const tabPostsQuery = !profileId
     ? "/api/posts?limit=20"
     : activeTab === "reviews"
       ? "/api/reviews?limit=1"
@@ -136,7 +139,7 @@ export default function OtherProfilePage() {
           : `/api/posts?limit=20&userId=${profileId}`
   const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
     ready && profileId ? `profile-tab:${profileId}:${activeTab}` : null,
-    tabQuery,
+    tabPostsQuery,
     { ttlSec: 120, enabled: ready && activeTab !== "reviews" }
   )
 
@@ -167,8 +170,23 @@ export default function OtherProfilePage() {
   const posts = useMemo(() => {
     // Deleted users have no personalized tabs — likes/bookmarks always empty.
     if ((profileRes as { isDeleted?: boolean } | undefined)?.isDeleted && (activeTab === "liked")) return []
-    return (postsData?.posts ?? []).filter((p) => p.user.userName === userName)
+    const rows = postsData?.posts ?? []
+    // The liked tab lists posts by OTHER authors the profile owner liked —
+    // filtering to own author would wrongly empty it. All other tabs are
+    // owner-authored, so keep the author guard there.
+    if (activeTab === "liked") return rows
+    return rows.filter((p) => p.user.userName === userName)
   }, [postsData, userName, profileRes, activeTab])
+
+  const visiblePosts = useMemo(() => {
+    const q = tabFilter.trim().toLowerCase()
+    if (!q) return posts
+    return posts.filter((p) =>
+      (p.title ?? "").toLowerCase().includes(q) ||
+      (p.description ?? "").toLowerCase().includes(q) ||
+      (p.tags ?? []).some((t) => t.toLowerCase().includes(q)),
+    )
+  }, [posts, tabFilter])
 
   const loading = authLoading || profileLoading
 
@@ -324,7 +342,7 @@ export default function OtherProfilePage() {
               key={tab}
               role="tab"
               aria-selected={activeTab === tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => { setActiveTab(tab); setTabFilter("") }}
               className={`flex-1 min-w-[96px] sm:min-w-[120px] shrink-0 px-3 sm:px-4 py-3 text-center border-none bg-transparent text-sm font-medium cursor-pointer font-sans transition-colors duration-fast relative whitespace-nowrap overflow-hidden text-ellipsis ${
                 activeTab === tab ? "text-primary" : "text-text-secondary hover:text-text-primary"
               }`}
@@ -342,10 +360,25 @@ export default function OtherProfilePage() {
             <ReviewsPanel showForm={false} authorId={profileId} />
           ) : (
             <>
+          {activeTab !== "reviews" && posts.length > 0 && (
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none" />
+              <input
+                value={tabFilter}
+                onChange={(e) => setTabFilter(e.target.value)}
+                placeholder={`Search ${activeTab}…`}
+                aria-label={`Search ${activeTab}`}
+                className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-bg-card text-sm outline-none focus:border-primary"
+              />
+            </div>
+          )}
           {posts.length === 0 && !postsLoading && (
             <AppEmptyState {...EMPTY_STATES.feed} />
           )}
-          {posts.map((post) => (
+          {visiblePosts.length === 0 && posts.length > 0 && !postsLoading && (
+            <AppEmptyState {...EMPTY_STATES.search} title="No matches" description={`Nothing in ${activeTab} matches “${tabFilter.trim()}”.`} />
+          )}
+          {visiblePosts.map((post) => (
             <ProfilePostCard
               key={post.id}
               post={
@@ -370,12 +403,15 @@ export default function OtherProfilePage() {
                   createdAt: post.createdAt,
                   _isLiked: post._isLiked ?? false,
                   _isDisliked: (post as { _isDisliked?: boolean })._isDisliked ?? false,
-                  _isBookmarked: post._isBookmarked ?? false,
+                  // Legacy `isBookmarked` alias (parity with own profile).
+                  _isBookmarked: post._isBookmarked ?? (post as unknown as { isBookmarked?: boolean }).isBookmarked ?? false,
                   user: {
                     id: post.user.id ?? profile.id,
-                    userName: profile.userName,
-                    firstName: profile.firstName,
-                    lastName: profile.lastName,
+                    // Liked-tab rows are authored by others — never overwrite
+                    // with the profile header (that would misattribute them).
+                    userName: activeTab === "liked" ? post.user.userName : profile.userName,
+                    firstName: activeTab === "liked" ? post.user.firstName : profile.firstName,
+                    lastName: activeTab === "liked" ? post.user.lastName : profile.lastName,
                     // Prefer the row avatar (same source as feed); header is
                     // the fallback so the tab never shows a stale image.
                     avatar: post.user.avatar ?? profile.avatar,

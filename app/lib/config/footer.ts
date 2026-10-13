@@ -68,6 +68,7 @@ export const FOOTER_CONFIG: FooterConfig = {
       links: [
         { label: "Blog", href: "/blog", i18nKey: "footer.blog" },
         { label: "FAQ", href: "/faq", i18nKey: "footer.faq" },
+        { label: "Leave a Review", href: "/profile#reviews", i18nKey: "footer.leaveReview" },
         { label: "Report a Bug", href: "/report-bug", i18nKey: "footer.reportBug" },
         { label: "Join Discord", href: "https://discord.gg/along", i18nKey: "footer.joinDiscord" },
       ],

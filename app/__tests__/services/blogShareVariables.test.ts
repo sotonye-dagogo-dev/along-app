@@ -1,7 +1,25 @@
 /**
- * blogShareService + blogVariables — unit tests for blog share links and
- * guest-safe {{variable}} interpolation (fallbacks, never leaks identifiers).
+ * NOTE: `@/app/lib/db/redis` is stubbed here (hoisted `jest.mock`) because
+ * its `@upstash/redis → uncrypto` ESM chain cannot be parsed by the jest
+ * transform in this repo ("Unexpected token 'export'") — same pattern as
+ * `emailStudio.test.ts`. The stub mirrors the safe-wrapper's
+ * no-op-when-unconfigured behaviour (get → null, set/del → no-op), which is
+ * exactly what these pure-helper tests need — production code is untouched.
  */
+jest.mock("@/app/lib/db/redis", () => ({
+  getRedisClient: () => null,
+  __resetRedisForTests: () => {},
+  withTimeout: async <T>(p: Promise<T>) => p,
+  REDIS_OP_TIMEOUT_MS: 1200,
+  redis: {
+    get: async <T>() => null as T | null,
+    set: async () => {},
+    del: async () => 0,
+    _getClient: () => null,
+    _withTimeout: async <T>(p: Promise<T>) => p,
+  },
+}));
+
 import { buildBlogUrl, shareBlogLink } from "@/app/lib/services/blogShareService";
 import { buildBlogVarContext, renderBlogContent } from "@/app/lib/utils/blogVariables";
 import { mergeBlogPostsWithDefaults, getDefaultBlogPosts } from "@/app/lib/utils/blogStore";

@@ -1,31 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { X, ThumbsUp, MessageCircle, Share2 } from "lucide-react"
+import { useState, useEffect, useMemo } from "react"
+import { Search } from "lucide-react"
 import { AppEmptyState } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
-import { sharePostLink } from "@/app/lib/services/postShareService"
-import { toastService } from "@/app/lib/services/toastService"
-import { POST_ACTIONS_CONFIG } from "@/app/lib/config/postActions"
-
-interface BookmarkedPost {
-  id: string
-  title: string
-  tags: string[]
-  likes: number
-  comments: number
-  createdAt: string
-  user: {
-    id: string
-    userName: string
-    firstName: string
-    lastName: string
-    avatar?: string | null
-    avatarConfig?: unknown
-  }
-  bookmarkedAt: string
-}
+import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 
 function getTimeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime()
@@ -39,15 +18,10 @@ function getTimeAgo(date: string): string {
   return new Date(date).toLocaleDateString()
 }
 
-function formatCount(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
-  return String(n)
-}
-
 export default function BookmarksPage() {
-  const [bookmarks, setBookmarks] = useState<BookmarkedPost[]>([])
+  const [bookmarks, setBookmarks] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState("")
 
   useEffect(() => {
     const load = async () => {
@@ -66,23 +40,25 @@ export default function BookmarksPage() {
     load()
   }, [])
 
-  const removeBookmark = async (postId: string) => {
-    try {
-      await fetch(`/api/posts/${postId}/bookmark`, { method: "POST" })
-      setBookmarks((prev) => prev.filter((b) => b.id !== postId))
-    } catch {
-      console.error("Failed to remove bookmark")
-    }
-  }
-
-  const shareBookmark = async (postId: string, title: string) => {
-    const outcome = await sharePostLink(postId, title || POST_ACTIONS_CONFIG.shareTitleDefault)
-    if (outcome.ok) {
-      if (outcome.method !== "web-share") toastService.success(POST_ACTIONS_CONFIG.copySuccess)
-    } else {
-      toastService.error(POST_ACTIONS_CONFIG.copyError)
-    }
-  }
+  // Client-side filter — title, description, tags, author (config-free,
+  // non-breaking; server list stays the source of truth).
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return bookmarks
+    return bookmarks.filter((b) => {
+      const post = b as {
+        title?: string; description?: string | null; tags?: string[]
+        user?: { userName?: string; firstName?: string; lastName?: string }
+      }
+      return (
+        (post.title ?? "").toLowerCase().includes(q) ||
+        (post.description ?? "").toLowerCase().includes(q) ||
+        (post.tags ?? []).some((t) => t.toLowerCase().includes(q)) ||
+        (post.user?.userName ?? "").toLowerCase().includes(q) ||
+        (`${post.user?.firstName ?? ""} ${post.user?.lastName ?? ""}`.toLowerCase().includes(q))
+      )
+    })
+  }, [bookmarks, query])
 
   return (
     <div className="max-w-[640px] mx-auto px-4">
@@ -92,6 +68,23 @@ export default function BookmarksPage() {
           <span className="text-sm text-text-secondary">{bookmarks.length} saved</span>
         )}
       </div>
+
+      {/* Search through saved posts (parity with profile tabs). */}
+      {!loading && bookmarks.length > 0 && (
+        <div className="relative mb-3">
+          <Search
+            size={15}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+          />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search saved posts…"
+            aria-label="Search saved posts"
+            className="w-full h-10 pl-9 pr-3 rounded-lg border border-border bg-bg-card text-sm outline-none focus:border-primary"
+          />
+        </div>
+      )}
 
       {loading ? (
         <div className="flex flex-col gap-3">
@@ -110,49 +103,29 @@ export default function BookmarksPage() {
         <div className="py-8">
           <AppEmptyState {...EMPTY_STATES.bookmarks} />
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="py-8">
+          <AppEmptyState {...EMPTY_STATES.search} title="No matches" description={`Nothing saved matches “${query.trim()}”.`} />
+        </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {bookmarks.map((bookmark) => {
-            const initials = `${bookmark.user.firstName[0]}${bookmark.user.lastName[0]}`.toUpperCase()
+          {filtered.map((bookmark) => {
+            const b = bookmark as unknown as {
+              id: string
+              bookmarkedAt?: string
+              createdAt: string
+            }
             return (
-              <div key={bookmark.id} className="bg-bg-card border border-border radius-lg p-4 relative transition-shadow duration-base hover:shadow-md group">
-                <button
-                  onClick={() => removeBookmark(bookmark.id)}
-                  className="absolute top-2.5 right-2.5 w-7 h-7 rounded-circle bg-bg-elevated text-text-muted flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-fast border-none cursor-pointer hover:text-error-text hover:bg-error"
-                  aria-label="Remove bookmark"
-                >
-                  <X size={14} />
-                </button>
-                <div className="flex items-center gap-2 mb-2">
-                  <Link href={`/profile/${bookmark.user.userName}`} onClick={(e) => e.stopPropagation()} className="w-7 h-7 rounded-circle bg-primary-muted flex items-center justify-center text-[10px] font-bold text-primary shrink-0 no-underline">
-                    {initials}
-                  </Link>
-                  <Link href={`/profile/${bookmark.user.userName}`} onClick={(e) => e.stopPropagation()} className="text-xs font-semibold text-text-primary no-underline hover:underline flex-1">
-                    {bookmark.user.firstName} {bookmark.user.lastName}
-                  </Link>
-                  <Link href={`/profile/${bookmark.user.userName}`} onClick={(e) => e.stopPropagation()} className="text-xs text-text-muted no-underline hover:underline">@{bookmark.user.userName}</Link>
-                </div>
-                <Link href={`/posts/${bookmark.id}`} onClick={(e) => e.stopPropagation()} className="text-sm font-semibold text-text-primary no-underline hover:underline mb-1.5 block">
-                  {bookmark.title}
-                </Link>
-                <div className="flex items-center gap-2 text-xs text-text-muted flex-wrap">
-                  <span className="inline-flex items-center gap-1"><ThumbsUp size={12} /> {formatCount(bookmark.likes)}</span>
-                  <span className="inline-flex items-center gap-1"><MessageCircle size={12} /> {formatCount(bookmark.comments)}</span>
-                  {bookmark.tags.slice(0, 3).map((tag) => (
-                    <Link key={tag} href={`/explore?tag=${encodeURIComponent(tag)}`} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 radius-pill text-[10px] font-medium bg-bg-elevated text-text-secondary no-underline">
-                      #{tag}
-                    </Link>
-                  ))}
-                  <span>Saved · {getTimeAgo(bookmark.createdAt)}</span>
-                  <button
-                    onClick={() => void shareBookmark(bookmark.id, bookmark.title)}
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 radius-pill border border-border bg-transparent text-text-secondary cursor-pointer hover:text-primary hover:border-primary-muted transition-colors duration-fast"
-                    aria-label={`Share ${bookmark.title}`}
-                  >
-                    <Share2 size={12} />
-                    <span className="text-[10px] font-medium">Share</span>
-                  </button>
-                </div>
+              <div key={b.id}>
+                <ProfilePostCard
+                  post={{ ...(bookmark as object), _isBookmarked: true } as never}
+                  onRemoved={(postId) =>
+                    setBookmarks((prev) => prev.filter((x) => (x as { id: string }).id !== postId))
+                  }
+                />
+                <p className="text-[11px] text-text-muted mt-1 px-1">
+                  Saved · {getTimeAgo(b.bookmarkedAt ?? b.createdAt)}
+                </p>
               </div>
             )
           })}
