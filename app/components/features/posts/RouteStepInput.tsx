@@ -53,7 +53,7 @@ function RouteStepInput({
     setLoading(true)
     try {
       // Keyless stack: geocode via the internal server proxy (Nominatim +
-      // Photon + Open-Meteo merged, cached). Viewer bias (granted-only, never
+      // Photon + Open-Meteo + Overpass landmark fallback, merged, cached). Viewer bias (granted-only, never
       // prompts) re-ranks nearby hits first server-side. Browser-direct
       // upstream calls violate usage policy and are banned — never call
       // upstream from the client.

@@ -2,6 +2,7 @@ import polyline from "@mapbox/polyline";
 import { redis } from "@/app/lib/db/redis";
 import {
   MAP_STACK_CONFIG,
+  LANDMARK_GEOCODE_CONFIG,
   hasMapboxKey,
   hasOrsKey,
   type MapGeocodeProvider,
@@ -15,8 +16,12 @@ import {
  * OSRM, ORS or Mapbox directly:
  * - Routing: OSRM demo (keyless, ~1 req/s policy — Redis cache absorbs
  *   repeat traces) → env-gated ORS → env-gated Mapbox → straight-line.
- * - Forward geocode: Nominatim (server UA/Referer) + Photon + keyless
- *   Open-Meteo merged + deduped, optionally re-ranked near the viewer.
+ * - Forward geocode: Nominatim (server UA/Referer, addressdetails+dedupe so
+ *   landmarks/buildings/addresses resolve with full labels) + Photon
+ *   (street-level labels) + keyless Open-Meteo (populated places only) +
+ *   keyless Overpass OSM `name` fallback (landmarks/buildings/addresses that
+ *   the index providers miss) merged + deduped, optionally re-ranked near
+ *   the viewer.
  * - Reverse geocode: Nominatim reverse → Photon reverse fallback.
  *
  * Every method is never-throw: upstream failures degrade to the next
@@ -258,21 +263,38 @@ interface NominatimHit {
 }
 
 interface PhotonFeature {
-  properties?: { name?: string; city?: string; state?: string; country?: string };
+  properties?: {
+    name?: string;
+    street?: string;
+    housenumber?: string;
+    district?: string;
+    locality?: string;
+    city?: string;
+    county?: string;
+    state?: string;
+    postcode?: string;
+    country?: string;
+  };
   geometry?: { coordinates?: number[] };
 }
 
 function photonLabel(f: PhotonFeature): string | null {
   const p = f.properties;
   if (!p?.name) return null;
-  const rest = [p.city, p.state, p.country].filter(Boolean).join(", ");
+  // Street-level granularity: Photon splits addresses into parts — render
+  // them so house numbers / streets / districts survive in suggestions
+  // (previously only name/city/state/country, which dropped addresses).
+  const street = [p.street, p.housenumber].filter(Boolean).join(" ");
+  const rest = [street, p.district, p.locality, p.city, p.county, p.state, p.postcode, p.country].filter(
+    (s): s is string => typeof s === "string" && s.length > 0 && s !== p.name
+  ).join(", ");
   return rest ? `${p.name}, ${rest}` : p.name;
 }
 
 async function geocodeViaNominatim(query: string, limit: number): Promise<MapGeocodeHit[] | null> {
   const url =
     `${MAP_STACK_CONFIG.upstreams.nominatim}/search?format=json` +
-    `&q=${encodeURIComponent(query)}&limit=${limit}&accept-language=en&addressdetails=0`;
+    `&q=${encodeURIComponent(query)}&limit=${limit}&accept-language=en&addressdetails=1&dedupe=1`;
   const data = (await fetchJson(url)) as NominatimHit[] | null;
   if (!Array.isArray(data) || data.length === 0) return null;
   const hits = data
@@ -336,6 +358,109 @@ async function geocodeViaOpenMeteo(query: string, limit: number): Promise<MapGeo
   return hits.length > 0 ? hits : null;
 }
 
+interface OverpassTags {
+  name?: string;
+  ["addr:housenumber"]?: string;
+  ["addr:street"]?: string;
+  ["addr:suburb"]?: string;
+  ["addr:city"]?: string;
+  ["addr:state"]?: string;
+  ["addr:country"]?: string;
+  amenity?: string;
+  building?: string;
+  shop?: string;
+  tourism?: string;
+}
+
+interface OverpassElement {
+  type?: string;
+  lat?: number;
+  lon?: number;
+  center?: { lat?: number; lon?: number };
+  tags?: OverpassTags;
+}
+
+function overpassLabel(tags: OverpassTags): string | null {
+  const name = typeof tags.name === "string" ? tags.name.trim() : "";
+  if (!name) return null;
+  const street = [tags["addr:street"], tags["addr:housenumber"]].filter(
+    (s): s is string => typeof s === "string" && s.length > 0
+  ).join(" ");
+  const kind = tags.amenity ?? tags.shop ?? tags.tourism ?? (typeof tags.building === "string" ? "building" : "");
+  const rest = [street, tags["addr:suburb"], tags["addr:city"], tags["addr:state"], tags["addr:country"]]
+    .filter((s): s is string => typeof s === "string" && s.length > 0 && s !== name)
+    .join(", ");
+  const suffix = rest ? `, ${rest}` : "";
+  const kindSuffix = kind && !name.toLowerCase().includes(String(kind).toLowerCase()) ? ` (${kind})` : "";
+  return `${name}${suffix}${kindSuffix}`.slice(0, 220);
+}
+
+function escapeOverpassRegex(raw: string): string {
+  return raw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").slice(0, 80);
+}
+
+/**
+ * Keyless Overpass landmark/building/address fallback (no key, no
+ * registration). Queries OSM nodes/ways/relations whose `name` matches —
+ * exactly the landmark/building class Open-Meteo can never answer and the
+ * index providers sometimes miss. Last-resort only: gated by
+ * LANDMARK_GEOCODE_CONFIG.minQueryLength, capped element count, shared 8s
+ * fetch guard. Never throws — any failure resolves to null so the merge
+ * keeps the already-collected hits.
+ */
+async function geocodeViaOverpass(query: string, limit: number): Promise<MapGeocodeHit[] | null> {
+  const q = query.trim().slice(0, 80);
+  if (q.length < LANDMARK_GEOCODE_CONFIG.overpassMinQueryLength) return null;
+  const safe = escapeOverpassRegex(q);
+  if (!safe) return null;
+  const cap = Math.min(Math.max(limit, 1), LANDMARK_GEOCODE_CONFIG.overpassMaxElements);
+  const timeout = LANDMARK_GEOCODE_CONFIG.overpassTimeoutSec;
+  const ql = `[out:json][timeout:${timeout}];(nwr["name"~"${safe}",i];);out center ${cap};`;
+  let data: { elements?: OverpassElement[] } | null = null;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${MAP_STACK_CONFIG.upstreams.overpass}/interpreter`, {
+        method: "POST",
+        headers: {
+          "User-Agent": MAP_STACK_CONFIG.serverIdentity.userAgent,
+          Referer: MAP_STACK_CONFIG.serverIdentity.referer,
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        },
+        body: `data=${encodeURIComponent(ql)}`,
+        signal: controller.signal,
+      });
+      if (!res.ok) return null;
+      data = (await res.json()) as { elements?: OverpassElement[] };
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch {
+    return null;
+  }
+  const elements = data?.elements;
+  if (!Array.isArray(elements) || elements.length === 0) return null;
+  const hits: MapGeocodeHit[] = [];
+  for (const el of elements.slice(0, cap)) {
+    try {
+      const tags = el.tags;
+      if (!tags) continue;
+      const label = overpassLabel(tags);
+      const lat = typeof el.lat === "number" ? el.lat : el.center?.lat;
+      const lon = typeof el.lon === "number" ? el.lon : el.center?.lon;
+      if (!label || typeof lat !== "number" || typeof lon !== "number") continue;
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
+      hits.push({ display_name: label, lat: String(lat), lon: String(lon), provider: "overpass" });
+    } catch {
+      continue;
+    }
+  }
+  return hits.length > 0 ? hits : null;
+}
+
 /** Dedup key: normalized label + coords rounded to ~100m (same place, all providers). */
 export function geocodeDedupKey(hit: MapGeocodeHit): string {
   const lat = Number(hit.lat);
@@ -391,10 +516,14 @@ export async function geocodeForward(query: string, limit = 5, near?: MapPin | n
     }
   };
   // Round-robin one batch per provider (bounded fan-out, same timeout discipline).
+  // Overpass runs last and self-gates on query length; unknown future
+  // providers fall through safely (no branch = no crash, no missed merge).
   for (const name of MAP_STACK_CONFIG.geocodeOrder) {
     const attempt: MapGeocodeProvider = name;
     if (attempt === "nominatim") pushAll(await geocodeViaNominatim(q, safeLimit));
     else if (attempt === "photon") pushAll(await geocodeViaPhoton(q, safeLimit));
+    else if (attempt === "openmeteo") pushAll(await geocodeViaOpenMeteo(q, safeLimit));
+    else if (attempt === "overpass") pushAll(await geocodeViaOverpass(q, safeLimit));
     else pushAll(await geocodeViaOpenMeteo(q, safeLimit));
     if (merged.length >= safeLimit * MAP_STACK_CONFIG.geocodeOrder.length) break;
   }

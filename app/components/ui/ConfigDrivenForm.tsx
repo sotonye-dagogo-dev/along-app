@@ -11,6 +11,12 @@ export interface ConfigDrivenFormProps {
   onSubmit: (data: Record<string, unknown>) => Promise<void>;
   submitLabel?: string;
   isLoading?: boolean;
+  /**
+   * Optional slot rendered between the fields and the submit button, so
+   * attachments / extra sections sit BEFORE submit (submit stays last).
+   * Non-breaking: absent → legacy fields-then-submit layout verbatim.
+   */
+  beforeSubmit?: React.ReactNode;
 }
 
 function buildFieldSchema(field: FieldConfig): z.ZodTypeAny {
@@ -52,6 +58,7 @@ export function ConfigDrivenForm({
   onSubmit,
   submitLabel = "Submit",
   isLoading = false,
+  beforeSubmit,
 }: ConfigDrivenFormProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // Coerce any non-string initial value (objects, numbers, null) to a
@@ -176,6 +183,7 @@ export function ConfigDrivenForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
       {fields.map(renderField)}
+      {beforeSubmit ?? null}
       <AppButton
         type="submit"
         variant="primary"
