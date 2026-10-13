@@ -15,7 +15,8 @@ import {
  * OSRM, ORS or Mapbox directly:
  * - Routing: OSRM demo (keyless, ~1 req/s policy — Redis cache absorbs
  *   repeat traces) → env-gated ORS → env-gated Mapbox → straight-line.
- * - Forward geocode: Nominatim (server UA/Referer) → Photon fallback.
+ * - Forward geocode: Nominatim (server UA/Referer) + Photon + keyless
+ *   Open-Meteo merged + deduped, optionally re-ranked near the viewer.
  * - Reverse geocode: Nominatim reverse → Photon reverse fallback.
  *
  * Every method is never-throw: upstream failures degrade to the next
@@ -113,8 +114,12 @@ export function routeCacheKey(pins: MapPin[]): string {
   return `maps:route:${sig}`;
 }
 
-export function geocodeCacheKey(query: string, limit: number): string {
-  return `maps:geocode:${query.trim().toLowerCase().slice(0, 120)}:${limit}`;
+export function geocodeCacheKey(query: string, limit: number, near?: MapPin | null): string {
+  const base = `maps:geocode:${query.trim().toLowerCase().slice(0, 120)}:${limit}`;
+  if (near && Number.isFinite(near.lat) && Number.isFinite(near.lng)) {
+    return `${base}:${near.lat.toFixed(2)},${near.lng.toFixed(2)}`;
+  }
+  return base;
 }
 
 export function reverseCacheKey(lat: number, lng: number): string {
@@ -292,25 +297,108 @@ async function geocodeViaPhoton(query: string, limit: number): Promise<MapGeocod
   return hits.length > 0 ? hits : null;
 }
 
-/** Forward geocode via server proxy (Nominatim → Photon). Never throws. */
-export async function geocodeForward(query: string, limit = 5): Promise<MapGeocodeHit[]> {
+interface OpenMeteoHit {
+  name?: string;
+  country?: string;
+  admin1?: string;
+  admin2?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+function openMeteoLabel(h: OpenMeteoHit): string | null {
+  if (typeof h.name !== "string" || h.name.length === 0) return null;
+  const rest = [h.admin2, h.admin1, h.country].filter(
+    (s): s is string => typeof s === "string" && s.length > 0 && s !== h.name
+  ).join(", ");
+  return rest ? `${h.name}, ${rest}` : h.name;
+}
+
+/**
+ * Keyless Open-Meteo geocoder (no key, no registration, generous free tier).
+ * Same canonical MapGeocodeHit shape as the other providers so callers never
+ * branch on provider — parsing differences stay under the hood.
+ */
+async function geocodeViaOpenMeteo(query: string, limit: number): Promise<MapGeocodeHit[] | null> {
+  const url =
+    `${MAP_STACK_CONFIG.upstreams.openmeteo}/search?name=${encodeURIComponent(query)}` +
+    `&count=${limit}&language=en&format=json`;
+  const data = (await fetchJson(url)) as { results?: OpenMeteoHit[] } | null;
+  const results = data?.results;
+  if (!Array.isArray(results) || results.length === 0) return null;
+  const hits: MapGeocodeHit[] = [];
+  for (const h of results) {
+    const label = openMeteoLabel(h);
+    if (!label || typeof h.latitude !== "number" || typeof h.longitude !== "number") continue;
+    if (!Number.isFinite(h.latitude) || !Number.isFinite(h.longitude)) continue;
+    hits.push({ display_name: label, lat: String(h.latitude), lon: String(h.longitude), provider: "openmeteo" });
+  }
+  return hits.length > 0 ? hits : null;
+}
+
+/** Dedup key: normalized label + coords rounded to ~100m (same place, all providers). */
+export function geocodeDedupKey(hit: MapGeocodeHit): string {
+  const lat = Number(hit.lat);
+  const lon = Number(hit.lon);
+  const coords =
+    Number.isFinite(lat) && Number.isFinite(lon)
+      ? `${lat.toFixed(3)},${lon.toFixed(3)}`
+      : `${hit.lat},${hit.lon}`;
+  return `${hit.display_name.trim().toLowerCase()}|${coords}`;
+}
+
+/** Distance re-rank: when the viewer shared a position, nearer hits sort first. Never filters. */
+export function rankGeocodeHits(hits: MapGeocodeHit[], near?: MapPin | null): MapGeocodeHit[] {
+  if (!near || !Number.isFinite(near.lat) || !Number.isFinite(near.lng)) return hits;
+  const origin: MapPin = near;
+  return [...hits].sort((a, b) => {
+    const da = haversineKm(origin, { lat: Number(a.lat), lng: Number(a.lon) });
+    const db = haversineKm(origin, { lat: Number(b.lat), lng: Number(b.lon) });
+    const sa = Number.isFinite(da) ? da : Number.MAX_SAFE_INTEGER;
+    const sb = Number.isFinite(db) ? db : Number.MAX_SAFE_INTEGER;
+    return sa - sb;
+  });
+}
+
+/**
+ * Forward geocode via server proxy — ALL keyless providers fire (in
+ * geocodeOrder) and hits merge + dedupe into one suggestion list, so a place
+ * buried in one source still surfaces from another. Optionally re-ranked near
+ * the viewer's position when `near` is supplied (nearby first, never
+ * filtered). Never throws.
+ */
+export async function geocodeForward(query: string, limit = 5, near?: MapPin | null): Promise<MapGeocodeHit[]> {
   const q = query.trim().slice(0, 200);
   if (q.length < 2) return [];
   const safeLimit = Math.min(Math.max(limit, 1), 10);
-  const key = geocodeCacheKey(q, safeLimit);
+  const key = geocodeCacheKey(q, safeLimit, near);
   try {
     const cached = await redis.get<MapGeocodeHit[]>(key);
     if (Array.isArray(cached)) return cached;
   } catch {
     // Best-effort.
   }
-  let hits: MapGeocodeHit[] | null = null;
+  const merged: MapGeocodeHit[] = [];
+  const seen = new Set<string>();
+  const pushAll = (hits: MapGeocodeHit[] | null) => {
+    if (!hits) return;
+    for (const h of hits) {
+      if (typeof h.display_name !== "string" || h.display_name.length === 0) continue;
+      const k = geocodeDedupKey(h);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      merged.push(h);
+    }
+  };
+  // Round-robin one batch per provider (bounded fan-out, same timeout discipline).
   for (const name of MAP_STACK_CONFIG.geocodeOrder) {
     const attempt: MapGeocodeProvider = name;
-    hits = attempt === "nominatim" ? await geocodeViaNominatim(q, safeLimit) : await geocodeViaPhoton(q, safeLimit);
-    if (hits && hits.length > 0) break;
+    if (attempt === "nominatim") pushAll(await geocodeViaNominatim(q, safeLimit));
+    else if (attempt === "photon") pushAll(await geocodeViaPhoton(q, safeLimit));
+    else pushAll(await geocodeViaOpenMeteo(q, safeLimit));
+    if (merged.length >= safeLimit * MAP_STACK_CONFIG.geocodeOrder.length) break;
   }
-  const finalHits = hits ?? [];
+  const finalHits = rankGeocodeHits(merged, near).slice(0, safeLimit);
   try {
     await redis.set(key, finalHits, { ex: MAP_STACK_CONFIG.cacheTtlSec.geocode });
   } catch {
@@ -360,4 +448,6 @@ export const mapProxyService = {
   routeCacheKey,
   geocodeCacheKey,
   reverseCacheKey,
+  geocodeDedupKey,
+  rankGeocodeHits,
 };

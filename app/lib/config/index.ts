@@ -153,6 +153,12 @@ export { PROFILE_POSTS_CONFIG } from "./profilePosts";
 export type { ProfilePostsConfig } from "./profilePosts";
 export { MEDIA_CLEANUP_CONFIG } from "./mediaCleanup";
 export type { MediaCleanupConfig, MediaCleanupSource } from "./mediaCleanup";
+export { REPORT_ATTACHMENTS_CONFIG, reportMaxSizeLabel, sanitizeReportImageUrls } from "./reportAttachments";
+export type { ReportAttachmentsConfig } from "./reportAttachments";
+export { PAGINATION_UI_CONFIG } from "./paginationUi";
+export type { PaginationUiConfig } from "./paginationUi";
+export { FLOATING_UI_CONFIG, laneBottom } from "./floatingUi";
+export type { FloatingUiConfig } from "./floatingUi";
 export {
   AUDIT_DISPLAY_CONFIG,
   sanitizeAuditText,

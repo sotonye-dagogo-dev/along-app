@@ -10,6 +10,8 @@ import {
   PWA_FAQ_LINKS,
   isStandaloneDisplay,
 } from "@/app/lib/config/pwa";
+import { FLOATING_UI_CONFIG, laneBottom } from "@/app/lib/config/floatingUi";
+import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
 import { isLikelyIos } from "@/app/lib/config/pushPrompt";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -48,6 +50,7 @@ function writeLocal(key: string, value: string): void {
  */
 export function InstallPrompt() {
   const { t } = useTranslation();
+  const { isOnline } = useOnlineStatus();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -172,6 +175,13 @@ export function InstallPrompt() {
 
   if (installed || dismissed) return null;
 
+  // Lane discipline: above the tab bar when online; one lane higher while the
+  // offline banner occupies the lower lane — the two cards never overlap.
+  const lane = isOnline
+    ? FLOATING_UI_CONFIG.lanes.installBottomOnlinePx
+    : FLOATING_UI_CONFIG.lanes.installBottomOfflinePx;
+  const laneStyle = laneBottom(lane);
+
   const title = tt("pwa.installTitle", copy.title);
   const body = tt("pwa.installBody", copy.body);
   const installLabel = tt("pwa.installCta", copy.install);
@@ -199,7 +209,7 @@ export function InstallPrompt() {
         style={{
           position: "fixed",
           right: 12,
-          bottom: 76,
+          bottom: laneStyle,
           zIndex: 55,
           display: "inline-flex",
           alignItems: "center",
@@ -232,7 +242,7 @@ export function InstallPrompt() {
         position: "fixed",
         left: 12,
         right: 12,
-        bottom: 76,
+        bottom: laneStyle,
         zIndex: 55,
         margin: "0 auto",
         maxWidth: 480,

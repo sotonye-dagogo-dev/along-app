@@ -239,10 +239,14 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
       return next
     })
     try {
-      // Keyless stack: geocode via the internal server proxy (cached,
-      // policy-compliant). Never call Nominatim browser-direct.
+      // Keyless stack: geocode via the internal server proxy (merged
+      // providers, cached, policy-compliant). Viewer bias (granted-only,
+      // never prompts) re-ranks nearby hits first. Never call upstream
+      // browser-direct.
+      const { getBiasCoords, biasQuerySuffix } = await import("@/app/lib/utils/geoBias")
+      const bias = await getBiasCoords()
       const res = await fetch(
-        `/api/maps/geocode?q=${encodeURIComponent(query)}&limit=5`,
+        `/api/maps/geocode?q=${encodeURIComponent(query)}&limit=5${biasQuerySuffix(bias)}`,
       )
       if (!res.ok) throw new Error(`geocode ${res.status}`)
       const data = (await res.json()) as { results?: GeoResult[] }

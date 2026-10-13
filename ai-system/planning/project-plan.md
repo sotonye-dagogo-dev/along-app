@@ -1,8 +1,7 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
-P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 50 tightening: report screenshots, pagination controls, merged geo, floating lanes)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -178,3 +177,4 @@ P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module
 - [x] Sprint 43 (2026-10-11) — Admin destructive user deletion + dashboard period toggle (per-request Reverse/Delete-now + per-user Request/Reverse/Delete-now through the same anonymize pipeline with confirm/undo/audit; stats `?period=7|30|90` with windowed deltas; dashboard toggle wired to overview + chart) (admin +3 suites; node 9/9 in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
 - [x] Sprint 45 (2026-10-12) — Chart hover tooltips platform-wide (shared ChartTooltip components + charts config) + dedicated admin analytics page/API (KPIs, growth/engagement/validity/audience, top posts/contributors) + admin sidebar scrollability + platform-consistent profile-linked admin avatar (AppUserLabel role-tag extension) (charts + ChartTooltip + AdminAnalyticsShell suites; node strip-types 6/6 in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
 - [x] Sprint 47 (2026-10-12) — PWA notice icon/theme compliance + deleted/archived-user visibility + avatar consistency (PWA_FAQ_LINKS + userVisibility registry + FaqClient deep-links; notices on lucide icons + theme tokens + FAQ help; suggestions/search/follow/lists visibility + 410 + live counts; Panel/Rail/UserList AppAvatar + FollowButton unavailable; admin avatar selects + pages) (sprint47 9 suites; static + node execution in-runner, full gate deferred to CI — no node_modules in runner)
+- [x] Sprint 50 (2026-10-13) — Reports + pagination + geo + floating + README tightening (report screenshots 3/2MB along/reports via metadata.images + ReportImageUpload + admin thumbnails; ViewMoreButton/PageNavigator on notifications/search/comments/reviews/leaderboard/blog; openmeteo merge/dedupe/near-rank + geoBias + routes-JSON stop recall; floating lanes + mobile left dock; README service attributions) (sprint50 10 suites; node --check + strip-types green in-runner, full gate deferred to CI — no node_modules in runner)

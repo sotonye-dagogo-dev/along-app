@@ -1,9 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-12 (Sprint 49 installed-PWA update lifecycle: periodic checks + user-approved single-reload prompt)
-P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
-> - last-synced: 2026-10-12 (Sprint 48 profile tightening — execute-feature close-out)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 50 tightening: report screenshots, pagination controls, merged geo, floating lanes, README)
+> - last-synced: 2026-10-13 (Sprint 50 close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -657,3 +656,4 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Desktop open-requests scrollable endless tape (SuggestionsPanel 1 static / 2+ EndlessCarousel via SUGGESTIONS_PANEL_CONFIG, count+hint) | [x] |
 - [x] Sprint 48 (2026-10-12) — Profile tightening: dead phone field, name whitespace, AvatarSize 20 (profileValidation registry + ConfigDrivenForm trim + PATCH/register normalization + AppAvatar 20; profileTightening 14 suites; full local gate green: tsc 0, jest 66/559, lint 0 new)
 - [x] Sprint 49 (2026-10-12) — Installed-PWA update lifecycle (PWA_UPDATE_CONFIG + PWA_SW_MESSAGES + v4→v5 cache rollover; sw.js no-auto-skipWaiting + ready/activated/version broadcasts; registrar hourly/visible/focus/online polling + updatefound + guarded single-reload; ServiceWorkerUpdatePrompt in PwaNotices hub + pwa.update* en/pcm + FAQ app-updates +pcm; pwa.test +2, locales.test +4 keys; node --check/JSON/parity green in-runner, tsc/jest/build deferred to CI — no node_modules in runner)
+- [x] Sprint 50 (2026-10-13) — Reports + pagination + geo + floating + README tightening (REPORT_ATTACHMENTS_CONFIG + upload folder= policies + along/reports cleanup source + ReportImageUpload + ReportDialog/report-bug wiring + /api/reports + /api/bug-reports metadata.images + admin shot thumbnails; PAGINATION_UI_CONFIG + ViewMoreButton + PageNavigator + notifications/search/comments/reviews view-more + leaderboard/blog navigators; openmeteo merge/dedupe/near-rank + ?lat=&lng= + geoBias granted-only helper + RouteStepInput/ShareRouteModal bias + searchService routes-JSON stop recall; FLOATING_UI_CONFIG lanes + left-dock rounds + above-navbar banners + transient lane; README service attributions) (sprint50 10 suites; node --check + strip-types pure-logic green in-runner, tsc/jest/build deferred to CI — no node_modules in runner)

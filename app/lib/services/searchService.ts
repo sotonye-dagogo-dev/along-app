@@ -144,6 +144,29 @@ export function normalizeSearchParams(input: SearchParams): Required<Omit<Search
 }
 
 class SearchService {
+  /**
+   * Best-effort recall of per-step stop names. Route steps live in the
+   * `Post.routes` JSON array (local names like "Cele Bus Stop" that no map
+   * source knows), so the structured OR-clause above cannot see them. A
+   * bounded `routes::text ILIKE` prefetch collects matching ids which are ORed
+   * into the main query — failures (or non-Postgres hosts) resolve to [] and
+   * the structured search proceeds unchanged. Never throws.
+   */
+  private async stepLocationIds(query: string): Promise<string[]> {
+    const q = query.trim().slice(0, 100);
+    if (q.length < 2) return [];
+    try {
+      const rows = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Post"
+        WHERE "isArchived" = false AND routes::text ILIKE ${"%" + q + "%"}
+        LIMIT 25
+      `;
+      return Array.isArray(rows) ? rows.map((r) => r.id).filter((id) => typeof id === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+
   async search(input: SearchParams): Promise<SearchResult> {
     const { query, type, limit, region, postType, cursor } = normalizeSearchParams(input);
 
@@ -188,6 +211,8 @@ class SearchService {
     const postWhere: Record<string, unknown> = {
       OR: [
         { title: { contains: query, mode: "insensitive" } },
+        // Route descriptions carry the local stop/street names map sources
+        // miss — matching here is what drives community wording to results.
         { description: { contains: query, mode: "insensitive" } },
         { region: { contains: query, mode: "insensitive" } },
         { tags: { has: query.toLowerCase() } },
@@ -195,6 +220,14 @@ class SearchService {
       // Deleted/archived authors never surface on user-facing search.
       user: { isDeleted: false, deletionScheduledFor: null },
     };
+    // Per-step stop names (routes JSON) recall — best-effort ids ORed in.
+    // Runs before the main query; on miss the OR is simply not extended.
+    if (type !== "users") {
+      const stepIds = await this.stepLocationIds(query);
+      if (stepIds.length > 0) {
+        (postWhere.OR as unknown[]).push({ id: { in: stepIds } });
+      }
+    }
     if (region) postWhere.region = { contains: region, mode: "insensitive" };
     if (postType) postWhere.type = postType;
 

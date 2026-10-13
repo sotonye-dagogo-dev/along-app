@@ -1,7 +1,7 @@
 # Architecture History
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-09 (Sprint 19 keyless map stack)
+> - last-updated-by: execute-feature 2026-10-13 (Sprint 50 tightening)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale — only the current architecture (in system-architecture.md) needs re-verification
 
@@ -178,3 +178,8 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 - PWA notices moved from bespoke CSS vars + emoji/literal glyphs to `--color-*` design tokens (auto-flip under `.dark`) + lucide icons, with help affordances deep-linking into the FAQ (`PWA_FAQ_LINKS`, honored by FaqClient `?q=`/`#hash`).
 - Account lifecycle visibility centralized in `lib/config/userVisibility.ts` (deleted vs pending-deletion-archived vs visible) and enforced at every non-admin user surface (suggestions, search, follow + lists + counts); admin surfaces intentionally exempt.
 - Avatar rendering converged on canonical `AppAvatar`/`AppUserLabel` after backfilling the two admin APIs that omitted `avatarConfig`/`verified`.
+
+## Sprint 50 (2026-10-13) — Attachments in metadata JSON; recall via merge; lanes as config
+- Report screenshots ride in `BugReport.metadata.images` (validated, `along/reports` folder, `report-discard` cleanup) — no migration, no P2022 window.
+- Geocode recall comes from merging all keyless providers (nominatim+photon+openmeteo) with dedupe + rank-only viewer bias (`geoBias`, promptless); community stop names recalled via best-effort `routes::text` prefetch in search.
+- Cursor surfaces gain View-More (model unchanged); page surfaces share `PageNavigator`. Floating surfaces share `FLOATING_UI_CONFIG` lanes above the mobile tab bar.

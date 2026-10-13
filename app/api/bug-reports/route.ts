@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
 import { sendBugReportNotification } from "@/app/lib/services/emailService";
+import { sanitizeReportImageUrls } from "@/app/lib/config/reportAttachments";
 
 const VALID_CATEGORIES = ["UI", "ROUTING", "AUTH", "PERFORMANCE", "DATA", "NOTIFICATIONS", "OTHER"];
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, category, description, postId, metadata } = body;
+    const { title, category, description, postId, metadata, images } = body;
 
     if (!title || !category || !description) {
       return NextResponse.json({ error: "title, category, and description are required" }, { status: 400 });
@@ -61,7 +62,26 @@ export async function POST(request: NextRequest) {
         description,
         reporterId,
         ...(linkedPostId ? { postId: linkedPostId } : {}),
-        ...(metadata && typeof metadata === "object" ? { metadata } : {}),
+        ...(() => {
+          // Optional screenshots ride in metadata.images (no migration).
+          // Explicit images[] wins; legacy metadata.images is preserved.
+          const fromImages = sanitizeReportImageUrls(images);
+          const fromMeta =
+            metadata && typeof metadata === "object"
+              ? (metadata as Record<string, unknown>)
+              : null;
+          const metaImages =
+            fromMeta && Array.isArray(fromMeta.images)
+              ? sanitizeReportImageUrls(fromMeta.images)
+              : [];
+          const finalImages = fromImages.length > 0 ? fromImages : metaImages;
+          if (fromMeta && finalImages.length > 0) {
+            return { metadata: { ...fromMeta, images: finalImages } };
+          }
+          if (fromMeta) return { metadata: fromMeta };
+          if (finalImages.length > 0) return { metadata: { images: finalImages } };
+          return {};
+        })(),
       },
       select: { id: true },
     });

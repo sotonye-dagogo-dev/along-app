@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, WifiOff, HelpCircle } from "lucide-react";
 import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
 import { useTranslation } from "@/app/providers/I18nProvider";
 import { PWA_TOAST_COPY, PWA_OFFLINE_BANNER, PWA_FAQ_LINKS } from "@/app/lib/config/pwa";
+import { FLOATING_UI_CONFIG, laneBottom } from "@/app/lib/config/floatingUi";
 
 /**
  * Slim offline banner — renders nothing when online. Collapsible so it never
@@ -65,7 +66,8 @@ export function OfflineBanner() {
         style={{
           position: "fixed",
           right: 12,
-          bottom: 12,
+          // Clears the mobile tab bar (config lane) + device safe-area.
+          bottom: laneBottom(FLOATING_UI_CONFIG.lanes.offlineBottomPx),
           zIndex: 60,
           display: "inline-flex",
           alignItems: "center",
@@ -96,7 +98,9 @@ export function OfflineBanner() {
         position: "fixed",
         left: 12,
         right: 12,
-        bottom: 12,
+        // Clears the mobile tab bar (config lane) + device safe-area — the bar
+        // used to paint over the Profile tab at bottom:12.
+        bottom: laneBottom(FLOATING_UI_CONFIG.lanes.offlineBottomPx),
         zIndex: 60,
         display: "flex",
         alignItems: "center",

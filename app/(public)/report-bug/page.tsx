@@ -6,10 +6,13 @@ import { Suspense } from "react";
 import { BUG_REPORT_FIELDS } from "@/app/lib/config";
 import { ConfigDrivenForm } from "@/app/components/ui/ConfigDrivenForm";
 import { AppEmptyState } from "@/app/components/ui/AppEmptyState";
+import { ReportImageUpload } from "@/app/components/features/moderation";
 import { CheckCircle } from "lucide-react";
 
 function ReportBugForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
+  const [sending, setSending] = useState(false);
   const searchParams = useSearchParams();
 
   // Prefill from error boundaries (sanitized ?title=&description=): fed into
@@ -33,15 +36,18 @@ function ReportBugForm() {
   const hasPrefill = Boolean(initialValues.title || initialValues.description);
 
   const handleSubmit = async (_data: Record<string, unknown>) => {
+    if (sending) return;
+    setSending(true);
     try {
       await fetch("/api/bug-reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(_data),
+        body: JSON.stringify({ ..._data, ...(images.length > 0 ? { images } : {}) }),
       });
     } catch {
       // handle silently
     } finally {
+      setSending(false);
       setSubmitted(true);
     }
   };
@@ -77,6 +83,9 @@ function ReportBugForm() {
         onSubmit={handleSubmit}
         submitLabel="Submit Report"
       />
+      <div className="mt-5">
+        <ReportImageUpload images={images} onChange={setImages} disabled={sending} />
+      </div>
     </div>
   );
 }

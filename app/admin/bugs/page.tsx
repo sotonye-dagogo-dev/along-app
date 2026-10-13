@@ -16,7 +16,7 @@ interface AdminBug {
   category: string
   status: string
   createdAt: string
-  metadata?: { kind?: string; reason?: string; commentId?: string } | null
+  metadata?: { kind?: string; reason?: string; commentId?: string; images?: string[] } | null
   post?: { id: string; title: string; userId: string } | null
   reporter: { id: string; firstName: string; lastName: string; userName: string } | null
   reviewer: { id: string; firstName: string; lastName: string; userName: string } | null
@@ -206,6 +206,16 @@ export default function AdminBugsPage() {
               </span>
             </div>
             <p className="text-xs text-text-secondary mb-3 line-clamp-2 overflow-hidden text-ellipsis">{bug.description}</p>
+            {Array.isArray(bug.metadata?.images) && bug.metadata.images.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {bug.metadata.images.slice(0, 3).map((url, i) => (
+                  <a key={`${bug.id}-shot-${i}`} href={url} target="_blank" rel="noreferrer" aria-label={`Open screenshot ${i + 1} for ${bug.title}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`Report screenshot ${i + 1}`} className="w-20 h-20 rounded-lg object-cover border border-border hover:opacity-90 transition-opacity" loading="lazy" />
+                  </a>
+                ))}
+              </div>
+            )}
             {isReport && bug.post && (
               <Link
                 href={`/posts/${bug.post.id}`}

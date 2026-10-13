@@ -23,7 +23,7 @@ import { cleanupImagesByUrls } from "@/app/lib/services/mediaCleanupService";
 const CLEANUP_SCHEMA = z.object({
   urls: z.array(z.string().min(1).max(2048)).max(20).default([]),
   draftId: z.string().max(120).optional(),
-  source: z.enum(["draft-discard", "composer-remove"]).default("draft-discard"),
+  source: z.enum(["draft-discard", "composer-remove", "report-discard"]).default("draft-discard"),
 });
 
 export async function POST(request: NextRequest) {
