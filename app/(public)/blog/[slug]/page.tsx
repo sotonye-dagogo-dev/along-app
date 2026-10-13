@@ -4,6 +4,7 @@ import { ArrowLeft, Clock, User } from "lucide-react";
 import { remark } from "remark";
 import html from "remark-html";
 import { getPublicBlogPosts, getPublicPostBySlug } from "@/app/lib/utils/blogStore";
+import { BLOG_CONTENT_PROSE_CLASSES } from "@/app/lib/config/blog";
 import { buildMetadata, resolveOgImage } from "@/app/lib/utils/metadata";
 import { buildBlogVarContext, renderBlogContent } from "@/app/lib/utils/blogVariables";
 import BlogShareButtons from "@/app/components/features/blog/BlogShareButtons";
@@ -148,7 +149,7 @@ export default async function BlogPostPage({ params }: Props) {
         </header>
 
         <div
-          className="prose prose-sm max-w-none prose-headings:text-text-primary prose-p:text-text-secondary prose-a:text-primary prose-strong:text-text-primary prose-code:text-text-primary prose-code:bg-bg-elevated prose-code:px-1 prose-code:rounded"
+          className={BLOG_CONTENT_PROSE_CLASSES}
           dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
       </article>

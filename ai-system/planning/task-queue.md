@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
-> - last-synced: 2026-10-13 (Sprint 52 close-out)
+> - last-updated-by: execute-feature 2026-10-13 (blog design compliance + reading-time studio input)
+> - last-synced: 2026-10-13 (blog design compliance close-out)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -688,3 +688,13 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | Admin featured flag — type + store + `/api/blog` field + upsert/metadata + `preferFeatured` ordering + /blog hero preference + Studio checkbox/star + tape pill | [x] |
 | [S] | Studio templates — shipped defaults openable/editable without DB save (prefill incl. blocks, save creates row; empty-DB empty-editor fixed) | [x] |
 | [S] | Tests — extended `featuredBlogs.test.ts` (featured-first ordering, missing-field fallback) | [x] |
+
+## Session 2026-10-13 — Blog design compliance + reading-time studio input (execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (config additions only; no migration/deps/API removals; stored-wins + word-count fallback preserved). QA in-runner: node logic green (normalize/estimate), zero `prose-p:text-text-secondary` left in app code, shared-class consumption + Studio wiring grep-verified; full tsc/jest/build deferred to CI — no node_modules in runner.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Design compliance — `BLOG_CONTENT_PROSE_CLASSES` single source (body/li/strong/headings = text-primary); public `[slug]` page + Studio preview consume it; terms/privacy same-pattern sweep (p/li → primary) | [x] |
+| [S] | Reading-time studio input — bounds/meta/normalize/estimate in `blogManagement`; Studio number input wired through load/new/template/save (PUT sends readingTime); `blogStore` delegates clamp/estimate to helpers | [x] |
+| [S] | Tests — NEW `blogCompliance.test.ts` (prose tokens, bounds/meta, normalize clamp/reject, estimate fallback) | [x] |
