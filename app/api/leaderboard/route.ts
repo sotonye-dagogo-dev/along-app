@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
+import { asAvatarConfig } from "@/app/lib/config/avatar";
 
 interface BoardRow {
   id: string;
@@ -46,7 +47,7 @@ function toBoardRow(u: {
   lastName: string;
   userName: string;
   avatar: string | null;
-  avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null;
+  avatarConfig: unknown;
   rewardPoints: number;
   rewardTier: string | null;
   createdAt?: string | Date;
@@ -58,9 +59,9 @@ function toBoardRow(u: {
     lastName: u.lastName,
     userName: u.userName,
     avatar: u.avatar,
-    avatarConfig: u.avatarConfig ?? null,
+    avatarConfig: asAvatarConfig(u.avatarConfig) ?? null,
     rewardPoints: u.rewardPoints,
-    rewardTier: u.rewardTier,
+    rewardTier: u.rewardTier == null ? null : String(u.rewardTier),
     postCount: u._count.posts,
     followerCount: u._count.followers,
     createdAt: u.createdAt,
