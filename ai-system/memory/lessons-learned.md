@@ -798,3 +798,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** name state and derived values in disjoint namespaces (`tabFilter` vs `tabPostsQuery`) with a collision note at the declaration; make id-dedup a single exported invariant every merge path funnels through; pass rendered ids as `exclude` for score-ordered pagination; never overwrite a pagination cursor with a page-one poll result.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 54: preview parity by shared component, not duplicated markup; swap-now/purge-after-commit for managed uploads
+- **Symptom:** Studio preview (title + reading-time + body) drifted from the published post (which later gained a cover) because two markups described the same view; blog had no upload path, so covers were unvalidated text.
+- **Root causes:** (1) preview and public page were written as separate JSX with a comment asking them to stay in sync — comments don't enforce. (2) image lifecycle (upload → reference → replace → purge) had no owner: the upload endpoint, the Studio, and the cleanup route each knew part of it.
+- **Fix pattern (reuse):** extract the reading view into one server-compatible component both surfaces render (parity by construction); centralize URL logic in pure never-throw helpers + one config registry; uploads swap the preview immediately but destruction only ever runs post-commit best-effort (client after 2xx, server in background), with the cleanup route re-guarding live references so shared URLs survive.
+- **Supersedes:** None
+- **Superseded by:** None

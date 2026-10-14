@@ -115,12 +115,26 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const slug = (searchParams.get("slug") ?? "").trim();
     if (!slug) return NextResponse.json({ error: "slug required" }, { status: 400 });
-    const posts = (await getManagedPosts()).filter((p) => p.slug !== slug);
+    const managed = await getManagedPosts();
+    const doomed = managed.find((p) => p.slug === slug) ?? null;
+    const posts = managed.filter((p) => p.slug !== slug);
     await prisma.siteConfig.upsert({
       where: { key: "blogPosts" },
       create: { key: "blogPosts", value: posts as never },
       update: { value: posts as never },
     });
+    // Cover + inline assets of the deleted post are purged post-commit,
+    // best-effort (client also purges; the cleanup route re-guards live refs).
+    if (doomed) {
+      try {
+        const { collectBlogPostImageUrls } = await import("@/app/lib/utils/blogImages");
+        const { cleanupImagesInBackground } = await import("@/app/lib/services/mediaCleanupService");
+        const urls = collectBlogPostImageUrls(doomed);
+        if (urls.length > 0) cleanupImagesInBackground(urls, { source: "blog-delete" });
+      } catch {
+        /* hygiene never fails the delete */
+      }
+    }
     await logAudit({ actorId: (user as { id: string }).id, action: "blog.delete", entity: "blog", entityId: slug });
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (e) {

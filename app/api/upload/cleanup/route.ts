@@ -23,7 +23,7 @@ import { cleanupImagesByUrls } from "@/app/lib/services/mediaCleanupService";
 const CLEANUP_SCHEMA = z.object({
   urls: z.array(z.string().min(1).max(2048)).max(20).default([]),
   draftId: z.string().max(120).optional(),
-  source: z.enum(["draft-discard", "composer-remove", "report-discard"]).default("draft-discard"),
+  source: z.enum(["draft-discard", "composer-remove", "report-discard", "blog-cover-replace", "blog-image-remove", "blog-delete"]).default("draft-discard"),
 });
 
 export async function POST(request: NextRequest) {
@@ -71,10 +71,31 @@ export async function POST(request: NextRequest) {
 
     // Guard: never delete an asset still referenced by a live post.
     // (Draft published → same URLs now live on the post; discard must keep them.)
+    // Blog assets are SiteConfig-backed (not Post rows), so blog references are
+    // checked too — a cover/inline URL reused by any managed post is kept.
+    const isBlogSource =
+      source === "blog-cover-replace" || source === "blog-image-remove" || source === "blog-delete";
+    const blogReferenced: Set<string> = new Set();
+    if (isBlogSource || cleanable.some((u) => u.includes("/along/blog/"))) {
+      try {
+        const { getManagedPosts } = await import("@/app/lib/utils/blogStore");
+        const { collectBlogPostImageUrls } = await import("@/app/lib/utils/blogImages");
+        const managed = await getManagedPosts();
+        for (const p of managed) {
+          for (const u of collectBlogPostImageUrls(p)) blogReferenced.add(u);
+        }
+      } catch {
+        // On store hiccup, fail OPEN for safety below (kept, not destroyed).
+      }
+    }
     const unreferenced: string[] = [];
     let skippedReferenced = 0;
     for (const url of cleanable.slice(0, MEDIA_CLEANUP_CONFIG.maxUrlsPerCall)) {
       try {
+        if (blogReferenced.has(url)) {
+          skippedReferenced += 1;
+          continue;
+        }
         const ref = await prisma.post.findFirst({
           where: { images: { has: url } },
           select: { id: true },

@@ -4,6 +4,7 @@ import { ArrowRight, Clock, User } from "lucide-react";
 import { PAGE_META, BLOG_LAYOUT_CONFIG, DEFAULT_BLOG_CATEGORIES } from "@/app/lib/config";
 import { buildPublicMetadata } from "@/app/lib/utils/metadata";
 import { getPublicBlogPosts } from "@/app/lib/utils/blogStore";
+import { resolveBlogImageUrl } from "@/app/lib/utils/blogImages";
 import { BlogPager } from "./BlogPager";
 import type { ManagedBlogPost } from "@/app/lib/utils/blogStore";
 
@@ -14,11 +15,20 @@ export const metadata: Metadata = buildPublicMetadata(
 );
 
 function PostCard({ post }: { post: ManagedBlogPost }) {
+  const cover = resolveBlogImageUrl(post.image);
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group block bg-bg-card border border-border rounded-xl p-5 hover:shadow-md hover:border-primary/20 transition-all duration-200"
+      className="group block bg-bg-card border border-border rounded-xl overflow-hidden hover:shadow-md hover:border-primary/20 transition-all duration-200"
     >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={cover}
+        alt={`Cover for ${post.title}`}
+        loading="lazy"
+        className="w-full aspect-[16/9] object-cover bg-bg-elevated"
+      />
+      <div className="p-5">
       <div className="flex items-center gap-2 text-xs text-text-muted mb-3">
         <span className="px-2 py-0.5 rounded-full bg-bg-elevated text-text-secondary capitalize">
           {post.category}
@@ -39,6 +49,7 @@ function PostCard({ post }: { post: ManagedBlogPost }) {
         <span>{post.author}</span>
         <span className="mx-1">·</span>
         <span>{new Date(post.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+      </div>
       </div>
     </Link>
   );
@@ -97,8 +108,16 @@ export default async function BlogPage({ searchParams }: Props) {
             <div key={post.slug} className="mb-8">
               <Link
                 href={`/blog/${post.slug}`}
-                className="group block bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-xl p-6 md:p-8 hover:shadow-lg transition-all duration-200"
+                className="group block bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-xl overflow-hidden hover:shadow-lg transition-all duration-200"
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={resolveBlogImageUrl(post.image)}
+                  alt={`Cover for ${post.title}`}
+                  loading="lazy"
+                  className="w-full aspect-[21/9] object-cover bg-bg-elevated"
+                />
+                <div className="p-6 md:p-8">
                 <span className="text-xs font-semibold uppercase tracking-wider text-primary mb-2 block">Featured</span>
                 <h2 className="text-xl md:text-2xl font-bold text-text-primary mb-3 group-hover:text-primary transition-colors">
                   {post.title}
@@ -110,6 +129,7 @@ export default async function BlogPage({ searchParams }: Props) {
                   <span className="flex items-center gap-1"><User size={12} />{post.author}</span>
                   <span className="flex items-center gap-1"><Clock size={12} />{post.readingTime} min read</span>
                   <span>{new Date(post.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                </div>
                 </div>
               </Link>
             </div>

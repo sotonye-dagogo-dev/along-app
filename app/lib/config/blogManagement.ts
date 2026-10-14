@@ -228,3 +228,72 @@ export const BLOG_VARIABLE_CATALOG = [
 export function isDefaultBlogSlug(slug: string): boolean {
   return DEFAULT_BLOG_POSTS.some((p) => p.slug === normalizeSlug(slug));
 }
+
+/**
+ * Blog image-upload policy — single source of truth for cover + inline uploads.
+ * Mirrors REPORT_ATTACHMENTS_CONFIG / FOLDER_POLICIES shape: `/api/upload`
+ * reads the folder/caps/types from here (no hardcoded policy in the route),
+ * the Studio reads the copy + caps for its upload UI, and the cleanup
+ * allowlist covers `folder` so replaced/removed blog assets are purgeable.
+ * All values env-overridable; never throws.
+ */
+export interface BlogImageConfig {
+  /** Cloudinary folder for blog uploads (disjoint from posts/reports). */
+  folder: string;
+  /** Upload folder key accepted by POST /api/upload (`folder=blog`). */
+  uploadFolderKey: string;
+  /** Max bytes per image (cover + inline share the cap). */
+  maxBytesPerImage: number;
+  /** Max inline images kept per post (cover is always exactly one). */
+  maxInlineImages: number;
+  /** Allowed upload MIME types. */
+  allowedTypes: string[];
+  /** Copy for the Studio upload UI (sanitized, user-facing). */
+  copy: {
+    coverLabel: string;
+    coverHint: string;
+    coverAddLabel: string;
+    coverReplaceLabel: string;
+    coverRemoveLabel: string;
+    inlineAddLabel: string;
+    inlineHint: string;
+    tooLarge: string;
+    badType: string;
+    uploadFailed: string;
+    urlLabel: string;
+    urlPlaceholder: string;
+  };
+}
+
+function blogEnvInt(name: string, fallback: number): number {
+  const raw = Number(process.env[name]);
+  return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : fallback;
+}
+
+export const BLOG_IMAGE_CONFIG: BlogImageConfig = {
+  folder: "along/blog",
+  uploadFolderKey: "blog",
+  maxBytesPerImage: blogEnvInt("BLOG_IMAGE_MAX_BYTES", 5 * 1024 * 1024),
+  maxInlineImages: blogEnvInt("BLOG_IMAGE_MAX_INLINE", 10),
+  allowedTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg"],
+  copy: {
+    coverLabel: "Cover image",
+    coverHint: "Upload a cover photo or paste an image URL. Shown at the top of the post.",
+    coverAddLabel: "Upload cover",
+    coverReplaceLabel: "Replace cover",
+    coverRemoveLabel: "Remove cover",
+    inlineAddLabel: "Upload image",
+    inlineHint: "Upload or paste an image URL for this block.",
+    tooLarge: "That image is too large. Please use a smaller file.",
+    badType: "Use JPEG, PNG, WebP or GIF images.",
+    uploadFailed: "Could not upload that image. Please try again.",
+    urlLabel: "Image URL",
+    urlPlaceholder: "https://… or /og-image.png",
+  },
+};
+
+/** Human "5MB" style label derived from the byte cap (no hardcoded copy). */
+export function blogMaxSizeLabel(): string {
+  const mb = BLOG_IMAGE_CONFIG.maxBytesPerImage / (1024 * 1024);
+  return `${Number.isInteger(mb) ? mb : mb.toFixed(1)}MB`;
+}
