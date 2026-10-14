@@ -335,6 +335,12 @@ export const SITE_CONFIG_EDITORS: SiteConfigEditorMeta[] = [
     kind: "json",
   },
   {
+    key: "feedDiversity",
+    title: "Feed Diversity",
+    description: "Max consecutive runs, lookahead window, jitter weight.",
+    kind: "json",
+  },
+  {
     key: "emailConfig",
     title: "Email Sender",
     description: "From name / address used for transactional mail.",

@@ -141,8 +141,12 @@ export function blocksToHtml(blocks: EmailBlock[]): string {
  * `BLOG_CONTENT_PROSE_CLASSES` (design tokens, theme-aware via CSS vars)
  * actually applies — the same pattern as terms/privacy (ReactMarkdown output
  * + prose classes). Text is HTML-escaped ({{variables}} contain no HTML chars
- * so tokens survive verbatim for `renderBlogContent`). Button CTAs degrade to
- * prose-styled links (article bodies use links, not email button chrome).
+ * so tokens survive verbatim for `renderBlogContent`). Button blocks render
+ * as centered CTA anchors (`blog-cta` classes, token-styled via globals.css)
+ * — the same CTA treatment as Email Studio, not plain inline links — while
+ * `link` blocks stay as prose-styled inline links. CTA styling lives in
+ * CSS (theme-aware tokens), never inline styles, so dark mode keeps working
+ * and `sanitizeBlogHtml` preserves it via the blog-cta class allowlist.
  * Pure, dependency-free, never throws.
  */
 export function blocksToBlogHtml(blocks: EmailBlock[]): string {
@@ -153,7 +157,10 @@ export function blocksToBlogHtml(blocks: EmailBlock[]): string {
           const lvl = b.level === 2 ? "h2" : b.level === 3 ? "h3" : "h1";
           return `<${lvl}>${esc(b.text ?? "")}</${lvl}>`;
         }
-        case "button":
+        case "button": {
+          const href = esc(b.url ?? "#");
+          return `<div class="blog-cta-wrap"><a class="blog-cta" href="${href}">${esc(b.text ?? href)}</a></div>`;
+        }
         case "link": {
           const href = esc(b.url ?? "#");
           return `<p><a href="${href}">${esc(b.text ?? href)}</a></p>`;
@@ -352,13 +359,14 @@ export function htmlToBlocks(html: string): EmailBlock[] {
           const rawHref = (linkM[1] ?? "").replace(/^["']|["']$/g, "");
           const label = toPlainText(linkM[2]);
           const rest = toPlainText(boxRest.replace(linkM[0], " "));
-          if ((/padding|background/i.test(boxRest) || /verify|reset|confirm|open|start|explore/i.test(`${label} ${rawHref}`)) && label && rest.length < 40) {
+          const isCtaClass = /blog-cta/i.test(linkM[0]) || /blog-cta-wrap/i.test(boxRest);
+          if ((isCtaClass || /padding|background/i.test(boxRest) || /verify|reset|confirm|open|start|explore/i.test(`${label} ${rawHref}`)) && label && rest.length < 40) {
             blocks.push({ id: newBlockId(), type: "button", text: label, url: rawHref || "#" });
             if (rest) blocks.push({ id: newBlockId(), type: "paragraph", text: rest });
             continue;
           }
           if (!rest && label) {
-            const isCta = /padding|background/i.test(boxRest);
+            const isCta = isCtaClass || /padding|background/i.test(boxRest);
             blocks.push({ id: newBlockId(), type: isCta ? "button" : "link", text: label, url: rawHref || "#" });
             continue;
           }
@@ -396,7 +404,7 @@ export function htmlToBlocks(html: string): EmailBlock[] {
         matched = true;
         const hrefM = soloFull.match(/href\s*=\s*"([^"]*)"/i) ?? soloFull.match(/href\s*=\s*'([^']*)'/i);
         const label = toPlainText(anchorInner) || (hrefM?.[1] ?? "Open");
-        if (/padding|background:#00A862/i.test(soloFull)) blocks.push({ id: newBlockId(), type: "button", text: label, url: hrefM?.[1] ?? "#" });
+        if (/padding|background:#00A862|blog-cta/i.test(soloFull)) blocks.push({ id: newBlockId(), type: "button", text: label, url: hrefM?.[1] ?? "#" });
         else blocks.push({ id: newBlockId(), type: "link", text: label, url: hrefM?.[1] ?? "#" });
         continue;
       }

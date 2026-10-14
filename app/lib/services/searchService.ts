@@ -2,6 +2,9 @@ import { prisma } from "@/app/lib/db/prisma";
 import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
 import {
   SEARCH_CONFIG,
+  SEARCH_ANALYTICS_CONFIG,
+  buildZeroResultPayload,
+  normalizeAnalyticsQuery,
   tokenizeSearchQuery,
   scoreTextRelevance,
   type TokenizedQuery,
@@ -528,6 +531,33 @@ class SearchService {
       .map(([tag, count]) => ({ tag, count }));
 
     const result: SearchResult = { posts: trustedPosts, users, tags, nextCursor };
+
+    // Zero-result analytics (first page only, fire-and-forget, never throws):
+    // one AnalyticsEvent per empty result so stopwords/fuzzy thresholds can
+    // be tuned from evidence. Cached-empty fast path above returns early and
+    // is intentionally NOT logged (already counted on first computation).
+    if (!cursor && trustedPosts.length === 0 && users.length === 0 && tags.length === 0) {
+      try {
+        const payload = buildZeroResultPayload(query, tokenized, { type, region: region ?? undefined, postType: postType ?? undefined });
+        if (normalizeAnalyticsQuery(query)) {
+          void (async () => {
+            try {
+              await prisma.analyticsEvent.create({
+                data: {
+                  eventName: SEARCH_ANALYTICS_CONFIG.eventName,
+                  region: typeof region === "string" && region ? region.slice(0, 100) : null,
+                  payload: payload as never,
+                },
+              });
+            } catch {
+              /* analytics must never break search */
+            }
+          })();
+        }
+      } catch {
+        /* never break search */
+      }
+    }
 
     if (!cursor) {
       try {

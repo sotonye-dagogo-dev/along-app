@@ -1,6 +1,6 @@
 import { prisma } from "@/app/lib/db/prisma";
 import { DEFAULT_FEED_CONFIG, CACHE_TTL, CACHE_KEYS } from "@/app/lib/config";
-import { FEED_DIVERSITY_CONFIG, applyFeedDiversity } from "@/app/lib/config/feedAlgorithm";
+import { FEED_DIVERSITY_CONFIG, applyFeedDiversity, normalizeFeedDiversityConfig } from "@/app/lib/config/feedAlgorithm";
 import type { FeedDiversityConfig } from "@/app/lib/config/feedAlgorithm";
 
 interface FeedPost {
@@ -93,19 +93,7 @@ async function resolveFeedDiversity(): Promise<FeedDiversityConfig> {
     const { getSiteConfig } = await import("@/app/lib/utils/siteConfig");
     const stored = await getSiteConfig<Partial<FeedDiversityConfig>>("feedDiversity", {});
     if (stored && typeof stored === "object") {
-      const pick = (v: unknown, fallback: number): number =>
-        typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback;
-      return {
-        maxConsecutiveFromSameAuthor: Math.max(
-          1,
-          Math.floor(pick(stored.maxConsecutiveFromSameAuthor, FEED_DIVERSITY_CONFIG.maxConsecutiveFromSameAuthor)),
-        ),
-        lookaheadWindow: Math.max(
-          1,
-          Math.floor(pick(stored.lookaheadWindow, FEED_DIVERSITY_CONFIG.lookaheadWindow)),
-        ),
-        jitterWeight: pick(stored.jitterWeight, FEED_DIVERSITY_CONFIG.jitterWeight),
-      };
+      return normalizeFeedDiversityConfig(stored);
     }
   } catch {
     /* config store unavailable — fall through to default */

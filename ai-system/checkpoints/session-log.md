@@ -2449,3 +2449,32 @@ Nothing pending — feature complete. Future: admin UI for the `feedDiversity` S
 **Notes / Blockers:**
 - None. Non-breaking, all changes additive with fallbacks.
 - Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + dev-history + index + memory).
+
+## Session — 2026-10-14 (Execute-feature: studio tightening — blog reorder/CTA, sticky previews, feedDiversity card, zero-result analytics)
+
+**Completed:**
+- Directive close-out, all items (non-breaking; no migration, no new deps, no removed APIs; same props + envelopes, additive fields only):
+  - Blog Studio reorder: root cause — Blog page rendered blocks with a bare Trash button while Email Studio had Grip + ChevronUp/Down + `moveBlock`; feature parity was simply never ported. Fix: `moveBlock` (same swap-guard logic) + identical header UI (GripVertical, up/down with disabled ends + aria-labels, Trash keeps orphan-image tracking).
+  - Blog CTA buttons: prior decision deliberately degraded buttons to prose links (inline email chrome would beat prose classes + break dark mode — repair-system pitfall). Directive overrides: buttons must look like Email Studio CTAs. Fix keeps the no-inline-style rule — `blocksToBlogHtml` emits `<div class="blog-cta-wrap"><a class="blog-cta">`, styling lives in `globals.css` on design tokens (`--color-primary`/`--color-text-inverse`, auto dark-mode), `sanitizeBlogHtml` preserves exactly those two classes via `BLOG_CTA_CLASS_ALLOWLIST` (all other classes stripped, event handlers/javascript: still dropped), `htmlToBlocks` round-trips `blog-cta` markup back to button blocks. `blogCompliance.test.ts` updated to the CTA contract (deliberate, directive-owned).
+  - Generous sticky previews: root cause — short fixed `max-h` (420/640px) + non-sticky panes inside stretching grids; tall editor columns scrolled the preview out of view on desktop. Fix (config-driven): NEW `STUDIO_LAYOUT_CONFIG` (78vh caps, 360px mins, sticky wrappers with required `self-start` + `items-start` grids) consumed by Email (right-column sticky), Blog (preview sticky), AvatarEditor (viewport grid height + sticky preview column).
+  - feedDiversity Studio card (session-log future #1): `FEED_DIVERSITY_CONFIG_KEY`/`_META` + `normalizeFeedDiversityConfig` (shared by `feedService.resolveFeedDiversity` — same clamping behaviour, no logic change) + `validateFeedDiversityConfigValue`; `/api/admin/config` PUT 400-guards `feedDiversity`; `SITE_CONFIG_EDITORS` entry; Config page dedicated card (META-driven numeric inputs, dirty-gated save, reset-to-defaults, error surfacing) mirroring the early-adopter card.
+  - Zero-result analytics (session-log future #2): `SEARCH_ANALYTICS_CONFIG` + pure `normalizeAnalyticsQuery`/`buildZeroResultPayload`; `searchService` logs one fire-and-forget `AnalyticsEvent(search_zero_results)` on empty first-page results (never throws, cached-empty fast path not double-counted); `/api/admin/analytics` aggregates top queries in-window (additive `zeroResultQueries`); analytics page section (query + terms + ×count + stopword/fuzzy tuning hint, config copy in charts registry).
+- Tests: NEW `studioTightening.test.ts` (4); `blogCompliance.test.ts` CTA + allowlist suites.
+- QA: FULL gate green in-runner (node_modules installed): `npx tsc --noEmit` 0 errors; `npx jest` 79/79 suites 684/684 tests; `npm run lint` clean on touched files (sole error pre-existing in `accountDeletionService.ts`, untouched); `npm run build` clean.
+- Docs: task-queue Sprint 56 + this log; chained update-ai-system.md executed (dev-history + system-architecture + project-decisions + lessons-learned + index reconciled; no architecture drift — additive config/services/components/CSS only).
+
+**Files Modified:**
+- Edited: `app/lib/utils/emailBuilder.ts`, `app/lib/utils/emailSanitize.ts`, `app/globals.css`, `app/admin/blog/page.tsx`, `app/admin/email/page.tsx`, `app/components/features/profile/AvatarEditor.tsx`, `app/lib/config/feedAlgorithm.ts`, `app/lib/services/feedService.ts`, `app/api/admin/config/route.ts`, `app/lib/config/admin.ts`, `app/admin/config/page.tsx`, `app/lib/config/search.ts`, `app/lib/services/searchService.ts`, `app/api/admin/analytics/route.ts`, `app/lib/config/charts.ts`, `app/admin/analytics/page.tsx`, `app/lib/config/index.ts`, `app/__tests__/config/blogCompliance.test.ts`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/lib/config/studioLayout.ts`, `app/__tests__/config/studioTightening.test.ts`
+
+**Next Task:**
+Nothing pending — feature complete. Both session-log futures from Sprint 55 are now closed.
+
+**Assumptions Made:**
+- `.blog-cta` white-on-primary meets contrast in both themes via tokens (primary #00623B/light-inverse #FFFFFF, dark primary #00A862/inverse #0F0F0F — same pairing as existing primary buttons, so no new contrast risk).
+- Zero-result logging on first-page computes only (cached-empty returns are not re-logged) keeps counts honest without a dedup window; 500-row in-window scan + in-memory group-by is sufficient (bounded, period-scoped, never throws).
+- `prose-a` override via `.prose a.blog-cta` + `!important` on color/decoration is the minimal specificity that beats Tailwind typography without touching the shared prose config.
+
+**Notes / Blockers:**
+- None. Non-breaking, all changes additive with fallbacks.
+- Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + dev-history + index + memory).

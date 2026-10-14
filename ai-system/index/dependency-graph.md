@@ -142,13 +142,13 @@ FeedService
     → Redis (feed caching)
     → Config: feedAlgorithm, cache
     → Stable pagination [2026-10-13]: excludeIds (server-side notIn before scoring/slicing + backfill over-fetch) + deterministic id tie-break; guest feed honors exclude too
-    → Diversity [Sprint 55]: feedAlgorithm `FEED_DIVERSITY_CONFIG` + pure `applyFeedDiversity` (post-sort/pre-slice, SiteConfig `feedDiversity` merge, never-throw)
+    → Diversity [Sprint 55]: feedAlgorithm `FEED_DIVERSITY_CONFIG` + pure `applyFeedDiversity` (post-sort/pre-slice, SiteConfig `feedDiversity` merge, never-throw); [Sprint 56]: KEY/META/normalize/validate shared by resolver + Config Studio card + API 400-guard
 
 SearchService (`app/lib/services/searchService.ts`, live 2026-10-08 — powers `GET /api/search`)
     → PostModel, UserModel (Prisma `contains`/`insensitive`, no migration; P2022 avatarConfig fallback)
     → Redis (unified search cache, 120s TTL, never-throw; empty first-pages return by reference, non-empty re-enriched with live trust [Sprint 39])
     → Config: cache (CACHE_KEYS.search, CACHE_TTL.searchResults), rateLimits (search bucket)
-    → Loose engine [Sprint 55]: `config/search.ts` (SEARCH_CONFIG + tokenize/levenshtein/coverage/relevance) → two-phase recall (exact phrase+terms + routes-JSON prefetch, then prefix typo top-up) + in-memory relevance rank + index cursor; same envelope
+    → Loose engine [Sprint 55]: `config/search.ts` (SEARCH_CONFIG + tokenize/levenshtein/coverage/relevance) + [Sprint 56] `SEARCH_ANALYTICS_CONFIG`/normalize/payload helpers → two-phase recall (exact phrase+terms + routes-JSON prefetch, then prefix typo top-up) + in-memory relevance rank + index cursor; same envelope
     → Consumed by: explore `ExploreSearchInput` suggestions + `/search` page (Sprint 39 additive; map client filter untouched)
 
 PostCommentsModal (`app/components/features/comments/PostCommentsModal.tsx`, new Sprint 39 — shared feed/profile/search/detail comment modal)

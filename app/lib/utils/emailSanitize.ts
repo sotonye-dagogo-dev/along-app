@@ -18,13 +18,13 @@ const ALLOWED_TAGS = new Set([
 ]);
 
 const ALLOWED_ATTRS: Record<string, Set<string>> = {
-  a: new Set(["href", "title", "target", "style"]),
+  a: new Set(["href", "title", "target", "style", "class"]),
   img: new Set(["src", "alt", "width", "height", "style"]),
   table: new Set(["width", "cellpadding", "cellspacing", "style", "role"]),
   tr: new Set(["style"]),
   td: new Set(["style", "align", "valign", "colspan", "width"]),
   th: new Set(["style", "align", "valign", "colspan", "width"]),
-  div: new Set(["style"]),
+  div: new Set(["style", "class"]),
   svg: new Set(["viewbox", "width", "height", "fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "style"]),
   path: new Set(["d", "fill", "stroke", "stroke-width", "style"]),
   circle: new Set(["cx", "cy", "r", "fill", "stroke", "stroke-width", "style"]),
@@ -33,8 +33,8 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
   line: new Set(["x1", "y1", "x2", "y2", "stroke", "stroke-width", "style"]),
   polyline: new Set(["points", "fill", "stroke", "stroke-width", "style"]),
   g: new Set(["fill", "stroke", "stroke-width", "style"]),
-  span: new Set(["style"]),
-  p: new Set(["style"]),
+  span: new Set(["style", "class"]),
+  p: new Set(["style", "class"]),
   h1: new Set(["style"]),
   h2: new Set(["style"]),
   h3: new Set(["style"]),
@@ -42,6 +42,28 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
   blockquote: new Set(["style"]),
   font: new Set(["color", "size", "face"]),
 };
+
+/**
+ * Class allowlist for article/blog CTA markup (`blog-cta-wrap`, `blog-cta`).
+ * `class` is otherwise stripped elsewhere by value — only these exact tokens
+ * survive, so arbitrary Tailwind/JS-hook classes cannot be injected via
+ * stored HTML. Pure allowlist, never throws.
+ */
+export const BLOG_CTA_CLASS_ALLOWLIST = new Set(["blog-cta-wrap", "blog-cta"]);
+
+function sanitizeClassValue(raw: string): string | null {
+  try {
+    const val = String(raw ?? "").replace(/^["']|["']$/g, "");
+    const kept = val
+      .split(/\s+/)
+      .map((t) => t.trim())
+      .filter((t) => BLOG_CTA_CLASS_ALLOWLIST.has(t));
+    const unique = [...new Set(kept)].slice(0, 4);
+    return unique.length > 0 ? unique.join(" ") : null;
+  } catch {
+    return null;
+  }
+}
 
 function isSafeUrl(url: string): boolean {
   const u = url.trim();
@@ -123,6 +145,12 @@ export function sanitizeEmailHtml(dirty: string, maxLen = 100000): string {
         if (key === "style") {
           const styleVal = val.replace(/^["']|["']$/g, "");
           if (/expression|javascript:|behaviour|behavior|binding/i.test(styleVal)) continue;
+        }
+        if (key === "class") {
+          const safe = sanitizeClassValue(val);
+          if (!safe) continue;
+          kept.push(`${outKey}="${safe}"`);
+          continue;
         }
         kept.push(`${outKey}=${val}`);
       }
