@@ -17,8 +17,9 @@ describe("VEHICLE_REGISTRY boat + train options", () => {
   it("boat entry carries the boat label, icon, and water-associated color", () => {
     const boat = VEHICLE_REGISTRY.boat;
     expect(boat.label).toBe("Boat");
-    // Lucide icon component (Ship) — named function, never an emoji string.
-    expect(typeof boat.icon).toBe("function");
+    // Lucide icon component (Ship) — React component (function or memo object), never an emoji string.
+    expect(boat.icon).toBeTruthy();
+    expect(["function", "object"]).toContain(typeof boat.icon);
     expect(boat.color).toBe("#0E7490");
     expect(boat.bgClass).toContain("bg-cyan-50");
     expect(boat.textClass).toContain("text-cyan-800");
@@ -27,8 +28,9 @@ describe("VEHICLE_REGISTRY boat + train options", () => {
   it("train entry carries the train label, icon, and rail-associated color", () => {
     const train = VEHICLE_REGISTRY.train;
     expect(train.label).toBe("Train");
-    // Lucide icon component (Train) — named function, never an emoji string.
-    expect(typeof train.icon).toBe("function");
+    // Lucide icon component (Train) — React component (function or memo object), never an emoji string.
+    expect(train.icon).toBeTruthy();
+    expect(["function", "object"]).toContain(typeof train.icon);
     expect(train.color).toBe("#6D28D9");
     expect(train.bgClass).toContain("bg-violet-50");
     expect(train.textClass).toContain("text-violet-800");
@@ -36,10 +38,11 @@ describe("VEHICLE_REGISTRY boat + train options", () => {
 
   it("every registry entry has label + icon + token classes (UI-safe)", () => {
     for (const [key, entry] of Object.entries(VEHICLE_REGISTRY)) {
-      expect(typeof entry.label, `${key}.label`).toBe("string");
-      expect(typeof entry.icon, `${key}.icon`).toBe("function");
-      expect(entry.bgClass, `${key}.bgClass`).toMatch(/bg-\S+/);
-      expect(entry.textClass, `${key}.textClass`).toMatch(/text-\S+/);
+      expect(typeof entry.label).toBe("string");
+      expect(entry.icon).toBeTruthy();
+      expect(["function", "object"]).toContain(typeof entry.icon);
+      expect(entry.bgClass).toMatch(/bg-\S+/);
+      expect(entry.textClass).toMatch(/text-\S+/);
     }
   });
 });
