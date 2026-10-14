@@ -842,3 +842,18 @@ Recall/rank separation makes looseness additive (nothing exact is ever lost) whi
 **Superseded by:** None
 
 **Decision (Sprint 56, studio tightening):** (1) Blog `button` blocks render as Email-Studio-style CTAs (`.blog-cta`, token CSS in globals.css) — deliberate override of the Sprint 54 degrade-to-link rule, keeping its no-inline-style/dark-safe rationale (styles live in CSS on design tokens, sanitizer allowlists exactly `blog-cta-wrap`/`blog-cta`). (2) Studio previews use viewport-capped sticky panes (`STUDIO_LAYOUT_CONFIG`, 78vh caps) with `self-start` + `items-start` grids — the pair is required for sticky to engage. (3) `feedDiversity` gets a Studio card (KEY/META/normalize/validate shared by resolver + UI + API 400-guard) — stored shapes still degrade to defaults at read time. (4) Zero-result searches log one fire-and-forget `AnalyticsEvent(search_zero_results)` on empty first-page computes (cached-empty not re-logged) and surface top queries on the analytics page to tune stopwords/fuzzy thresholds.
+
+## Decision 2026-10-14 (Sprint 57): cleanup guards belong at the destroy choke-point; share icons as serializable keys; seeded feed jitter + readiness gate
+**Context:** cross-post image destruction (unguarded edit/delete paths vs guarded draft path); generic share icons; feed paint-then-reshuffle.
+**Decision:** (1) live-reference guards live inside `cleanupImagesByUrls` (just-before-destroy re-check), not at each call site — every present and future caller inherits the invariant; route-level checks remain as early-outs only. Guard deps are injectable for tests; failures fail OPEN (keep the asset). (2) share-network icons are string keys in config (`BlogShareNetworkIcon`), mapped to glyphs by one component — config stays JSON/SiteConfig-safe; brand gaps in lucide are filled with inline SVGs, unknown keys fall back to the previous generic glyph (never nothing). (3) feed diversity jitter is seeded per viewer + UTC day (stable across cached/fresh/geo fetches; tiers still dominant), and first paint is gated on a single settled snapshot (`isReady`) rather than progressive re-renders — background freshness still flows through the stream after readiness.
+**Reason:**
+Choke-point guards can't be bypassed by the next delete path someone adds; serializable icon keys survive DB-backed config where component refs cannot; seeded jitter + one settled paint remove reshuffles without changing ranking inputs or removing background revalidation.
+**Alternatives Considered:**
+- **Per-caller guards at each delete path**: Rejected — four call sites today, more tomorrow; the TOCTOU window stays open unless the check is adjacent to the destroy.
+- **Storing LucideIcon components in BLOG_SHARE_CONFIG**: Rejected — breaks SiteConfig/JSON serialization and admin editability.
+- **Disabling background revalidation to freeze the feed**: Rejected — freshness matters; holding the first paint while keeping the stream live after readiness preserves both.
+**Implications:**
+- New media-destroy callers must route through `cleanupImagesByUrls` (never raw `cloudinary.uploader.destroy`); new share networks add an `icon` key + a `ShareNetworkIcon` branch.
+- New feed ordering inputs must keep the seeded jitter (pass-through `rand`); first-load must keep the `isReady` hold.
+**Supersedes:** None (extends the Sprint 33 orphan-prevention and Sprint 55 diversity decisions).
+**Superseded by:** None

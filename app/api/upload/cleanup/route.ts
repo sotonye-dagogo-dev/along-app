@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config/mediaCleanup";
 import { filterCleanableUrls } from "@/app/lib/utils/cloudinaryUrls";
-import { cleanupImagesByUrls } from "@/app/lib/services/mediaCleanupService";
+import { cleanupImagesByUrls, filterUnreferencedUrls } from "@/app/lib/services/mediaCleanupService";
 
 /**
  * POST /api/upload/cleanup — destroy orphaned Cloudinary uploads.
@@ -73,40 +72,11 @@ export async function POST(request: NextRequest) {
     // (Draft published → same URLs now live on the post; discard must keep them.)
     // Blog assets are SiteConfig-backed (not Post rows), so blog references are
     // checked too — a cover/inline URL reused by any managed post is kept.
+    // Delegates to the shared service helper (single source of truth; the
+    // service re-checks just before destroy to close the TOCTOU window).
     const isBlogSource =
       source === "blog-cover-replace" || source === "blog-image-remove" || source === "blog-delete";
-    const blogReferenced: Set<string> = new Set();
-    if (isBlogSource || cleanable.some((u) => u.includes("/along/blog/"))) {
-      try {
-        const { getManagedPosts } = await import("@/app/lib/utils/blogStore");
-        const { collectBlogPostImageUrls } = await import("@/app/lib/utils/blogImages");
-        const managed = await getManagedPosts();
-        for (const p of managed) {
-          for (const u of collectBlogPostImageUrls(p)) blogReferenced.add(u);
-        }
-      } catch {
-        // On store hiccup, fail OPEN for safety below (kept, not destroyed).
-      }
-    }
-    const unreferenced: string[] = [];
-    let skippedReferenced = 0;
-    for (const url of cleanable.slice(0, MEDIA_CLEANUP_CONFIG.maxUrlsPerCall)) {
-      try {
-        if (blogReferenced.has(url)) {
-          skippedReferenced += 1;
-          continue;
-        }
-        const ref = await prisma.post.findFirst({
-          where: { images: { has: url } },
-          select: { id: true },
-        });
-        if (ref) skippedReferenced += 1;
-        else unreferenced.push(url);
-      } catch {
-        // On DB hiccup, fail OPEN for safety: keep the asset (skip it).
-        skippedReferenced += 1;
-      }
-    }
+    const { unreferenced, skippedReferenced } = await filterUnreferencedUrls(cleanable, {}, { includeBlogRefs: isBlogSource });
 
     if (unreferenced.length === 0) {
       return NextResponse.json(

@@ -1,7 +1,7 @@
 # System Architecture
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (Sprint 56: studio tightening — blog reorder/CTA, sticky previews, feedDiversity card, zero-result analytics)
+> - last-updated-by: execute-feature 2026-10-14 (Sprint 57: media cross-post guard, share icons, feed first-load)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
@@ -239,7 +239,7 @@ If the project has no documented rollback mechanism, say so explicitly here — 
 - Two `useRequireAuth` hooks exist: one in `app/hooks/` (router-based redirect) and one in `app/lib/hooks/` (permission check) — potential confusion
 - Blog posts are read from the filesystem at request time (no CMS integration yet)
 - `app/lib/streams/feedStream.ts` now implements RxJS reactive feed with 30s polling
-- Image upload is now Cloudinary-backed via `app/api/upload` (multipart, 5MB/file, 10 files max) — requires CLOUDINARY_* env vars; `next.config.mjs` now allowlists only known image hosts (was wildcard `**`); Sprint 33 orphan prevention: `MEDIA_CLEANUP_CONFIG` + `mediaCleanupService` destroy `along/*` assets post-commit (never fails the delete) on post delete (single/admin-bulk/bug-REMOVE_POST), post-edit removed-images diff, and draft discard via `POST /api/upload/cleanup` (skips URLs still referenced by live posts; publish path skips the call); account finalize retains anonymized post images per policy and purges only a legacy Cloudinary avatar URL
+- Image upload is now Cloudinary-backed via `app/api/upload` (multipart, 5MB/file, 10 files max) — requires CLOUDINARY_* env vars; `next.config.mjs` now allowlists only known image hosts (was wildcard `**`); Sprint 33 orphan prevention: `MEDIA_CLEANUP_CONFIG` + `mediaCleanupService` destroy `along/*` assets post-commit (never fails the delete) on post delete (single/admin-bulk/bug-REMOVE_POST), post-edit removed-images diff, and draft discard via `POST /api/upload/cleanup` (skips URLs still referenced by live posts; publish path skips the call); Sprint 57 cross-post guard: `guardLivePostReferences` (env `MEDIA_CLEANUP_GUARD_REFS`, default on) + `filterUnreferencedUrls` re-checks live `Post.images` + managed-blog refs just before every destroy (single choke-point covering edit/delete/admin/moderation paths, closes TOCTOU, fail-open, `skippedReferenced` observability); account finalize retains anonymized post images per policy and purges only a legacy Cloudinary avatar URL
 - QStash workers now use cloned request body to avoid double-consume `request.text()` / `request.json()` race (fixed 500 on every worker invocation)
 - Redis layer is now timeout-hardened: `app/lib/db/redis.ts` lazy singleton + `withTimeout(1200ms)`, `otpStore.ts` 800ms fallback to in-memory (cut from 1500ms 2026-10-09 verify-email 504 fix) + additive `clearSendCooldown` (lifts the per-email resend throttle when delivery fails — OTP hash untouched, abuse still capped by the auth rate bucket); auth code-send routes (verify-email, otp/resend, register) issue Redis writes in parallel and declare explicit `maxDuration` (30s sends / 15s verifies) instead of the Vercel 10s default; register + forgot-password + resend + verify-email-trigger emails are awaited within timeouts (register 15s verify / 10s welcome, forgot-password 6s, Google welcome 5s); only non-critical notices may be background via Next `after()`
 
