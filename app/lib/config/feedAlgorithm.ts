@@ -31,6 +31,34 @@ export const FEED_STREAM_CONFIG = {
 export type FeedStreamConfig = typeof FEED_STREAM_CONFIG;
 
 /**
+ * First-load readiness registry (config-driven, metadata-driven).
+ *
+ * The feed paints in one settled snapshot instead of flashing a stale order
+ * and reshuffling it once or twice while the user scrolls: the home page
+ * holds the loading skeleton until the single geo-aware initial fetch
+ * resolves. The passive geolocation fix arrives asynchronously after mount,
+ * so the first load waits for it up to `geoWaitMs` — one scored order ever
+ * paints, instead of a non-geo list followed by a silent geo re-rank.
+ */
+export const FEED_FIRST_LOAD_CONFIG = {
+  /** Max wait for the passive geolocation fix before the first fetch (ms). */
+  geoWaitMs: 1500,
+  /** Skeleton cards rendered while the first snapshot settles. */
+  skeletonCount: 3,
+} as const;
+
+export type FeedFirstLoadConfig = typeof FEED_FIRST_LOAD_CONFIG;
+
+/**
+ * Deterministic seeded PRNG (mulberry32 over a string hash). Feeds the
+ * diversity jitter so identical score sets produce identical near-tie
+ * orders across cached / fresh / geo fetches within the same seed window —
+ * without it, `Math.random()` reshuffles near-ties on every fetch and the
+ * list visibly reorganizes after paint even when nothing changed.
+ * Pure and never throws; falls back to a fixed stream on bad input.
+ */
+
+/**
  * "New posts" floating prompt registry (config-driven, metadata-driven).
  *
  * Single source of truth for the feed's refresh pill so behaviour is
@@ -181,6 +209,37 @@ export type FeedDiversityConfig = FeedDiversityKnobs;
 export interface DiversityScoredRow {
   score: number;
   authorId: string;
+}
+
+export function hashSeedString(seed: unknown): number {
+  try {
+    const s = typeof seed === "string" ? seed : String(seed ?? "");
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function seededRand(seed: unknown): () => number {
+  let state = hashSeedString(seed);
+  // mulberry32; fixed stream when the hash collapses to 0.
+  if (state === 0) state = 0x9e3779b9;
+  return () => {
+    try {
+      state |= 0;
+      state = (state + 0x6d2b79f5) | 0;
+      let t = Math.imul(state ^ (state >>> 15), 1 | state);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    } catch {
+      return 0.5;
+    }
+  };
 }
 
 /**

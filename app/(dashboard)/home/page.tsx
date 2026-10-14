@@ -14,7 +14,7 @@ import { AppEmptyState, PostCardSkeleton } from "@/app/components/ui"
 import { SuggestionsPanel } from "@/app/components/ui/SuggestionsPanel"
 import { SuggestionsRail } from "@/app/components/features/suggestions/SuggestionsRail"
 import { EMPTY_STATES } from "@/app/lib/config"
-import { FEED_NEW_POSTS_PROMPT_CONFIG } from "@/app/lib/config/feedAlgorithm"
+import { FEED_FIRST_LOAD_CONFIG, FEED_NEW_POSTS_PROMPT_CONFIG } from "@/app/lib/config/feedAlgorithm"
 import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
 import { routeDraftsService } from "@/app/lib/services/routeDraftsService"
 import { useAuth } from "@/app/hooks/useAuth"
@@ -104,6 +104,15 @@ function HomeContent() {
   const { tf } = useTranslation()
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [loading, setLoading] = useState(true)
+  // First-load readiness: the skeleton persists until the single geo-aware
+  // initial fetch settles (see the init effect below). Without this gate the
+  // page paints a stale/non-geo snapshot and then visibly reorganizes it
+  // once (background revalidation) or twice (geo re-rank) while scrolling.
+  const [isReady, setIsReady] = useState(false)
+  const readyRef = useRef(false)
+  // One-shot guard per viewer key: the init effect re-runs on the
+  // null → fix geolocation transition, but the first fetch must happen once.
+  const startedForRef = useRef<Set<string>>(new Set())
   const [hasMore, setHasMore] = useState(true)
   const [newPostsCount, setNewPostsCount] = useState(0)
   const [showShareModal, setShowShareModal] = useState(false)
@@ -184,17 +193,48 @@ function HomeContent() {
     if (authLoading) return // wait for auth so the feed cache key is user-scoped
     let cancelled = false
 
-    const init = async () => {
-      const state = await feedStream.loadInitial(user?.id, passiveFix)
-      if (cancelled) return
-      setPosts(state.posts)
-      setHasMore(state.hasMore)
-      setLoading(false)
+    // Single geo-aware first load: the passive fix resolves asynchronously
+    // after mount, so the fetch waits for it up to geoWaitMs. Only one
+    // scored order ever paints — no non-geo list followed by a silent geo
+    // re-rank (the old second loadInitial that reshuffled the feed twice).
+    const viewerKey = user?.id ?? "anon"
+    const runInitial = async (fix: { lat: number; lng: number } | null) => {
+      try {
+        const state = await feedStream.loadInitial(user?.id, fix)
+        if (cancelled) return
+        setPosts(state.posts)
+        setHasMore(state.hasMore)
+        setLoading(false)
+      } catch {
+        if (!cancelled) setLoading(false)
+      } finally {
+        if (!cancelled) {
+          readyRef.current = true
+          setIsReady(true)
+        }
+      }
     }
-    init()
+    let geoTimer: ReturnType<typeof setTimeout> | null = null
+    if (!passiveFix) {
+      if (!startedForRef.current.has(viewerKey)) {
+        geoTimer = setTimeout(() => {
+          if (!cancelled && !startedForRef.current.has(viewerKey)) {
+            startedForRef.current.add(viewerKey)
+            void runInitial(null)
+          }
+        }, FEED_FIRST_LOAD_CONFIG.geoWaitMs)
+      }
+    } else if (!startedForRef.current.has(viewerKey)) {
+      startedForRef.current.add(viewerKey)
+      void runInitial(passiveFix)
+    }
 
     const sub = feedStream.feedState$.subscribe((state) => {
       if (cancelled) return
+      // Pre-ready hold: the stream re-emits during loadInitial (stale-cache
+      // paint + background revalidation). Committing those would flash a
+      // provisional order before the settled snapshot — init commits once.
+      if (!readyRef.current) return
       // Dedup guard: the stream already dedups, but a re-emitted identical
       // array (poll with no new rows, interaction echo) must not churn
       // rendering. Skip state updates when the id sequence is unchanged.
@@ -208,27 +248,12 @@ function HomeContent() {
 
     return () => {
       cancelled = true
+      if (geoTimer) clearTimeout(geoTimer)
       sub.unsubscribe()
     }
-  }, [authLoading, user?.id])
-
-  // One-shot geo revalidation: the passive fix resolves after mount, so the
-  // first load runs without it. Once available, refresh once with ?lat=&lng=
-  // for the nearby boost (best-effort; failures keep the current order).
-  const geoBoostedRef = useRef(false)
-  useEffect(() => {
-    if (!passiveFix || authLoading || geoBoostedRef.current) return
-    geoBoostedRef.current = true
-    void (async () => {
-      try {
-        const state = await feedStream.loadInitial(user?.id, passiveFix)
-        setPosts(state.posts)
-        setHasMore(state.hasMore)
-      } catch {
-        /* keep non-geo order */
-      }
-    })()
-  }, [passiveFix, authLoading, user?.id])
+    // passiveFix in deps: null → fix transition triggers the single fetch.
+    // startedForRef keeps it one-shot per viewer (no geo double-fetch).
+  }, [authLoading, user?.id, passiveFix])
 
   // Fresh-post counter without re-subscribing on every render: postsRef
   // tracks the current list so the single stream subscription below never
@@ -623,7 +648,11 @@ function HomeContent() {
             below the share/request trigger div — never inside the feed flow. */}
         <SuggestionsRail />
 
-        {posts.length > 0 ? (
+        {/* First-load gate: the skeleton persists until the single settled
+            snapshot is ready — never a stale list that reshuffles twice. */}
+        {!isReady ? (
+          Array.from({ length: FEED_FIRST_LOAD_CONFIG.skeletonCount }).map((_, i) => <PostCardSkeleton key={i} />)
+        ) : posts.length > 0 ? (
           posts.map((post) => (
             <PostCard
               key={post.id}

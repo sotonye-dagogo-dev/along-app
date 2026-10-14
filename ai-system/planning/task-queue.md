@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (trust portal/feed diversity/loose search Sprint 55)
-> - last-synced: 2026-10-14 (trust portal/feed diversity/loose search Sprint 55)
+> - last-updated-by: execute-feature 2026-10-14 (media cross-post guard/share icons/feed first-load Sprint 57)
+> - last-synced: 2026-10-14 (media cross-post guard/share icons/feed first-load Sprint 57)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -813,3 +813,14 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | feedDiversity Studio card — `FEED_DIVERSITY_CONFIG_KEY`/`_META` + `normalizeFeedDiversityConfig`/`validateFeedDiversityConfigValue` (shared by resolver + card); `feedService.resolveFeedDiversity` delegates to normalizer (same behaviour); `/api/admin/config` PUT validates `feedDiversity` (400 on bad shape); `SITE_CONFIG_EDITORS` entry; admin Config page card (3 numeric inputs from META, dirty-gated save, reset-to-defaults, server-error surfacing) | [x] |
 | [M] | Zero-result query analytics — `SEARCH_ANALYTICS_CONFIG` (event name, caps, top-N, copy) + `normalizeAnalyticsQuery`/`buildZeroResultPayload` pure helpers; `searchService` fire-and-forget `AnalyticsEvent` log on empty first-page results (never breaks search; cached-empty fast path not double-counted); `/api/admin/analytics` aggregates top zero-result queries (additive `zeroResultQueries` field); analytics page section card with terms + counts + tuning hint | [x] |
 | [S] | Tests — NEW `studioTightening.test.ts` (4: layout generosity/sticky, diversity normalize/validate, analytics helpers, CTA round-trip); `blogCompliance.test.ts` CTA assertions + class-allowlist suite | [x] |
+
+## Sprint 57 — Media cross-post guard + share platform icons + feed first-load (2026-10-14, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; same props + API envelopes, additive fields only). QA full in-runner: tsc 0 errors, jest 81/81 suites 697/697 tests, next lint clean on touched files, `npm run build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [BUG] | Media cross-post guard — `MEDIA_CLEANUP_CONFIG.guardLivePostReferences` (env `MEDIA_CLEANUP_GUARD_REFS`, default true); `filterUnreferencedUrls` in `mediaCleanupService` (injectable deps, fail-OPEN, never throws) re-checks live `Post.images` + managed-blog refs just before destroy (closes TOCTOU for edit/delete/admin-bulk/moderation paths); `upload/cleanup` delegates to the shared helper (response shape unchanged); `+skippedReferenced` in result | [x] |
+| [S] | Share platform icons — `BLOG_SHARE_CONFIG.networks` gain serializable `icon` keys (`BlogShareNetworkIcon`); NEW `ShareNetworkIcon` (lucide `Facebook`, inline X/WhatsApp brand SVGs, `Link2` fallback); `BlogShareButtons` desktop row renders per-platform glyphs | [x] |
+| [M] | Feed first-load — `FEED_FIRST_LOAD_CONFIG` (geoWaitMs 1500, skeletonCount 3) + pure `seededRand`/`hashSeedString`; `feedService` diversity jitter seeded per viewer + UTC day (cached/fresh/geo orders agree); home page `isReady` gate (single geo-aware fetch, pre-ready stream emissions held, skeleton until settled, geo double-fetch removed) | [x] |
+| [S] | Tests — `mediaCleanup.test.ts` +4 (guard default, shared-URL kept, DB-hiccup fail-open, blog-ref kept); NEW `tighteningMediaShareFeed.test.ts` (9) + `ShareNetworkIcon.test.tsx` (2) | [x] |

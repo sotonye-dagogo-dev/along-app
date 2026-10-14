@@ -2478,3 +2478,30 @@ Nothing pending — feature complete. Both session-log futures from Sprint 55 ar
 **Notes / Blockers:**
 - None. Non-breaking, all changes additive with fallbacks.
 - Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + dev-history + index + memory).
+
+## Session — 2026-10-14 (Execute-feature: media cross-post guard + share icons + feed first-load)
+
+**Completed:**
+- Directive close-out, all items (non-breaking; no migration, no new deps, no removed APIs; same props + envelopes, additive fields only):
+  - Media cross-post guard (critical): root cause — `POST /api/posts` never deletes, but PATCH edit (diffRemovedUrls), single DELETE, admin bulk DELETE, and bug REMOVE_POST called `cleanupImagesInBackground` with NO live-reference guard (only `POST /api/upload/cleanup` had one). Eager uploads store verbatim `secure_url`s that can be shared across posts (draft duplicate / applyDraft restore / edit→draft→repost), so editing/deleting post A destroyed Cloudinary assets still rendered by live post B. Fix at the single choke-point: `MEDIA_CLEANUP_CONFIG.guardLivePostReferences` (env `MEDIA_CLEANUP_GUARD_REFS`, default true) + `filterUnreferencedUrls` (injectable `findPostByImage`/`getBlogImageSet`, lazy prisma/blog imports, fail-OPEN, never throws) re-checked inside `cleanupImagesByUrls` just before destroy (closes TOCTOU for all callers); `/api/upload/cleanup` delegates to the helper via `includeBlogRefs` for blog sources (response shape unchanged); `+skippedReferenced` in result. Account finalize untouched (already retains post images by policy).
+  - Share platform icons: root cause — `BlogShareButtons` desktop row hardcoded `<Link2>` for every network (config had no icon field). Fix: `BLOG_SHARE_CONFIG.networks` gain serializable `icon` keys (`BlogShareNetworkIcon`, JSON/SiteConfig-safe); NEW `ShareNetworkIcon` maps keys to lucide `Facebook` + inline X/WhatsApp brand SVGs (lucide 0.469 has no X/WhatsApp brands) with `Link2` fallback for unknown keys. Post share (native sheet only) intentionally untouched.
+  - Feed first-load: root causes — stale-cache instant paint + silent revalidation (reshuffle #1), separate geo second `loadInitial` (reshuffle #2), `Math.random()` jitter disagreeing across fetches, poll prepend + late map/image layout shift. Fix: `FEED_FIRST_LOAD_CONFIG` (geoWaitMs 1500, skeletonCount 3) + pure `seededRand`/`hashSeedString` (mulberry32); `feedService` jitter seeded per viewer + UTC day so cached/fresh/geo orders agree unless scores truly change; home page `isReady`/`readyRef`/`startedForRef` gate — single geo-aware fetch (waits for passive fix up to geoWaitMs), pre-ready stream emissions held (init commits the snapshot once), skeleton until settled, geo double-fetch effect removed. Poll/loadMore untouched.
+- Tests: `mediaCleanup.test.ts` +4 (guard default, shared-URL kept, DB-hiccup fail-open, blog-ref kept); NEW `tighteningMediaShareFeed.test.ts` (9: guard flag, icon keys/coverage, first-load config, seeded determinism/range/fail-safe) + `ShareNetworkIcon.test.tsx` (2: distinct glyphs, unknown-key fallback).
+- QA: FULL gate green in-runner (node_modules installed via `npm install`): `npx tsc --noEmit` 0 errors; `npx jest` 81/81 suites 697/697 tests; `next lint` zero warnings/errors on touched files; `npm run build` clean.
+- Docs: task-queue Sprint 57 + this log; chained update-ai-system.md executed (dev-history + system-architecture + project-decisions + lessons-learned + index reconciled; no architecture drift — additive config/service/component/test only).
+
+**Files Modified:**
+- Edited: `app/lib/config/mediaCleanup.ts`, `app/lib/services/mediaCleanupService.ts`, `app/api/upload/cleanup/route.ts`, `app/lib/config/blogManagement.ts`, `app/components/features/blog/BlogShareButtons.tsx`, `app/lib/config/feedAlgorithm.ts`, `app/lib/services/feedService.ts`, `app/(dashboard)/home/page.tsx`, `app/lib/config/index.ts` (barrel: first-load + seededRand + share-icon types), `app/__tests__/config/mediaCleanup.test.ts`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/components/features/blog/ShareNetworkIcon.tsx`, `app/__tests__/config/tighteningMediaShareFeed.test.ts`, `app/__tests__/components/ShareNetworkIcon.test.tsx`
+
+**Next Task:**
+Nothing pending — feature complete.
+
+**Assumptions Made:**
+- Shared-URL posts are the cross-post vector (no `delete_by_prefix`/bulk-enumeration exists anywhere — verified by grep; single-`destroy` loop only). If duplication instead comes from re-uploaded bytes under different public_ids, no cleanup change can correlate them — the guard still prevents live-breakage, which is the reported symptom.
+- 1500ms geo wait is sufficient for `getCurrentPosition` on typical networks; slower/denied geolocation falls back to the non-geo order for first paint (documented tradeoff — one stable order still paints, no reshuffle).
+- Seeded jitter changes server order vs previous deploys for near-ties only (tiers dominant); accepted as a visual-stability improvement, not a ranking change.
+
+**Notes / Blockers:**
+- None. Non-breaking, all changes additive with fallbacks.
+- Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + dev-history + index + memory).

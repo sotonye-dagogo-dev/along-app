@@ -39,6 +39,15 @@ export interface MediaCleanupConfig {
   cleanupAvatarOnAccountFinalize: boolean;
   /** When true, log intent without calling Cloudinary (safe rehearsal). */
   dryRun: boolean;
+  /**
+   * When true (default), `cleanupImagesByUrls` re-checks that no live post
+   * (or managed blog post) still references each URL just before destroying
+   * it. This is the cross-post guard: uploads are eager and URLs can be
+   * shared across posts (draft duplicate / restore / edit→draft→repost), so
+   * an edit-diff or delete of post A must never destroy an asset still
+   * rendered by live post B. Kill-switch via env without redeploy.
+   */
+  guardLivePostReferences: boolean;
 }
 
 function envFlag(name: string, fallback: boolean): boolean {
@@ -68,6 +77,7 @@ export const MEDIA_CLEANUP_CONFIG: MediaCleanupConfig = {
   retainPostImagesOnAccountFinalize: true,
   cleanupAvatarOnAccountFinalize: envFlag("MEDIA_CLEANUP_ACCOUNT_AVATAR", true),
   dryRun: envFlag("MEDIA_CLEANUP_DRY_RUN", false),
+  guardLivePostReferences: envFlag("MEDIA_CLEANUP_GUARD_REFS", true),
 };
 
 export type MediaCleanupSource =
