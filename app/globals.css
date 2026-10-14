@@ -246,6 +246,50 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Design-System Scrollbars (§2) — token-driven, theme-aware.
+   Thumb/track colors come from `--color-*` tokens, so the `.dark`
+   overrides above automatically restyle scrollbars on theme change.
+   Firefox honors `scrollbar-width`/`scrollbar-color`; WebKit/Blink use
+   the pseudo-element rules below. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  min-height: 24px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* Slim variant for compact inner scroll areas — see SCROLLBAR_CONFIG. */
+.scroll-thin {
+  scrollbar-width: thin;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+/* Reserve gutter so layout never shifts when scrollbars appear. */
+.scroll-stable {
+  scrollbar-gutter: stable;
+}
+
 body {
   background-color: var(--color-bg-base);
   color: var(--color-text-primary);

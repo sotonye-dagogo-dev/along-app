@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
+> - last-updated-by: execute-feature 2026-10-14 (Sprint 55: portal/fixed overlays, recall-vs-rank, honest mocks)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -803,5 +803,12 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Symptom:** Studio preview (title + reading-time + body) drifted from the published post (which later gained a cover) because two markups described the same view; blog had no upload path, so covers were unvalidated text.
 - **Root causes:** (1) preview and public page were written as separate JSX with a comment asking them to stay in sync — comments don't enforce. (2) image lifecycle (upload → reference → replace → purge) had no owner: the upload endpoint, the Studio, and the cleanup route each knew part of it.
 - **Fix pattern (reuse):** extract the reading view into one server-compatible component both surfaces render (parity by construction); centralize URL logic in pure never-throw helpers + one config registry; uploads swap the preview immediately but destruction only ever runs post-commit best-effort (client after 2xx, server in background), with the cleanup route re-guarding live references so shared URLs survive.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 55: fixed overlays must portal out of transformed ancestors; recall broad then rank strict; mocks must honor exclusion filters
+- **Symptom:** trust breakdown invisible on desktop cards (but fine on mobile/detail); search missed order-swapped and typo'd queries; two search suites failed after the recall rewrite despite correct production logic.
+- **Root causes:** (1) `hover:-translate-y-0.5` on the card re-anchors every `fixed` descendant to the card — viewport math then lands off-screen; the failure only manifests on hover-capable devices, so mobile testing never catches it. (2) single-phrase DB recall conflates recall with ranking — anything the one clause misses is unrecoverable downstream. (3) mocks that echo fixture rows for every call silently break multi-phase recall (phase-2 `notIn` ignored → duplicates), making green tests lie about pagination.
+- **Fix pattern (reuse):** portal every viewport-positioned overlay to document.body (with a hover-bridge delay when the trigger and panel are no longer DOM kin); separate recall (broad ORs + typo head-prefixes, capped) from ranking (deterministic in-memory relevance, exact-first) — DB order then only bounds truncation, never quality; test mocks must simulate the DB contract they stand in for (`notIn` filtering, staggered timestamps, matching content), and rankers must coerce invalid dates (NaN comparators silently scramble order).
 - **Supersedes:** None
 - **Superseded by:** None

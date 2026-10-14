@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
+> - last-updated-by: execute-feature 2026-10-14 (Sprint 55: recall-then-rank search, post-sort diversity, viewport portal rule)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -823,4 +823,20 @@ A separate `report` entity reads clearly in the admin trail while old rows keep 
 - New auditable report/blog flows must `void logAudit(...)` with the `report.*`/`blog.*` action vocabulary; display-only additions need just `AUDIT_DISPLAY_CONFIG` entries.
 - Parser changes must keep the emailStudio `htmlToBlocks` contract cases green; bare-text/wrapper/recursion cases live in featuredBlogs.test.ts.
 **Supersedes:** None (extends the Sprint 37 audit-trail decision).
+**Superseded by:** None
+
+## Decision 2026-10-14 (Sprint 55): recall-then-rank search; diversity as post-sort pass; portal for viewport overlays
+**Context:** search missed order-swapped ("B from A") and typo'd queries; feed clustered same-author runs; trust tooltip flew off-screen on desktop cards.
+**Decision:** (1) search separates recall (broad tokenized ORs + typo head-prefix top-up + stop-name prefetch, capped at `candidateCap`) from ranking (deterministic in-memory relevance, exact-phrase first) with index-based cursor pagination over the ranked set — unknown cursors end the list; single-letter-only queries fall back to phrase recall. (2) feed diversity is a post-sort/pre-slice pass (`applyFeedDiversity`: ±jitter + lookahead anti-cluster swap, rows never dropped) with a SiteConfig `feedDiversity` merge — no Studio card yet. (3) viewport-positioned overlays portal to document.body with config-owned geometry; collapsed rails use conditional spacing (never additive conflicting utilities) + shrink-0 icons.
+**Reason:**
+Recall/rank separation makes looseness additive (nothing exact is ever lost) while keeping pagination deterministic and the API envelope unchanged. A post-sort diversity pass preserves every relevance signal the scorers produce and degrades to relevance order when separation is impossible. Portals are the only robust escape from transformed ancestors; conditional utilities are the only safe way to write collapsed/expanded variants under Tailwind's conflict resolution.
+**Alternatives Considered:**
+- **pg_trgm / full-text search**: Rejected — requires a DB extension that cannot be guaranteed on the hosted database; the token + Levenshtein design needs no migration and no new deps.
+- **Jitter inside the scorer weights**: Rejected — scattering randomness through four candidate pools is untestable; one pure post-sort pass with injectable rand is deterministic under test.
+- **Removing the card hover lift instead of portalling**: Rejected — the lift is a design-system interaction; portalling fixes the whole class (carousel tapes, modals) not just the one card.
+**Implications:**
+- New search consumers must use `tokenizeSearchQuery` + `scoreTextRelevance` — never bespoke LIKE chains; recall caps and fuzzy thresholds live in `SEARCH_CONFIG`.
+- New `fixed` overlays inside cards/tapes must portal; new collapsed/expanded variants must use exclusive (ternary) spacing classes.
+- Search mocks must honor `id.notIn` and return matching content; rankers must coerce invalid dates.
+**Supersedes:** None (extends the Sprint 8 unified-search and Sprint 7 feed decisions).
 **Superseded by:** None
