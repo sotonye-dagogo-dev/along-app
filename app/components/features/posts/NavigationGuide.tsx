@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Navigation, ChevronLeft, ChevronRight, MapPin, BadgeDollarSign, X, LocateFixed, AlertTriangle, Compass, Check } from "lucide-react"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
+import { TRAFFIC_CONFIG } from "@/app/lib/config/traffic"
 import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import { LOCATION_FEEDBACK_CONFIG } from "@/app/lib/config/locationFeedback"
 import { toastService } from "@/app/lib/services/toastService"
@@ -27,6 +28,13 @@ interface NavigationGuideProps {
   onClose?: () => void
   pins?: RoutePinCoord[]
   onUserLocationChange?: (loc: { lat: number; lng: number; accuracy: number; heading: number | null } | null) => void
+  /**
+   * Traffic-aware duration (non-breaking additive): when present and
+   * different from `estimatedMins`, the guide shows the adjusted figure
+   * suffixed "with traffic" (copy from TRAFFIC_CONFIG).
+   */
+  trafficAdjustedMins?: number | null
+  trafficEstimated?: boolean
 }
 
 function formatDistance(km: number): string {
@@ -52,7 +60,7 @@ function haversineKm(a: RoutePinCoord, b: RoutePinCoord): number {
   return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
 }
 
-export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins, onClose, pins, onUserLocationChange }: NavigationGuideProps) {
+export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins, onClose, pins, onUserLocationChange, trafficAdjustedMins = null, trafficEstimated = true }: NavigationGuideProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [isNavigating, setIsNavigating] = useState(false)
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number; accuracy: number; heading: number | null } | null>(null)
@@ -227,6 +235,24 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
             </div>
           )}
 
+          {trafficAdjustedMins !== null &&
+            trafficAdjustedMins !== undefined &&
+            estimatedMins !== null &&
+            estimatedMins !== undefined &&
+            trafficAdjustedMins !== estimatedMins && (
+              <div className="mx-3 mt-3 flex items-center gap-2 px-3 py-2 radius-md bg-bg-elevated border border-border">
+                <span
+                  aria-hidden
+                  className="inline-block w-6 h-1.5 rounded-full shrink-0"
+                  style={{ background: TRAFFIC_CONFIG.levels.moderate.color }}
+                />
+                <span className="text-xs text-text-secondary">
+                  {formatDuration(trafficAdjustedMins)} {TRAFFIC_CONFIG.legend.durationSuffix} (was{" "}
+                  {formatDuration(estimatedMins)})
+                </span>
+              </div>
+            )}
+
           <div className="px-4 py-3 bg-bg-elevated">
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-text-muted">
@@ -332,7 +358,25 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
             </div>
             <div className="flex items-center gap-3 text-xs text-text-muted">
               {totalDistanceKm && <span>{formatDistance(totalDistanceKm)}</span>}
-              {estimatedMins && <span>{formatDuration(estimatedMins)}</span>}
+              {estimatedMins && (
+                <span
+                  title={
+                    trafficAdjustedMins !== null &&
+                    trafficAdjustedMins !== undefined &&
+                    trafficAdjustedMins !== estimatedMins
+                      ? trafficEstimated
+                        ? TRAFFIC_CONFIG.legend.estimatedNote
+                        : TRAFFIC_CONFIG.legend.liveNote
+                      : undefined
+                  }
+                >
+                  {trafficAdjustedMins !== null &&
+                  trafficAdjustedMins !== undefined &&
+                  trafficAdjustedMins !== estimatedMins
+                    ? `${formatDuration(trafficAdjustedMins)} ${TRAFFIC_CONFIG.legend.durationSuffix}`
+                    : formatDuration(estimatedMins)}
+                </span>
+              )}
               <span>{validSteps.length} stops</span>
             </div>
           </div>

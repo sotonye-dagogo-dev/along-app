@@ -20,6 +20,8 @@ import { usePostShare } from "@/app/hooks/usePostShare"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
 import { useRouteTrace } from "@/app/lib/hooks/useRouteTrace"
+import { useRouteTraffic } from "@/app/lib/hooks/useRouteTraffic"
+import polyline from "@mapbox/polyline"
 import { buildRoutePinsFromPost } from "@/app/lib/config/routePins"
 import type { VehicleType } from "@/app/lib/types"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
@@ -494,6 +496,20 @@ export default function PostDetailPage() {
   // composer preview). Silent straight-line fallback when offline/tracing
   // fails — RouteMap draws through all pins either way.
   const { liveTrace } = useRouteTrace(routePins)
+  // Traffic overlay coords: the snapped polyline when available (same
+  // geometry RouteMap renders, so chunk indices agree), else the pins.
+  const trafficCoords = useMemo(() => {
+    if (liveTrace?.polyline) {
+      try {
+        const pts = polyline.decode(liveTrace.polyline).map(([lat, lng]) => ({ lat, lng }))
+        if (pts.length >= 2) return pts
+      } catch {
+        // fall through to pins
+      }
+    }
+    return routePins
+  }, [liveTrace?.polyline, routePins])
+  const { traffic: postTraffic } = useRouteTraffic(trafficCoords, post?.estimatedMins ?? null)
 
   if (loading) {
     return (
@@ -708,6 +724,7 @@ export default function PostDetailPage() {
           showOverlay={true}
           distance={post.totalDistanceKm ?? undefined}
           duration={post.estimatedMins ?? undefined}
+          trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
           userLocation={mapUserLocation}
           followUser={false}
         />
@@ -828,6 +845,8 @@ export default function PostDetailPage() {
           encodedPolyline={liveTrace?.polyline}
           totalDistanceKm={post.totalDistanceKm}
           estimatedMins={post.estimatedMins}
+          trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
+          trafficEstimated={postTraffic?.estimated ?? true}
           userLocation={userLocation}
           onUserLocationChange={setUserLocation}
           onClose={() => { setShowNavigation(false); setUserLocation(null) }}
