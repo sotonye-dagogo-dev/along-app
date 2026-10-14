@@ -2389,3 +2389,34 @@ CI/Vercel build to confirm green (tsc + jest incl. new feedTightening suite).
 **Notes / Blockers:**
 - None. Non-breaking, all changes additive with fallbacks.
 - Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + dev-history).
+
+## Session — 2026-10-14 (Execute-feature: blog cover/inline uploads + faithful preview)
+
+**Completed:**
+- Directive close-out (non-breaking; no migration, no new deps, no removed APIs):
+  - `BLOG_IMAGE_CONFIG` registry (`app/lib/config/blogManagement.ts`, barrel-exported): Cloudinary folder `along/blog`, `folder=blog` upload key, 5MB/file cap, ≤10 inline images/post, JPEG/PNG/WebP/GIF, Studio copy + `blogMaxSizeLabel()` (env-overridable, zero hardcoded policy elsewhere).
+  - NEW pure `app/lib/utils/blogImages.ts`: `resolveBlogImageUrl` (Cloudinary https / site-relative / absolute https pass, `javascript:`/`data:`/garbage → default cover), `hasCustomBlogImage`, `extractBlogInlineImageUrls` (`<img src>` only, safe/deduped/default-excluded), `collectBlogPostImageUrls` (cover + inline), `diffRemovedBlogUrls` (replacement set). Never throws.
+  - `/api/upload` gains the `blog` folder policy from the same config (admin-only gate — non-admins get 403, keeps billing/allowlist disjoint); `/api/upload/cleanup` accepts `blog-cover-replace | blog-image-remove | blog-delete` and guards blog SiteConfig references (not just `Post.images`) before destroying — replaced URLs purge only after the new version no longer references them.
+  - NEW reusable `BlogImageUpload` (cover + inline variants): eager Cloudinary upload, instant preview, URL paste with validation, replace/remove only swaps preview — the caller purges via `onReplaced` AFTER a successful save/delete (ACID: DB first, destroy after commit; best-effort, never blocks).
+  - NEW shared `BlogPostArticle` (server-compatible, no hooks): cover + category + reading-time + title + description + author/date + `BLOG_CONTENT_PROSE_CLASSES` body. Rendered by BOTH the public `[slug]` page and the Studio live preview — preview parity by construction.
+  - Studio (`app/admin/blog/page.tsx`): cover text-input → `BlogImageUpload`; image blocks get per-block upload + alt-text input (alt feeds the existing `{{appName}}` fallback); image-block cap enforced with toast; block-delete tracks Cloudinary src; `baselineImages` snapshot + `pendingReplaced` tracking; save diffs and purges removed set, delete purges the post set; preview rebuilt on `BlogPostArticle` with the exact public pipeline (blocks → article HTML → style-strip → variable interpolation).
+  - Public pages: `[slug]` renders `BlogPostArticle` (cover now visible — previously metadata-only); list `PostCard` + featured hero render covers (fallback-safe); `FeaturedBlogsSection` tape resolves via the same pipeline with meaningful alt text.
+  - Server: `sanitizeBlogPost` cover goes through `resolveBlogImageUrl`; admin DELETE purges the deleted post's assets post-commit in background; `MEDIA_CLEANUP_CONFIG` allowlist gains `along/blog` + `MediaCleanupSource` gains the three blog sources.
+  - Tests — NEW `app/__tests__/config/blogImages.test.ts` (7: config sanity, allowlist, resolve/fallback, custom check, inline extract, collect merge, diff).
+- QA: FULL gate green in-runner (node_modules installed): `npx tsc --noEmit` 0 errors; `npx jest` 77 suites / 656 tests pass; `npx next lint` clean on touched files (1 `prefer-const` fixed); `npm run build` clean. Strip-types smoke of `blogImages`/`blogManagement` green.
+- Docs: task-queue sprint entry + this log; chained update-ai-system.md executed (dev-history + repo-map + dependency-graph + project-plan + lessons-learned reconciled; no architecture drift — additive config/utils/components only).
+
+**Files Modified:**
+- Edited: `app/lib/config/blogManagement.ts`, `app/lib/config/index.ts`, `app/lib/config/mediaCleanup.ts`, `app/lib/utils/blogStore.ts`, `app/api/upload/route.ts`, `app/api/upload/cleanup/route.ts`, `app/api/admin/blog/route.ts`, `app/admin/blog/page.tsx`, `app/(public)/blog/[slug]/page.tsx`, `app/(public)/blog/page.tsx`, `app/components/features/blog/FeaturedBlogsSection.tsx`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/lib/utils/blogImages.ts`, `app/components/features/blog/BlogImageUpload.tsx`, `app/components/features/blog/BlogPostArticle.tsx`, `app/__tests__/config/blogImages.test.ts`
+
+**Next Task:**
+Nothing pending — feature complete. Future: blog alt-text backfill for legacy image blocks (currently `{{appName}}` fallback, renders fine).
+
+**Assumptions Made:**
+- Blog uploads are admin-only (Studio is admin-only; the `/api/upload` 403 gate enforces it server-side) — regular users never need blog-folder writes.
+- Cleanup fail-open (stale `getSiteConfig` cache keeps an orphan rather than breaking a live image) is the safe direction; orphans are bounded by the per-call cap and never user-visible.
+
+**Notes / Blockers:**
+- None. Non-breaking, all changes additive with fallbacks.
+- Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + dev-history + index + memory).

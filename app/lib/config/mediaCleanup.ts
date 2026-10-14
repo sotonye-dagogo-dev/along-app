@@ -54,7 +54,7 @@ function envInt(name: string, fallback: number): number {
 
 export const MEDIA_CLEANUP_CONFIG: MediaCleanupConfig = {
   enabled: envFlag("MEDIA_CLEANUP_ENABLED", true),
-  allowedFolderPrefixes: (process.env.MEDIA_CLEANUP_FOLDERS ?? "along/posts,along/avatars,along/reports")
+  allowedFolderPrefixes: (process.env.MEDIA_CLEANUP_FOLDERS ?? "along/posts,along/avatars,along/reports,along/blog")
     .split(",")
     .map((s) => s.trim().replace(/^\/+|\/+$/g, ""))
     .filter(Boolean),
@@ -78,4 +78,7 @@ export type MediaCleanupSource =
   | "draft-discard"
   | "composer-remove"
   | "report-discard"
-  | "account-avatar";
+  | "account-avatar"
+  | "blog-cover-replace"
+  | "blog-image-remove"
+  | "blog-delete";

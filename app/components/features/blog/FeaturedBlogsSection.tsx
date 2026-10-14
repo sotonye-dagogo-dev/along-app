@@ -11,6 +11,7 @@ import {
   type FeaturedBlogItem,
 } from "@/app/lib/config";
 import { useTranslation } from "@/app/providers/I18nProvider";
+import { resolveBlogImageUrl } from "@/app/lib/utils/blogImages";
 
 interface Props {
   /** Server-fetched posts (landing page). When set, no client fetch runs. */
@@ -39,9 +40,9 @@ function BlogCard({ post, readLabel }: { post: FeaturedBlogItem; readLabel: stri
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={post.image || "/og-image.png"}
-        alt=""
-        className="h-28 w-full object-cover"
+        src={resolveBlogImageUrl(post.image)}
+        alt={`Cover for ${post.title}`}
+        className="h-28 w-full object-cover bg-bg-elevated"
         loading="lazy"
       />
       <div className="flex flex-1 flex-col gap-1.5 p-4">

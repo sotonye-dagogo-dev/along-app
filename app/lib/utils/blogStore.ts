@@ -8,6 +8,7 @@
 import { getSiteConfig } from "@/app/lib/utils/siteConfig";
 import { getAllPosts as getSeedPosts } from "@/app/lib/utils/blog";
 import { sanitizeBlogHtml, stripTags } from "@/app/lib/utils/emailSanitize";
+import { resolveBlogImageUrl } from "@/app/lib/utils/blogImages";
 import {
   BLOG_MANAGEMENT_CONFIG,
   DEFAULT_BLOG_POSTS,
@@ -37,7 +38,10 @@ function sanitizePost(p: Partial<ManagedBlogPost>): ManagedBlogPost | null {
     date: String(p.date ?? "").trim() || new Date().toISOString().slice(0, 10),
     author: stripTags(String(p.author ?? BLOG_MANAGEMENT_CONFIG.defaultAuthor)).slice(0, 80) || BLOG_MANAGEMENT_CONFIG.defaultAuthor,
     category: stripTags(String(p.category ?? "updates")).slice(0, 40).toLowerCase() || "updates",
-    image: String(p.image ?? BLOG_MANAGEMENT_CONFIG.defaultImage).slice(0, 500) || BLOG_MANAGEMENT_CONFIG.defaultImage,
+    // Cover URL resolved through the shared blog-image pipeline (Cloudinary
+    // https / site-relative / absolute https pass; javascript:/data: and
+    // garbage fall back to the default cover — never throws, never empty).
+    image: resolveBlogImageUrl(p.image ?? BLOG_MANAGEMENT_CONFIG.defaultImage),
     readingTime,
     content: sanitizeBlogHtml(rawContent, BLOG_MANAGEMENT_CONFIG.maxContent),
     status,
