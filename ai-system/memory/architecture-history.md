@@ -1,7 +1,7 @@
 # Architecture History
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 50 tightening)
+> - last-updated-by: execute-feature 2026-10-14 (Sprint 55 tightening)
 > - last-verified-against-code: 2026-10-08
 > - staleness-policy: historical entries do not go stale — only the current architecture (in system-architecture.md) needs re-verification
 
@@ -183,3 +183,8 @@ Route requests close the loop between "I need a route" and "here is a route" wit
 - Report screenshots ride in `BugReport.metadata.images` (validated, `along/reports` folder, `report-discard` cleanup) — no migration, no P2022 window.
 - Geocode recall comes from merging all keyless providers (nominatim+photon+openmeteo+overpass) with dedupe + rank-only viewer bias (`geoBias`, promptless); community stop names recalled via best-effort `routes::text` prefetch in search. Landmark power-up (this session): Nominatim carries `addressdetails=1&dedupe=1`, Photon labels render street-level parts (street/housenumber/district/locality), and keyless Overpass OSM `name` search runs last as the landmark/building gap-closer (LANDMARK_GEOCODE_CONFIG-gated, never-throws).
 - Cursor surfaces gain View-More (model unchanged); page surfaces share `PageNavigator`. Floating surfaces share `FLOATING_UI_CONFIG` lanes above the mobile tab bar.
+
+## Sprint 55 (2026-10-14) — Search recall/rank split; feed diversity pass; overlay portal rule; token scrollbars
+- Search is now recall-then-rank: tokenized two-phase DB recall (exact + typo head-prefix + routes-JSON prefetch, capped) feeding a deterministic in-memory relevance rank with index-based cursor pagination — no migration, same envelope, tokenized user recall+rank alongside.
+- Feed gains a post-sort diversity pass (`applyFeedDiversity`: jitter + lookahead anti-cluster) with a SiteConfig merge point, keeping every upstream relevance signal intact.
+- Viewport overlays portal to document.body by rule (transformed ancestors re-anchor `fixed`); scrollbars join the token system (auto dark-mode) with `SCROLLBAR_CONFIG`-owned utility classes.

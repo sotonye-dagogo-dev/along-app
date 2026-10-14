@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/app/hooks/useAuth"
 import { isAdminRole } from "@/app/lib/config/navigation"
 import { ADMIN_LAYOUT_CONFIG } from "@/app/lib/config/admin"
+import { SCROLLBAR_CONFIG } from "@/app/lib/config/scrollbar"
 import { AppPageLoader } from "@/app/components/ui"
 import { AppAvatar, AppUserLabel } from "@/app/components/ui"
 import AppLogo from "@/app/components/ui/AppLogo"
@@ -41,17 +42,23 @@ function NavLink({ href, label, Icon, active, collapsed }: {
   href: string; label: string; Icon: React.ComponentType<{ size?: number; className?: string }>;
   active: boolean; collapsed: boolean;
 }) {
+  // Collapsed rail (72px): tight margins/padding so the 20px icon always
+  // fits — previously `px-4` + `mx-3` + icon overflowed the rail and the
+  // `overflow-hidden` aside clipped the icons out of view.
   return (
     <Link
       href={href}
       title={collapsed ? label : undefined}
-      className={`flex items-center gap-2.5 px-4 py-2.5 mx-3 mb-0.5 radius-md text-sm font-medium no-underline transition-colors duration-fast overflow-hidden whitespace-nowrap text-ellipsis ${
+      aria-label={collapsed ? label : undefined}
+      className={`flex items-center gap-2.5 py-2.5 mb-0.5 radius-md text-sm font-medium no-underline transition-colors duration-fast overflow-hidden whitespace-nowrap text-ellipsis ${
         active
           ? "bg-primary-muted text-primary"
           : "text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
-      } ${collapsed ? "justify-center px-2" : ""}`}
+      } ${collapsed ? "justify-center mx-2 px-2" : "mx-3 px-4"}`}
     >
-      <Icon size={20} />
+      <span className="shrink-0 inline-flex items-center justify-center" aria-hidden="true">
+        <Icon size={20} />
+      </span>
       {!collapsed && <span className="truncate">{label}</span>}
     </Link>
   )
@@ -119,7 +126,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Scrollable links region — grows/shrinks with the viewport so the
           nav never overflows the sidebar no matter how many items exist. */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col">
+      <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col ${SCROLLBAR_CONFIG.classes.thin}`}>
         {topNavItems.map((item) => (
           <NavLink key={item.href} href={item.href} label={item.label} Icon={item.icon}
             active={pathname === item.href} collapsed={isCollapsed && !isMobile} />

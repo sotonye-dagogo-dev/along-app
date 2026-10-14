@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (blog cover/inline uploads + faithful preview)
-> - last-synced: 2026-10-14 (avatar/profile/feed tightening: feedTightening suite added)
+> - last-updated-by: execute-feature 2026-10-14 (trust portal/feed diversity/loose search Sprint 55)
+> - last-synced: 2026-10-14 (trust portal/feed diversity/loose search Sprint 55)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -786,3 +786,16 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | Studio: cover/inline uploads, alt text, cap, baseline/pending tracking, save/delete purges, `BlogPostArticle` live preview | [x] |
 | [S] | Public pages: covers on detail/list/featured/tape; `sanitizeBlogPost` cover resolution; admin DELETE background purge | [x] |
 | [S] | Tests — NEW `blogImages.test.ts` (7: config, allowlist, resolve, custom, extract, collect, diff) | [x] |
+
+## Sprint 55 — Trust Tooltip Portal + Admin Collapse + Scrollbars + Feed Diversity + Loose Search (2026-10-14, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; same component props + API envelopes). QA full in-runner: tsc 0 errors, jest 78/78 suites 679/679 tests, next lint clean on touched files, `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Trust tooltip portal — `TRUST_DISPLAY_CONFIG` tooltip knobs (width/margin/maxHeight/hoverCloseDelayMs); `TrustBadge` renders via `createPortal` on document.body (escapes PostCard hover-lift transform that re-anchored `fixed` off-screen on desktop), edge-aware anchoring (right-third right-aligns), flip + height cap + internal scroll, hover-bridge close delay, outside-pointerdown + Escape dismiss | [x] |
+| [S] | Admin collapse — `NavLink` conditional rail spacing (`mx-2 px-2` collapsed vs `mx-3 px-4`), shrink-0 icon wrapper + collapsed aria-label (72px rail no longer clips icons); links region uses `scroll-thin` | [x] |
+| [S] | Scrollbars — token-driven global styles in `globals.css` (auto dark-mode via `.dark` overrides) + `.scroll-thin` / `.scroll-stable` utilities + `SCROLLBAR_CONFIG` registry (barrel-exported) | [x] |
+| [M] | Feed diversity — `FEED_DIVERSITY_CONFIG` + pure `applyFeedDiversity` (jitter near-ties + lookahead anti-cluster swap, never drops rows, injectable rand) wired post-sort/pre-slice in `feedService` with SiteConfig `feedDiversity` shallow-merge (validated, never-throw) | [x] |
+| [L] | Loose search — `SEARCH_CONFIG` (stopwords/minTerm/typo-prefix/candidateCap/fuzzy/rankWeights) + pure `tokenizeSearchQuery`/`levenshteinDistance`/`termCoverage`/`scoreTextRelevance`; `searchService` two-phase recall (exact phrase+terms, then head-prefix typo top-up, token-combined stop-name prefetch) + deterministic in-memory relevance rank + index-based cursor (unknown cursor ends list); tokenized user recall + rank; same `SearchResult` envelope | [x] |
+| [S] | Tests — NEW `feedSearchTightening.test.ts` (19: diversity defaults/separation/degradation/jitter/never-throw, tokenize/stopwords/phrase-fallback/prefix/levenshtein/coverage/ranking/reversed/typo, scrollbar + tooltip registries); `searchService.test.ts` updated to ranked semantics (honest-DB notIn mock, cursor continuation, order-free + typo cases); `api/search.test.ts` notIn-aware mock | [x] |

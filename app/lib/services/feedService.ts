@@ -1,5 +1,7 @@
 import { prisma } from "@/app/lib/db/prisma";
 import { DEFAULT_FEED_CONFIG, CACHE_TTL, CACHE_KEYS } from "@/app/lib/config";
+import { FEED_DIVERSITY_CONFIG, applyFeedDiversity } from "@/app/lib/config/feedAlgorithm";
+import type { FeedDiversityConfig } from "@/app/lib/config/feedAlgorithm";
 
 interface FeedPost {
   id: string;
@@ -79,6 +81,36 @@ async function resolveFeedConfig(): Promise<typeof DEFAULT_FEED_CONFIG> {
     /* config store unavailable — fall through to default */
   }
   return DEFAULT_FEED_CONFIG;
+}
+
+/**
+ * Resolve effective feed-diversity knobs: admin-tuned SiteConfig
+ * "feedDiversity" wins, hardcoded default is the fallback. Validated +
+ * never throws — bad stored shapes degrade to defaults, never to a crash.
+ */
+async function resolveFeedDiversity(): Promise<FeedDiversityConfig> {
+  try {
+    const { getSiteConfig } = await import("@/app/lib/utils/siteConfig");
+    const stored = await getSiteConfig<Partial<FeedDiversityConfig>>("feedDiversity", {});
+    if (stored && typeof stored === "object") {
+      const pick = (v: unknown, fallback: number): number =>
+        typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback;
+      return {
+        maxConsecutiveFromSameAuthor: Math.max(
+          1,
+          Math.floor(pick(stored.maxConsecutiveFromSameAuthor, FEED_DIVERSITY_CONFIG.maxConsecutiveFromSameAuthor)),
+        ),
+        lookaheadWindow: Math.max(
+          1,
+          Math.floor(pick(stored.lookaheadWindow, FEED_DIVERSITY_CONFIG.lookaheadWindow)),
+        ),
+        jitterWeight: pick(stored.jitterWeight, FEED_DIVERSITY_CONFIG.jitterWeight),
+      };
+    }
+  } catch {
+    /* config store unavailable — fall through to default */
+  }
+  return FEED_DIVERSITY_CONFIG;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Prisma client cast workarounds: optional columns (avatarConfig, isArchived) may be absent on older generated clients; casts keep the P2022 fallback path compiling */
@@ -387,10 +419,25 @@ class FeedService {
         // without it, equal-score rows shuffle between fetches (visual glitch).
         if (timeDiff !== 0) return timeDiff;
         return String(a.post.id).localeCompare(String(b.post.id));
-      })
-      .slice(0, limit);
+      });
 
-    const posts = scored.map((s) => s.post);
+    // Diversity pass (config-driven): ±jitter shuffles near-ties for variety
+    // while tiers stay dominant, then a bounded lookahead breaks
+    // same-poster back-to-back runs. Runs BEFORE the slice so every page is
+    // diverse yet relevance-ordered; rows are never dropped or duplicated.
+    let diversified = scored;
+    try {
+      const diversity = await resolveFeedDiversity();
+      diversified = applyFeedDiversity(
+        scored.map((s) => ({ ...s, authorId: s.post.userId ?? "" })),
+        diversity,
+      ).map(({ post, score }) => ({ post, score }));
+    } catch {
+      diversified = scored;
+    }
+    const sliced = diversified.slice(0, limit);
+
+    const posts = sliced.map((s) => s.post);
 
     // Canonical live trust (same service as detail) — attached BEFORE the
     // cache write so every feed card carries real components, never the

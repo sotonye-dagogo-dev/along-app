@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useLayoutEffect, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   AlertTriangle,
   Clock,
@@ -14,6 +15,7 @@ import {
   trustTierForScore,
   type TrustDisplayVariant,
 } from "@/app/lib/config/trustDisplay";
+import { SCROLLBAR_CONFIG } from "@/app/lib/config/scrollbar";
 
 export interface TrustBreakdown {
   community?: number;
@@ -80,7 +82,13 @@ const METRICS = TRUST_DISPLAY_CONFIG.fullKeys.map((key) => ({
 }));
 
 /** Estimated tooltip width (matches min-w + padding); used for clamping. */
-const TOOLTIP_WIDTH = 240;
+const TOOLTIP_WIDTH = TRUST_DISPLAY_CONFIG.tooltipWidth;
+/** Viewport margin the clamped tooltip never crosses. */
+const TOOLTIP_MARGIN = TRUST_DISPLAY_CONFIG.tooltipViewportMargin;
+/** Max tooltip height before its own scroll takes over. */
+const TOOLTIP_MAX_HEIGHT = TRUST_DISPLAY_CONFIG.tooltipMaxHeight;
+/** Hover-bridge grace before a mouse-leave closes the tooltip. */
+const HOVER_CLOSE_DELAY_MS = TRUST_DISPLAY_CONFIG.hoverCloseDelayMs;
 
 export function TrustBadge({
   level,
@@ -91,9 +99,31 @@ export function TrustBadge({
   variant = "full",
 }: TrustBadgeProps) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
-  // Viewport-aware placement: clamped horizontally, flips below the badge
-  // when there is no room above — the breakdown is always fully readable.
-  const [placement, setPlacement] = useState<{ left: number; top?: number; bottom?: number }>({ left: 0 });
+  // Viewport-aware placement: edge-aware horizontal anchoring (badges at the
+  // card's right edge right-align the tooltip instead of centering it
+  // off-screen), clamped to the viewport, flips below the badge when there
+  // is no room above — the breakdown is always fully readable.
+  const [placement, setPlacement] = useState<{ left: number; top?: number; bottom?: number; maxHeight?: number }>({ left: 0 });
+  // Portal target — rendering on document.body escapes transformed ancestors
+  // (PostCard hover lift, carousel tapes) that would otherwise re-anchor
+  // `position:fixed` and throw the tooltip off-screen on desktop.
+  const [portalEl, setPortalEl] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (typeof document !== "undefined") setPortalEl(document.body);
+  }, []);
+  // Hover-bridge timer: the portal tooltip is no longer a DOM child of the
+  // badge, so travelling the 8px gap fires mouse-leave — the close is
+  // delayed and cancelled while the tooltip itself is hovered.
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelScheduledClose = useCallback(() => {
+    if (closeTimer.current !== null) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+  useEffect(() => () => {
+    if (closeTimer.current !== null) clearTimeout(closeTimer.current);
+  }, []);
   // The breakdown ships a fresh overall score alongside its components, so
   // the badge NUMBER stays in lockstep with the tooltip on every surface
   // (feed card == detail view). Stored-score prop is the fallback.
@@ -105,6 +135,7 @@ export function TrustBadge({
   // disagree when live data moves the score past a threshold.
   const displayLevel = liveScore !== null ? trustTierForScore(liveScore) : level;
   const anchorRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const config = TRUST_CONFIG[displayLevel];
   const Icon = config.icon;
 
@@ -147,7 +178,23 @@ export function TrustBadge({
     };
   });
 
-  const close = useCallback(() => setTooltipOpen(false), []);
+  const close = useCallback(() => {
+    cancelScheduledClose();
+    setTooltipOpen(false);
+  }, [cancelScheduledClose]);
+
+  const scheduleClose = useCallback(() => {
+    cancelScheduledClose();
+    closeTimer.current = setTimeout(() => {
+      closeTimer.current = null;
+      setTooltipOpen(false);
+    }, HOVER_CLOSE_DELAY_MS);
+  }, [cancelScheduledClose]);
+
+  const openTooltip = useCallback(() => {
+    cancelScheduledClose();
+    setTooltipOpen(true);
+  }, [cancelScheduledClose]);
 
   useLayoutEffect(() => {
     if (!tooltipOpen) return;
@@ -156,17 +203,31 @@ export function TrustBadge({
       if (!el) return;
       const rect = el.getBoundingClientRect();
       const vw = window.innerWidth;
-      const margin = 8;
-      // Center on the badge, then clamp so the whole tooltip stays on-screen.
-      const idealLeft = rect.left + rect.width / 2 - TOOLTIP_WIDTH / 2;
-      const left = Math.min(Math.max(idealLeft, margin), Math.max(margin, vw - TOOLTIP_WIDTH - margin));
-      // Flip below when there isn't room above (tooltip ≈ 190px tall).
-      const above = rect.top > 210;
-      setPlacement(
-        above
-          ? { left, bottom: window.innerHeight - rect.top + 8 }
-          : { left, top: rect.bottom + 8 }
-      );
+      const vh = window.innerHeight;
+      const margin = TOOLTIP_MARGIN;
+      const maxLeft = Math.max(margin, vw - TOOLTIP_WIDTH - margin);
+      // Edge-aware anchoring: badges in the right third right-align the
+      // tooltip (centering would shove it off-screen), badges in the left
+      // third left-align it, otherwise center — then clamp to the viewport.
+      const centerX = rect.left + rect.width / 2;
+      const centered = centerX - TOOLTIP_WIDTH / 2;
+      const anchored =
+        centerX > (vw * 2) / 3
+          ? Math.min(centered, rect.right - TOOLTIP_WIDTH)
+          : centerX < vw / 3
+            ? Math.max(centered, rect.left)
+            : centered;
+      const left = Math.min(Math.max(anchored, margin), maxLeft);
+      // Flip below when there isn't room above; cap height to the space
+      // actually available so the tooltip scrolls internally instead of
+      // overflowing the viewport.
+      const estHeight = variant === "compact" ? 240 : 320;
+      const above = rect.top > estHeight + 16;
+      if (above) {
+        setPlacement({ left, bottom: vh - rect.top + 8, maxHeight: Math.min(TOOLTIP_MAX_HEIGHT, rect.top - 16) });
+      } else {
+        setPlacement({ left, top: rect.bottom + 8, maxHeight: Math.max(120, Math.min(TOOLTIP_MAX_HEIGHT, vh - rect.bottom - 16)) });
+      }
     };
     measure();
     window.addEventListener("resize", measure);
@@ -175,27 +236,41 @@ export function TrustBadge({
       if (e.key === "Escape") close();
     };
     document.addEventListener("keydown", onKey);
+    // Clicking/tapping anywhere outside the badge + tooltip dismisses it
+    // (works for both hover-opened and click-pinned states).
+    const onPointerDown = (e: PointerEvent) => {
+      const t = e.target as Node | null;
+      if (
+        t &&
+        anchorRef.current && !anchorRef.current.contains(t) &&
+        tooltipRef.current && !tooltipRef.current.contains(t)
+      ) {
+        close();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
     return () => {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, true);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [tooltipOpen, close]);
+  }, [tooltipOpen, close, variant]);
 
   return (
     <div
       ref={anchorRef}
       className="relative inline-flex"
-      onMouseEnter={() => showTooltip && setTooltipOpen(true)}
-      onMouseLeave={() => setTooltipOpen(false)}
-      onFocus={() => showTooltip && setTooltipOpen(true)}
-      onBlur={() => setTooltipOpen(false)}
+      onMouseEnter={() => showTooltip && openTooltip()}
+      onMouseLeave={() => showTooltip && scheduleClose()}
+      onFocus={() => showTooltip && openTooltip()}
+      onBlur={() => showTooltip && scheduleClose()}
     >
       <button
         type="button"
         aria-label={`Trust score ${displayScore}, ${config.label}. Activate for breakdown.`}
         aria-expanded={tooltipOpen}
-        onClick={() => showTooltip && setTooltipOpen((v) => !v)}
+        onClick={() => showTooltip && (tooltipOpen ? close() : openTooltip())}
         className={`inline-flex items-center gap-1 radius-pill ${config.bg} ${config.text} border-none cursor-pointer font-sans ${
           size === "sm" ? "px-1.5 py-0.5 text-xs" : "px-2.5 py-1 text-sm"
         }`}
@@ -205,13 +280,17 @@ export function TrustBadge({
         <span className="font-bold">{displayScore}</span>
       </button>
 
-      {showTooltip && tooltipOpen && (
+      {showTooltip && tooltipOpen && portalEl && createPortal(
         <div
+          ref={tooltipRef}
           role="tooltip"
-          className="fixed z-[60] bg-bg-card border border-border radius-lg shadow-lg p-4 w-[240px] max-w-[calc(100vw-1rem)]"
+          onMouseEnter={openTooltip}
+          onMouseLeave={scheduleClose}
+          className={`fixed z-[60] bg-bg-card border border-border radius-lg shadow-lg p-4 w-[240px] max-w-[calc(100vw-1rem)] overflow-y-auto ${SCROLLBAR_CONFIG.classes.thin}`}
           style={{
             left: placement.left,
             ...(placement.bottom !== undefined ? { bottom: placement.bottom } : { top: placement.top ?? 0 }),
+            ...(placement.maxHeight !== undefined ? { maxHeight: placement.maxHeight } : {}),
           }}
         >
           <p className="text-sm font-semibold text-text-primary mb-3">
@@ -233,7 +312,8 @@ export function TrustBadge({
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        portalEl
       )}
     </div>
   );
