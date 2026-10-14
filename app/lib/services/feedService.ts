@@ -1,6 +1,6 @@
 import { prisma } from "@/app/lib/db/prisma";
 import { DEFAULT_FEED_CONFIG, CACHE_TTL, CACHE_KEYS } from "@/app/lib/config";
-import { FEED_DIVERSITY_CONFIG, applyFeedDiversity, normalizeFeedDiversityConfig } from "@/app/lib/config/feedAlgorithm";
+import { FEED_DIVERSITY_CONFIG, applyFeedDiversity, normalizeFeedDiversityConfig, seededRand } from "@/app/lib/config/feedAlgorithm";
 import type { FeedDiversityConfig } from "@/app/lib/config/feedAlgorithm";
 
 interface FeedPost {
@@ -413,12 +413,22 @@ class FeedService {
     // while tiers stay dominant, then a bounded lookahead breaks
     // same-poster back-to-back runs. Runs BEFORE the slice so every page is
     // diverse yet relevance-ordered; rows are never dropped or duplicated.
+    // The jitter stream is seeded per viewer + UTC day (not Math.random) so
+    // cached / fresh / geo re-fetches of identical scores settle on the same
+    // order instead of visibly reorganizing the list after paint.
     let diversified = scored;
     try {
       const diversity = await resolveFeedDiversity();
+      let daySeed = "";
+      try {
+        daySeed = new Date().toISOString().slice(0, 10);
+      } catch {
+        daySeed = "";
+      }
       diversified = applyFeedDiversity(
         scored.map((s) => ({ ...s, authorId: s.post.userId ?? "" })),
         diversity,
+        seededRand(`${userId ?? "anon"}:${daySeed}`),
       ).map(({ post, score }) => ({ post, score }));
     } catch {
       diversified = scored;

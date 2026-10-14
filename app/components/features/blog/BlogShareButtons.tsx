@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Share2, Link2, Check } from "lucide-react";
+import { Share2, Check } from "lucide-react";
 import { shareBlogLink, buildBlogUrl } from "@/app/lib/services/blogShareService";
 import { BLOG_SHARE_CONFIG } from "@/app/lib/config/blogManagement";
 import { toastService } from "@/app/lib/services/toastService";
+import ShareNetworkIcon from "@/app/components/features/blog/ShareNetworkIcon";
 
 /**
  * BlogShareButtons — share affordance for blog surfaces (detail header +
@@ -54,7 +55,7 @@ export default function BlogShareButtons({ slug, title, compact = false }: { slu
               title={`Share on ${n.label}`}
               className="p-1.5 radius-md border border-border text-text-muted hover:text-primary transition-colors"
             >
-              <Link2 size={13} />
+              <ShareNetworkIcon icon={n.icon} size={13} />
             </a>
           ))}
         </span>

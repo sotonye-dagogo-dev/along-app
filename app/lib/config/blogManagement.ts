@@ -194,6 +194,13 @@ export const DEFAULT_BLOG_POSTS: DefaultBlogPost[] = [
  * Share config for blogs — mirrors POST_ACTIONS_CONFIG share fields so blog
  * share links stay in one place (path shape + labels + network templates).
  */
+/**
+ * Brand-icon key for a share network. String keys (not component refs) keep
+ * the config serializable (SiteConfig/JSON-safe); `ShareNetworkIcon` maps
+ * each key to its glyph with a generic fallback for unknown keys.
+ */
+export type BlogShareNetworkIcon = "x" | "facebook" | "whatsapp";
+
 export const BLOG_SHARE_CONFIG = {
   postPath: "/blog",
   shareLabel: "Share",
@@ -202,10 +209,10 @@ export const BLOG_SHARE_CONFIG = {
   copiedMessage: "Blog link copied to clipboard",
   copyError: "Couldn't copy the link. Please try again.",
   networks: [
-    { id: "x", label: "X", href: (url: string, title: string) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}` },
-    { id: "facebook", label: "Facebook", href: (url: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
-    { id: "whatsapp", label: "WhatsApp", href: (url: string, title: string) => `https://wa.me/?text=${encodeURIComponent(`${title} ${url}`)}` },
-  ] as { id: string; label: string; href: (url: string, title: string) => string }[],
+    { id: "x", label: "X", icon: "x", href: (url: string, title: string) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}` },
+    { id: "facebook", label: "Facebook", icon: "facebook", href: (url: string) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` },
+    { id: "whatsapp", label: "WhatsApp", icon: "whatsapp", href: (url: string, title: string) => `https://wa.me/?text=${encodeURIComponent(`${title} ${url}`)}` },
+  ] as { id: string; label: string; icon: BlogShareNetworkIcon; href: (url: string, title: string) => string }[],
 } as const;
 
 /**

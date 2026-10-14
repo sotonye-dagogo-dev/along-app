@@ -180,9 +180,10 @@ PostShareService + usePostShare
     → Consumed by: PostCard (fallback), ProfilePostCard, home/page, search/SearchPage, posts/[id]/page, bookmarks/page
 
 MediaCleanupService (`app/lib/services/mediaCleanupService.ts` — ACID-safe post-commit Cloudinary orphan purge, never throws) + cloudinaryUrls (pure host/extract/allowlist/diff, client+server safe)
-    → Config: mediaCleanup (enabled, allowedFolderPrefixes along/*, per-flow toggles, account-retain policy, dry-run)
+    → Config: mediaCleanup (enabled, allowedFolderPrefixes along/*, per-flow toggles, account-retain policy, dry-run, guardLivePostReferences [Sprint 57])
     → SDK: cloudinary (server-only; draft discards go through POST /api/upload/cleanup instead)
     → Consumed by: DELETE /api/posts/[id] (post-delete), PATCH /api/posts/[id] (removed-images diff), DELETE /api/admin/posts (bulk snapshots), PATCH /api/admin/bugs REMOVE_POST (pre-tx capture), accountDeletionService.finalizeOne (legacy avatar only — post images retained by policy), POST /api/upload/cleanup (draft-discard with live-post reference guard), routeDraftsService.deleteDraft (fire-and-forget, publish path skips)
+    → Sprint 57: just-before-destroy `filterUnreferencedUrls` choke-point (live Post.images + managed-blog refs, fail-open, skippedReferenced) protects all consumers incl. previously-unguarded edit/delete/admin paths
 
 DraftingCoachService
     → Config: draftingCoach (rule-based, no DB)
