@@ -1,18 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Trash2, RefreshCw, Eye } from "lucide-react";
 import { toastService } from "@/app/lib/services/toastService";
-import { BLOG_MANAGEMENT_CONFIG, READING_TIME_FIELD_META, normalizeSlug, normalizeReadingTime } from "@/app/lib/config/blogManagement";
+import { BLOG_MANAGEMENT_CONFIG, BLOG_IMAGE_CONFIG, READING_TIME_FIELD_META, normalizeSlug, normalizeReadingTime } from "@/app/lib/config/blogManagement";
 import type { ManagedBlogPost, BlogPostStatus } from "@/app/lib/config/blogManagement";
-import { BLOG_CONTENT_PROSE_CLASSES, DEFAULT_BLOG_CATEGORIES } from "@/app/lib/config/blog";
+import { DEFAULT_BLOG_CATEGORIES } from "@/app/lib/config/blog";
 import {
   blocksToBlogHtml, htmlToBlocks, defaultBlocks, newBlockId,
   type EmailBlock, type EmailBlockType,
 } from "@/app/lib/utils/emailBuilder";
 import { sanitizeBlogHtml } from "@/app/lib/utils/emailSanitize";
 import { buildBlogVarContext, renderBlogContent } from "@/app/lib/utils/blogVariables";
+import { collectBlogPostImageUrls, diffRemovedBlogUrls, resolveBlogImageUrl } from "@/app/lib/utils/blogImages";
 import BlogVariableInsert from "@/app/components/features/blog/BlogVariableInsert";
+import BlogImageUpload from "@/app/components/features/blog/BlogImageUpload";
+import BlogPostArticle from "@/app/components/features/blog/BlogPostArticle";
 
 /**
  * Admin Blog Studio — draft / publish / archive / edit lifecycle with a
@@ -38,6 +41,35 @@ export default function AdminBlogPage() {
   const [blocks, setBlocks] = useState<EmailBlock[]>(defaultBlocks());
   const [defaults, setDefaults] = useState<ManagedBlogPost[]>([]);
   const [restoring, setRestoring] = useState(false);
+  /**
+   * Image lifecycle tracking (ACID-safe, best-effort):
+   * - `baselineImages` snapshots the selected post's cover + inline URLs when
+   *   it is opened (what a save/delete diffs against).
+   * - `pendingReplaced` collects Cloudinary URLs swapped out mid-edit (cover
+   *   replace/remove, inline replace) so a SUCCESSFUL save can purge them;
+   *   failed saves keep them (the stored post may still reference them).
+   */
+  const [baselineImages, setBaselineImages] = useState<string[]>([]);
+  const [pendingReplaced, setPendingReplaced] = useState<string[]>([]);
+  const baselineRef = useRef<string[]>([]);
+  baselineRef.current = baselineImages;
+
+  const trackReplaced = useCallback((oldUrl: string) => {
+    const clean = String(oldUrl ?? "").trim();
+    if (!clean || !/^https:\/\/res\.cloudinary\.com\//.test(clean)) return;
+    setPendingReplaced((p) => (p.includes(clean) ? p : [...p, clean].slice(-20)));
+  }, []);
+
+  /** Best-effort orphan purge — never blocks the Studio flow, never throws. */
+  const purgeBlogUrls = useCallback((urls: string[], source: "blog-cover-replace" | "blog-image-remove" | "blog-delete") => {
+    const clean = [...new Set(urls.filter((u) => typeof u === "string" && /^https:\/\/res\.cloudinary\.com\//.test(u)))].slice(0, 20);
+    if (clean.length === 0 || typeof fetch === "undefined") return;
+    fetch("/api/upload/cleanup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ urls: clean, source }),
+    }).catch(() => undefined);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,8 +96,11 @@ export default function AdminBlogPage() {
     const cur = posts.find((p) => p.slug === selected);
     if (cur && !isNew) {
       setSlug(cur.slug); setTitle(cur.title); setDescription(cur.description);
-      setAuthor(cur.author); setCategory(cur.category); setImage(cur.image);
+      setAuthor(cur.author); setCategory(cur.category); setImage(resolveBlogImageUrl(cur.image));
       setStatus(cur.status); setFeatured(cur.featured === true); setReadingTime(String(cur.readingTime)); setBlocks(htmlToBlocks(cur.content));
+      // Snapshot the opened post's image set for replacement diffing.
+      setBaselineImages(collectBlogPostImageUrls(cur));
+      setPendingReplaced([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, isNew]);
@@ -83,6 +118,7 @@ export default function AdminBlogPage() {
     }
     setSaving(true);
     try {
+      const nextContent = blocksToBlogHtml(blocks);
       const res = await fetch("/api/admin/blog", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -91,7 +127,7 @@ export default function AdminBlogPage() {
             slug: cleanSlug, title, description, author, category, image,
             date: new Date().toISOString().slice(0, 10),
             readingTime: cleanReadingTime,
-            status, featured, content: blocksToBlogHtml(blocks),
+            status, featured, content: nextContent,
           },
         }),
       });
@@ -99,8 +135,20 @@ export default function AdminBlogPage() {
         const d = await res.json().catch(() => ({}));
         throw new Error((d as { error?: string }).error ?? "Save failed");
       }
+      // Replacement cleanup (DB committed first — ACID-safe): purge the cover
+      // + inline URLs the new version no longer references, plus any mid-edit
+      // swaps tracked via onReplaced. Best-effort; failures never surface.
+      try {
+        const nextImages = collectBlogPostImageUrls({ image, content: nextContent });
+        const removed = diffRemovedBlogUrls([...baselineRef.current, ...pendingReplaced], nextImages);
+        if (removed.length > 0) purgeBlogUrls(removed, "blog-image-remove");
+      } catch {
+        /* hygiene never blocks save */
+      }
       toastService.success(`Post “${cleanSlug}” saved (${status})`);
       setIsNew(false); setSelected(cleanSlug);
+      setBaselineImages(collectBlogPostImageUrls({ image, content: nextContent }));
+      setPendingReplaced([]);
       await load();
     } catch (e) {
       toastService.error(e instanceof Error ? e.message : "Save failed");
@@ -128,17 +176,25 @@ export default function AdminBlogPage() {
 
   const handleDelete = async () => {
     if (!selected) return;
+    const doomed = [...baselineRef.current];
     try {
       const res = await fetch(`/api/admin/blog?slug=${encodeURIComponent(selected)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
+      // Post row committed away — purge its cover + inline assets best-effort
+      // (the cleanup route re-guards live references, so shared URLs survive).
+      if (doomed.length > 0) purgeBlogUrls(doomed, "blog-delete");
       toastService.success("Post deleted");
-      setSelected(""); await load();
+      setSelected(""); setBaselineImages([]); setPendingReplaced([]); await load();
     } catch {
       toastService.error("Delete failed");
     }
   };
 
   const addBlock = (type: EmailBlockType) => {
+    if (type === "image" && blocks.filter((b) => b.type === "image").length >= BLOG_IMAGE_CONFIG.maxInlineImages) {
+      toastService.error(`Up to ${BLOG_IMAGE_CONFIG.maxInlineImages} images per post.`);
+      return;
+    }
     setBlocks((p) => [...p, { id: newBlockId(), type, text: type === "paragraph" ? "New paragraph" : type === "heading" ? "New heading" : undefined }]);
   };
 
@@ -158,10 +214,13 @@ export default function AdminBlogPage() {
     setIsNew(true);
     setSelected(tpl.slug);
     setSlug(tpl.slug); setTitle(tpl.title); setDescription(tpl.description);
-    setAuthor(tpl.author); setCategory(tpl.category); setImage(tpl.image);
+    setAuthor(tpl.author); setCategory(tpl.category); setImage(resolveBlogImageUrl(tpl.image));
     setStatus(tpl.status); setFeatured(tpl.featured === true);
     setReadingTime(String(tpl.readingTime));
     setBlocks(htmlToBlocks(tpl.content));
+    // Templates are unsaved until Create — nothing stored to diff against.
+    setBaselineImages([]);
+    setPendingReplaced([]);
   };
 
   /** Rollback a slug to its shipped default (DB row overwritten, audited server-side). */
@@ -196,7 +255,7 @@ export default function AdminBlogPage() {
           <div className="text-sm text-text-secondary">Draft · publish · archive · visual builder (no HTML needed)</div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => { setIsNew(true); setSlug(""); setTitle(""); setDescription(""); setStatus("draft"); setFeatured(false); setReadingTime(String(BLOG_MANAGEMENT_CONFIG.defaultReadingTime)); setBlocks(defaultBlocks()); }}
+          <button onClick={() => { setIsNew(true); setSlug(""); setTitle(""); setDescription(""); setStatus("draft"); setFeatured(false); setReadingTime(String(BLOG_MANAGEMENT_CONFIG.defaultReadingTime)); setBlocks(defaultBlocks()); setImage(BLOG_MANAGEMENT_CONFIG.defaultImage); setBaselineImages([]); setPendingReplaced([]); }}
             className="inline-flex items-center gap-1.5 px-3 py-2 radius-md bg-primary text-white text-xs font-semibold border-none cursor-pointer">
             <Plus size={14} /> New post
           </button>
@@ -313,8 +372,12 @@ export default function AdminBlogPage() {
             <span className="font-medium">Featured <span className="text-text-muted">(headlines the /blog hero and the featured tape)</span></span>
           </label>
           <label className="text-xs flex flex-col gap-1">
-            <span className="text-text-muted font-medium">Cover image URL</span>
-            <input value={image} onChange={(e) => setImage(e.target.value)} className="rounded-md border border-border bg-bg-base px-3 py-2 text-sm font-mono" />
+            <BlogImageUpload
+              variant="cover"
+              value={image}
+              onChange={setImage}
+              onReplaced={trackReplaced}
+            />
           </label>
           <label className="text-xs flex flex-col gap-1">
             <span className="text-text-muted font-medium">{READING_TIME_FIELD_META.label}</span>
@@ -346,7 +409,14 @@ export default function AdminBlogPage() {
               <div key={b.id} className="rounded-md border border-border bg-bg-base p-2.5 flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{b.type}</span>
-                  <button onClick={() => setBlocks((p) => p.filter((x) => x.id !== b.id))}
+                  <button onClick={() => {
+                    // Dropping an image block orphans its upload — track it so
+                    // the next successful save purges it (unsaved removals
+                    // stay reversible until then).
+                    const src = (b.src ?? b.url ?? "").trim();
+                    if (b.type === "image" && /^https:\/\/res\.cloudinary\.com\//.test(src)) trackReplaced(src);
+                    setBlocks((p) => p.filter((x) => x.id !== b.id));
+                  }}
                     className="ml-auto p-1 cursor-pointer bg-transparent border-none text-text-muted hover:text-error"><Trash2 size={13} /></button>
                 </div>
                 {(b.type === "paragraph" || b.type === "heading") && (
@@ -365,9 +435,18 @@ export default function AdminBlogPage() {
                   </div>
                 )}
                 {b.type === "image" && (
-                  <input value={b.src ?? b.url ?? ""} placeholder="Image URL"
-                    onChange={(e) => setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, src: e.target.value, url: e.target.value } : x)))}
-                    className="rounded border border-border bg-bg-card px-2 py-1.5 text-sm font-mono" />
+                  <div className="flex flex-col gap-1.5">
+                    <BlogImageUpload
+                      variant="inline"
+                      value={b.src ?? b.url ?? ""}
+                      onChange={(url) => setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, src: url, url } : x)))}
+                      onReplaced={trackReplaced}
+                    />
+                    <input value={b.text ?? ""} placeholder="Alt text (accessibility)"
+                      onChange={(e) => setBlocks((p) => p.map((x) => (x.id === b.id ? { ...x, text: e.target.value } : x)))}
+                      aria-label="Image alt text"
+                      className="rounded border border-border bg-bg-card px-2 py-1.5 text-sm" />
+                  </div>
                 )}
                 {b.type === "list" && (
                   <textarea value={(b.items ?? []).join("\n")} rows={3} placeholder="One item per line"
@@ -401,27 +480,41 @@ export default function AdminBlogPage() {
         <section className="bg-bg-card border border-border radius-lg overflow-hidden">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
             <Eye size={14} className="text-text-muted" />
-            <span className="text-sm font-semibold">Live preview (sanitized, styled)</span>
+            <span className="text-sm font-semibold">Live preview (sanitized, styled — mirrors the public post page)</span>
           </div>
-          <div className="max-h-[560px] overflow-auto p-4">
-            <h3 className="text-lg font-bold mb-2 text-text-primary">{title || "Untitled"}</h3>
-            <p className="text-xs text-text-muted mb-3">{readingTime.trim() || READING_TIME_FIELD_META.placeholder} min read · live preview</p>
-            <div
-              className={BLOG_CONTENT_PROSE_CLASSES}
-              dangerouslySetInnerHTML={{ __html: (() => {
-                // Mirror the public [slug] render exactly (article HTML +
-                // style-strip + variable interpolation) so the preview shows
-                // what readers see — never raw {{tokens}} or email styling.
-                try {
-                  return renderBlogContent(
-                    sanitizeBlogHtml(blocksToBlogHtml(blocks)),
-                    buildBlogVarContext({ title: title || "Preview", author, category }, null),
-                  );
-                } catch {
-                  return "";
-                }
-              })() }}
-            />
+          <div className="max-h-[640px] overflow-auto p-4">
+            {(() => {
+              // Same render contract as app/(public)/blog/[slug]/page.tsx:
+              // blocks → article HTML → style-strip → variable interpolation.
+              // Shared <BlogPostArticle> guarantees the preview shows what
+              // readers see (cover, meta, prose) — never raw {{tokens}}.
+              let rendered = "";
+              try {
+                rendered = renderBlogContent(
+                  sanitizeBlogHtml(blocksToBlogHtml(blocks)),
+                  buildBlogVarContext({ title: title || "Preview", author, category }, null),
+                );
+              } catch {
+                rendered = "";
+              }
+              const rt = readingTime.trim() === ""
+                ? BLOG_MANAGEMENT_CONFIG.defaultReadingTime
+                : (normalizeReadingTime(readingTime) ?? BLOG_MANAGEMENT_CONFIG.defaultReadingTime);
+              return (
+                <BlogPostArticle
+                  post={{
+                    title: title || "Untitled",
+                    description,
+                    category,
+                    readingTime: rt,
+                    author,
+                    date: new Date().toISOString().slice(0, 10),
+                    image,
+                  }}
+                  renderedHtml={rendered}
+                />
+              );
+            })()}
           </div>
         </section>
       </div>

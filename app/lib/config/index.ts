@@ -148,6 +148,8 @@ export { DEFAULT_FAQ_ITEMS, FAQ_PCM } from "./faq";
 export type { FaqCategory } from "./faq";
 export { DEFAULT_BLOG_CATEGORIES, BLOG_LAYOUT_CONFIG, BLOG_CONTENT_PROSE_CLASSES } from "./blog";
 export type { BlogCategory, BlogLayoutConfig } from "./blog";
+export { BLOG_IMAGE_CONFIG, blogMaxSizeLabel } from "./blogManagement";
+export type { BlogImageConfig } from "./blogManagement";
 export { FEATURED_BLOGS_CONFIG, pickFeaturedBlogs, featuredBlogHref } from "./featuredBlogs";
 export type { FeaturedBlogsConfig, FeaturedBlogItem } from "./featuredBlogs";
 export { EXPLORE_PIN_POPUP_CONFIG } from "./explore";

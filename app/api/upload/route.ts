@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { v2 as cloudinary } from "cloudinary";
 import { REPORT_ATTACHMENTS_CONFIG } from "@/app/lib/config/reportAttachments";
+import { BLOG_IMAGE_CONFIG } from "@/app/lib/config/blogManagement";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_FILES = 10;
@@ -20,6 +21,13 @@ const FOLDER_POLICIES: Record<string, { folder: string; maxFiles: number; maxByt
     maxFiles: REPORT_ATTACHMENTS_CONFIG.maxImages,
     maxBytes: REPORT_ATTACHMENTS_CONFIG.maxBytesPerImage,
     allowedTypes: REPORT_ATTACHMENTS_CONFIG.allowedTypes,
+  },
+  // Blog Studio covers + inline images (caps/types from BLOG_IMAGE_CONFIG).
+  [BLOG_IMAGE_CONFIG.uploadFolderKey]: {
+    folder: BLOG_IMAGE_CONFIG.folder,
+    maxFiles: BLOG_IMAGE_CONFIG.maxInlineImages,
+    maxBytes: BLOG_IMAGE_CONFIG.maxBytesPerImage,
+    allowedTypes: BLOG_IMAGE_CONFIG.allowedTypes,
   },
 };
 
@@ -61,6 +69,11 @@ export async function POST(request: NextRequest) {
     }
     if (policy.folder === REPORT_ATTACHMENTS_CONFIG.folder && !REPORT_ATTACHMENTS_CONFIG.enabled) {
       return NextResponse.json({ error: "Report attachments are disabled." }, { status: 400 });
+    }
+    // Blog uploads back the admin-only Studio — non-admins cannot land assets
+    // in the blog folder (keeps the cleanup allowlist + billing disjoint).
+    if (policy.folder === BLOG_IMAGE_CONFIG.folder && (user as { role?: string }).role !== "ADMIN") {
+      return NextResponse.json({ error: "Not authorized for blog uploads." }, { status: 403 });
     }
 
     if (!files || files.length === 0) {

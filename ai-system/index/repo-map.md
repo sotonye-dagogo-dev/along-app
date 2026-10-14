@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
+> - last-updated-by: execute-feature 2026-10-14 (Sprint 54: blog cover/inline uploads + faithful preview (BLOG_IMAGE_CONFIG, blogImages util, BlogImageUpload/BlogPostArticle))
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 
@@ -103,7 +103,7 @@ along-app/
 │   │   ├── streams/         → Reactive streams
 │   │   ├── types/           → TypeScript type definitions
 │   │   ├── integrations/    → External service clients (transact, tega)
-│   │   └── utils/           → 11 utility modules (blog, pushClient [Sprint 27: env guards + in-gesture permission + detailed reasons], siteConfig, etc.) + emailSanitize (allowlist/escape) + emailBuilder (blocks↔HTML↔text lossless) + emailTemplates (escaped interpolation, shared defaults) [Sprint 22]
+│   │   └── utils/           → 12 utility modules (blog, blogImages resolve/extract/collect/diff [Sprint 54], pushClient [Sprint 27: env guards + in-gesture permission + detailed reasons], siteConfig, etc.) + emailSanitize (allowlist/escape) + emailBuilder (blocks↔HTML↔text lossless) + emailTemplates (escaped interpolation, shared defaults) [Sprint 22]
 │   └── providers/           → 6 context providers (Auth, OnlineStatus, Push, GlobalModal, GlobalToast, CookieConsent) + I18n (bundled-EN seed, last-good cache, cookie sync, tf() fallback [Sprint 25])
 │
 ├── node_modules/            → Installed dependencies

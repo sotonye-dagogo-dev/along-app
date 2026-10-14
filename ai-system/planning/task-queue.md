@@ -1,7 +1,7 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (blog design compliance + reading-time studio input)
+> - last-updated-by: execute-feature 2026-10-14 (blog cover/inline uploads + faithful preview)
 > - last-synced: 2026-10-14 (avatar/profile/feed tightening: feedTightening suite added)
 > - staleness-policy: re-verify before each session
 
@@ -773,3 +773,16 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | Other-profile avg — `by-username` returns `avgValidityScore` aggregate (best-effort); client prefers server value (fallback 0, never rewardPoints/postCount total); stats bar Fragment+divider parity with own profile | [x] |
 | [M] | Feed optimistic + pill — `feedStream.prependPost` (dedupe/top/persist); `submitPost` pins created row + scrolls top; `FEED_NEW_POSTS_PROMPT_CONFIG` (45s auto-dismiss, 45s throttle, thresholds, label); pill click clears+scrolls+refreshes; auto-dismiss timer | [x] |
 | [S] | Tests — NEW `feedTightening.test.ts` (avatar sizes/forward/narrow, avg source-of-truth/fallback, prompt band/label, dedupe invariant) | [x] |
+
+## Sprint 54 — Blog Studio Image Uploads + Faithful Preview (2026-10-14, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs). QA full in-runner: tsc 0 errors, jest 77/77 suites 656/656 tests, lint clean on touched files, `npm run build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | `BLOG_IMAGE_CONFIG` registry (along/blog, 5MB, ≤10 inline, types, copy, barrel export) + pure `blogImages.ts` (resolve/extract/collect/diff, never-throw) | [x] |
+| [M] | `/api/upload` blog policy (admin-gated) + cleanup blog sources + SiteConfig reference guard + allowlist | [x] |
+| [M] | Reusable `BlogImageUpload` (cover/inline, eager upload, swap-now/purge-after-save) + shared `BlogPostArticle` (public + preview parity) | [x] |
+| [M] | Studio: cover/inline uploads, alt text, cap, baseline/pending tracking, save/delete purges, `BlogPostArticle` live preview | [x] |
+| [S] | Public pages: covers on detail/list/featured/tape; `sanitizeBlogPost` cover resolution; admin DELETE background purge | [x] |
+| [S] | Tests — NEW `blogImages.test.ts` (7: config, allowlist, resolve, custom, extract, collect, diff) | [x] |

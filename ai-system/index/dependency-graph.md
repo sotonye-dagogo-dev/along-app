@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
+> - last-updated-by: execute-feature 2026-10-14 (Sprint 54: blog image lifecycle (upload blog policy → Studio → cleanup blog sources + SiteConfig guard); BlogPostArticle shared by public page + preview)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -28,7 +28,7 @@ Page Components (app/(auth|dashboard|admin|public|admin)/)
     → UI Components (app/components/ui/App*)
     → Feature Components (app/components/features/*)
         → posts/RequestRouteModal (route-request composer, response-mode ShareRouteModal)
-        → suggestions/EndlessCarousel (scroll-based autoplay, own overflow wrapper, ENDLESS_CAROUSEL_CONFIG) + SuggestionsRail (mobile, xl:hidden, feed-owned) + FollowButton + About reviews tape (same wrapper, real /api/reviews + ReviewCtaPanel cadence [Sprint 25]) + blog/FeaturedBlogsSection (same wrapper, FEATURED_BLOGS_CONFIG + /api/blog; landing server-fed, about after reviews, invite after leaderboard [Sprint 52])
+        → suggestions/EndlessCarousel (scroll-based autoplay, own overflow wrapper, ENDLESS_CAROUSEL_CONFIG) + SuggestionsRail (mobile, xl:hidden, feed-owned) + FollowButton + About reviews tape (same wrapper, real /api/reviews + ReviewCtaPanel cadence [Sprint 25]) + blog/FeaturedBlogsSection (same wrapper, FEATURED_BLOGS_CONFIG + /api/blog; landing server-fed, about after reviews, invite after leaderboard [Sprint 52]; covers via blogImages resolver [Sprint 54]) + blog/BlogPostArticle (shared by public [slug] + Studio preview [Sprint 54]) + blog/BlogImageUpload (cover/inline → /api/upload folder=blog → cleanup blog sources [Sprint 54])
         → reviews/ReviewsPanel (star form + guest gate + FAQ + list; own profile reviews tab + #reviews deep link; other-profile read-only authorId scope [Sprint 25]) + reviews/ReviewsCarouselSection (same EndlessCarousel + CTA cadence; landing below blogs, invite compact below blogs [Sprint 53])
         → (public)/LandingCopy (landing i18n islands: hero/features/CTA/feed-preview [Sprint 25])
         → ui/SuggestionsPanel (live /api/suggestions: who-to-follow, open requests, trending tags)
