@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
+import { asAvatarConfig } from "@/app/lib/config/avatar";
 
 interface BoardRow {
   id: string;
@@ -9,6 +10,7 @@ interface BoardRow {
   lastName: string;
   userName: string;
   avatar: string | null;
+  avatarConfig: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null;
   rewardPoints: number;
   rewardTier: string | null;
   postCount: number;
@@ -45,6 +47,7 @@ function toBoardRow(u: {
   lastName: string;
   userName: string;
   avatar: string | null;
+  avatarConfig: unknown;
   rewardPoints: number;
   rewardTier: string | null;
   createdAt?: string | Date;
@@ -56,8 +59,9 @@ function toBoardRow(u: {
     lastName: u.lastName,
     userName: u.userName,
     avatar: u.avatar,
+    avatarConfig: asAvatarConfig(u.avatarConfig) ?? null,
     rewardPoints: u.rewardPoints,
-    rewardTier: u.rewardTier,
+    rewardTier: u.rewardTier == null ? null : String(u.rewardTier),
     postCount: u._count.posts,
     followerCount: u._count.followers,
     createdAt: u.createdAt,
@@ -108,6 +112,7 @@ export async function GET(request: NextRequest) {
           lastName: true,
           userName: true,
           avatar: true,
+          avatarConfig: true,
           rewardPoints: true,
           rewardTier: true,
           createdAt: true,
@@ -137,7 +142,7 @@ export async function GET(request: NextRequest) {
           where: { id: viewerId },
           select: {
             id: true, firstName: true, lastName: true, userName: true,
-            avatar: true, rewardPoints: true, rewardTier: true, createdAt: true,
+            avatar: true, avatarConfig: true, rewardPoints: true, rewardTier: true, createdAt: true,
             _count: { select: { posts: true, followers: true } },
           },
         });

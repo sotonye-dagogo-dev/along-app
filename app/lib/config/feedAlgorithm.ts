@@ -29,3 +29,26 @@ export const FEED_STREAM_CONFIG = {
 } as const;
 
 export type FeedStreamConfig = typeof FEED_STREAM_CONFIG;
+
+/**
+ * "New posts" floating prompt registry (config-driven, metadata-driven).
+ *
+ * Single source of truth for the feed's refresh pill so behaviour is
+ * consistent and tunable without touching components: visibility
+ * thresholds, auto-dismiss window (30–60s per spec), and re-prompt
+ * throttling after a click.
+ */
+export const FEED_NEW_POSTS_PROMPT_CONFIG = {
+  /** Show the pill when scrolled past this Y (px) or reading depth. */
+  nearTopPx: 80,
+  /** Fraction of page scrolled that counts as "reading deep". */
+  deepDepth: 0.12,
+  /** Auto-dismiss a stale pill after this many seconds (30–60s band). */
+  autoDismissSec: 45,
+  /** Suppress re-prompt for this long after the pill is clicked. */
+  throttleAfterClickSec: 45,
+  /** Pill copy builders (count-aware, no hardcoding in components). */
+  label: (count: number) => `${count} new ${count === 1 ? "post" : "posts"}`,
+} as const;
+
+export type FeedNewPostsPromptConfig = typeof FEED_NEW_POSTS_PROMPT_CONFIG;

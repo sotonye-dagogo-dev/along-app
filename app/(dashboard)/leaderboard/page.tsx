@@ -5,6 +5,8 @@ import Link from "next/link"
 import { Trophy, Medal, Award, TrendingUp, Users, MapPin } from "lucide-react"
 import { useTranslation } from "@/app/providers/I18nProvider"
 import { PageNavigator } from "@/app/components/ui/PageNavigator"
+import { AppAvatar } from "@/app/components/ui"
+import { AVATAR_DISPLAY_CONFIG, asAvatarConfig } from "@/app/lib/config/avatar"
 
 interface LeaderboardEntry {
   rank: number
@@ -13,6 +15,7 @@ interface LeaderboardEntry {
   lastName: string
   userName: string
   avatar: string | null
+  avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null
   rewardPoints: number
   rewardTier: string | null
   postCount: number
@@ -43,10 +46,23 @@ function ordinal(rank: number): string {
   }
 }
 
-function initialsOf(e: Pick<LeaderboardEntry, "firstName" | "lastName">): string {
-  const a = e.firstName?.[0] ?? "?"
-  const b = e.lastName?.[0] ?? ""
-  return `${a}${b}`.toUpperCase()
+/** Canonical leaderboard face — AppAvatar everywhere (podium + rows). */
+function LeaderboardAvatar({
+  entry,
+  size,
+}: {
+  entry: Pick<LeaderboardEntry, "firstName" | "lastName" | "avatar" | "avatarConfig" | "userName">
+  size: 40 | 32
+}) {
+  return (
+    <AppAvatar
+      src={entry.avatar ?? undefined}
+      alt={`${entry.firstName} ${entry.lastName}`}
+      size={size}
+      config={asAvatarConfig(entry.avatarConfig)}
+      linkToProfile={false}
+    />
+  )
 }
 
 /**
@@ -163,9 +179,7 @@ export default function LeaderboardPage() {
             const { Icon } = slot
             return (
               <div key={e.id} className="flex flex-col items-center gap-1.5 min-w-0">
-                <div className="w-10 h-10 rounded-circle bg-primary-muted flex items-center justify-center text-sm font-bold text-primary">
-                  {initialsOf(e)}
-                </div>
+                <LeaderboardAvatar entry={e} size={AVATAR_DISPLAY_CONFIG.sizes.leaderboardPodium as 40} />
                 <Link href={`/profile/${e.userName}`} className="text-xs font-semibold text-text-primary no-underline hover:underline text-center leading-tight truncate max-w-20">
                   {e.firstName}
                 </Link>
@@ -203,8 +217,8 @@ export default function LeaderboardPage() {
               >
                 <RankBadge rank={entry.rank} />
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  <div className="w-9 h-9 rounded-circle bg-primary-muted flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                    {initialsOf(entry)}
+                  <div className="shrink-0">
+                    <LeaderboardAvatar entry={entry} size={AVATAR_DISPLAY_CONFIG.sizes.leaderboardRow as 32} />
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-text-primary truncate">
