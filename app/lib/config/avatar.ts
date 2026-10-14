@@ -118,3 +118,41 @@ export const AVATAR_MENU_CONFIG = {
 } as const;
 
 export type AvatarMenuConfig = typeof AVATAR_MENU_CONFIG;
+
+/**
+ * Avatar-display consistency registry (config-driven, metadata-driven).
+ *
+ * One canonical rendering path (`AppAvatar` with `src` + `avatarConfig`)
+ * for every user face on the platform — notifications, leaderboard
+ * (page + invite mini-board), feed, profiles, admin. Raw initial-divs are
+ * the drift this registry prevents: they ignore DiceBear configs and
+ * diverge per page. Sizes map to `AppAvatar`'s allowed size union.
+ */
+export const AVATAR_DISPLAY_CONFIG = {
+  /** AppAvatar sizes per surface (must match AppAvatar size union). */
+  sizes: {
+    notification: 40,
+    leaderboardPodium: 40,
+    leaderboardRow: 32,
+    inviteRow: 32,
+  },
+  /** Forward these user fields from API rows (never drop avatarConfig). */
+  forwardFields: ["avatar", "avatarConfig"] as const,
+} as const;
+
+export type AvatarDisplayConfig = typeof AVATAR_DISPLAY_CONFIG;
+
+/** Narrow an unknown avatarConfig payload into a renderable shape. */
+export function asAvatarConfig(
+  value: unknown,
+): { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const v = value as Record<string, unknown>;
+  if (typeof v.style !== "string" || !v.style) return undefined;
+  return {
+    style: v.style,
+    seed: typeof v.seed === "string" ? v.seed : undefined,
+    flip: typeof v.flip === "boolean" ? v.flip : undefined,
+    backgroundColor: typeof v.backgroundColor === "string" ? v.backgroundColor : undefined,
+  };
+}

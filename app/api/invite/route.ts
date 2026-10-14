@@ -18,17 +18,21 @@ export async function GET(request: NextRequest) {
         where: { invitedBy: { isNot: null } },
         select: {
           invitedBy: {
-            select: { id: true, firstName: true, lastName: true, userName: true, avatar: true, rewardPoints: true },
+            select: { id: true, firstName: true, lastName: true, userName: true, avatar: true, avatarConfig: true, rewardPoints: true },
           },
         },
       });
 
-      const inviteCounts = new Map<string, { firstName: string; lastName: string; userName: string; avatar: string | null; rewardPoints: number; count: number }>();
+      const inviteCounts = new Map<string, { firstName: string; lastName: string; userName: string; avatar: string | null; avatarConfig: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null; rewardPoints: number; count: number }>();
       for (const u of users) {
         if (!u.invitedBy) continue;
         const key = u.invitedBy.id;
         if (!inviteCounts.has(key)) {
-          inviteCounts.set(key, { ...u.invitedBy, count: 0 });
+          inviteCounts.set(key, {
+            ...u.invitedBy,
+            avatarConfig: (u.invitedBy.avatarConfig ?? null) as { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null,
+            count: 0,
+          });
         }
         inviteCounts.get(key)!.count++;
       }

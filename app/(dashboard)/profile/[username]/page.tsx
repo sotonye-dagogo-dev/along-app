@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, Fragment } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { UserMinus, UserPlus, UserCheck, Search } from "lucide-react"
@@ -95,6 +95,7 @@ interface ProfileApiResponse {
     verified: boolean
     rewardPoints: number
     rewardTier: string
+    avgValidityScore?: number | null
     _count: { posts: number; followers: number; following: number }
   }
   isFollowing?: boolean
@@ -146,6 +147,13 @@ export default function OtherProfilePage() {
   const profile = useMemo<ProfileData | null>(() => {
     const u = profileRes?.user
     if (!u) return null
+    // Server is the source of truth for the average (aggregate over posts).
+    // Never derive rewardPoints/postCount client-side — that yields a total,
+    // not the average the own-profile view shows.
+    const serverAvg =
+      typeof u.avgValidityScore === "number" && Number.isFinite(u.avgValidityScore)
+        ? Math.round(u.avgValidityScore)
+        : 0
     return {
       id: u.id,
       userName: u.userName,
@@ -160,7 +168,7 @@ export default function OtherProfilePage() {
       postCount: u._count.posts,
       followerCount: u._count.followers,
       followingCount: u._count.following,
-      avgValidityScore: u._count.posts > 0 ? Math.round(u.rewardPoints / u._count.posts) : 0,
+      avgValidityScore: serverAvg,
       earlyAdopter: profileRes?.earlyAdopter ?? null,
     }
   }, [profileRes])
@@ -269,6 +277,9 @@ export default function OtherProfilePage() {
           <p className="text-sm text-text-primary leading-relaxed mb-3.5 max-w-full">{profile.bio}</p>
         )}
 
+        {/* Stats bar — same centered layout as the own profile (each cell
+            flex-1 text-center, divider as a flex sibling) so Posts /
+            Followers / Following / Avg Score align identically. */}
         <div className="flex items-center py-3.5 border-t border-border border-b mb-3.5">
           {[
             { num: profile.postCount, label: "Posts" },
@@ -276,20 +287,22 @@ export default function OtherProfilePage() {
             { num: profile.followingCount, label: "Following", href: `/profile/${profile.userName}/following` },
             { num: profile.avgValidityScore, label: "Avg Score" },
           ].map((s, i, arr) => (
-            <div key={s.label} className="flex-1 text-center">
-              {s.href ? (
-                <Link href={s.href} className="no-underline inline-block hover:opacity-80 transition-opacity">
-                  <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
-                  <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
-                </Link>
-              ) : (
-                <>
-                  <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
-                  <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
-                </>
-              )}
-              {i < arr.length - 1 && <div className="w-px h-8 bg-border shrink-0 inline-block ml-0" />}
-            </div>
+            <Fragment key={s.label}>
+              <div className="flex-1 text-center">
+                {s.href ? (
+                  <Link href={s.href} className="no-underline inline-block hover:opacity-80 transition-opacity">
+                    <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
+                    <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
+                  </Link>
+                ) : (
+                  <>
+                    <span className="text-lg font-bold text-text-primary block leading-tight">{s.num.toLocaleString()}</span>
+                    <span className="text-[11px] font-medium text-text-muted uppercase tracking-wider">{s.label}</span>
+                  </>
+                )}
+              </div>
+              {i < arr.length - 1 && <div className="w-px h-8 bg-border shrink-0" />}
+            </Fragment>
           ))}
         </div>
 

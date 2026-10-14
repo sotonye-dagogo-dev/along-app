@@ -3,8 +3,9 @@
 import Link from "next/link"
 import React, { useState, useEffect, useCallback } from "react"
 import { Gift, Copy, Check, Trophy, Users, Share2 } from "lucide-react"
-import { AppCard, AppButton, AppEmptyState } from "@/app/components/ui"
+import { AppCard, AppButton, AppEmptyState, AppAvatar } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { AVATAR_DISPLAY_CONFIG, asAvatarConfig } from "@/app/lib/config/avatar"
 import { buildInviteUrl } from "@/app/lib/config/inviteConfig"
 import { LEADERBOARD_LINKS_CONFIG } from "@/app/lib/config/leaderboardLinks"
 import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection"
@@ -26,6 +27,7 @@ interface LeaderboardEntry {
   lastName: string
   userName: string
   avatar: string | null
+  avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null
   rewardPoints: number
   count: number
 }
@@ -172,10 +174,15 @@ export default function InvitePage() {
                 <span className={`w-6 text-center text-xs font-bold ${entry.rank <= 3 ? "text-warning-text" : "text-text-muted"}`}>
                   #{entry.rank}
                 </span>
-                <Link href={`/profile/${entry.userName}`} className="no-underline">
-                  <div className="w-8 h-8 rounded-circle bg-primary-muted flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                    {entry.firstName[0]}{entry.lastName[0]}
-                  </div>
+                <Link href={`/profile/${entry.userName}`} className="no-underline shrink-0">
+                  {/* Canonical face — same AppAvatar as leaderboard/notifications. */}
+                  <AppAvatar
+                    src={entry.avatar ?? undefined}
+                    alt={`${entry.firstName} ${entry.lastName}`}
+                    size={AVATAR_DISPLAY_CONFIG.sizes.inviteRow as 32}
+                    config={asAvatarConfig(entry.avatarConfig)}
+                    linkToProfile={false}
+                  />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <Link href={`/profile/${entry.userName}`} className="text-sm font-semibold truncate no-underline hover:underline text-text-primary block">{entry.firstName} {entry.lastName}</Link>

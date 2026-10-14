@@ -295,7 +295,6 @@ export class FeedStream {
     cache.set(event.postId, current)
     this.interactionCache$.next(new Map(cache))
   }
-
   /** Removes a post from the in-memory feed (delete/archive). Persisted. */
   removePost(postId: string) {
     const current = this.feedStateSubject.value
@@ -304,6 +303,29 @@ export class FeedStream {
     const next = { ...current, posts }
     this.feedStateSubject.next(next)
     this.persist(next)
+  }
+
+  /**
+   * Pins a just-created post to the top of the feed (optimistic first
+   * paint). Dedupes by id so a retry/refresh can never duplicate it; the
+   * next server refresh re-orders it to its rightful score position.
+   * Never throws — falls back to a silent no-op.
+   */
+  prependPost(post: FeedPost) {
+    try {
+      if (!post || typeof post.id !== "string") return
+      const current = this.feedStateSubject.value
+      if (current.posts.some((p) => p.id === post.id)) return
+      const next: FeedState = {
+        ...current,
+        posts: dedupePosts([post, ...current.posts]),
+        loading: false,
+      }
+      this.feedStateSubject.next(next)
+      this.persist(next)
+    } catch {
+      /* optimistic only — refresh heals */
+    }
   }
 
   /** Patches a post in place (e.g. isArchived flag, edited title). Persisted. */
