@@ -857,3 +857,18 @@ Choke-point guards can't be bypassed by the next delete path someone adds; seria
 - New feed ordering inputs must keep the seeded jitter (pass-through `rand`); first-load must keep the `isReady` hold.
 **Supersedes:** None (extends the Sprint 33 orphan-prevention and Sprint 55 diversity decisions).
 **Superseded by:** None
+
+## Decision 2026-10-14 (Sprint 58): keyless traffic as labeled estimate; opaque notice surfaces; feed mini-maps skip traffic
+**Context:** push banner washed out in dark theme; traffic requested from employed-or-keyless providers for maps + navigation with durations and legend.
+**Decision:** (1) traffic provider order is Mapbox congestion (keyed) → TomTom flow (keyed, `TOMTOM_TRAFFIC_KEY`) → deterministic WAT rush-pattern heuristic (always, flagged `estimated: true` in API + legend + FAQ) — keyless users get an honest estimate, never fake "live" data; (2) notice banners use opaque token surfaces (`--color-bg-card` + semantic border/text), never translucent fills, in light and dark; (3) feed mini-maps render untrafficked (`showTraffic={false}`) to avoid per-card lookup fan-out against the shared maps bucket — full overlay on detail/share-preview/live-nav.
+**Reason:**
+No public keyless live-traffic API exists; labeling the estimate preserves trust while the keyed path auto-upgrades when configured. Opaque card surfaces read identically across themes and Android WebViews. One shared traffic hook + cache (Redis 300s, memory 120s) keeps map and guide durations consistent.
+**Alternatives Considered:**
+- **TomTom/Mapbox as hard requirements**: Rejected — breaks the keyless-first stack guarantee (Sprint 19) and fails with no keys.
+- **Per-segment live colors on feed mini-maps**: Rejected — 20+ POSTs per feed page against a 60/min shared bucket starves geocode/route lookups.
+- **New locale keys for legend copy**: Rejected — parity test enforces identical en/pcm sets; config copy + FAQ_PCM pidgin is the established pattern.
+**Implications:**
+- New traffic consumers must use `useRouteTraffic` (or the same debounce→cache→silent-fallback discipline) and render `TrafficLegend` with the `estimated` flag.
+- New floating/inline notices must use opaque `--color-*` surfaces (see `PUSH_PROMPT_CONFIG.surface`).
+**Supersedes:** None (extends Sprint 19 keyless map-stack decision).
+**Superseded by:** None

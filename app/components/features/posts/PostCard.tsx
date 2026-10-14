@@ -480,6 +480,10 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             })}
             height={100}
             showOverlay={false}
+            // Feed mini-maps stay light: no per-card traffic lookup (avoids
+            // a fan-out of traffic requests per feed page). Full traffic
+            // overlay lives on the post detail map + live navigation.
+            showTraffic={false}
           />
         </div>
       )}

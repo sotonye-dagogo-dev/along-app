@@ -823,3 +823,9 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** put safety invariants at the lowest choke-point (adjacent to the irreversible operation), express UI variance as serializable config keys mapped by one component (never component refs in config), and gate first paint on one settled snapshot while letting live updates flow after readiness. Tests assert the guard's fail-open behaviour (shared-URL kept, DB-down kept) — not just the happy path.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 58 (2026-10-14): keyless-traffic honesty, opaque notice surfaces, hook-order hygiene, jest ESM stub reuse
+- **No keyless live-traffic API exists — model it honestly:** OSRM/ORS/Mapbox-routing/geocoders were audited; only keyed Mapbox congestion and keyed TomTom flow give real probes. The keyless path is a deterministic rush-pattern heuristic ALWAYS flagged `estimated` (API field + legend note + FAQ), so the UI can never imply live probes. Pattern: provider-order with the always-works fallback LAST + explicit estimated branding.
+- **Notice banners must be opaque in both themes:** translucent semantic fills (dark `--color-info` at 15% alpha) wash out on dark/Android WebViews. Fix at the config layer (`surface` tokens: solid card + semantic border/text) so all variants inherit it.
+- **Hooks after an early return are a latent lint break:** RouteMap's `mapError` return sat above 4 hooks since its introduction and only surfaced when the file was linted. Fix = move the return below the hooks (pure reorder, no behaviour change). When touching legacy components, lint the file even if you didn't add hooks.
+- **Jest ESM stub for redis-importing services:** `@upstash/redis → uncrypto` breaks the jest transform; the hoisted `jest.mock("@/app/lib/db/redis")` stub (get → null, set → no-op) used by emailStudio/mapStack suites works for any service-level pure-helper test. Reuse verbatim.

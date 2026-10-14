@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (media cross-post guard/share icons/feed first-load Sprint 57)
-> - last-synced: 2026-10-14 (media cross-post guard/share icons/feed first-load Sprint 57)
+> - last-updated-by: execute-feature 2026-10-14 (push-banner opacity + traffic overlay Sprint 58)
+> - last-synced: 2026-10-14 (push-banner opacity + traffic overlay Sprint 58)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -824,3 +824,15 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Share platform icons — `BLOG_SHARE_CONFIG.networks` gain serializable `icon` keys (`BlogShareNetworkIcon`); NEW `ShareNetworkIcon` (lucide `Facebook`, inline X/WhatsApp brand SVGs, `Link2` fallback); `BlogShareButtons` desktop row renders per-platform glyphs | [x] |
 | [M] | Feed first-load — `FEED_FIRST_LOAD_CONFIG` (geoWaitMs 1500, skeletonCount 3) + pure `seededRand`/`hashSeedString`; `feedService` diversity jitter seeded per viewer + UTC day (cached/fresh/geo orders agree); home page `isReady` gate (single geo-aware fetch, pre-ready stream emissions held, skeleton until settled, geo double-fetch removed) | [x] |
 | [S] | Tests — `mediaCleanup.test.ts` +4 (guard default, shared-URL kept, DB-hiccup fail-open, blog-ref kept); NEW `tighteningMediaShareFeed.test.ts` (9) + `ShareNetworkIcon.test.tsx` (2) | [x] |
+
+## Sprint 58 — Push-banner opacity + keyless traffic overlay (2026-10-14, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; same props + API envelopes, additive optional fields only). QA full in-runner: tsc 0 errors, jest 82/82 suites 709/709 tests, next lint clean on touched files (4 pre-existing RouteMap rules-of-hooks errors fixed by reorder), `npm run build` clean with `/api/maps/traffic` route.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Push banner opacity — `PUSH_PROMPT_CONFIG.surface` (opaque `--color-bg-card` + info border + primary text + info-text icon); PushManager inline/floating/pill restyled (tokens only, no hex) | [x] |
+| [L] | Traffic stack — `config/traffic.ts` (mapbox→tomtom→heuristic order, yellow #EAB308 moderate / red #DC2626 heavy, thresholds, WAT rush heuristic, duration blend) + `trafficService` (Redis 300s, never-throw) + `POST /api/maps/traffic` (maps bucket, guest-open, sanitized) + registry/barrel | [x] |
+| [M] | Traffic UI — `useRouteTraffic` hook + RouteMap chunk overlays + `TrafficLegend` (i icon, hover/click, Escape, token-styled) + NavigationGuide/LiveNavigationModal traffic-aware durations + post-detail single-hook wiring; feed mini-maps opt out (fan-out guard) | [x] |
+| [S] | Docs — FAQ 2 traffic items + tracings refresh (+FAQ_PCM pidgin), README Maps & traffic section, `.env.example` TOMTOM_TRAFFIC_KEY | [x] |
+| [S] | Tests — NEW `traffic.test.ts` (12: surface tokens, order/colors, thresholds, heuristic determinism/bounds/rush-vs-calm, duration blend, chunking, registry, FAQ) | [x] |

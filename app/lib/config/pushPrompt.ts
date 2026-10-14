@@ -17,6 +17,19 @@ export interface PushPromptConfig {
     /** How long a dismissal hides the prompt. */
     dismissTtlMs: number;
   };
+  /**
+   * Opaque token surface for the notice chrome (config-driven so the fix
+   * stays in one place). Deliberately NOT the translucent `--color-info`
+   * fill (15% alpha in dark mode washes out to near-invisible, esp. on
+   * Android WebViews): solid `--color-bg-card` + info border + primary
+   * text + info-text icon reads identically in light and dark.
+   */
+  surface: {
+    background: string;
+    border: string;
+    text: string;
+    icon: string;
+  };
   copy: {
     prompt: string;
     enable: string;
@@ -39,6 +52,12 @@ export const PUSH_PROMPT_CONFIG: PushPromptConfig = {
     enabledKey: "along-push-enabled",
     dismissedAtKey: "along-push-dismissed-at",
     dismissTtlMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+  },
+  surface: {
+    background: "var(--color-bg-card, #FFFFFF)",
+    border: "var(--color-info-border, #93C5FD)",
+    text: "var(--color-text-primary, #1A1A1A)",
+    icon: "var(--color-info-text, #1E3A8A)",
   },
   copy: {
     prompt: "Enable push notifications to never miss replies, mentions, and rewards.",
