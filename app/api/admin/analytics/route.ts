@@ -3,6 +3,7 @@ import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { parseAdminDashboardPeriod } from "@/app/lib/config/admin";
 import { ADMIN_ANALYTICS_CONFIG } from "@/app/lib/config/charts";
+import { SEARCH_ANALYTICS_CONFIG } from "@/app/lib/config/search";
 
 function pctChange(current: number, previous: number): number | null {
   if (previous === 0) {
@@ -133,6 +134,38 @@ export async function GET(request: NextRequest) {
       count: validityScores.filter((p) => p.validityScore >= b.min && p.validityScore <= b.max).length,
     }));
 
+    // Zero-result query analytics (additive, never throws): top normalized
+    // queries with counts + sample terms + last seen, so stopwords/fuzzy
+    // thresholds can be tuned from evidence. Empty table => empty list.
+    let zeroResultQueries: { query: string; count: number; terms: string[]; lastSeen: string | null }[] = [];
+    try {
+      const zeroRows = await prisma.analyticsEvent.findMany({
+        where: { eventName: SEARCH_ANALYTICS_CONFIG.eventName, createdAt: { gte: windowStart } },
+        select: { payload: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+        take: 500,
+      });
+      const grouped = new Map<string, { count: number; terms: string[]; lastSeen: string | null }>();
+      for (const row of zeroRows) {
+        const p = (row.payload ?? {}) as { query?: unknown; terms?: unknown };
+        const q = typeof p.query === "string" ? p.query.trim().toLowerCase().slice(0, 100) : "";
+        if (!q) continue;
+        const cur = grouped.get(q) ?? { count: 0, terms: [], lastSeen: null };
+        cur.count += 1;
+        if (cur.terms.length === 0 && Array.isArray(p.terms)) {
+          cur.terms = (p.terms as unknown[]).filter((t): t is string => typeof t === "string").slice(0, 6);
+        }
+        if (!cur.lastSeen) cur.lastSeen = row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt);
+        grouped.set(q, cur);
+      }
+      zeroResultQueries = [...grouped.entries()]
+        .map(([query, v]) => ({ query, ...v }))
+        .sort((a, b) => b.count - a.count || a.query.localeCompare(b.query))
+        .slice(0, SEARCH_ANALYTICS_CONFIG.topQueriesLimit);
+    } catch {
+      zeroResultQueries = [];
+    }
+
     return NextResponse.json(
       {
         period: periodDays,
@@ -177,6 +210,7 @@ export async function GET(request: NextRequest) {
           verified: (c as { verified?: unknown }).verified ?? false,
           posts: c._count.posts,
         })),
+        zeroResultQueries,
       },
       { status: 200 }
     );

@@ -310,3 +310,35 @@ body {
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-sm);
 }
+
+/* Blog article CTA buttons — token-driven, theme-aware (light + .dark).
+   Builder `button` blocks render as `.blog-cta` (same CTA treatment as
+   Email Studio), while `link` blocks stay as prose inline links. No inline
+   styles: tokens flip under `.dark` automatically. Specificity beats
+   `prose-a:text-primary` so the label stays readable on the filled button. */
+.blog-cta-wrap {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+.prose .blog-cta-wrap,
+.blog-cta-wrap {
+  text-align: center;
+}
+a.blog-cta,
+.prose a.blog-cta {
+  display: inline-block;
+  background: var(--color-primary);
+  color: var(--color-text-inverse) !important;
+  text-decoration: none !important;
+  padding: 0.75rem 2rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25;
+  border: none;
+}
+a.blog-cta:hover,
+.prose a.blog-cta:hover {
+  filter: brightness(1.08);
+  color: var(--color-text-inverse) !important;
+}

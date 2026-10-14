@@ -86,6 +86,96 @@ export const FEED_DIVERSITY_CONFIG: FeedDiversityKnobs = {
   jitterWeight: 0.02,
 };
 
+/** SiteConfig key + admin card metadata for the feed-diversity knobs. */
+export const FEED_DIVERSITY_CONFIG_KEY = "feedDiversity" as const;
+
+export const FEED_DIVERSITY_CONFIG_META = {
+  title: "Feed Diversity",
+  description:
+    "Breaks same-author runs and adds a breath of shuffle without dropping rows. Worst case degrades to relevance order.",
+  fields: [
+    {
+      id: "maxConsecutiveFromSameAuthor",
+      label: "Max consecutive from same author",
+      hint: "Whole number, 1 or more. 1 breaks every back-to-back run.",
+      min: 1,
+      max: 10,
+      step: 1,
+    },
+    {
+      id: "lookaheadWindow",
+      label: "Lookahead window",
+      hint: "Whole number, 1 or more. How far ahead to look for a swap candidate.",
+      min: 1,
+      max: 30,
+      step: 1,
+    },
+    {
+      id: "jitterWeight",
+      label: "Jitter weight",
+      hint: "0 or more (0 = off). Only near-ties reorder; keep small (e.g. 0.02).",
+      min: 0,
+      max: 1,
+      step: 0.005,
+    },
+  ],
+} as const;
+
+/**
+ * Normalize a stored `feedDiversity` value to valid knobs (never throws —
+ * bad shapes degrade to defaults, never to a crash). Shared by the feed
+ * resolver and the admin Studio card so both read the same truth.
+ */
+export function normalizeFeedDiversityConfig(raw: unknown): FeedDiversityConfig {
+  try {
+    const stored = (raw ?? {}) as Partial<FeedDiversityConfig>;
+    const pick = (v: unknown, fallback: number): number =>
+      typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : fallback;
+    return {
+      maxConsecutiveFromSameAuthor: Math.max(
+        1,
+        Math.floor(pick(stored.maxConsecutiveFromSameAuthor, FEED_DIVERSITY_CONFIG.maxConsecutiveFromSameAuthor)),
+      ),
+      lookaheadWindow: Math.max(
+        1,
+        Math.floor(pick(stored.lookaheadWindow, FEED_DIVERSITY_CONFIG.lookaheadWindow)),
+      ),
+      jitterWeight: pick(stored.jitterWeight, FEED_DIVERSITY_CONFIG.jitterWeight),
+    };
+  } catch {
+    return { ...FEED_DIVERSITY_CONFIG };
+  }
+}
+
+/**
+ * Validate a candidate `feedDiversity` value for admin writes. Returns an
+ * error message string when invalid, null when acceptable. Pure, never
+ * throws — the API maps non-null to a 400 with this message.
+ */
+export function validateFeedDiversityConfigValue(raw: unknown): string | null {
+  try {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return "feedDiversity must be an object with maxConsecutiveFromSameAuthor, lookaheadWindow, jitterWeight";
+    }
+    const v = raw as Record<string, unknown>;
+    const maxC = v.maxConsecutiveFromSameAuthor;
+    const look = v.lookaheadWindow;
+    const jit = v.jitterWeight;
+    if (maxC !== undefined && (typeof maxC !== "number" || !Number.isFinite(maxC) || maxC < 1)) {
+      return "maxConsecutiveFromSameAuthor must be a number >= 1";
+    }
+    if (look !== undefined && (typeof look !== "number" || !Number.isFinite(look) || look < 1)) {
+      return "lookaheadWindow must be a number >= 1";
+    }
+    if (jit !== undefined && (typeof jit !== "number" || !Number.isFinite(jit) || jit < 0)) {
+      return "jitterWeight must be a number >= 0";
+    }
+    return null;
+  } catch {
+    return "Invalid feedDiversity value";
+  }
+}
+
 export type FeedDiversityConfig = FeedDiversityKnobs;
 
 export interface DiversityScoredRow {

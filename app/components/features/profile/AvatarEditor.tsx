@@ -12,6 +12,7 @@ import {
   buildAvatarUrl,
   randomAvatarSeed,
 } from '@/app/lib/config/avatar'
+import { STUDIO_LAYOUT_CONFIG, avatarGridStyle } from '@/app/lib/config/studioLayout'
 import type { AvatarConfig } from '@/app/lib/types'
 
 interface AvatarEditorProps {
@@ -61,7 +62,7 @@ function AvatarEditor({ open, onClose, currentConfig, userName, onSave }: Avatar
 
   return (
     <AppModal open={open} onClose={onClose} size="lg" title="Customize Avatar">
-      <div className="flex flex-col sm:flex-row gap-6 py-2">
+      <div className="flex flex-col sm:flex-row gap-6 py-2 items-start">
         <div className="flex-1 min-w-0">
           <label className="text-xs font-medium text-text-secondary mb-2 block uppercase tracking-wider">
             {AVATAR_EDITOR_CONFIG.styleLabel}
@@ -82,7 +83,7 @@ function AvatarEditor({ open, onClose, currentConfig, userName, onSave }: Avatar
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-3 gap-2 max-h-[320px] overflow-y-auto pr-1">
+          <div className="grid grid-cols-3 gap-2 overflow-y-auto pr-1 scroll-thin scroll-stable" style={avatarGridStyle()}>
             {visibleStyles.map((style) => {
               const styleUrl = buildAvatarUrl({
                 ...config,
@@ -121,7 +122,7 @@ function AvatarEditor({ open, onClose, currentConfig, userName, onSave }: Avatar
             })}
           </div>
         </div>
-        <div className="w-full sm:w-52 shrink-0 flex flex-col items-center gap-3 sm:pt-6">
+        <div className={`w-full sm:w-52 shrink-0 flex flex-col items-center gap-3 sm:pt-6 ${STUDIO_LAYOUT_CONFIG.avatarPreviewStickyClass}`}>
           <label className="text-xs font-medium text-text-secondary block uppercase tracking-wider">
             {AVATAR_EDITOR_CONFIG.previewLabel}
           </label>

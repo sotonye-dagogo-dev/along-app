@@ -1268,6 +1268,7 @@ The visual builder reused the *email* renderer (`blocksToHtml`) for article bodi
 
 **Fix Applied:**
 - NEW `blocksToBlogHtml` (semantic h1/p/ul/li/a/img/hr, no color/font-size styles, escaped text, `{{vars}}` verbatim; buttons degrade to prose links) — used by Studio save + preview.
+- Sprint 56 amendment: directive-required CTA buttons keep the no-inline-style rule — button blocks now emit `<div class="blog-cta-wrap"><a class="blog-cta">` styled by token CSS in `globals.css` (dark-safe); sanitizer allowlists exactly those two classes (`BLOG_CTA_CLASS_ALLOWLIST`); `htmlToBlocks` round-trips `blog-cta` markup back to button blocks. The prevention rule stands (no email inline chrome in articles) — CTAs comply because styling lives in CSS on design tokens, not inline styles.
 - NEW `sanitizeBlogHtml` (allowlist + strip every `style=`) — used by `blogStore` on write/read and defensively at public render, so legacy email-styled rows heal without re-save.
 - Preview mirrors the public render exactly (article HTML + style-strip + interpolation).
 

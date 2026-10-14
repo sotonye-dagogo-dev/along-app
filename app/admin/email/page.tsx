@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Code, PenLine, Send, Plus, Trash2, RefreshCw, Type, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { toastService } from "@/app/lib/services/toastService";
 import { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, parseManualEmails } from "@/app/lib/config/emailManagement";
+import { STUDIO_LAYOUT_CONFIG, studioPreviewStyle } from "@/app/lib/config/studioLayout";
 import { composeEmailDocument } from "@/app/lib/config/email";
 import type { EmailTemplate } from "@/app/lib/config/email";
 import {
@@ -481,7 +482,7 @@ export default function AdminEmailPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-0 items-start">
         {/* Builder */}
         <section className="bg-bg-card border border-border radius-lg p-4 flex flex-col gap-3 min-w-0">
           <div className="flex items-center justify-between gap-2">
@@ -678,7 +679,7 @@ export default function AdminEmailPage() {
         </section>
 
         {/* Preview + composer */}
-        <div className="flex flex-col gap-4 min-w-0">
+        <div className={`flex flex-col gap-4 min-w-0 ${STUDIO_LAYOUT_CONFIG.previewColumnStickyClass}`}>
           <section className="bg-bg-card border border-border radius-lg overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-border">
               <span className="text-sm font-semibold truncate flex items-center gap-2">Preview
@@ -695,7 +696,7 @@ export default function AdminEmailPage() {
                 ))}
               </div>
             </div>
-            <div className="max-h-[420px] overflow-auto">
+            <div className="overflow-auto scroll-thin scroll-stable" style={studioPreviewStyle(STUDIO_LAYOUT_CONFIG.emailPreviewMaxHeight, STUDIO_LAYOUT_CONFIG.emailPreviewMinHeight)}>
               {previewMode === "preview" ? (
                 <iframe srcDoc={previewHtml} title="Email preview" className="w-full border-none" style={{ minHeight: 320 }} />
               ) : (

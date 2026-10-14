@@ -1,7 +1,7 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (Sprint 55: trust portal + admin collapse + scrollbars + feed diversity + loose search)
+> - last-updated-by: execute-feature 2026-10-14 (Sprint 56: studio tightening — blog reorder/CTA, sticky previews, feedDiversity card, zero-result analytics)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -186,3 +186,4 @@
 - [x] Sprint 52 (2026-10-13) — Audit trail reports+blogs (report.create/status/moderate hooks + report entity + specific action labels) + defaults 2→6 (STE100, emdash-free, fallback vars) + featured blogs tape (config + shared section on landing/about/invite with Read + View-all CTAs) + Studio parsing without loss (bare text, wrappers, recursion, plain-text contract kept) (featuredBlogs 17 assertions; node strip-types green in-runner, full gate deferred to CI)
 - [x] Sprint 54 (2026-10-14) — Blog Studio image uploads + faithful preview (BLOG_IMAGE_CONFIG + blogImages resolve/extract/collect/diff; /api/upload blog policy admin-gated + cleanup blog sources + SiteConfig guard; BlogImageUpload cover/inline + BlogPostArticle shared by public page + preview; covers on detail/list/featured/tape; save/delete purges post-commit) (blogImages 7 suites; FULL gate green in-runner: tsc 0, jest 77/77 656/656, lint clean, build clean)
 - [x] Sprint 55 (2026-10-14) — Trust tooltip portal + admin collapse + scrollbars + feed diversity + loose search (portal escapes hover-lift transforms + edge-aware/flip/hover-bridge; rail spacing + shrink-0 icons; token scrollbars + SCROLLBAR_CONFIG; FEED_DIVERSITY_CONFIG + applyFeedDiversity post-sort/pre-slice; SEARCH_CONFIG + two-phase recall + in-memory relevance rank + index cursor, same envelope) (feedSearchTightening 19 suites; FULL gate green in-runner: tsc 0, jest 78/78 679/679, lint clean, build clean)
+- [x] Sprint 56 (2026-10-14) — Studio tightening: blog reorder parity + CTA buttons (token CSS, sanitizer allowlist, round-trip) + generous sticky previews via STUDIO_LAYOUT_CONFIG (Email/Blog/AvatarEditor) + feedDiversity Studio card (KEY/META/normalize/validate, API guard, reset) + zero-result query analytics (AnalyticsEvent log, admin aggregation + dashboard section) (studioTightening 4 suites + blogCompliance CTA/allowlist; FULL gate green in-runner: tsc 0, jest 79/79 684/684, lint clean on touched files, build clean)

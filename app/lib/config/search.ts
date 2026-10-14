@@ -222,3 +222,74 @@ export function scoreTextRelevance(bag: SearchTextBag, query: TokenizedQuery): R
     return fallback;
   }
 }
+
+/**
+ * Zero-result query analytics registry — tunes stopwords/fuzzy thresholds
+ * over time. When a first-page search returns no posts/users/tags, the
+ * service logs one `AnalyticsEvent` (`search_zero_results`) with the
+ * normalized query + tokenized terms + active filters. The admin analytics
+ * endpoint aggregates the top queries so stopwords/fuzzy knobs can be tuned
+ * from evidence, not guesses. Config-driven, additive, never throws.
+ */
+export const SEARCH_ANALYTICS_CONFIG = {
+  /** AnalyticsEvent.eventName for zero-result searches. */
+  eventName: "search_zero_results",
+  /** Queries are normalized (lowercase/trim) + capped before storage. */
+  maxQueryLength: 100,
+  /** Top-N zero-result queries surfaced on the admin analytics page. */
+  topQueriesLimit: 20,
+  /** Copy for the admin analytics section (config-owned, no hardcoding). */
+  sectionTitle: "Zero-result queries",
+  sectionDescription:
+    "Queries that returned nothing — tune stopwords / fuzzy thresholds from these.",
+  emptyLabel: "No zero-result queries in this period.",
+} as const;
+
+export type SearchAnalyticsConfig = typeof SEARCH_ANALYTICS_CONFIG;
+
+export interface ZeroResultQueryFilters {
+  type?: string;
+  region?: string;
+  postType?: string;
+}
+
+/**
+ * Normalize a raw query for analytics storage (lowercase, trim, capped).
+ * Pure, never throws — garbage yields "" (the caller skips empty).
+ */
+export function normalizeAnalyticsQuery(raw: unknown): string {
+  try {
+    return String(raw ?? "")
+      .trim()
+      .toLowerCase()
+      .slice(0, SEARCH_ANALYTICS_CONFIG.maxQueryLength);
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Build the AnalyticsEvent payload for a zero-result search. Pure, never
+ * throws — always returns a JSON-safe object (possibly with empty fields).
+ */
+export function buildZeroResultPayload(
+  rawQuery: unknown,
+  tokenized: TokenizedQuery | null | undefined,
+  filters?: ZeroResultQueryFilters | null,
+): Record<string, unknown> {
+  try {
+    const query = normalizeAnalyticsQuery(rawQuery);
+    const terms = Array.isArray(tokenized?.terms) ? [...tokenized.terms].slice(0, 6) : [];
+    const phrase = typeof tokenized?.phrase === "string" ? tokenized.phrase.slice(0, 100) : "";
+    return {
+      query,
+      terms,
+      phrase,
+      type: filters?.type ?? null,
+      region: filters?.region ?? null,
+      postType: filters?.postType ?? null,
+    };
+  } catch {
+    return { query: "", terms: [], phrase: "" };
+  }
+}

@@ -48,6 +48,18 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Guard the feed-diversity knobs: out-of-range values would silently
+    // collapse to defaults at read time, so reject them with a clear 400.
+    if (key === "feedDiversity") {
+      const { validateFeedDiversityConfigValue } = await import(
+        "@/app/lib/config/feedAlgorithm"
+      );
+      const diversityError = validateFeedDiversityConfigValue(value);
+      if (diversityError) {
+        return NextResponse.json({ error: diversityError }, { status: 400 });
+      }
+    }
+
     const config = await prisma.siteConfig.upsert({
       where: { key },
       update: { value },

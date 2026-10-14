@@ -172,6 +172,10 @@ export const ADMIN_ANALYTICS_CONFIG = {
     topContributorsLinkLabel: "View all",
     topContributorsEmpty: "No contributors yet",
     topContributorsPostsHint: "posts",
+    zeroResultsTitle: "Zero-result queries",
+    zeroResultsDescription: "Queries that returned nothing — tune stopwords / fuzzy thresholds from these.",
+    zeroResultsEmpty: "No zero-result queries in this period.",
+    zeroResultsHint: "Repeated terms here are candidates for stopword removal, synonyms, or a lower fuzzy bar.",
   },
   validityBuckets: [
     { id: "0-20", label: "0–20", min: 0, max: 20 },
