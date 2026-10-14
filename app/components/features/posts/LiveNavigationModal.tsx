@@ -30,6 +30,9 @@ interface LiveNavigationModalProps {
   userLocation: { lat: number; lng: number; accuracy: number; heading: number | null } | null
   onUserLocationChange: (loc: { lat: number; lng: number; accuracy: number; heading: number | null } | null) => void
   onClose: () => void
+  /** Traffic-aware duration + estimate flag (non-breaking additive). */
+  trafficAdjustedMins?: number | null
+  trafficEstimated?: boolean
 }
 
 /**
@@ -51,6 +54,8 @@ export default function LiveNavigationModal({
   userLocation,
   onUserLocationChange,
   onClose,
+  trafficAdjustedMins = null,
+  trafficEstimated = true,
 }: LiveNavigationModalProps) {
   useEffect(() => {
     if (!open) return
@@ -110,6 +115,7 @@ export default function LiveNavigationModal({
                 showOverlay={true}
                 distance={totalDistanceKm ?? undefined}
                 duration={estimatedMins ?? undefined}
+                trafficAdjustedMins={trafficAdjustedMins}
                 userLocation={userLocation}
                 followUser={!!userLocation}
               />
@@ -120,6 +126,8 @@ export default function LiveNavigationModal({
               steps={steps}
               totalDistanceKm={totalDistanceKm}
               estimatedMins={estimatedMins}
+              trafficAdjustedMins={trafficAdjustedMins}
+              trafficEstimated={trafficEstimated}
               pins={pins.map((p) => ({ lat: p.lat, lng: p.lng }))}
               onUserLocationChange={onUserLocationChange}
             />

@@ -65,6 +65,10 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
   const [collapsed, setCollapsed] = useState(false);
 
   const copy = PUSH_PROMPT_CONFIG.copy;
+  // Opaque token surface (light + dark): solid card fill + info border +
+  // primary text, so the notice never washes out the way the translucent
+  // info fill did in dark mode. Tokens only — no hardcoded hex.
+  const surface = PUSH_PROMPT_CONFIG.surface;
 
   useEffect(() => {
     try {
@@ -193,9 +197,9 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
             gap: 6,
             padding: "8px 12px",
             borderRadius: 999,
-            border: "1px solid var(--color-info-border, #93C5FD)",
-            background: "var(--color-info, #DBEAFE)",
-            color: "var(--color-info-text, #1E3A8A)",
+            border: `1px solid ${surface.border}`,
+            background: surface.background,
+            color: surface.text,
             boxShadow: "0 8px 28px rgba(0,0,0,.18)",
             fontSize: 12,
             fontWeight: 700,
@@ -203,7 +207,7 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
             maxWidth: "calc(100vw - 24px)",
           }}
         >
-          <Bell size={14} aria-hidden />
+          <Bell size={14} aria-hidden style={{ color: surface.icon }} />
           {copy.enable}
           <ChevronUp size={14} aria-hidden />
         </button>
@@ -226,15 +230,15 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
           gap: 10,
           padding: "10px 12px",
           borderRadius: 12,
-          border: "1px solid var(--color-info-border, #93C5FD)",
-          background: "var(--color-info, #DBEAFE)",
-          color: "var(--color-info-text, #1E3A8A)",
+          border: `1px solid ${surface.border}`,
+          background: surface.background,
+          color: surface.text,
           boxShadow: "0 8px 28px rgba(0,0,0,.18)",
           fontSize: 13,
           paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
         }}
       >
-        <Bell size={16} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
+        <Bell size={16} aria-hidden style={{ flexShrink: 0, marginTop: 2, color: surface.icon }} />
         <span style={{ flex: 1, minWidth: 0 }}>
           {failureLine ?? copy.prompt}
           {(failure === "denied" || permission === "denied") && (
@@ -304,14 +308,14 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
         gap: 10,
         padding: "8px 12px",
         borderRadius: 10,
-        border: "1px solid var(--color-info-border, #93C5FD)",
-        background: "var(--color-info, #DBEAFE)",
-        color: "var(--color-info-text, #1E3A8A)",
+        border: `1px solid ${surface.border}`,
+        background: surface.background,
+        color: surface.text,
         fontSize: 13,
         marginBottom: 10,
       }}
     >
-      <Bell size={16} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
+      <Bell size={16} aria-hidden style={{ flexShrink: 0, marginTop: 2, color: surface.icon }} />
       <span style={{ flex: 1 }}>
         {failureLine ?? copy.prompt}
         {(failure === "denied" || permission === "denied") && (

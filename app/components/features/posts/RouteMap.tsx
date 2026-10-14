@@ -8,8 +8,12 @@ import type { MapRef } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import polyline from '@mapbox/polyline'
 import { getMapStyleStack, rasterFallbackDepth, MAP_STACK_CONFIG, MAP_EXPAND_CONFIG } from '@/app/lib/config/mapStack'
+import { TRAFFIC_CONFIG } from '@/app/lib/config/traffic'
+import type { TrafficResult } from '@/app/lib/services/trafficService'
+import { useRouteTraffic } from '@/app/lib/hooks/useRouteTraffic'
 import { MAP_PINS_CONFIG } from '@/app/lib/config/mapPins'
 import { MapRoutePin, MapUserDot } from './MapPins'
+import { TrafficLegend } from './TrafficLegend'
 
 interface RoutePin {
   lat: number
@@ -34,6 +38,17 @@ interface RouteMapProps {
   className?: string
   userLocation?: { lat: number; lng: number; accuracy?: number; heading?: number | null } | null
   followUser?: boolean
+  /**
+   * Traffic overlay (non-breaking additive):
+   * - `showTraffic` (default true): fetch per-chunk traffic and paint
+   *   moderate (yellow) / heavy (red) segments over the base line.
+   * - `trafficOverride`: pass a caller-owned result (e.g. shared with the
+   *   navigation guide so both read one lookup); `null` disables rendering.
+   * - `trafficAdjustedMins`: adjusted duration shown in the overlay chip.
+   */
+  showTraffic?: boolean
+  trafficOverride?: TrafficResult | null
+  trafficAdjustedMins?: number | null
 }
 
 function MapSkeleton() {
@@ -70,6 +85,9 @@ function RouteMap({
   className = '',
   userLocation = null,
   followUser = false,
+  showTraffic = true,
+  trafficOverride,
+  trafficAdjustedMins = null,
 }: RouteMapProps) {
   const [isDark, setIsDark] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
@@ -138,6 +156,22 @@ function RouteMap({
       ? effectivePins.map((p) => ({ lat: p.lat, lng: p.lng }))
       : []
   }, [encodedPolyline, effectivePins])
+
+  // Traffic overlay: self-fetches per-chunk levels unless the caller
+  // supplies `trafficOverride` (shared with the navigation guide). Silent
+  // null fallback keeps the base line when offline/rate-limited/failed.
+  const { traffic: fetchedTraffic } = useRouteTraffic(
+    showTraffic && trafficOverride === undefined ? routeCoords : null,
+    duration ?? undefined
+  )
+  const traffic = trafficOverride !== undefined ? trafficOverride : fetchedTraffic
+  const trafficSegments = useMemo(() => {
+    if (!traffic || !Array.isArray(traffic.segments)) return []
+    return traffic.segments.filter(
+      (s) => (s.level === "moderate" || s.level === "heavy") && routeCoords.length >= 2
+    )
+  }, [traffic, routeCoords.length])
+  const overlayDuration = trafficAdjustedMins ?? traffic?.adjustedDurationMins ?? null
 
   // Pin-to-polyline snapping (same library, same data): the road-snapped
   // trace is authoritative for where the line runs, so origin/destination
@@ -240,14 +274,6 @@ function RouteMap({
     return () => { document.body.style.overflow = '' }
   }, [expanded])
 
-  if (mapError) {
-    return (
-      <div className={`relative overflow-hidden rounded-md ${className}`} style={{ height }}>
-        <MapSkeleton />
-      </div>
-    )
-  }
-
   const toggleExpanded = () => setExpanded((e) => !e)
   const closeExpanded = useCallback(() => setExpanded(false), [])
   const minimizeRef = useRef<HTMLButtonElement>(null)
@@ -277,6 +303,14 @@ function RouteMap({
     minimizeRef.current?.focus()
     return () => cancelAnimationFrame(raf)
   }, [expanded, mapLoaded, fitMapToBounds])
+
+  if (mapError) {
+    return (
+      <div className={`relative overflow-hidden rounded-md ${className}`} style={{ height }}>
+        <MapSkeleton />
+      </div>
+    )
+  }
 
   // Shared map chrome: identical canvas/markers/controls inline and in the
   // contained expanded dialog, so behaviour never diverges between modes.
@@ -373,9 +407,48 @@ function RouteMap({
                 layout={{ 'line-join': 'round', 'line-cap': 'round' }}
               />
             </Source>
+            {/* Traffic overlay: moderate (yellow) / heavy (red) chunks over
+                the base line. Low chunks keep the base color underneath. */}
+            {trafficSegments.map((seg) => {
+              const pts = routeCoords.slice(seg.from, seg.to + 1)
+              if (pts.length < 2) return null
+              return (
+                <Source
+                  key={`traffic-${seg.from}-${seg.to}`}
+                  id={`traffic-${seg.from}-${seg.to}`}
+                  type="geojson"
+                  data={{
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                      type: 'LineString',
+                      coordinates: pts.map((c) => [c.lng, c.lat] as [number, number]),
+                    },
+                  }}
+                >
+                  <Layer
+                    id={`traffic-line-${seg.from}-${seg.to}`}
+                    type="line"
+                    paint={{
+                      'line-color': TRAFFIC_CONFIG.levels[seg.level].color,
+                      'line-width': 4.5,
+                      'line-opacity': 0.95,
+                    }}
+                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                  />
+                </Source>
+              )
+            })}
           </>
         )}
       </Map>
+
+      {traffic && traffic.segments.length > 0 && (
+        <TrafficLegend
+          estimated={traffic.estimated}
+          className={editable && onAutoTrace ? "absolute top-12 right-2 z-[4]" : "absolute top-2 right-2 z-[4]"}
+        />
+      )}
 
       {!mapLoaded && (
         <div className="absolute inset-0 z-[2]">
@@ -394,7 +467,9 @@ function RouteMap({
           {duration && (
             <span className="flex items-center gap-1 text-text-secondary">
               <Clock size={14} />
-              {duration}min
+              {overlayDuration && overlayDuration !== duration
+                ? `${overlayDuration}min ${TRAFFIC_CONFIG.legend.durationSuffix}`
+                : `${duration}min`}
             </span>
           )}
           {fare && (

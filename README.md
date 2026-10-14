@@ -311,6 +311,13 @@ Offline-first: recently viewed pages (Home, Explore, Search, FAQ, About, Blog), 
 - [OSRM](http://project-osrm.org/) - Keyless route tracing
 - [CARTO](https://carto.com/) - Basemap raster tiles
 
+### Maps & traffic
+
+Route maps render keyless by default (OpenFreeMap vector tiles, OSRM road tracing, no API keys required). Where traffic data is available, stretches of the route line turn yellow (medium traffic) or red (heavy traffic) and travel times show a “with traffic” figure — tap the “i” icon on any route map or in live navigation for the legend.
+
+- With no traffic keys configured, maps show a deterministic keyless estimate from typical rush-hour patterns (morning/evening peaks), clearly labeled as estimated.
+- When a `MAPBOX_TOKEN` (or `NEXT_PUBLIC_MAPBOX_TOKEN`) is configured, maps prefer live Mapbox congestion data; when `TOMTOM_TRAFFIC_KEY` is configured, TomTom flow segments are used next. All traffic lookups go through the cached `POST /api/maps/traffic` proxy (guest-accessible, `maps` rate-limit bucket) and fail soft to the untrafficked line when offline.
+
 ## ðŸ“§ Contact
 
 - **GitHub**: [@Sotonye0808](https://github.com/Sotonye0808)

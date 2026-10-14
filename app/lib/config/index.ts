@@ -99,6 +99,8 @@ export {
 } from "./earlyAdopter";
 export type { EarlyAdopterConfig } from "./earlyAdopter";
 export { RATE_LIMITS } from "./rateLimits";
+export { TRAFFIC_CONFIG, levelForCongestion, heuristicCongestion, adjustDurationForLevels, hasTomtomKey } from "./traffic";
+export type { TrafficConfig, TrafficLevel, TrafficLevelMeta, TrafficProvider } from "./traffic";
 export { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES, cooldownKeyFor, attemptsKeyFor, maskEmail } from "./authVerification";
 export type { AuthVerificationConfig } from "./authVerification";
 export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";

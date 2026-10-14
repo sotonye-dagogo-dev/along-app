@@ -97,7 +97,19 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "map-tracings-pins",
         question: "How do I read the maps — tracings and pins?",
         answer:
-          "The green line (tracing) is the route path connecting your stops in order. Numbered dots sit exactly on each stop — dot 1 is your origin, the last dot is your destination, and the numbers in between match the route steps. The pulsing blue dot with a soft halo is your own live location.",
+          "The green line (tracing) is the route path connecting your stops in order. Numbered dots sit exactly on each stop — dot 1 is your origin, the last dot is your destination, and the numbers in between match the route steps. The pulsing blue dot with a soft halo is your own live location. Where traffic data is available, stretches of the line turn yellow for medium traffic or red for heavy traffic — tap the “i” icon on the map for the legend.",
+      },
+      {
+        id: "map-traffic-legend",
+        question: "What do the yellow and red stretches on a route mean?",
+        answer:
+          "They are traffic overlays on the route line: yellow means medium traffic on that stretch, red means heavy traffic, and the base green line means free flow. Tap or hover the “i” icon on any route map (or in live navigation) to see the legend — it also tells you whether the data is live or an estimate based on typical conditions for that time of day.",
+      },
+      {
+        id: "map-traffic-duration",
+        question: "Why does a route show two different travel times?",
+        answer:
+          "The base time is the free-flow estimate for the route; the “with traffic” time adds the expected delay from the yellow (medium) and red (heavy) stretches. Without any provider keys configured, Along shows a keyless estimate from typical rush-hour patterns (morning and evening peaks) — clearly labeled as estimated — and upgrades to live Mapbox or TomTom traffic automatically when those optional keys are configured. Refresh when back online for the latest picture.",
       },
       {
         id: "map-zoom-move-mobile",
@@ -288,7 +300,17 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "map-tracings-pins": {
     question: "How I go take read di maps — tracings and pins?",
     answer:
-      "Di green line (tracing) na di route path wey dey connect your stops in order. Number dots dey exactly on top each stop — dot 1 na where you start, di last dot na where you dey go, and di numbers for middle dey match di route steps. Di blue dot wey dey pulse with soft halo na your own live location.",
+      "Di green line (tracing) na di route path wey dey connect your stops in order. Number dots dey exactly on top each stop — dot 1 na where you start, di last dot na where you dey go, and di numbers for middle dey match di route steps. Di blue dot wey dey pulse with soft halo na your own live location. Where traffic data dey, parts of di line go turn yellow for medium traffic or red for heavy traffic — tap di “i” icon for map make you see wetin dem mean.",
+  },
+  "map-traffic-legend": {
+    question: "Wetin di yellow and red parts for route mean?",
+    answer:
+      "Na traffic overlay for di route line: yellow mean medium traffic for dat stretch, red mean heavy traffic, and di green line mean road free. Tap or hover di “i” icon for any route map (or inside live navigation) make you see di legend — e go still tell you whether na live data or estimate from how road take dey be for dat time of day.",
+  },
+  "map-traffic-duration": {
+    question: "Why route take show two different travel time?",
+    answer:
+      "Di base time na free-road estimate for di route; di “with traffic” time don add di delay wey di yellow (medium) and red (heavy) stretches go cause. Without any provider keys, Along dey show keyless estimate from how rush-hour take dey be (morning and evening peak) — we go label am as estimate — and e go upgrade to live Mapbox or TomTom traffic by itsef when dem configure di optional keys. Refresh when you come back online make you get di latest.",
   },
   "map-zoom-move-mobile": {
     question: "How I go take zoom and move map for mobile?",

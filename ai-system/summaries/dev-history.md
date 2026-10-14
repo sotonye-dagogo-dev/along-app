@@ -1377,3 +1377,10 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Implemented:** `guardLivePostReferences` + `filterUnreferencedUrls` choke-point guard (fail-open, TOCTOU-closing, `skippedReferenced` observability) with upload/cleanup delegating to it; `BlogShareNetworkIcon` keys + `ShareNetworkIcon` (Facebook lucide, inline X/WhatsApp SVG, generic fallback); `FEED_FIRST_LOAD_CONFIG` + `seededRand` + home `isReady` single-fetch gate with pre-ready emission hold. NEW `tighteningMediaShareFeed.test.ts` (9) + `ShareNetworkIcon.test.tsx` (2); `mediaCleanup.test.ts` +4.
 **QA:** full gate green in-runner — tsc 0 errors, jest 81/81 suites 697/697 tests, lint clean on touched files, `npm run build` clean.
 **Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
+
+**Session 2026-10-14 — Push-banner opacity + keyless traffic overlay (execute-feature).**
+**Directive:** design-system-compliant push banner in dark theme; traffic from employed or new keyless providers for map + navigation with durations, yellow/red segments, "i" legend, FAQ/README updates.
+**Found:** (1) push banner used 15%-alpha info fill in dark (invisible on Android); (2) no employed provider has keyless traffic — Mapbox congestion and TomTom flow are keyed-only; honest keyless = deterministic rush-pattern estimate labeled as such; (3) RouteMap hooks-after-early-return lint violations pre-existing.
+**Implemented:** opaque `PUSH_PROMPT_CONFIG.surface` + restyle; `TRAFFIC_CONFIG` + `trafficService` + `/api/maps/traffic` + `useRouteTraffic` + RouteMap overlays + `TrafficLegend` + guide/modal durations + post-detail wiring + hook-order fix; FAQ/README/env docs; NEW `traffic.test.ts` (12).
+**QA:** full gate green in-runner — tsc 0 errors, jest 82/82 suites 709/709 tests, lint clean on touched files (4 pre-existing errors fixed), `npm run build` clean.
+**Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
