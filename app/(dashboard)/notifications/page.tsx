@@ -4,8 +4,9 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Heart, ThumbsDown, MessageCircle, UserPlus, AtSign, Star, Award, CheckCircle, Sparkles, ClipboardList, Reply, Route as RouteIcon, Bell, ShieldCheck } from "lucide-react"
-import { AppEmptyState, ViewMoreButton } from "@/app/components/ui"
+import { AppAvatar, AppEmptyState, ViewMoreButton } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { AVATAR_DISPLAY_CONFIG, asAvatarConfig } from "@/app/lib/config/avatar"
 import { resolveNotificationRoute } from "@/app/lib/config/notificationRoutes"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
@@ -40,7 +41,7 @@ interface NotificationItem {
     firstName: string
     lastName: string
     avatar?: string | null
-    avatarConfig?: unknown
+    avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null
   }
   post?: { id: string; title: string } | null
   commentId?: string | null
@@ -309,7 +310,6 @@ function NotificationRow({
   const typeConfig = TYPE_ICONS[notification.type]
   const TypeIcon = typeConfig?.icon ?? Bell
   const isUnread = notification.recipients.some((r) => !r.read)
-  const initials = `${notification.actor.firstName[0]}${notification.actor.lastName[0]}`.toUpperCase()
 
   const handleOpen = () => {
     if (isUnread) {
@@ -349,8 +349,22 @@ function NotificationRow({
       className={`flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors duration-fast border-b border-border hover:bg-bg-elevated ${isUnread ? "bg-primary-muted hover:bg-[rgba(0,98,59,0.08)]" : ""}`}
     >
       <div className="relative w-10 h-10 shrink-0">
-        <Link href={`/profile/${notification.actor.userName}`} onClick={(e) => e.stopPropagation()} className="w-10 h-10 rounded-circle flex items-center justify-center text-sm font-bold text-primary no-underline" style={{ background: notification.type === "MENTION" ? "#F3E8FF" : notification.type === "FOLLOW" ? "#D1FAE5" : notification.type === "COMMENT" ? "#DBEAFE" : notification.type === "LIKE" ? "#FEF3C7" : "#E6F4EE", color: notification.type === "MENTION" ? "#8B5CF6" : notification.type === "FOLLOW" ? "#065F46" : notification.type === "COMMENT" ? "#1E3A8A" : notification.type === "LIKE" ? "#92400E" : "#00623B" }}>
-          {initials}
+        {/* Canonical avatar (AppAvatar, config-driven size) — same face as
+            feed/profile/leaderboard; type badge overlays bottom-right. */}
+        <AppAvatar
+          src={notification.actor.avatar ?? undefined}
+          alt={`${notification.actor.firstName} ${notification.actor.lastName}`}
+          size={AVATAR_DISPLAY_CONFIG.sizes.notification as 40}
+          config={asAvatarConfig(notification.actor.avatarConfig)}
+          linkToProfile={false}
+        />
+        <Link
+          href={`/profile/${notification.actor.userName}`}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute inset-0 rounded-circle"
+          aria-label={`View ${notification.actor.userName}'s profile`}
+        >
+          <span className="sr-only">{notification.actor.userName}</span>
         </Link>
         {typeConfig && (
           <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-circle flex items-center justify-center border-2 border-bg-base" style={{ background: typeConfig.color }}>

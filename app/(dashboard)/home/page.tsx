@@ -14,6 +14,7 @@ import { AppEmptyState, PostCardSkeleton } from "@/app/components/ui"
 import { SuggestionsPanel } from "@/app/components/ui/SuggestionsPanel"
 import { SuggestionsRail } from "@/app/components/features/suggestions/SuggestionsRail"
 import { EMPTY_STATES } from "@/app/lib/config"
+import { FEED_NEW_POSTS_PROMPT_CONFIG } from "@/app/lib/config/feedAlgorithm"
 import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
 import { routeDraftsService } from "@/app/lib/services/routeDraftsService"
 import { useAuth } from "@/app/hooks/useAuth"
@@ -251,19 +252,23 @@ function HomeContent() {
     return () => sub.unsubscribe()
   }, [])
 
-  // --- Scroll-aware "new posts" prompt (F1) ---
+  // --- Scroll-aware "new posts" prompt (F1 + tightening) ---
+  // Config-driven thresholds/timers (FEED_NEW_POSTS_PROMPT_CONFIG): visible
+  // at top or when reading deep, throttled re-appearance, auto-dismissed
+  // after autoDismissSec, and click scrolls to top + refreshes into the
+  // rightful score order.
   const [promptVisible, setPromptVisible] = useState(false)
   const pendingCountRef = useRef(0)
   const suppressUntilRef = useRef(0)
 
   const evaluatePrompt = useCallback(() => {
-    const nearTop = window.scrollY < 80
+    const nearTop = window.scrollY < FEED_NEW_POSTS_PROMPT_CONFIG.nearTopPx
     const depth =
       window.scrollY /
       Math.max(1, document.documentElement.scrollHeight - window.innerHeight)
     const show =
       pendingCountRef.current > 0 &&
-      (nearTop || depth >= 0.12) && // visible at top of feed, or once reading deep
+      (nearTop || depth >= FEED_NEW_POSTS_PROMPT_CONFIG.deepDepth) && // visible at top of feed, or once reading deep
       Date.now() >= suppressUntilRef.current // time-throttled re-appearance
     setPromptVisible((prev) => (prev === show ? prev : show))
   }, [])
@@ -296,10 +301,28 @@ function HomeContent() {
     return () => clearTimeout(timer)
   }, [newPostsCount, evaluatePrompt])
 
+  // Auto-dismiss a stale pill after the configured window so it never
+  // lingers buggily; the count stays and resurfaces via evaluatePrompt.
+  useEffect(() => {
+    if (!promptVisible) return
+    const timer = setTimeout(() => {
+      suppressUntilRef.current = Date.now() + FEED_NEW_POSTS_PROMPT_CONFIG.throttleAfterClickSec * 1000
+      setPromptVisible(false)
+    }, FEED_NEW_POSTS_PROMPT_CONFIG.autoDismissSec * 1000)
+    return () => clearTimeout(timer)
+  }, [promptVisible, newPostsCount])
+
   const handlePromptClick = () => {
-    suppressUntilRef.current = Date.now() + 45_000 // throttle re-prompts
+    suppressUntilRef.current = Date.now() + FEED_NEW_POSTS_PROMPT_CONFIG.throttleAfterClickSec * 1000 // throttle re-prompts
     setPromptVisible(false)
-    refreshFeed()
+    setNewPostsCount(0)
+    pendingCountRef.current = 0
+    try {
+      window.scrollTo({ top: 0, behavior: "smooth" })
+    } catch {
+      /* non-visual env */
+    }
+    void refreshFeed()
   }
 
   useEffect(() => {
@@ -402,8 +425,27 @@ function HomeContent() {
         payload = { error: "Unexpected server response. Please try again." }
       }
       if (res.ok) {
-        // Single refresh — the stream dedups + persists, so a second
-        // timed refresh only re-rendered identical rows (the flash glitch).
+        // Own post pins to the top instantly (optimistic first paint) and
+        // stays there until the next server refetch re-orders it into its
+        // rightful score position — no confusion about "where did it go".
+        // Falls back to a single refresh when the payload carries no row.
+        try {
+          const created = (payload as { post?: FeedPost }).post
+          if (created && typeof created.id === "string") {
+            feedStream.prependPost(created)
+            setNewPostsCount(0)
+            pendingCountRef.current = 0
+            setPromptVisible(false)
+            try {
+              window.scrollTo({ top: 0, behavior: "smooth" })
+            } catch {
+              /* non-visual env */
+            }
+            return true
+          }
+        } catch {
+          /* fall through to refresh */
+        }
         await refreshFeed()
         return true
       }
@@ -529,10 +571,11 @@ function HomeContent() {
         {promptVisible && (
           <button
             onClick={handlePromptClick}
+            aria-live="polite"
             className="fixed top-20 left-1/2 -translate-x-1/2 z-40 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-semibold cursor-pointer radius-lg shadow-md border-none animate-[slideDown_300ms_ease-out]"
           >
             <RefreshCw size={16} />
-            {newPostsCount} new {newPostsCount === 1 ? "post" : "posts"}
+            {FEED_NEW_POSTS_PROMPT_CONFIG.label(newPostsCount)}
           </button>
         )}
 

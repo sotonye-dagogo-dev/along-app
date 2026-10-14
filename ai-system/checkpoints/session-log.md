@@ -2363,3 +2363,29 @@ CI/Vercel build to confirm green (tsc + jest incl. extended vehicles suite).
 **Notes / Blockers:**
 - None. Non-breaking, rail routes shareable end to end (composer → validation → feed/explore/landing/trust all generic over the registry).
 - Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + DESIGN.md).
+
+## Session — 2026-10-14 (Execute-feature: avatar consistency + profile avg + feed prompt)
+
+**Completed:**
+- Directive close-out (non-breaking; no migration, no new deps, no removed APIs):
+  - Avatar consistency — NEW `AVATAR_DISPLAY_CONFIG` + `asAvatarConfig` (`app/lib/config/avatar.ts`, barrel export); `/api/leaderboard` + `/api/invite?section=leaderboard` now select `avatarConfig`; notifications rows, leaderboard podium/rows, invite mini-board all render shared `AppAvatar` (initial-div drift removed).
+  - Other-profile avg — `GET /api/users/by-username/[username]` returns `avgValidityScore` via the same post aggregate as `/api/users/[id]` (best-effort, never throws); `[username]/page.tsx` prefers the server value (fallback 0, never `rewardPoints/postCount` total); stats bar markup parity with own profile (Fragment + sibling divider, centered).
+  - Feed — `feedStream.prependPost` (dedupe/top/persist, never throws); home `submitPost` pins the created row + scrolls to top (next refresh re-orders to rightful score position); NEW `FEED_NEW_POSTS_PROMPT_CONFIG` (nearTopPx 80, deepDepth 0.12, autoDismissSec 45, throttleAfterClickSec 45, count-aware label); pill click clears + scrolls top + refreshes; auto-dismiss timer added.
+  - Tests — NEW `app/__tests__/config/feedTightening.test.ts` (avatar sizes/forward/narrow, avg source-of-truth/fallback, prompt 30–60s band/label, dedupe invariant).
+- QA: no node_modules in this runner — tsc shows only missing-module noise (pre-existing, all files); real-module strip-types green for avatar (sizes, asAvatarConfig valid/junk) + feedAlgorithm (prompt 45s, labels); feedStream import blocked on missing rxjs (expected without deps); edited-region re-reads clean; full tsc/jest/build deferred to CI/Vercel.
+- Docs: task-queue sprint entry + last-synced, this log; chained update-ai-system.md executed (dev-history + task-queue reconciled; no architecture drift — additive config/methods only).
+
+**Files Modified:**
+- Edited: `app/lib/config/avatar.ts`, `app/lib/config/index.ts`, `app/lib/config/feedAlgorithm.ts`, `app/lib/streams/feedStream.ts`, `app/api/leaderboard/route.ts`, `app/api/invite/route.ts`, `app/api/users/by-username/[username]/route.ts`, `app/(dashboard)/notifications/page.tsx`, `app/(dashboard)/leaderboard/page.tsx`, `app/(dashboard)/invite/page.tsx`, `app/(dashboard)/profile/[username]/page.tsx`, `app/(dashboard)/home/page.tsx`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/__tests__/config/feedTightening.test.ts`
+
+**Next Task:**
+CI/Vercel build to confirm green (tsc + jest incl. new feedTightening suite).
+
+**Assumptions Made:**
+- `avatarConfig` JSON column exists on User (by-username/notifications already select it; leaderboard/invite selects added against the same column — legacy DBs without it fail safe to null via `?? null`).
+- Feed score-order is server-side; optimistic pin is intentionally transient (next refresh re-orders).
+
+**Notes / Blockers:**
+- None. Non-breaking, all changes additive with fallbacks.
+- Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + dev-history).

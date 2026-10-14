@@ -2,7 +2,7 @@
 
 > **Metadata**
 > - last-updated-by: execute-feature 2026-10-13 (blog design compliance + reading-time studio input)
-> - last-synced: 2026-10-13 (QA hardening: 5 failing suites resolved, 630/630 green)
+> - last-synced: 2026-10-14 (avatar/profile/feed tightening: feedTightening suite added)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -762,3 +762,14 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Landing `VEHICLE_CHIPS` += `TRAIN` (`#EDE9FE`/`#5B21B6`); explore += `Train` filter chip + `activeVehicleFilters` allowlist entry (chip rendered but never filtered without it) | [x] |
 | [S] | DESIGN.md — Train vehicle-color row + `Train` icon-map row | [x] |
 | [S] | Tests — extended `app/__tests__/config/vehicles.test.ts` (9 keys, train label/icon/color/classes, train accepted alongside boat, spaceship still rejected) | [x] |
+
+## Session 2026-10-14 — Avatar consistency + profile avg + feed prompt (execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; all additions additive with safe fallbacks). QA in-runner: no node_modules — tsc shows only missing-module noise; real-module strip-types green for avatar/feedAlgorithm (sizes, asAvatarConfig, prompt 45s/labels); full tsc/jest/build deferred to CI/Vercel.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Avatar consistency — `AVATAR_DISPLAY_CONFIG` + `asAvatarConfig`; `/api/leaderboard` + `/api/invite?section=leaderboard` select `avatarConfig`; notifications/leaderboard/invite rows render shared `AppAvatar` | [x] |
+| [M] | Other-profile avg — `by-username` returns `avgValidityScore` aggregate (best-effort); client prefers server value (fallback 0, never rewardPoints/postCount total); stats bar Fragment+divider parity with own profile | [x] |
+| [M] | Feed optimistic + pill — `feedStream.prependPost` (dedupe/top/persist); `submitPost` pins created row + scrolls top; `FEED_NEW_POSTS_PROMPT_CONFIG` (45s auto-dismiss, 45s throttle, thresholds, label); pill click clears+scrolls+refreshes; auto-dismiss timer | [x] |
+| [S] | Tests — NEW `feedTightening.test.ts` (avatar sizes/forward/narrow, avg source-of-truth/fallback, prompt band/label, dedupe invariant) | [x] |

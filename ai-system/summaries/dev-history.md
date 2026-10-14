@@ -1342,3 +1342,10 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 - Tests: NEW `__tests__/config/feedDedup.test.ts` (order-preserving dedup, bad-id drop, empty, config sanity).
 **QA:** no node_modules in runner — tsc/jest/build deferred to CI (standing arrangement); grep verified zero remaining `tabQuery` identifiers in profile dir, `setTabFilter` wired (tab-switch reset + input), diff reviewed file-by-file for syntax coherence.
 **Compliance:** non-breaking, no migration, no new deps, additive-only (`exclude` optional; dedup preserves first-seen order); config/metadata-driven throughout.
+
+**Session 2026-10-14 — Avatar consistency + profile avg + feed prompt (execute-feature).**
+**Directive:** notifications/leaderboard/invite-leaderboard avatar consistency; other-profile Avg Score showed total not average + stats misaligned; own new post first on feed until refetch; new-posts pill reliable + auto-dismiss 30–60s/click. Config/metadata-driven, reusable modular, non-breaking + update-ai-system chain.
+**Found:** (1) notifications/leaderboard/invite rendered raw initial-divs (no AppAvatar, no avatarConfig — leaderboard/invite APIs didn't even select it); (2) `[username]/page.tsx` computed avg as `rewardPoints/postCount` (a total) while own profile uses the post aggregate; stats bar nested the divider inside each cell (inline-block) vs own profile's sibling-divider flex; (3) `submitPost` went straight to `refreshFeed` (score-order hid the new row instantly); pill had hardcoded thresholds, no auto-dismiss, click neither cleared nor scrolled.
+**Implemented:** `AVATAR_DISPLAY_CONFIG` + `asAvatarConfig` + API selects + `AppAvatar` on all three surfaces; by-username aggregate + client server-value preference + stats parity; `feedStream.prependPost` + submit pin/scroll + `FEED_NEW_POSTS_PROMPT_CONFIG` (45s/45s) + pill clear/scroll/refresh + auto-dismiss; NEW `feedTightening.test.ts`.
+**QA:** no node_modules in runner — strip-types green (avatar/feedAlgorithm), full gate deferred to CI/Vercel.
+**Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.

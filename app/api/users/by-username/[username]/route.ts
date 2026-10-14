@@ -72,7 +72,25 @@ export async function GET(
       earlyAdopter = null;
     }
 
-    return NextResponse.json({ user, isFollowing, earlyAdopter });
+    // Avg validity score — same aggregate as GET /api/users/[id] so other
+    // profiles show the AVERAGE (not rewardPoints/postCount total). Never
+    // fails the request; falls back to 0 and the client prefers this value.
+    let avgValidityScore = 0;
+    try {
+      const avg = await prisma.post.aggregate({
+        where: { userId: user.id },
+        _avg: { validityScore: true },
+      });
+      avgValidityScore = Math.round(avg._avg.validityScore ?? 0);
+    } catch {
+      avgValidityScore = 0;
+    }
+
+    return NextResponse.json({
+      user: { ...user, avgValidityScore },
+      isFollowing,
+      earlyAdopter,
+    });
   } catch (error) {
     console.error("Error fetching user by username:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
