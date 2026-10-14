@@ -11,6 +11,12 @@ import {
   EARLY_ADOPTER_CONFIG_META,
   normalizeEarlyAdopterConfig,
 } from "@/app/lib/config/earlyAdopter"
+import {
+  FEED_DIVERSITY_CONFIG,
+  FEED_DIVERSITY_CONFIG_KEY,
+  FEED_DIVERSITY_CONFIG_META,
+  normalizeFeedDiversityConfig,
+} from "@/app/lib/config/feedAlgorithm"
 
 interface SiteConfigItem {
   id: string
@@ -79,6 +85,85 @@ export default function AdminConfigPage() {
       setEaTemplate(storedEarlyAdopter.badgeLabelTemplate)
     }
   }, [storedEarlyAdopter, eaEnabled])
+
+  // --- Feed Diversity card (admin-manageable, metadata-driven) ---
+  const storedDiversity = useMemo(() => {
+    const found = configs.find((c) => c.key === FEED_DIVERSITY_CONFIG_KEY)
+    return normalizeFeedDiversityConfig(found?.value)
+  }, [configs])
+  const [fdMaxConsecutive, setFdMaxConsecutive] = useState<string | null>(null)
+  const [fdLookahead, setFdLookahead] = useState<string | null>(null)
+  const [fdJitter, setFdJitter] = useState<string | null>(null)
+  const [fdSaving, setFdSaving] = useState(false)
+  const [fdError, setFdError] = useState<string | null>(null)
+  const fdDirty = useMemo(() => {
+    if (fdMaxConsecutive === null || fdLookahead === null || fdJitter === null) return false
+    return (
+      fdMaxConsecutive !== String(storedDiversity.maxConsecutiveFromSameAuthor) ||
+      fdLookahead !== String(storedDiversity.lookaheadWindow) ||
+      fdJitter !== String(storedDiversity.jitterWeight)
+    )
+  }, [fdMaxConsecutive, fdLookahead, fdJitter, storedDiversity])
+
+  useEffect(() => {
+    if (fdMaxConsecutive === null) {
+      setFdMaxConsecutive(String(storedDiversity.maxConsecutiveFromSameAuthor))
+      setFdLookahead(String(storedDiversity.lookaheadWindow))
+      setFdJitter(String(storedDiversity.jitterWeight))
+    }
+  }, [storedDiversity, fdMaxConsecutive])
+
+  const handleDiversitySave = async () => {
+    setFdSaving(true)
+    setFdError(null)
+    try {
+      const maxC = Number(fdMaxConsecutive)
+      const look = Number(fdLookahead)
+      const jit = Number(fdJitter)
+      const res = await fetch("/api/admin/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: FEED_DIVERSITY_CONFIG_KEY,
+          value: {
+            maxConsecutiveFromSameAuthor: Number.isFinite(maxC) ? Math.floor(maxC) : fdMaxConsecutive,
+            lookaheadWindow: Number.isFinite(look) ? Math.floor(look) : fdLookahead,
+            jitterWeight: Number.isFinite(jit) ? jit : fdJitter,
+          },
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error((data as { error?: string } | null)?.error ?? "Request failed")
+      toastService.success("Feed diversity saved")
+      setFdMaxConsecutive(null)
+      await load()
+    } catch (err) {
+      setFdError(err instanceof Error ? err.message : "Failed to save")
+    } finally {
+      setFdSaving(false)
+    }
+  }
+
+  const handleDiversityReset = async () => {
+    setFdSaving(true)
+    setFdError(null)
+    try {
+      const res = await fetch("/api/admin/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: FEED_DIVERSITY_CONFIG_KEY, value: { ...FEED_DIVERSITY_CONFIG } }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error((data as { error?: string } | null)?.error ?? "Request failed")
+      toastService.success("Feed diversity reset to defaults")
+      setFdMaxConsecutive(null)
+      await load()
+    } catch (err) {
+      setFdError(err instanceof Error ? err.message : "Failed to reset")
+    } finally {
+      setFdSaving(false)
+    }
+  }
 
   const handleEarlyAdopterSave = async () => {
     if (eaEnabled === null) return
@@ -285,6 +370,49 @@ export default function AdminConfigPage() {
               {eaSaving ? "Saving..." : "Save badge settings"}
             </AppButton>
           </div>
+        </div>
+      </div>
+
+      <div className="bg-bg-card border border-border radius-lg p-5 shadow-xs mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles size={16} className="text-primary" />
+          <h3 className="text-sm font-semibold">{FEED_DIVERSITY_CONFIG_META.title}</h3>
+        </div>
+        <p className="text-xs text-text-secondary mb-4">{FEED_DIVERSITY_CONFIG_META.description}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[640px]">
+          {FEED_DIVERSITY_CONFIG_META.fields.map((f) => {
+            const val =
+              f.id === "maxConsecutiveFromSameAuthor" ? (fdMaxConsecutive ?? String(storedDiversity.maxConsecutiveFromSameAuthor))
+              : f.id === "lookaheadWindow" ? (fdLookahead ?? String(storedDiversity.lookaheadWindow))
+              : (fdJitter ?? String(storedDiversity.jitterWeight));
+            const setVal =
+              f.id === "maxConsecutiveFromSameAuthor" ? setFdMaxConsecutive
+              : f.id === "lookaheadWindow" ? setFdLookahead
+              : setFdJitter;
+            return (
+              <label key={f.id} className="flex flex-col gap-1 text-sm">
+                <span className="text-xs font-semibold text-text-secondary">{f.label}</span>
+                <AppInput
+                  type="number"
+                  min={f.min}
+                  max={f.max}
+                  step={f.step}
+                  value={val}
+                  onChange={(e) => setVal(e.target.value)}
+                />
+                <span className="text-[11px] text-text-muted leading-snug">{f.hint}</span>
+              </label>
+            );
+          })}
+        </div>
+        {fdError && <p className="text-xs text-error-text mt-3">{fdError}</p>}
+        <div className="flex gap-2 mt-3">
+          <AppButton onClick={handleDiversitySave} disabled={!fdDirty || fdSaving}>
+            {fdSaving ? "Saving..." : "Save diversity settings"}
+          </AppButton>
+          <AppButton variant="secondary" onClick={handleDiversityReset} disabled={fdSaving}>
+            Reset to defaults
+          </AppButton>
         </div>
       </div>
 

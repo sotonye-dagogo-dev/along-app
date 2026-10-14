@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, Trash2, RefreshCw, Eye } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Eye, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { toastService } from "@/app/lib/services/toastService";
+import { STUDIO_LAYOUT_CONFIG, studioPreviewStyle } from "@/app/lib/config/studioLayout";
 import { BLOG_MANAGEMENT_CONFIG, BLOG_IMAGE_CONFIG, READING_TIME_FIELD_META, normalizeSlug, normalizeReadingTime } from "@/app/lib/config/blogManagement";
 import type { ManagedBlogPost, BlogPostStatus } from "@/app/lib/config/blogManagement";
 import { DEFAULT_BLOG_CATEGORIES } from "@/app/lib/config/blog";
@@ -198,6 +199,18 @@ export default function AdminBlogPage() {
     setBlocks((p) => [...p, { id: newBlockId(), type, text: type === "paragraph" ? "New paragraph" : type === "heading" ? "New heading" : undefined }]);
   };
 
+  /** Reorder blocks (mirrors Email Studio move up/down — same UX, same guards). */
+  const moveBlock = (id: string, dir: -1 | 1) => {
+    setBlocks((prev) => {
+      const i = prev.findIndex((b) => b.id === id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
   /** Append a {{variable}} token to the last text-capable block (or a new paragraph). */
   const insertVariableToken = (token: string) => {
     setBlocks((prev) => {
@@ -324,8 +337,8 @@ export default function AdminBlogPage() {
         </section>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <section className="bg-bg-card border border-border radius-lg p-4 flex flex-col gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <section className="bg-bg-card border border-border radius-lg p-4 flex flex-col gap-3 min-w-0">
           <h2 className="text-sm font-semibold">{isNew ? "New post" : `Edit: ${selected || "—"}`}</h2>
           {isNew && (
             <label className="text-xs flex flex-col gap-1">
@@ -405,19 +418,27 @@ export default function AdminBlogPage() {
           {/* Insert-variable picker (catalog-driven, guest-safe fallbacks). */}
           <BlogVariableInsert onInsert={insertVariableToken} />
           <div className="flex flex-col gap-2">
-            {blocks.map((b) => (
+            {blocks.map((b, idx) => (
               <div key={b.id} className="rounded-md border border-border bg-bg-base p-2.5 flex flex-col gap-1.5">
                 <div className="flex items-center gap-1.5">
+                  <GripVertical size={13} className="text-text-muted shrink-0" />
                   <span className="text-[11px] font-bold uppercase tracking-wide text-text-muted">{b.type}</span>
-                  <button onClick={() => {
-                    // Dropping an image block orphans its upload — track it so
-                    // the next successful save purges it (unsaved removals
-                    // stay reversible until then).
-                    const src = (b.src ?? b.url ?? "").trim();
-                    if (b.type === "image" && /^https:\/\/res\.cloudinary\.com\//.test(src)) trackReplaced(src);
-                    setBlocks((p) => p.filter((x) => x.id !== b.id));
-                  }}
-                    className="ml-auto p-1 cursor-pointer bg-transparent border-none text-text-muted hover:text-error"><Trash2 size={13} /></button>
+                  <span className="ml-auto flex gap-0.5">
+                    <button onClick={() => moveBlock(b.id, -1)} disabled={idx === 0} aria-label="Move block up"
+                      className="p-1 cursor-pointer bg-transparent border-none text-text-muted disabled:opacity-30 hover:text-primary"><ChevronUp size={13} /></button>
+                    <button onClick={() => moveBlock(b.id, 1)} disabled={idx === blocks.length - 1} aria-label="Move block down"
+                      className="p-1 cursor-pointer bg-transparent border-none text-text-muted disabled:opacity-30 hover:text-primary"><ChevronDown size={13} /></button>
+                    <button onClick={() => {
+                      // Dropping an image block orphans its upload — track it so
+                      // the next successful save purges it (unsaved removals
+                      // stay reversible until then).
+                      const src = (b.src ?? b.url ?? "").trim();
+                      if (b.type === "image" && /^https:\/\/res\.cloudinary\.com\//.test(src)) trackReplaced(src);
+                      setBlocks((p) => p.filter((x) => x.id !== b.id));
+                    }}
+                      aria-label="Remove block"
+                      className="p-1 cursor-pointer bg-transparent border-none text-text-muted hover:text-error"><Trash2 size={13} /></button>
+                  </span>
                 </div>
                 {(b.type === "paragraph" || b.type === "heading") && (
                   <textarea value={b.text ?? ""} rows={3}
@@ -477,12 +498,12 @@ export default function AdminBlogPage() {
           </div>
         </section>
 
-        <section className="bg-bg-card border border-border radius-lg overflow-hidden">
+        <section className={`bg-bg-card border border-border radius-lg overflow-hidden min-w-0 ${STUDIO_LAYOUT_CONFIG.previewStickyClass}`}>
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
             <Eye size={14} className="text-text-muted" />
             <span className="text-sm font-semibold">Live preview (sanitized, styled — mirrors the public post page)</span>
           </div>
-          <div className="max-h-[640px] overflow-auto p-4">
+          <div className="overflow-auto scroll-thin scroll-stable p-4" style={studioPreviewStyle(STUDIO_LAYOUT_CONFIG.blogPreviewMaxHeight, STUDIO_LAYOUT_CONFIG.blogPreviewMinHeight)}>
             {(() => {
               // Same render contract as app/(public)/blog/[slug]/page.tsx:
               // blocks → article HTML → style-strip → variable interpolation.

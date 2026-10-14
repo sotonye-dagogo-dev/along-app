@@ -54,6 +54,25 @@ export const TRUST_DISPLAY_CONFIG = {
   fullKeys: [...TRUST_BREAKDOWN_KEYS] as TrustBreakdownKey[],
   labels: TRUST_BREAKDOWN_LABELS,
   descriptions: TRUST_BREAKDOWN_DESCRIPTIONS,
+  /**
+   * Breakdown tooltip geometry + behaviour (single source of truth — the
+   * TrustBadge reads every value from here, never magic numbers).
+   *
+   * The tooltip renders in a portal on document.body so transformed
+   * ancestors (e.g. the PostCard `hover:-translate-y-0.5` lift, carousel
+   * tapes) can never re-anchor its `fixed` positioning off-screen.
+   */
+  tooltipWidth: 240,
+  /** Viewport margin (px) the clamped tooltip never crosses. */
+  tooltipViewportMargin: 8,
+  /** Max tooltip height before its own scroll takes over (px). */
+  tooltipMaxHeight: 320,
+  /**
+   * Hover-bridge grace (ms): leaving the badge toward the (portal-rendered)
+   * tooltip crosses an 8px dead zone — the close is delayed so the tooltip
+   * doesn't vanish mid-travel. Hovering the tooltip cancels the timer.
+   */
+  hoverCloseDelayMs: 150,
 } as const;
 
 export type TrustDisplayVariant = "compact" | "full";

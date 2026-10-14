@@ -4,12 +4,14 @@ export { NAV_REGISTRY, filterNavItems, isAdminRole, LIVE_NAVIGATION_CONFIG } fro
 export { ERROR_REPORTING_CONFIG, ERROR_SENSITIVE_PATTERNS } from "./errorReporting";
 export { REGISTER_FIELDS, LOGIN_FIELDS, EDIT_PROFILE_FIELDS, USERNAME_RULE, POST_CREATE_FIELDS, BUG_REPORT_FIELDS, CONTACT_FIELDS } from "./forms";
 export { NOTIFICATION_REGISTRY, NOTIFICATION_MESSAGES } from "./notifications";
-export { DEFAULT_FEED_CONFIG, FEED_STREAM_CONFIG, FEED_NEW_POSTS_PROMPT_CONFIG } from "./feedAlgorithm";
-export type { FeedStreamConfig, FeedNewPostsPromptConfig } from "./feedAlgorithm";
+export { DEFAULT_FEED_CONFIG, FEED_STREAM_CONFIG, FEED_NEW_POSTS_PROMPT_CONFIG, FEED_DIVERSITY_CONFIG, FEED_DIVERSITY_CONFIG_KEY, FEED_DIVERSITY_CONFIG_META, normalizeFeedDiversityConfig, validateFeedDiversityConfigValue, applyFeedDiversity } from "./feedAlgorithm";
+export type { FeedStreamConfig, FeedNewPostsPromptConfig, FeedDiversityConfig, FeedDiversityKnobs, DiversityScoredRow } from "./feedAlgorithm";
 export { QUALITY_CHECKPOINTS } from "./draftingCoach";
 export { DEFAULT_VALIDITY_CONFIG, VALIDITY_SIGNAL_BOUNDS, DETAIL_SCORING_CONFIG } from "./validityConfig";
 export { TRUST_DISPLAY_CONFIG, TRUST_BREAKDOWN_KEYS, TRUST_BREAKDOWN_LABELS, trustKeysForVariant, trustTierForScore } from "./trustDisplay";
 export type { TrustBreakdownKey, TrustDisplayVariant } from "./trustDisplay";
+export { SCROLLBAR_CONFIG } from "./scrollbar";
+export type { ScrollbarClassKey } from "./scrollbar";
 export { AVATAR_STYLES, buildAvatarUrl, getFallbackAvatarUrl, AVATAR_DISPLAY_CONFIG, asAvatarConfig } from "./avatar";
 export { FOOTER_CONFIG } from "./footer";
 export { TOAST_CONFIG } from "./toast";
@@ -140,6 +142,8 @@ export {
 } from "./charts";
 export type { ChartTooltipLine, ChartSeriesId, AdminAnalyticsKpiId, AdminAnalyticsSectionId } from "./charts";
 export { CACHE_TTL, CACHE_KEYS, NOTIFICATION_FILTERS } from "./cache";
+export { SEARCH_CONFIG, SEARCH_ANALYTICS_CONFIG, normalizeAnalyticsQuery, buildZeroResultPayload, tokenizeSearchQuery, levenshteinDistance, termCoverage, scoreTextRelevance } from "./search";
+export type { TokenizedQuery, SearchTextBag, TermCoverage, RelevanceScore, ZeroResultQueryFilters } from "./search";
 export { API_REGISTRY } from "./apiRegistry";
 export { DEFAULT_META, PAGE_META } from "./seo";
 export { EMPTY_STATES } from "./emptyStates";
@@ -173,6 +177,8 @@ export { resolveNotificationRoute } from "./notificationRoutes";
 export type { NotificationRouteInput } from "./notificationRoutes";
 export { PAGINATION_UI_CONFIG } from "./paginationUi";
 export type { PaginationUiConfig } from "./paginationUi";
+export { STUDIO_LAYOUT_CONFIG, studioPreviewStyle, avatarGridStyle } from "./studioLayout";
+export type { StudioLayoutConfig } from "./studioLayout";
 export { FLOATING_UI_CONFIG, laneBottom } from "./floatingUi";
 export type { FloatingUiConfig } from "./floatingUi";
 export {

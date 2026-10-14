@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit reports+blogs, defaults, featured carousel, parsing)
+> - last-updated-by: execute-feature 2026-10-14 (Sprint 55: trust portal + admin collapse + scrollbars + feed diversity + loose search)
 > - last-verified-against-code: 2026-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: append-only — never modify past entries
 
@@ -2416,6 +2416,64 @@ Nothing pending — feature complete. Future: blog alt-text backfill for legacy 
 **Assumptions Made:**
 - Blog uploads are admin-only (Studio is admin-only; the `/api/upload` 403 gate enforces it server-side) — regular users never need blog-folder writes.
 - Cleanup fail-open (stale `getSiteConfig` cache keeps an orphan rather than breaking a live image) is the safe direction; orphans are bounded by the per-call cap and never user-visible.
+
+**Notes / Blockers:**
+- None. Non-breaking, all changes additive with fallbacks.
+- Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + dev-history + index + memory).
+
+## Session — 2026-10-14 (Execute-feature: trust portal + admin collapse + scrollbars + feed diversity + loose search)
+
+**Completed:**
+- Directive close-out, all 5 items (non-breaking; no migration, no new deps, no removed APIs; same props + envelopes):
+  - Trust tooltip (desktop cards): root cause — `PostCard AppCard hover` lifts via `hover:-translate-y-0.5`; any `fixed` descendant is re-anchored to the transformed card so viewport-computed placement flew off-screen (mobile/detail unaffected — no hover transform). Fix: `TrustBadge` portals to document.body + edge-aware anchoring (right-third right-aligns) + flip + height cap + internal `scroll-thin` + hover-bridge close delay + outside-pointerdown/Escape dismiss; geometry/behaviour knobs added to `TRUST_DISPLAY_CONFIG` (width 240/margin 8/maxHeight 320/hoverCloseDelayMs 150).
+  - Admin collapse: `NavLink` applied `px-4` + conditional `px-2` (conflict — px-4 won) + `mx-3` + 20px icon = 76px in a 72px rail → `overflow-hidden` clipped icons. Fix: conditional `mx-2 px-2` collapsed vs `mx-3 px-4`, shrink-0 icon wrapper + collapsed aria-label; links region on `scroll-thin`.
+  - Scrollbars: zero custom styles existed. Token-driven global rules in `globals.css` (thumb `--color-border-strong`, hover `--color-text-muted`, `--radius-pill`; `.dark` overrides restyle automatically) + `.scroll-thin`/`.scroll-stable` utilities + `SCROLLBAR_CONFIG` registry (barrel-exported; components reference config, never literal class strings).
+  - Feed diversity: `FEED_DIVERSITY_CONFIG` (maxConsecutive 1/lookahead 8/jitter 0.02) + pure `applyFeedDiversity` (jitter near-ties, lookahead anti-cluster swap, never drops rows, injectable rand, SiteConfig `feedDiversity` shallow-merge validated never-throw) wired post-sort/pre-slice in `feedService`.
+  - Loose search: `SEARCH_CONFIG` + pure `tokenizeSearchQuery`/`levenshteinDistance`/`termCoverage`/`scoreTextRelevance` (`config/search.ts`); `searchService` two-phase recall (exact phrase+terms across title/desc/region/tags + token-combined routes-JSON stop-name prefetch, then head-prefix typo top-up) + deterministic in-memory relevance rank (phrase ≫ all-terms > exact > fuzzy > validity > recency) + index-based cursor (unknown cursor ends list, never loops); tokenized user recall + coverage rank; identical `SearchResult` envelope, same `/api/search` route untouched.
+- Tests: NEW `feedSearchTightening.test.ts` (19); `searchService.test.ts` rewritten to ranked semantics (honest-DB notIn mock, continuation/unknown-cursor, order-free + phrase-rank + typo cases); `api/search.test.ts` notIn-aware mock.
+- QA: FULL gate green in-runner (node_modules installed): `npx tsc --noEmit` 0 errors; `npx jest` 78/78 suites 679/679 tests; `npx next lint` clean on touched files; `npx next build` clean.
+- Docs: task-queue Sprint 55 + this log; chained update-ai-system.md executed (dev-history + repo-map + dependency-graph + project-plan + lessons-learned + design-system + system-architecture reconciled; no architecture drift — additive config/services/components/CSS only).
+
+**Files Modified:**
+- Edited: `app/lib/config/trustDisplay.ts`, `app/lib/config/feedAlgorithm.ts`, `app/lib/config/index.ts`, `app/lib/services/feedService.ts`, `app/lib/services/searchService.ts`, `app/components/ui/TrustBadge.tsx`, `app/admin/AdminShell.tsx`, `app/globals.css`, `app/__tests__/services/searchService.test.ts`, `app/__tests__/api/search.test.ts`, `ai-system/planning/task-queue.md`, `ai-system/design-system.md`, `ai-system/system-architecture.md`, `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/lib/config/scrollbar.ts`, `app/lib/config/search.ts`, `app/__tests__/config/feedSearchTightening.test.ts`
+
+**Next Task:**
+Nothing pending — feature complete. Future: admin UI for the `feedDiversity` SiteConfig key (currently code-default + stored-merge, no Studio card); search analytics on zero-result queries to tune stopwords/fuzzy thresholds.
+
+**Assumptions Made:**
+- `Prisma.join`/`Prisma.sql` exist on the generated client namespace (verified in `app/generated/prisma/internal/prismaNamespace.ts`: `sql = runtime.sqltag`, `join = runtime.join`); the stop-name prefetch stays best-effort (catch → []) so hosts without raw-query support degrade to structured search.
+- Single-letter location tokens ("A to B") intentionally fall back to phrase-only recall — `contains "a"` would match everything; documented in `search.ts`.
+- Feed jitter (±0.02) + anti-cluster run pre-slice on every first-page compute; cached pages + excludeIds keep pagination stable.
+
+**Notes / Blockers:**
+- None. Non-breaking, all changes additive with fallbacks.
+- Chain: execute-feature → chained update-ai-system.md executed (this entry + task-queue + dev-history + index + memory).
+
+## Session — 2026-10-14 (Execute-feature: studio tightening — blog reorder/CTA, sticky previews, feedDiversity card, zero-result analytics)
+
+**Completed:**
+- Directive close-out, all items (non-breaking; no migration, no new deps, no removed APIs; same props + envelopes, additive fields only):
+  - Blog Studio reorder: root cause — Blog page rendered blocks with a bare Trash button while Email Studio had Grip + ChevronUp/Down + `moveBlock`; feature parity was simply never ported. Fix: `moveBlock` (same swap-guard logic) + identical header UI (GripVertical, up/down with disabled ends + aria-labels, Trash keeps orphan-image tracking).
+  - Blog CTA buttons: prior decision deliberately degraded buttons to prose links (inline email chrome would beat prose classes + break dark mode — repair-system pitfall). Directive overrides: buttons must look like Email Studio CTAs. Fix keeps the no-inline-style rule — `blocksToBlogHtml` emits `<div class="blog-cta-wrap"><a class="blog-cta">`, styling lives in `globals.css` on design tokens (`--color-primary`/`--color-text-inverse`, auto dark-mode), `sanitizeBlogHtml` preserves exactly those two classes via `BLOG_CTA_CLASS_ALLOWLIST` (all other classes stripped, event handlers/javascript: still dropped), `htmlToBlocks` round-trips `blog-cta` markup back to button blocks. `blogCompliance.test.ts` updated to the CTA contract (deliberate, directive-owned).
+  - Generous sticky previews: root cause — short fixed `max-h` (420/640px) + non-sticky panes inside stretching grids; tall editor columns scrolled the preview out of view on desktop. Fix (config-driven): NEW `STUDIO_LAYOUT_CONFIG` (78vh caps, 360px mins, sticky wrappers with required `self-start` + `items-start` grids) consumed by Email (right-column sticky), Blog (preview sticky), AvatarEditor (viewport grid height + sticky preview column).
+  - feedDiversity Studio card (session-log future #1): `FEED_DIVERSITY_CONFIG_KEY`/`_META` + `normalizeFeedDiversityConfig` (shared by `feedService.resolveFeedDiversity` — same clamping behaviour, no logic change) + `validateFeedDiversityConfigValue`; `/api/admin/config` PUT 400-guards `feedDiversity`; `SITE_CONFIG_EDITORS` entry; Config page dedicated card (META-driven numeric inputs, dirty-gated save, reset-to-defaults, error surfacing) mirroring the early-adopter card.
+  - Zero-result analytics (session-log future #2): `SEARCH_ANALYTICS_CONFIG` + pure `normalizeAnalyticsQuery`/`buildZeroResultPayload`; `searchService` logs one fire-and-forget `AnalyticsEvent(search_zero_results)` on empty first-page results (never throws, cached-empty fast path not double-counted); `/api/admin/analytics` aggregates top queries in-window (additive `zeroResultQueries`); analytics page section (query + terms + ×count + stopword/fuzzy tuning hint, config copy in charts registry).
+- Tests: NEW `studioTightening.test.ts` (4); `blogCompliance.test.ts` CTA + allowlist suites.
+- QA: FULL gate green in-runner (node_modules installed): `npx tsc --noEmit` 0 errors; `npx jest` 79/79 suites 684/684 tests; `npm run lint` clean on touched files (sole error pre-existing in `accountDeletionService.ts`, untouched); `npm run build` clean.
+- Docs: task-queue Sprint 56 + this log; chained update-ai-system.md executed (dev-history + system-architecture + project-decisions + lessons-learned + index reconciled; no architecture drift — additive config/services/components/CSS only).
+
+**Files Modified:**
+- Edited: `app/lib/utils/emailBuilder.ts`, `app/lib/utils/emailSanitize.ts`, `app/globals.css`, `app/admin/blog/page.tsx`, `app/admin/email/page.tsx`, `app/components/features/profile/AvatarEditor.tsx`, `app/lib/config/feedAlgorithm.ts`, `app/lib/services/feedService.ts`, `app/api/admin/config/route.ts`, `app/lib/config/admin.ts`, `app/admin/config/page.tsx`, `app/lib/config/search.ts`, `app/lib/services/searchService.ts`, `app/api/admin/analytics/route.ts`, `app/lib/config/charts.ts`, `app/admin/analytics/page.tsx`, `app/lib/config/index.ts`, `app/__tests__/config/blogCompliance.test.ts`, `ai-system/planning/task-queue.md`, `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/lib/config/studioLayout.ts`, `app/__tests__/config/studioTightening.test.ts`
+
+**Next Task:**
+Nothing pending — feature complete. Both session-log futures from Sprint 55 are now closed.
+
+**Assumptions Made:**
+- `.blog-cta` white-on-primary meets contrast in both themes via tokens (primary #00623B/light-inverse #FFFFFF, dark primary #00A862/inverse #0F0F0F — same pairing as existing primary buttons, so no new contrast risk).
+- Zero-result logging on first-page computes only (cached-empty returns are not re-logged) keeps counts honest without a dedup window; 500-row in-window scan + in-memory group-by is sufficient (bounded, period-scoped, never throws).
+- `prose-a` override via `.prose a.blog-cta` + `!important` on color/decoration is the minimal specificity that beats Tailwind typography without touching the shared prose config.
 
 **Notes / Blockers:**
 - None. Non-breaking, all changes additive with fallbacks.

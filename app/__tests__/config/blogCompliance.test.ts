@@ -60,8 +60,12 @@ describe("blog design compliance + reading time (directive)", () => {
     expect(html).toContain("<ul>");
     expect(html).toContain("<li>First</li>");
     expect(html).toContain('<a href="/explore">Explore</a>');
-    // Button CTAs degrade to prose-styled links (no email button chrome).
-    expect(html).toContain('<a href="/home">Open Along</a>');
+    // Button blocks render as CTA buttons (same treatment as Email Studio),
+    // token-styled via .blog-cta CSS — never plain inline links, never
+    // hardcoded email chrome/inline colors.
+    expect(html).toContain('class="blog-cta-wrap"');
+    expect(html).toContain('class="blog-cta"');
+    expect(html).toContain('<a class="blog-cta" href="/home">Open Along</a>');
     expect(html).toContain("<hr");
     // {{variables}} survive verbatim for renderBlogContent.
     expect(html).toContain("{{firstName}}");
@@ -92,6 +96,17 @@ describe("blog design compliance + reading time (directive)", () => {
     expect(clean).not.toMatch(/style\s*=/i);
     expect(clean).not.toContain("<script>");
     expect(clean).not.toMatch(/#444|#1a1a1a/i);
+  });
+
+  it("sanitizeBlogHtml preserves blog-cta classes but strips arbitrary classes", () => {
+    const cta = '<div class="blog-cta-wrap"><a class="blog-cta" href="/home">Open Along</a></div>';
+    const clean = sanitizeBlogHtml(cta);
+    expect(clean).toContain('class="blog-cta-wrap"');
+    expect(clean).toContain('class="blog-cta"');
+    const evil = sanitizeBlogHtml('<div class="evil-hook" onclick="alert(1)"><a class="blog-cta evil" href="javascript:alert(1)">X</a></div>');
+    expect(evil).not.toContain("evil");
+    expect(evil).not.toContain("onclick");
+    expect(evil).not.toContain("javascript:");
   });
 
   it("article pipeline resolves variables with no raw token leak (preview == public)", () => {

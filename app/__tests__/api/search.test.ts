@@ -67,9 +67,15 @@ describe("GET /api/search", () => {
   });
 
   it("searches posts and users for type=all", async () => {
-    mockPost.findMany.mockResolvedValue([
+    const rows = [
       { id: "p1", title: "Yaba to CMS", tags: ["yaba"], user: { id: "u1", userName: "a" } },
-    ]);
+    ];
+    // Honest-DB simulation: phase-2 typo-recall excludes phase-1 ids via
+    // `id.notIn`, so the mock must honor it instead of echoing rows.
+    mockPost.findMany.mockImplementation(
+      (args?: { where?: { id?: { notIn?: string[] } } }) =>
+        Promise.resolve(rows.filter((r) => !(args?.where?.id?.notIn ?? []).includes(r.id))),
+    );
     mockUser.findMany.mockResolvedValue([
       { id: "u2", userName: "yaba_fan", firstName: "Y", lastName: "B", avatar: null, verified: false },
     ]);

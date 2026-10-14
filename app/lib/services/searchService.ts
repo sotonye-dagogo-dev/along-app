@@ -1,5 +1,14 @@
 import { prisma } from "@/app/lib/db/prisma";
 import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
+import {
+  SEARCH_CONFIG,
+  SEARCH_ANALYTICS_CONFIG,
+  buildZeroResultPayload,
+  normalizeAnalyticsQuery,
+  tokenizeSearchQuery,
+  scoreTextRelevance,
+  type TokenizedQuery,
+} from "@/app/lib/config/search";
 
 export type SearchType = "all" | "posts" | "users";
 export type SearchPostType = "ROUTE" | "ROUTE_REQUEST" | "ROUTE_RESPONSE";
@@ -157,24 +166,156 @@ class SearchService {
   /**
    * Best-effort recall of per-step stop names. Route steps live in the
    * `Post.routes` JSON array (local names like "Cele Bus Stop" that no map
-   * source knows), so the structured OR-clause above cannot see them. A
-   * bounded `routes::text ILIKE` prefetch collects matching ids which are ORed
-   * into the main query — failures (or non-Postgres hosts) resolve to [] and
-   * the structured search proceeds unchanged. Never throws.
+   * source knows), so the structured OR-clause cannot see them. One bounded
+   * `routes::text ILIKE` query ORs every significant token (phrase + terms)
+   * and collects matching ids which are ORed into the main query — failures
+   * (or non-Postgres hosts) resolve to [] and the structured search proceeds
+   * unchanged. Never throws.
    */
-  private async stepLocationIds(query: string): Promise<string[]> {
-    const q = query.trim().slice(0, 100);
-    if (q.length < 2) return [];
+  private async stepLocationIdsForTokens(tokens: string[]): Promise<string[]> {
+    const needles = [...new Set(
+      tokens
+        .map((t) => String(t ?? "").trim().slice(0, 100))
+        .filter((t) => t.length >= 2),
+    )].slice(0, SEARCH_CONFIG.maxTerms + 1);
+    if (needles.length === 0) return [];
     try {
-      const rows = await prisma.$queryRaw<{ id: string }[]>`
-        SELECT id FROM "Post"
-        WHERE "isArchived" = false AND routes::text ILIKE ${"%" + q + "%"}
-        LIMIT 25
-      `;
+      const { Prisma } = await import("@/app/generated/prisma/client");
+      const ors = Prisma.join(
+        needles.map((n) => Prisma.sql`routes::text ILIKE ${"%" + n + "%"}`),
+        " OR ",
+      );
+      const rows = await prisma.$queryRaw<{ id: string }[]>(
+        Prisma.sql`SELECT id FROM "Post" WHERE "isArchived" = false AND (${ors}) LIMIT ${SEARCH_CONFIG.stepNamePrefetchLimit}`,
+      );
       return Array.isArray(rows) ? rows.map((r) => r.id).filter((id) => typeof id === "string") : [];
     } catch {
       return [];
     }
+  }
+
+  /** Per-term structured recall clauses (title/desc/region/tags, lowercased). */
+  private termClauses(terms: string[]): Record<string, unknown>[] {
+    const clauses: Record<string, unknown>[] = [];
+    for (const t of terms) {
+      clauses.push(
+        { title: { contains: t, mode: "insensitive" } },
+        { description: { contains: t, mode: "insensitive" } },
+        { region: { contains: t, mode: "insensitive" } },
+        { tags: { has: t } },
+      );
+    }
+    return clauses;
+  }
+
+  /**
+   * Two-phase loose recall (deterministic, capped, never throws beyond the
+   * safe-finder fallbacks):
+   *  Phase 1 — exact: whole phrase + every significant term (+ stop-name ids).
+   *  Phase 2 — typo-recall: head-prefix clauses top the set up to the cap.
+   * Phase 1 wins on precision; phase 2 catches single-typo queries that
+   * exact recall would miss entirely.
+   */
+  private async recallPosts(
+    query: TokenizedQuery,
+    region?: string,
+    postType?: SearchPostType,
+  ): Promise<Record<string, unknown>[]> {
+    const cap = SEARCH_CONFIG.candidateCap;
+    const base: Record<string, unknown> = {
+      // Deleted/archived authors never surface on user-facing search.
+      user: { isDeleted: false, deletionScheduledFor: null },
+    };
+    if (region) base.region = { contains: region, mode: "insensitive" };
+    if (postType) base.type = postType;
+    const include = { user: { select: { ...USER_SELECT_FULL } } };
+    const orderBy = [{ validityScore: "desc" }, { createdAt: "desc" }];
+
+    const exactOr: Record<string, unknown>[] = [];
+    if (query.phrase.length >= 2) {
+      exactOr.push(
+        { title: { contains: query.phrase, mode: "insensitive" } },
+        { description: { contains: query.phrase, mode: "insensitive" } },
+        { region: { contains: query.phrase, mode: "insensitive" } },
+      );
+    }
+    exactOr.push(...this.termClauses(query.terms));
+    const stepIds = await this.stepLocationIdsForTokens([query.phrase, ...query.terms]);
+    if (stepIds.length > 0) exactOr.push({ id: { in: stepIds } });
+    if (exactOr.length === 0) return [];
+
+    let recalled: Record<string, unknown>[] = await safePostFindMany({
+      where: { ...base, OR: exactOr },
+      take: cap,
+      include,
+      orderBy,
+    });
+
+    if (recalled.length < cap && query.terms.length > 0) {
+      const found = new Set(recalled.map((r) => String(r.id)));
+      const prefixOr: Record<string, unknown>[] = [];
+      for (const t of query.terms) {
+        const prefix = SEARCH_CONFIG.typoRecallPrefix(t);
+        if (prefix.length >= 2 && prefix !== t) {
+          prefixOr.push(
+            { title: { contains: prefix, mode: "insensitive" } },
+            { description: { contains: prefix, mode: "insensitive" } },
+            { region: { contains: prefix, mode: "insensitive" } },
+          );
+        }
+      }
+      if (prefixOr.length > 0) {
+        const extra: Record<string, unknown>[] = await safePostFindMany({
+          where: {
+            ...base,
+            OR: prefixOr,
+            ...(found.size > 0 ? { id: { notIn: [...found] } } : {}),
+          },
+          take: cap - recalled.length,
+          include,
+          orderBy,
+        });
+        recalled = recalled.concat(extra);
+      }
+    }
+    return recalled;
+  }
+
+  /**
+   * Deterministic in-memory relevance rank: whole-phrase ≫ all-terms-covered
+   * > per-term exact > per-term fuzzy > validity > recency > id. Rows that
+   * match none of the significant terms (pure prefix-recall noise) are
+   * dropped; phrase-fallback queries (no terms) keep every recalled row.
+   */
+  private rankPosts(
+    rows: Record<string, unknown>[],
+    query: TokenizedQuery,
+  ): Record<string, unknown>[] {
+    const bagOf = (p: Record<string, unknown>) => ({
+      title: p.title,
+      description: p.description,
+      region: p.region,
+      tags: p.tags,
+    });
+    // Invalid/missing timestamps sort as epoch (never NaN — NaN breaks
+    // comparators and makes page order nondeterministic).
+    const timeOf = (v: unknown): number => {
+      const t = new Date(v as string | Date).getTime();
+      return Number.isFinite(t) ? t : 0;
+    };
+    return rows
+      .map((p) => ({ p, rel: scoreTextRelevance(bagOf(p), query).total }))
+      .filter((r) => query.terms.length === 0 || r.rel > 0)
+      .sort((a, b) => {
+        if (b.rel !== a.rel) return b.rel - a.rel;
+        const aTrust = typeof a.p.validityScore === "number" ? a.p.validityScore : 0;
+        const bTrust = typeof b.p.validityScore === "number" ? b.p.validityScore : 0;
+        if (bTrust !== aTrust) return bTrust - aTrust;
+        const timeDiff = timeOf(b.p.createdAt) - timeOf(a.p.createdAt);
+        if (timeDiff !== 0) return timeDiff;
+        return String(a.p.id).localeCompare(String(b.p.id));
+      })
+      .map((r) => r.p);
   }
 
   async search(input: SearchParams): Promise<SearchResult> {
@@ -235,74 +376,81 @@ class SearchService {
     }
 
     const take = limit + 1;
-    const cursorArgs = cursor ? { skip: 1, cursor: { id: cursor } } : {};
+    const tokenized = tokenizeSearchQuery(query);
 
-    const postWhere: Record<string, unknown> = {
-      OR: [
-        { title: { contains: query, mode: "insensitive" } },
-        // Route descriptions carry the local stop/street names map sources
-        // miss — matching here is what drives community wording to results.
-        { description: { contains: query, mode: "insensitive" } },
-        { region: { contains: query, mode: "insensitive" } },
-        { tags: { has: query.toLowerCase() } },
-      ],
-      // Deleted/archived authors never surface on user-facing search.
-      user: { isDeleted: false, deletionScheduledFor: null },
-    };
-    // Per-step stop names (routes JSON) recall — best-effort ids ORed in.
-    // Runs before the main query; on miss the OR is simply not extended.
-    if (type !== "users") {
-      const stepIds = await this.stepLocationIds(query);
-      if (stepIds.length > 0) {
-        (postWhere.OR as unknown[]).push({ id: { in: stepIds } });
-      }
+    // Tokenized user recall: whole phrase + every significant term across
+    // handle + names, so "firstname lastname" matches in any order.
+    const userOr: Record<string, unknown>[] = [];
+    if (tokenized.phrase.length >= 2) {
+      userOr.push(
+        { userName: { contains: tokenized.phrase, mode: "insensitive" } },
+        { firstName: { contains: tokenized.phrase, mode: "insensitive" } },
+        { lastName: { contains: tokenized.phrase, mode: "insensitive" } },
+      );
     }
-    if (region) postWhere.region = { contains: region, mode: "insensitive" };
-    if (postType) postWhere.type = postType;
+    for (const t of tokenized.terms) {
+      userOr.push(
+        { userName: { contains: t, mode: "insensitive" } },
+        { firstName: { contains: t, mode: "insensitive" } },
+        { lastName: { contains: t, mode: "insensitive" } },
+      );
+    }
 
-    const [postRows, userRows] = await Promise.all([
+    const [recalledPosts, userRows] = await Promise.all([
       type === "users"
         ? Promise.resolve([])
-        : safePostFindMany({
-            where: postWhere,
-            take,
-            ...cursorArgs,
-            include: { user: { select: { ...USER_SELECT_FULL } } },
-            orderBy: [{ validityScore: "desc" }, { createdAt: "desc" }],
-          }),
+        : this.recallPosts(tokenized, region, postType),
       type === "posts"
         ? Promise.resolve([])
-        : safeUserFindMany({
-            where: {
-              // Deleted/archived accounts are never searchable on user surfaces.
-              isDeleted: false,
-              deletionScheduledFor: null,
-              OR: [
-                { userName: { contains: query, mode: "insensitive" } },
-                { firstName: { contains: query, mode: "insensitive" } },
-                { lastName: { contains: query, mode: "insensitive" } },
-              ],
-            },
-            select: {
-              ...USER_SELECT_FULL,
-              _count: { select: { posts: true } },
-            },
-            take: type === "all" ? 5 : take,
-            orderBy: { createdAt: "desc" },
-          }),
+        : userOr.length > 0
+          ? safeUserFindMany({
+              where: {
+                // Deleted/archived accounts are never searchable on user surfaces.
+                isDeleted: false,
+                deletionScheduledFor: null,
+                OR: userOr,
+              },
+              select: {
+                ...USER_SELECT_FULL,
+                _count: { select: { posts: true } },
+              },
+              take: type === "all" ? 5 : take,
+              orderBy: { createdAt: "desc" },
+            })
+          : Promise.resolve([]),
     ]);
 
-    const hasMorePosts = postRows.length > limit;
-    const pagePosts = (hasMorePosts ? postRows.slice(0, limit) : postRows) as SearchPostHit[];
-    // Cursor is post-id based (posts drive pagination); user hits are top-N per query
-    const nextCursor =
-      type !== "users" && hasMorePosts && pagePosts.length > 0
-        ? pagePosts[pagePosts.length - 1].id
-        : null;
+    // Loose relevance rank over the recalled set (deterministic), then
+    // index-based cursor pagination: the cursor is a post id from a previous
+    // page; an unknown cursor (deleted/archived since) ends the list instead
+    // of looping or duplicating.
+    const ranked = this.rankPosts(recalledPosts, tokenized);
+    let pagePosts: Record<string, unknown>[];
+    let nextCursor: string | null = null;
+    if (cursor) {
+      const idx = ranked.findIndex((p) => String(p.id) === cursor);
+      if (idx === -1) {
+        pagePosts = [];
+      } else {
+        pagePosts = ranked.slice(idx + 1, idx + 1 + limit);
+        const lastId = pagePosts.length > 0 ? pagePosts[pagePosts.length - 1]?.id : undefined;
+        nextCursor =
+          typeof lastId === "string" && lastId !== "" && idx + 1 + limit < ranked.length
+            ? lastId
+            : null;
+      }
+    } else {
+      pagePosts = ranked.slice(0, limit);
+      const lastId = pagePosts.length > 0 ? pagePosts[pagePosts.length - 1]?.id : undefined;
+      nextCursor =
+        typeof lastId === "string" && lastId !== "" && ranked.length > limit
+          ? lastId
+          : null;
+    }
 
     // Canonical live trust (same service as feed/detail) so search cards
     // carry identical breakdown values. Best-effort — failures keep rows.
-    let trustedPosts = pagePosts;
+    let trustedPosts = pagePosts as unknown as SearchPostHit[];
     try {
       const { attachLiveBreakdownsToPosts } = await import(
         "@/app/lib/services/trustBreakdownService"
@@ -345,7 +493,24 @@ class SearchService {
       }));
     }
 
-    const users: SearchUserHit[] = (userRows as Array<Record<string, unknown>>).map((u) => ({
+    // Loose user rank (deterministic): handle + name coverage first, so
+    // "lastname firstname" still finds the account in any order.
+    const rankedUserRows = (userRows as Array<Record<string, unknown>>)
+      .map((u) => ({
+        u,
+        rel: scoreTextRelevance(
+          {
+            title: u.userName,
+            description: `${String(u.firstName ?? "")} ${String(u.lastName ?? "")}`,
+            tags: [],
+          },
+          tokenized,
+        ).total,
+      }))
+      .sort((a, b) => b.rel - a.rel || String(a.u.id).localeCompare(String(b.u.id)))
+      .map((r) => r.u);
+
+    const users: SearchUserHit[] = rankedUserRows.map((u) => ({
       id: u.id as string,
       userName: u.userName as string,
       firstName: u.firstName as string,
@@ -366,6 +531,33 @@ class SearchService {
       .map(([tag, count]) => ({ tag, count }));
 
     const result: SearchResult = { posts: trustedPosts, users, tags, nextCursor };
+
+    // Zero-result analytics (first page only, fire-and-forget, never throws):
+    // one AnalyticsEvent per empty result so stopwords/fuzzy thresholds can
+    // be tuned from evidence. Cached-empty fast path above returns early and
+    // is intentionally NOT logged (already counted on first computation).
+    if (!cursor && trustedPosts.length === 0 && users.length === 0 && tags.length === 0) {
+      try {
+        const payload = buildZeroResultPayload(query, tokenized, { type, region: region ?? undefined, postType: postType ?? undefined });
+        if (normalizeAnalyticsQuery(query)) {
+          void (async () => {
+            try {
+              await prisma.analyticsEvent.create({
+                data: {
+                  eventName: SEARCH_ANALYTICS_CONFIG.eventName,
+                  region: typeof region === "string" && region ? region.slice(0, 100) : null,
+                  payload: payload as never,
+                },
+              });
+            } catch {
+              /* analytics must never break search */
+            }
+          })();
+        }
+      } catch {
+        /* never break search */
+      }
+    }
 
     if (!cursor) {
       try {

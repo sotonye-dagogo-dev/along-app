@@ -1,8 +1,8 @@
 # Design System
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (blog/terms/privacy article-body prose compliance: p/li/strong on text-primary)
-> - last-verified-against-code: 2026-10-13 (BLOG_CONTENT_PROSE_CLASSES consumed by public blog page + studio preview; zero prose-p:text-text-secondary in app code)
+> - last-updated-by: execute-feature 2026-10-14 (token-driven scrollbars §scrollbars; trust tooltip portal note)
+> - last-verified-against-code: 2026-10-14 (SCROLLBAR_CONFIG consumed by AdminShell + TrustBadge; globals.css scrollbar rules on --color-* tokens)
 > - staleness-policy: re-verify if UI components or styling dependencies change
 
 > **Overview:** Along uses Tailwind CSS 4 (CSS-first `@theme` tokens in `app/globals.css`) plus a universal library of App* components (`app/components/ui/`, 42 files) built on Tailwind + Lucide React. `antd@^5.23.3` remains a declared dependency in `package.json` but is NOT imported anywhere in `app/` (verified 2026-10-08: zero `antd` / `@ant-design` imports) — App* wrappers do not wrap Ant Design in the current code. Color tokens are defined as CSS custom properties supporting light and dark modes via a `class`-based dark mode toggle (`ThemeProvider` toggles `dark` on document root). Zero emoji policy — all icons use Lucide React exclusively (72 `lucide-react` imports across `app/`).
@@ -77,11 +77,18 @@ Base unit 4px: 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96
 - Hover shadow: `--shadow-md` (0 4px 16px rgba(0,0,0,0.10))
 - Glass morphism variant available for overlay cards
 
+### Scrollbars
+- Global thin scrollbars styled **exclusively from tokens** (`--color-border-strong` thumb, `--color-text-muted` on hover, `--radius-pill` shape) — the `.dark` token overrides restyle them automatically on theme change; no JS theme listeners.
+- Firefox: `scrollbar-width: thin` + `scrollbar-color`; WebKit/Blink: `::-webkit-scrollbar` family (10px base, transparent track, `content-box` halo so the thumb never touches the edge).
+- Utilities (class names owned by `SCROLLBAR_CONFIG`, `app/lib/config/scrollbar.ts` — never hardcoded strings): `.scroll-thin` (6px, tooltips/dropdowns/sidebar rails), `.scroll-stable` (`scrollbar-gutter: stable`, no layout shift).
+- Floating/tooltip panels that scroll internally (e.g. TrustBadge breakdown) use `.scroll-thin` + a config-driven max-height.
+
 ### Modals / Dialogs
 - `AppModal` — Tailwind-based modal wrapper (no Ant Design Modal import in code; verified 2026-10-08)
 - Global confirm modal via `GlobalConfirmModal` context provider
 - Confirmation required for destructive actions
 - Centered, backdrop blur
+- **Portal rule:** any `position: fixed` overlay rendered inside a transformed ancestor (e.g. `AppCard hover` lift, carousel tapes) MUST portal to `document.body` — transforms re-anchor `fixed` descendants and throw viewport-computed tooltips off-screen (TrustBadge breakdown, fixed 2026-10-14).
 
 ---
 

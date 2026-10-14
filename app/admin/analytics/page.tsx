@@ -33,6 +33,7 @@ interface AnalyticsPayload {
   tiers: { id: string; label: string; count: number }[]
   topPosts: { id: string; title: string; validityScore: number; likes: number; views: number }[]
   topContributors: { id: string; userName: string; firstName: string; lastName: string; avatar?: string | null; avatarConfig?: { style: string; seed?: string; flip?: boolean; backgroundColor?: string } | null; verified?: boolean; posts: number }[]
+  zeroResultQueries: { query: string; count: number; terms: string[]; lastSeen: string | null }[]
 }
 
 const svgW = 500
@@ -416,6 +417,31 @@ export default function AdminAnalyticsPage() {
             {data.topContributors.length === 0 && <div className="text-sm text-text-muted text-center py-4">{lists.topContributorsEmpty}</div>}
           </div>
         </div>
+      </div>
+
+      <div className="bg-bg-card border border-border radius-lg p-4 sm:p-5 shadow-md min-w-0 overflow-hidden">
+        <div className="flex items-center justify-between mb-1 gap-2 min-w-0">
+          <h3 className="text-base font-semibold truncate">{lists.zeroResultsTitle}</h3>
+        </div>
+        <p className="text-xs text-text-muted mb-1 truncate">{lists.zeroResultsDescription}</p>
+        <p className="text-[11px] text-text-muted mb-4">{lists.zeroResultsHint}</p>
+        {(data.zeroResultQueries ?? []).length === 0 ? (
+          <div className="text-sm text-text-muted text-center py-4">{lists.zeroResultsEmpty}</div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {(data.zeroResultQueries ?? []).map((q) => (
+              <div key={q.query} className="flex items-center gap-2.5 min-w-0 w-full">
+                <span className="font-mono text-xs font-semibold flex-1 min-w-0 truncate" title={q.query}>“{q.query}”</span>
+                {q.terms.length > 0 && (
+                  <span className="hidden sm:inline font-mono text-[11px] text-text-muted truncate max-w-[220px]" title={q.terms.join(", ")}>
+                    {q.terms.join(", ")}
+                  </span>
+                )}
+                <span className="text-xs font-semibold text-text-secondary w-14 text-right shrink-0">×{q.count}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

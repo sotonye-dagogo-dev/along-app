@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-13 (Sprint 52: audit report/blog coverage, enriched defaults, featured carousel, studio parsing)
+> - last-updated-by: execute-feature 2026-10-14 (Sprint 55: portal/fixed overlays, recall-vs-rank, honest mocks)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -805,3 +805,14 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** extract the reading view into one server-compatible component both surfaces render (parity by construction); centralize URL logic in pure never-throw helpers + one config registry; uploads swap the preview immediately but destruction only ever runs post-commit best-effort (client after 2xx, server in background), with the cleanup route re-guarding live references so shared URLs survive.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 55: fixed overlays must portal out of transformed ancestors; recall broad then rank strict; mocks must honor exclusion filters
+- **Symptom:** trust breakdown invisible on desktop cards (but fine on mobile/detail); search missed order-swapped and typo'd queries; two search suites failed after the recall rewrite despite correct production logic.
+- **Root causes:** (1) `hover:-translate-y-0.5` on the card re-anchors every `fixed` descendant to the card — viewport math then lands off-screen; the failure only manifests on hover-capable devices, so mobile testing never catches it. (2) single-phrase DB recall conflates recall with ranking — anything the one clause misses is unrecoverable downstream. (3) mocks that echo fixture rows for every call silently break multi-phase recall (phase-2 `notIn` ignored → duplicates), making green tests lie about pagination.
+- **Fix pattern (reuse):** portal every viewport-positioned overlay to document.body (with a hover-bridge delay when the trigger and panel are no longer DOM kin); separate recall (broad ORs + typo head-prefixes, capped) from ranking (deterministic in-memory relevance, exact-first) — DB order then only bounds truncation, never quality; test mocks must simulate the DB contract they stand in for (`notIn` filtering, staggered timestamps, matching content), and rankers must coerce invalid dates (NaN comparators silently scramble order).
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 56: CTA classes need an allowlist, sticky needs self-start
+- **Root causes:** (1) the sanitizer allowed no `class` attribute, so any CTA-class markup would be silently stripped — fixed with an exact-token allowlist (`blog-cta-wrap`/`blog-cta` only) rather than opening `class` broadly; (2) `position: sticky` never engages inside stretching grid rows — the pane needs `self-start` on itself plus `items-start` on the grid parent; (3) a prior degrade-to-link test assertion encoded a decision the directive intentionally overrode — updated the test with the directive cited in-code rather than leaving a red suite.
+- **Fix pattern (reuse):** sanitizer changes always pair markup emission + allowlist + round-trip parsing + a test asserting both preservation and evil-class stripping; sticky panes always ship as config-owned class + style pairs; overridden decisions get re-recorded in project-decisions the same session.
