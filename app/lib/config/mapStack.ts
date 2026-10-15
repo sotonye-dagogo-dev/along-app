@@ -195,11 +195,13 @@ export function hasOrsKey(): boolean {
 
 /** True when a keyed Mapbox override is configured (server-only env). */
 export function hasMapboxKey(): boolean {
-  return !!(
+  // Trimmed: pasted Vercel values may carry stray whitespace/newlines that
+  // would otherwise count as "configured" and fire failing upstream calls.
+  const raw =
     process.env.MAPBOX_TOKEN ??
     process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
-    process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
-  );
+    process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  return typeof raw === "string" ? raw.trim().length > 0 : false;
 }
 
 /**

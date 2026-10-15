@@ -49,6 +49,13 @@ export interface FeedAlgorithmConfig {
   followingWeight: number;
   matchingTagsWeight: number;
   trendingWeight: number;
+  /**
+   * Weight for the viewer's own posts (Sprint 59 inclusion guarantee).
+   * Own posts previously surfaced only through the low-weight recent pool
+   * (0.15) and could be buried under followed content; scoring them at
+   * following-level keeps them visible without excluding anyone else.
+   */
+  ownPostsWeight: number;
   locationBonus: number;
   cacheTtlSeconds: number;
   pageSize: number;

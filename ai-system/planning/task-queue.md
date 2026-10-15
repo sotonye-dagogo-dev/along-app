@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (push-banner opacity + traffic overlay Sprint 58)
-> - last-synced: 2026-10-14 (push-banner opacity + traffic overlay Sprint 58)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 59: feed inclusion + PostCard follow + request labels/FAQ + traffic tightening)
+> - last-synced: 2026-10-15 (Sprint 59)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -836,3 +836,16 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | Traffic UI — `useRouteTraffic` hook + RouteMap chunk overlays + `TrafficLegend` (i icon, hover/click, Escape, token-styled) + NavigationGuide/LiveNavigationModal traffic-aware durations + post-detail single-hook wiring; feed mini-maps opt out (fan-out guard) | [x] |
 | [S] | Docs — FAQ 2 traffic items + tracings refresh (+FAQ_PCM pidgin), README Maps & traffic section, `.env.example` TOMTOM_TRAFFIC_KEY | [x] |
 | [S] | Tests — NEW `traffic.test.ts` (12: surface tokens, order/colors, thresholds, heuristic determinism/bounds/rush-vs-calm, duration blend, chunking, registry, FAQ) | [x] |
+
+## Sprint 59 — Feed Inclusion + PostCard Follow + Request Labels/FAQ + Traffic Tightening (2026-10-15, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; same props + API envelopes, additive optional fields/params only). QA full in-runner: `npm install` ok, tsc 0 errors, jest 83/83 suites 723/723 tests, next lint clean on touched files, `npm run build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Feed inclusion — explicit own-posts pool in `feedService.getFeed` scored at new `FeedAlgorithmConfig.ownPostsWeight` (default = followingWeight 0.7; stored SiteConfig merges by spread so legacy rows keep working; non-finite guard falls back to followingWeight, never zero); non-followed posts unchanged via trending/tag/recent pools (no must-follow filter anywhere) | [x] |
+| [M] | PostCard follow — NEW `POST_FOLLOW_CONFIG` (UserPlus/UserCheck icons, Follow/Following labels, hideWhenFollowing + hideOnOwnPost, responsive classes, statusPath, 120s cache TTL) + barrel; NEW `GET /api/users/[id]/follow` status (guest-safe `{following:false}`, self-flag; registry usersFollow += GET); NEW `useFollowStatus` hook (memory-cache read-through + in-flight dedup, AbortController, never throws); FollowButton `variant` (text legacy / icon / responsive) + `initialFollowing` + `hideWhenFollowing`; NEW `PostCardFollow` beside author identity in PostCard header | [x] |
+| [S] | Request labels — `REQUEST_ROUTE_TRIGGER_CONFIG` += label/shortLabel + responsive button/label classes; `RequestRouteTrigger` renders icon + visible text inside the button (below on mobile, beside on desktop); home composer Request button same treatment (was icon-only on mobile via `hidden sm:inline`) | [x] |
+| [S] | Route-request FAQ + locales — NEW `route-requests` category (5 items: request/respond/tracking/request-vs-route/who-sees) + FAQ_PCM pidgin for all 5; `requestRoute.label`/`shortLabel` in en+pcm (270/270 parity, REQUIRED_KEYS += 2) | [x] |
+| [M] | Traffic tightening — `hasTomtomKey`/`hasMapboxKey`/`viaMapbox`/`viaTomtom` trim pasted env values; NEW `stripNullIsland` (legacy (0,0) placeholders dropped, real stops kept) + `validCoords` rejects null-island; TomTom chunk `indexOf` → explicit indices + speed sanity; per-provider try/catch so a throwing provider falls through to heuristic; legacy guarantee documented (traffic computed live per view, nothing stored → pre-traffic posts never excluded, base line always renders) | [x] |
+| [S] | Tests — NEW `sprint59.test.ts` (14: own-weight, follow config/responsive/registry, trigger labels/layout, FAQ en+pcm, key trim, null-island strip, degenerate graceful shapes, keyless heuristic); `locales.test.ts` REQUIRED_KEYS += 2 | [x] |

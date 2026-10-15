@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, ClipboardList, Reply, Archive, MessagesSquare } from "lucide-react"
 import { AppCard, AppUserLabel, TrustBadge, VehicleChip, ImageLightbox } from "@/app/components/ui"
 import { PostMenu, type PostMenuPost } from "@/app/components/features/moderation"
+import { PostCardFollow } from "./PostCardFollow"
 import { AuthContext } from "@/app/providers/AuthProvider"
 import { useTranslation } from "@/app/providers/I18nProvider"
 import { MODERATION_CONFIG } from "@/app/lib/config"
@@ -304,6 +305,10 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
           showHandle={true}
           linkToProfile={true}
         />
+        {/* Quick-follow beside the author identity (Sprint 59): icon on
+            mobile, Follow text on desktop; hidden on own posts + already-
+            followed authors (see PostCardFollow / POST_FOLLOW_CONFIG). */}
+        <PostCardFollow authorId={user?.id} viewerId={viewerId} />
         <span className="text-xs text-text-muted ml-auto">
           {getTimeAgo(post.createdAt)}
         </span>

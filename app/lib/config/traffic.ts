@@ -80,7 +80,10 @@ export const TRAFFIC_CONFIG: TrafficConfig = {
 
 /** True when the optional TomTom traffic override is configured (server-only env). */
 export function hasTomtomKey(): boolean {
-  return !!process.env.TOMTOM_TRAFFIC_KEY;
+  // Trimmed: pasted Vercel values may carry stray whitespace/newlines that
+  // would otherwise count as "configured" and fire failing upstream calls.
+  const raw = process.env.TOMTOM_TRAFFIC_KEY;
+  return typeof raw === "string" ? raw.trim().length > 0 : false;
 }
 
 /** congestionNumeric (0..100) → level via config thresholds. Pure. */

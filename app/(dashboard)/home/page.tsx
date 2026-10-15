@@ -624,11 +624,20 @@ function HomeContent() {
               e.stopPropagation()
               setShowRequestModal(true)
             }}
-            className="inline-flex items-center gap-1.5 h-8 px-3 radius-md border border-border bg-bg-elevated text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:bg-primary-muted hover:text-primary hover:border-primary-muted transition-colors duration-fast shrink-0"
+            className="inline-flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 px-2 py-1.5 sm:h-8 sm:px-3 radius-md border border-border bg-bg-elevated text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:bg-primary-muted hover:text-primary hover:border-primary-muted transition-colors duration-fast shrink-0"
             aria-label="Request a route"
+            title="Request a route"
           >
-            <ClipboardList size={14} />
-            <span className="hidden sm:inline">Request</span>
+            <ClipboardList size={14} className="shrink-0" aria-hidden />
+            {/* Visible label inside the button (Sprint 59): below the icon
+                on small screens, beside it on larger ones — tapping the text
+                performs the action as part of the button. */}
+            <span className="sm:hidden text-[10px] leading-tight font-semibold whitespace-nowrap" aria-hidden>
+              Request a route
+            </span>
+            <span className="hidden sm:inline whitespace-nowrap" aria-hidden>
+              Request
+            </span>
           </button>
         </div>
 

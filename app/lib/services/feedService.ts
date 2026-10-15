@@ -260,8 +260,19 @@ class FeedService {
     // Excluded rows shrink each candidate pool — over-fetch to still fill pages.
     const backfill = Math.min(seenIds.length, limit);
 
-    // Fetch posts in parallel: following, trending, tag-matched, plus recent fallback for cold-start
-    const [followingPosts, trendingPosts, tagPosts, recentPosts] = await Promise.all([
+    // Fetch posts in parallel: own, following, trending, tag-matched, plus
+    // recent fallback for cold-start. Own posts are an EXPLICIT pool (Sprint 59
+    // inclusion guarantee): the viewer must always see their own posts, and
+    // non-followed users' posts arrive via trending/tag/recent — no pool
+    // filters by "must follow / must be followed", so neither group is ever
+    // excluded. Dedup happens in the score map below (same id counted once).
+    const [ownPosts, followingPosts, trendingPosts, tagPosts, recentPosts] = await Promise.all([
+      safeFindManyPosts({
+        where: { userId, ...excludeFilter, ...cursorFilter },
+        include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
+        orderBy: { createdAt: "desc" },
+        take: limit + backfill,
+      }),
       followingIds.length > 0 ? safeFindManyPosts({
         where: { userId: { in: followingIds }, ...excludeFilter, ...cursorFilter },
         include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
@@ -378,6 +389,15 @@ class FeedService {
     addWithScore(tagPosts, config.matchingTagsWeight);
     // Recent posts with higher recency bonus ensures new posts surface immediately
     addWithScore(recentPosts, 0.15, 0.08);
+    // Own-posts inclusion (Sprint 59): scored at following-level so self
+    // posts are never buried under followed content. Non-finite stored
+    // values (legacy SiteConfig rows) fall back to followingWeight — never
+    // to zero, which would silently re-exclude them.
+    const ownWeight =
+      typeof config.ownPostsWeight === "number" && Number.isFinite(config.ownPostsWeight)
+        ? config.ownPostsWeight
+        : config.followingWeight;
+    addWithScore(ownPosts, ownWeight);
 
     // If total scored posts < limit (e.g. cold-start with few posts), ensure we still fill up to limit with recent posts not yet scored
     if (postMap.size < limit) {

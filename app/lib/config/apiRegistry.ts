@@ -36,7 +36,7 @@ export const API_REGISTRY: Record<string, ApiEndpoint> = {
   usersEarlyAdopters: { path: "/api/users/early-adopters", methods: ["GET"], auth: false },
   usersSearch: { path: "/api/users/search", methods: ["GET"], auth: false, rateLimit: "search" },
   search: { path: "/api/search", methods: ["GET"], auth: false, rateLimit: "search" },
-  usersFollow: { path: "/api/users/[id]/follow", methods: ["POST", "DELETE"], auth: true },
+  usersFollow: { path: "/api/users/[id]/follow", methods: ["GET", "POST", "DELETE"], auth: true },
   usersAvatar: { path: "/api/users/[id]/avatar", methods: ["PATCH"], auth: true },
   usersSuggestions: { path: "/api/users/suggestions", methods: ["GET"], auth: true },
   notifications: { path: "/api/notifications", methods: ["GET", "PATCH"], auth: true },
