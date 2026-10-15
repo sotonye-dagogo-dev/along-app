@@ -3,6 +3,11 @@
 import { createContext, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toastService } from "@/app/lib/services/toastService";
+import {
+  readAuthSnapshot,
+  writeAuthSnapshot,
+  clearAuthSnapshot,
+} from "@/app/lib/config/authOffline";
 
 type User = {
   id: string;
@@ -37,8 +42,14 @@ type AuthContextValue = {
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Hydrate synchronously from the last server-confirmed session so an
+  // offline reload keeps the signed-in identity (no guest-banner flash) even
+  // before /api/auth/me can respond. Display-only: APIs still validate the
+  // httpOnly cookie server-side.
+  const [user, setUser] = useState<User | null>(() => readAuthSnapshot() as User | null);
+  // When we boot from a snapshot we are *not* loading the identity — only
+  // revalidating it. Starting unblocked keeps offline first paint signed-in.
+  const [isLoading, setIsLoading] = useState<boolean>(() => readAuthSnapshot() === null);
   const router = useRouter();
   const fetchingRef = useRef(false);
 
@@ -50,7 +61,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         try {
           const data = await res.json();
-          setUser(data.user ?? data);
+          const next = (data.user ?? data) as User;
+          setUser(next);
+          // Server-confirmed — refresh the offline snapshot.
+          writeAuthSnapshot({
+            id: next.id,
+            userName: next.userName,
+            firstName: next.firstName,
+            lastName: next.lastName,
+            email: next.email,
+            avatar: next.avatar,
+            avatarConfig: next.avatarConfig ?? null,
+            role: next.role,
+          });
         } catch {
           // Non-JSON response (e.g. gateway timeout HTML) — transient, keep session.
           console.warn("[AuthProvider] /api/auth/me non-JSON — transient, session kept");
@@ -63,7 +86,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return fetchUser(true);
           }
           // Refresh explicitly rejected (401) — session genuinely invalid.
-          if (refreshRes.status === 401) setUser(null);
+          if (refreshRes.status === 401) {
+            setUser(null);
+            clearAuthSnapshot();
+          }
           // Otherwise (5xx / network): transient — keep last-known session so
           // users are never randomly logged out by a blip or offline restore.
         } catch {
@@ -72,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (res.status === 401) {
         // Second 401 (already retried) — genuinely unauthenticated.
         setUser(null);
+        clearAuthSnapshot();
       } else if (res.status === 504 || res.status === 502 || res.status === 503) {
         // Transient server error — don't clear user aggressively, keep guest state quiet
         // Log but don't treat as auth failure
@@ -80,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn(`[AuthProvider] /api/auth/me ${res.status} — transient, session kept`);
       } else {
         setUser(null);
+        clearAuthSnapshot();
       }
     } catch {
       // Network failure (offline / airplane mode) — keep last-known session.
@@ -108,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    clearAuthSnapshot();
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch {
