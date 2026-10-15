@@ -206,22 +206,28 @@ export async function POST(request: NextRequest) {
 
     // Fan-out notifications for route requests/responses/uploads —
     // non-blocking, never throws.
-    // - ROUTE_REQUEST → followers (someone you follow needs a route).
+    // - ROUTE_REQUEST → community-wide (followers first, then recent members
+    //   up to the admin-capped audience — no follow relationship required).
     // - ROUTE_RESPONSE → the request author (your request got an answer).
     // - ROUTE / ROUTE_RESPONSE → followers as NEW_ROUTE (someone you follow
     //   shared a route). The request author is excluded from the follower
     //   fan-out so they never get two notifications for one response.
     try {
-      const { createNotification, getFollowerIds } = await import("@/app/lib/services/notificationService");
+      const { createNotification, getFollowerIds, getRouteRequestAudienceIds } = await import("@/app/lib/services/notificationService");
       const actorName = `${(user as { firstName?: string }).firstName ?? ""} ${(user as { lastName?: string }).lastName ?? ""}`.trim() || "Someone";
       if (type === "ROUTE_REQUEST") {
-        const followers = await getFollowerIds(user.id as string);
+        let audience: string[] = [];
+        try {
+          audience = await getRouteRequestAudienceIds(user.id as string);
+        } catch {
+          audience = await getFollowerIds(user.id as string);
+        }
         void createNotification({
           type: "ROUTE_REQUEST",
           actorId: user.id as string,
           message: `${actorName} is looking for a route: "${title}"`,
           postId: post.id,
-          recipientIds: followers,
+          recipientIds: audience,
         });
       } else if (type === "ROUTE_RESPONSE" && quotedAuthorId) {
         void createNotification({

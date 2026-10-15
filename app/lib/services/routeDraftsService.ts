@@ -162,8 +162,14 @@ function toDraft(raw: unknown): RouteDraft | null {
 function legacyToDraft(raw: unknown): RouteDraft | null {
   const draft = toDraft(raw);
   if (!draft) return null;
+  // Same usable-content rule as hasUsableContent: a location-only draft (or
+  // description/tags-only) is real progress and must survive migration.
   const hasContent =
-    draft.title.trim().length > 0 || draft.steps.length > 0 || draft.images.length > 0;
+    draft.title.trim().length > 0 ||
+    draft.description.trim().length > 0 ||
+    draft.steps.length > 0 ||
+    draft.images.length > 0 ||
+    draft.tags.length > 0;
   return hasContent ? draft : null;
 }
 

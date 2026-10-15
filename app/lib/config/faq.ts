@@ -103,7 +103,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "who-sees-request",
         question: "Who sees my route request — do they need to follow me?",
         answer:
-          "Everyone. Requests surface in the Home feed, Explore, and search for the whole community, and your followers get a dedicated notification when you post one. Guests need to sign in before they can request or respond.",
+          "Everyone — no follow needed. Requests surface in the Home feed, Explore, and search for the whole community, and every member gets an in-app notification (plus push where enabled) when you post one. Guests need to sign in before they can request or respond.",
       },
     ],
   },
@@ -436,7 +436,7 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "who-sees-request": {
     question: "Who dey see my route request — dem must follow me?",
     answer:
-      "Everybody. Requests dey show for Home feed, Explore, and search for di whole community, and your followers go get special notification when you post one. Guests must sign in before dem fit request or respond.",
+      "Everybody — no need to follow. Requests dey show for Home feed, Explore, and search for di whole community, and every member go get in-app notification (plus push where dem on am) when you post one. Guests must sign in before dem fit request or respond.",
   },
   "how-to-leave-review": {
     question: "How I go take drop platform review?",

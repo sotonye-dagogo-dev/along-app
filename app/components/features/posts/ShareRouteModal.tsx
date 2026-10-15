@@ -603,7 +603,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   }
 
   const applyDraft = useCallback((draft: RouteDraft) => {
-    if (draft.title) setTitle(draft.title)
+    // Title resets unconditionally: a location-only draft (empty title) must
+    // clear any stale composer title instead of inheriting it.
+    setTitle(draft.title ?? "")
     setDescription(draft.description ?? "")
     if (draft.steps.length >= 2) {
       setSteps(
@@ -617,7 +619,23 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
           _geoLoading: false,
         }))
       )
+    } else if (draft.steps.length === 1) {
+      // Location-only draft: the composer needs Origin + Destination rows, so
+      // the single saved stop restores as Origin (coords preserved) with a
+      // fresh empty Destination. Share stays disabled until the second
+      // location is filled — savable but not shareable, by design.
+      const only = draft.steps[0]
+      setSteps([
+        {
+          ...only,
+          _fareRaw: typeof only.fare === "number" && only.fare > 0 ? String(only.fare) : "",
+          _geoResults: [],
+          _geoLoading: false,
+        },
+        { location: "", description: "", vehicle: "", fare: 0, _fareRaw: "", _geoResults: [], _geoLoading: false },
+      ])
     }
+    // 0-step drafts (title/tags/images-only) keep the current step rows.
     setTags(draft.tags)
     setImages(draft.images)
     setActiveDraftId(draft.id)

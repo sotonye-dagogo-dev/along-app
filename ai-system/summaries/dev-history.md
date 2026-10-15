@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 59: feed inclusion + PostCard follow + request labels/FAQ + traffic tightening)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community route-request fan-out + location-only draft restore)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
@@ -1377,8 +1377,6 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Implemented:** `guardLivePostReferences` + `filterUnreferencedUrls` choke-point guard (fail-open, TOCTOU-closing, `skippedReferenced` observability) with upload/cleanup delegating to it; `BlogShareNetworkIcon` keys + `ShareNetworkIcon` (Facebook lucide, inline X/WhatsApp SVG, generic fallback); `FEED_FIRST_LOAD_CONFIG` + `seededRand` + home `isReady` single-fetch gate with pre-ready emission hold. NEW `tighteningMediaShareFeed.test.ts` (9) + `ShareNetworkIcon.test.tsx` (2); `mediaCleanup.test.ts` +4.
 **QA:** full gate green in-runner — tsc 0 errors, jest 81/81 suites 697/697 tests, lint clean on touched files, `npm run build` clean.
 **Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
-
-**Session 2026-10-14 — Push-banner opacity + keyless traffic overlay (execute-feature).**
 **Directive:** design-system-compliant push banner in dark theme; traffic from employed or new keyless providers for map + navigation with durations, yellow/red segments, "i" legend, FAQ/README updates.
 **Found:** (1) push banner used 15%-alpha info fill in dark (invisible on Android); (2) no employed provider has keyless traffic — Mapbox congestion and TomTom flow are keyed-only; honest keyless = deterministic rush-pattern estimate labeled as such; (3) RouteMap hooks-after-early-return lint violations pre-existing.
 **Implemented:** opaque `PUSH_PROMPT_CONFIG.surface` + restyle; `TRAFFIC_CONFIG` + `trafficService` + `/api/maps/traffic` + `useRouteTraffic` + RouteMap overlays + `TrafficLegend` + guide/modal durations + post-detail wiring + hook-order fix; FAQ/README/env docs; NEW `traffic.test.ts` (12).
@@ -1404,4 +1402,11 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Found:** near-white `-50` vehicle washes with no border; `bg-success/error text-white` white-on-pastel pills (AuthLinkPanel, admin email/users, notifications) — same class as the earlier EmailSecurityPanel fix; raw metallic tier hues in RewardsPanel/AppUserLabel; TrustBadge hardcoded hex; config API DB-rows-only with no defaults/restore/audit/idempotency.
 **Implemented:** `-100` washes + per-type `borderClass` + bordered semibold chips; tokenized TrustBadge + border; `REWARD_TIER_DISPLAY`/`rewardTierPillClass` + all pill fixes; `ADMIN_CONFIG_DEFAULTS`/`mergeAdminConfigsWithDefaults`/`validateAdminConfigValue`/`ADMIN_SIMPLE_CONFIG_CARDS`/`ADMIN_DEDICATED_CONFIG_KEYS` + merged GET/virtual rows/`defaults` catalog + `restore` + audit + idempotent DELETE + page badges/cards/raw-list split.
 **QA:** full gate green in-runner — tsc 0 errors, jest 85/85 suites 736/736 tests, lint clean on touched files, build deferred to CI/Vercel.
+**Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
+
+**Session 2026-10-15 — Community route-request fan-out + location-only draft restore (execute-feature).**
+**Directive:** route-request notifications must fire whether or not any follow relationship exists; draft saving must survive when the only input is a location (location vanished on restore while fuller drafts kept it). Install node modules + proper QA. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Found:** (1) POST `/api/posts` ROUTE_REQUEST branch fanned out to `getFollowerIds` only — `createNotification` no-ops on `[]`, so non-followed members never heard; (2) `ShareRouteModal.applyDraft` gated `setSteps` on `draft.steps.length >= 2` — a location-only draft persists as 1 step, so restore never ran and the composer kept empty rows (plus `if (draft.title)` left stale titles); (3) `legacyToDraft` hasContent ignored description/tags.
+**Implemented:** NEW `config/routeRequestAudience.ts` (community default, 500 cap / 1–5000 bounds, excludeDeleted, SiteConfig key + normalize/validate + admin meta) + barrel; `notificationService.getRouteRequestAudienceIds` (followers-first, then recent non-deleted members to cap, self excluded, never throws, followers-only legacy mode); ROUTE_REQUEST branch uses the audience with followers fallback; admin registration (editors + defaults + central validation + no-code card); applyDraft 1-step → Origin + empty Destination with coords, unconditional title reset; legacy hasContent matches hasUsableContent; FAQ who-sees-request (en + pidgin) states community-wide notification.
+**QA:** full gate green in-runner (`npm install` ok): `npx tsc --noEmit` 0 errors; `npx jest` 86/86 suites 742/742 tests (NEW routeRequestAudience 4, routeDrafts +2, posts community-audience case); `next lint` zero findings on touched files (pre-existing errors in untouched files left alone); build deferred to CI/Vercel (needs DB URL).
 **Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
