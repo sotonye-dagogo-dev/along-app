@@ -72,6 +72,42 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
     ],
   },
   {
+    id: "route-requests",
+    category: "Route Requests",
+    items: [
+      {
+        id: "how-to-request-route",
+        question: "How do I request a route?",
+        answer:
+          "Tap “Request a route” — the Request button in the Home composer (below the icon on small screens, beside it on larger ones) or the “Request?” icon in the Share-a-Route modal header. Describe where you want to go from and to, add any stops you know, pick tags that match (they help the right people find it), and post. Your request appears in feeds with a yellow Route request flag so the community can spot it.",
+      },
+      {
+        id: "how-to-respond-request",
+        question: "How do I respond to someone's route request?",
+        answer:
+          "Open the request and tap “Respond to this request”. The composer opens in response mode with the request attached — your route automatically inherits the request's tags, and the linkage is preserved even if you save a draft mid-way or edit your response later. Post it and the requester gets notified.",
+      },
+      {
+        id: "request-tracking",
+        question: "How do I know when my request gets a response?",
+        answer:
+          "You get an in-app notification (plus push and email where enabled) as soon as someone responds. Responses are listed comment-style on the expanded request view with links straight to each response route, and the request card shows a live count with a “View responses” link.",
+      },
+      {
+        id: "request-vs-route",
+        question: "Why does my request show no map, fare, or trust score?",
+        answer:
+          "A request is not a route — it is a call for routes, so there is nothing to trace, price, or score yet. Maps, navigation guides, fares, and trust scores stay hidden on requests by design; they appear on the response routes the community posts for you.",
+      },
+      {
+        id: "who-sees-request",
+        question: "Who sees my route request — do they need to follow me?",
+        answer:
+          "Everyone. Requests surface in the Home feed, Explore, and search for the whole community, and your followers get a dedicated notification when you post one. Guests need to sign in before they can request or respond.",
+      },
+    ],
+  },
+  {
     id: "profile-avatar",
     category: "Profile & Avatar",
     items: [
@@ -376,6 +412,31 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     question: "How I go take report bad content?",
     answer:
       "Open di menu (⋯) for di post come choose Report, den pick reason — di report dey go straight to our moderation team and e go remain anonymous. You fit still send extra gist through Contact page or file platform issue via Report Bug page. Admins dey review every report and dem go notify you of di outcome.",
+  },
+  "how-to-request-route": {
+    question: "How I go take request route?",
+    answer:
+      "Tap “Request a route” — di Request button for Home composer (below icon for small screens, beside am for bigger ones) or di “Request?” icon for Share-a-Route modal header. Describe where you wan start and where you wan go, add any stops wey you know, pick tags wey match (e go help di right people find am), come post. Your request go show for feeds with yellow Route request flag so community fit spot am.",
+  },
+  "how-to-respond-request": {
+    question: "How I go take answer pesin route request?",
+    answer:
+      "Open di request come tap “Respond to this request”. Di composer go open for response mode with di request attached — your route go automatically carry di request tags, and di linkage go remain even if you save draft for middle or edit your response later. Post am and di pesin wey request go get notified.",
+  },
+  "request-tracking": {
+    question: "How I go take know when my request get answer?",
+    answer:
+      "You go get in-app notification (plus push and email where you don on am) once pesin respond. Responses dey listed like comments for di expanded request view with links straight to each response route, and di request card dey show live count with “View responses” link.",
+  },
+  "request-vs-route": {
+    question: "Why my request no show map, fare, or trust score?",
+    answer:
+      "Request no be route — na call for routes, so nothing dey to trace, price, or score yet. Maps, navigation guides, fares, and trust scores dey hidden for requests on purpose; dem go appear for di response routes wey community post for you.",
+  },
+  "who-sees-request": {
+    question: "Who dey see my route request — dem must follow me?",
+    answer:
+      "Everybody. Requests dey show for Home feed, Explore, and search for di whole community, and your followers go get special notification when you post one. Guests must sign in before dem fit request or respond.",
   },
   "how-to-leave-review": {
     question: "How I go take drop platform review?",

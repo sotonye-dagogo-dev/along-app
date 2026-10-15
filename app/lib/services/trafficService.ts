@@ -70,8 +70,29 @@ function validCoords(coords: TrafficCoord[]): boolean {
         c.lat >= -90 &&
         c.lat <= 90 &&
         c.lng >= -180 &&
-        c.lng <= 180
+        c.lng <= 180 &&
+        // Null-island (0,0) is never a real stop — legacy rows that predate
+        // coordinate capture (or carry placeholder zeros) must not reach
+        // upstream providers; they fall through to the heuristic/base map.
+        !(c.lat === 0 && c.lng === 0)
     )
+  );
+}
+
+/**
+ * Strip null-island points from a coordinate list (pure). Legacy routes
+ * made before traffic existed may carry (0,0) placeholders alongside real
+ * stops — dropping just the placeholders keeps the real geometry (and its
+ * traffic overlay) instead of discarding the whole route.
+ */
+export function stripNullIsland(coords: TrafficCoord[]): TrafficCoord[] {
+  if (!Array.isArray(coords)) return [];
+  return coords.filter(
+    (c) =>
+      c &&
+      typeof c.lat === "number" &&
+      typeof c.lng === "number" &&
+      !(c.lat === 0 && c.lng === 0),
   );
 }
 
@@ -136,10 +157,11 @@ function heuristicLevels(coords: TrafficCoord[], at: Date = new Date()): Traffic
 }
 
 async function viaMapbox(coords: TrafficCoord[]): Promise<TrafficLevel[] | null> {
-  const token =
+  const raw =
     process.env.MAPBOX_TOKEN ??
     process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
     process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  const token = typeof raw === "string" ? raw.trim() : "";
   if (!token) return null;
   try {
     const limited = coords.slice(0, 25);
@@ -170,17 +192,19 @@ async function viaMapbox(coords: TrafficCoord[]): Promise<TrafficLevel[] | null>
 }
 
 async function viaTomtom(coords: TrafficCoord[]): Promise<TrafficLevel[] | null> {
-  const key = process.env.TOMTOM_TRAFFIC_KEY;
+  const key = process.env.TOMTOM_TRAFFIC_KEY?.trim();
   if (!key) return null;
   try {
     const chunks = chunkCoords(coords);
     // Sample each chunk midpoint (cap 5 upstream calls to bound cost/latency).
-    const sampled = chunks.filter((_, i) => i % Math.max(1, Math.floor(chunks.length / 5)) === 0).slice(0, 5);
+    const step = Math.max(1, Math.floor(chunks.length / 5));
+    const sampledIdx = chunks.map((_, i) => i).filter((i) => i % step === 0).slice(0, 5);
     const indexed = new Map<number, TrafficLevel>();
     await Promise.all(
-      sampled.map(async (_, s) => {
-        const chunkIdx = chunks.indexOf(sampled[s]);
-        const mid = coords[Math.floor((sampled[s].from + sampled[s].to) / 2)];
+      sampledIdx.map(async (chunkIdx) => {
+        const chunk = chunks[chunkIdx];
+        if (!chunk) return;
+        const mid = coords[Math.floor((chunk.from + chunk.to) / 2)];
         if (!mid) return;
         const url =
           `https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json` +
@@ -190,7 +214,16 @@ async function viaTomtom(coords: TrafficCoord[]): Promise<TrafficLevel[] | null>
         } | null;
         const cur = data?.flowSegmentData?.currentSpeed;
         const free = data?.flowSegmentData?.freeFlowSpeed;
-        if (typeof cur === "number" && typeof free === "number" && free > 0) {
+        // Sanity: speeds must be non-negative with a positive free-flow
+        // baseline, otherwise the ratio is meaningless — skip the sample.
+        if (
+          typeof cur === "number" &&
+          typeof free === "number" &&
+          Number.isFinite(cur) &&
+          Number.isFinite(free) &&
+          cur >= 0 &&
+          free > 0
+        ) {
           indexed.set(chunkIdx, levelForCongestion((1 - cur / free) * 100));
         }
       })
@@ -220,12 +253,23 @@ async function viaTomtom(coords: TrafficCoord[]): Promise<TrafficLevel[] | null>
  * flow (keyed) → deterministic heuristic estimate (always). Redis
  * read-through on an hourly bucket; never throws — falls back to an
  * all-`low` heuristic shape so callers can always render.
+ *
+ * Legacy guarantee (Sprint 59): routes/posts made before traffic existed
+ * carry no stored traffic — traffic is computed live per view from the
+ * route geometry, so they are never excluded. Degenerate inputs (fewer
+ * than 2 usable coords after null-island stripping, undecodable polylines)
+ * return the empty heuristic shape and the caller renders the base
+ * untrafficked line; upstream/key failures degrade provider-by-provider to
+ * the heuristic, never to an error.
  */
 export async function getTrafficForRoute(
   coords: TrafficCoord[],
   baseDurationMins: number
 ): Promise<TrafficResult> {
-  const safe = validCoords(coords) ? coords.slice(0, 200) : [];
+  // Strip (0,0) placeholders first so a legacy row with mostly-real stops
+  // keeps its overlay instead of failing validation outright.
+  const stripped = stripNullIsland(Array.isArray(coords) ? coords : []);
+  const safe = validCoords(stripped) ? stripped.slice(0, 200) : [];
   if (safe.length < 2) {
     return { segments: [], provider: "heuristic", estimated: true, baseDurationMins: 0, adjustedDurationMins: 0 };
   }
@@ -238,16 +282,23 @@ export async function getTrafficForRoute(
   }
   let result: TrafficResult | null = null;
   for (const name of TRAFFIC_CONFIG.providerOrder) {
-    if (name === "mapbox") {
-      if (!hasMapboxKey()) continue;
-      const levels = await viaMapbox(safe);
-      if (levels) result = finish(safe, levels, "mapbox", baseDurationMins);
-    } else if (name === "tomtom") {
-      if (!hasTomtomKey()) continue;
-      const levels = await viaTomtom(safe);
-      if (levels) result = finish(safe, levels, "tomtom", baseDurationMins);
-    } else {
-      result = finish(safe, heuristicLevels(safe), "heuristic", baseDurationMins);
+    // Each provider is independently guarded: a throwing provider must fall
+    // through to the next (ultimately the heuristic), never abort the loop.
+    try {
+      if (name === "mapbox") {
+        if (!hasMapboxKey()) continue;
+        const levels = await viaMapbox(safe);
+        if (levels) result = finish(safe, levels, "mapbox", baseDurationMins);
+      } else if (name === "tomtom") {
+        if (!hasTomtomKey()) continue;
+        const levels = await viaTomtom(safe);
+        if (levels) result = finish(safe, levels, "tomtom", baseDurationMins);
+      } else {
+        result = finish(safe, heuristicLevels(safe), "heuristic", baseDurationMins);
+      }
+    } catch {
+      result = null;
+      continue;
     }
     if (result) break;
   }
@@ -260,4 +311,4 @@ export async function getTrafficForRoute(
   return finalResult;
 }
 
-export const trafficService = { getTrafficForRoute, decodeRouteCoords, chunkCoords, trafficCacheKey };
+export const trafficService = { getTrafficForRoute, decodeRouteCoords, chunkCoords, trafficCacheKey, stripNullIsland };

@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-14 (Sprint 55: trust portal + admin collapse + scrollbars + feed diversity + loose search)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 59: feed inclusion + PostCard follow + request labels/FAQ + traffic tightening)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
@@ -1383,4 +1383,11 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Found:** (1) push banner used 15%-alpha info fill in dark (invisible on Android); (2) no employed provider has keyless traffic — Mapbox congestion and TomTom flow are keyed-only; honest keyless = deterministic rush-pattern estimate labeled as such; (3) RouteMap hooks-after-early-return lint violations pre-existing.
 **Implemented:** opaque `PUSH_PROMPT_CONFIG.surface` + restyle; `TRAFFIC_CONFIG` + `trafficService` + `/api/maps/traffic` + `useRouteTraffic` + RouteMap overlays + `TrafficLegend` + guide/modal durations + post-detail wiring + hook-order fix; FAQ/README/env docs; NEW `traffic.test.ts` (12).
 **QA:** full gate green in-runner — tsc 0 errors, jest 82/82 suites 709/709 tests, lint clean on touched files (4 pre-existing errors fixed), `npm run build` clean.
+**Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
+
+**Session 2026-10-15 — Feed inclusion + PostCard follow + request labels/FAQ + traffic tightening (execute-feature).**
+**Directive:** feed must not exclude own/non-followed posts; inline follow beside post author (mobile icon, desktop text, hidden when following); route-request FAQ; visible "Request a route" text in/beside the trigger; TomTom + legacy traffic tightening.
+**Found:** (1) feed exclusion was a ranking gap, not a filter gap (own 0.15 vs followed 0.7); (2) no card-level follow affordance or status endpoint; (3) request labels lived only in aria attributes; (4) no route-request FAQ; (5) traffic live-computed (legacy safe) but (0,0)-tolerant, untrimmed keys, fragile TomTom indexing, unguarded provider loop.
+**Implemented:** explicit own-posts pool at `ownPostsWeight` (= followingWeight); `POST_FOLLOW_CONFIG` + follow-status GET + `useFollowStatus` + FollowButton responsive variant + `PostCardFollow`; in-button responsive request labels (trigger + composer); `route-requests` FAQ + PCM + locale keys; traffic trim/strip/index/guard hardening.
+**QA:** full gate green in-runner — tsc 0 errors, jest 83/83 suites 723/723 tests, lint clean on touched files, `npm run build` clean.
 **Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.

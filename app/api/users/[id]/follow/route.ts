@@ -25,6 +25,41 @@ async function enqueueAuthorTrustRefresh(authorId: string): Promise<void> {
   }
 }
 
+/**
+ * GET /api/users/[id]/follow — lightweight follow-status check.
+ * Returns `{ following: boolean }` for the viewer → target pair.
+ * Additive (Sprint 59): powers the inline post-card follow affordance so
+ * cards can hide the button when the viewer already follows. Guest-safe:
+ * unauthenticated callers get `{ following: false }` (never a 401 that
+ * would surface as an error on cards); unknown users get 404.
+ */
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const currentUser = await getUserFromRequest();
+
+    if (!currentUser) {
+      return NextResponse.json({ following: false }, { status: 200 });
+    }
+
+    if (currentUser.id === id) {
+      return NextResponse.json({ following: false, self: true }, { status: 200 });
+    }
+
+    const existing = await prisma.follow.findUnique({
+      where: { followerId_followingId: { followerId: currentUser.id as string, followingId: id } },
+    });
+
+    return NextResponse.json({ following: !!existing }, { status: 200 });
+  } catch (error) {
+    console.error("Follow-status error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -1,7 +1,7 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (Sprint 57: media cross-post guard, share icons, feed first-load)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 59: feed own-pool + PostCard follow + request labels/FAQ + traffic tightening)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -57,7 +57,7 @@
 > **Section summary:** The primary user-facing features — posting routes, feed, interactions.
 
 - [x] Post creation API (`app/api/posts/route.ts`)
-- [x] Feed with pagination (`app/api/posts/feed/`, `app/lib/services/feedService.ts`). Sprint 57: first-load readiness gate (single geo-aware fetch, `isReady` skeleton hold, seeded diversity jitter per viewer + UTC day)
+- [x] Feed with pagination (`app/api/posts/feed/`, `app/lib/services/feedService.ts`). Sprint 57: first-load readiness gate (single geo-aware fetch, `isReady` skeleton hold, seeded diversity jitter per viewer + UTC day). Sprint 59: explicit own-posts pool at `ownPostsWeight` (= followingWeight) — self + non-followed posts never excluded, ranking gap closed
 - [x] Like/unlike posts (`app/api/posts/[id]/like/`, PostCard, post detail page)
 - [x] Comment system (`app/components/features/comments/`)
 - [x] Bookmark/save posts (`app/(dashboard)/bookmarks/`)

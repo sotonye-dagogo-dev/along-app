@@ -52,6 +52,8 @@ const REQUIRED_KEYS = [
   "empty.feed.title",
   "common.moreOptions",
   "post.unarchive",
+  "requestRoute.label",
+  "requestRoute.shortLabel",
 ];
 
 describe("locale parity (en/pcm)", () => {
