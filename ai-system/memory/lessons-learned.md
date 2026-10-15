@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (Sprint 55: portal/fixed overlays, recall-vs-rank, honest mocks)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 59: ranking-vs-filter gaps, hide-when-following, env trim, index-free sampling)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -829,3 +829,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Notice banners must be opaque in both themes:** translucent semantic fills (dark `--color-info` at 15% alpha) wash out on dark/Android WebViews. Fix at the config layer (`surface` tokens: solid card + semantic border/text) so all variants inherit it.
 - **Hooks after an early return are a latent lint break:** RouteMap's `mapError` return sat above 4 hooks since its introduction and only surfaced when the file was linted. Fix = move the return below the hooks (pure reorder, no behaviour change). When touching legacy components, lint the file even if you didn't add hooks.
 - **Jest ESM stub for redis-importing services:** `@upstash/redis → uncrypto` breaks the jest transform; the hoisted `jest.mock("@/app/lib/db/redis")` stub (get → null, set → no-op) used by emailStudio/mapStack suites works for any service-level pure-helper test. Reuse verbatim.
+
+## Sprint 59 (2026-10-15): ranking-vs-filter gaps, hide-when-following, env trim, index-free sampling
+- **Symptom:** "my posts / strangers' posts never appear in my feed" — but no query filtered them out; request trigger had no visible label (only aria); TomTom key set on Vercel yet traffic stayed heuristic; legacy-route maps feared excluded.
+- **Root causes:** (1) exclusion-by-ranking: own posts scored 0.15 vs followed 0.7, so they were present but buried — verified by reading all four feed pools before changing anything. (2) follow state lived only in component local-state with no read endpoint, so cards could never know to hide. (3) pasted env values carry whitespace that passes truthiness checks and then fails upstream. (4) `array.indexOf(ref)` on derived chunk arrays is fragile indirection for an index the loop already owns.
+- **Fix pattern (reuse):** when users report missing rows, audit RANKING before FILTERING (log pool contributions); follow/status affordances need a cached GET + hook, not just POST/DELETE; trim every server-read env key at the check site (both the gate and the consumer); sample by explicit index, never by re-finding references; null-island (0,0) is a data smell — strip placeholders, keep real geometry. Tests assert the graceful shape (empty heuristic, no throw), not just the happy path.
+- **Supersedes:** None
+- **Superseded by:** None

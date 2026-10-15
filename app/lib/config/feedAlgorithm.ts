@@ -4,6 +4,15 @@ export const DEFAULT_FEED_CONFIG: FeedAlgorithmConfig = {
   followingWeight: 0.7,
   matchingTagsWeight: 0.2,
   trendingWeight: 0.1,
+  /**
+   * Own-posts inclusion weight (Sprint 59): the viewer's own posts are
+   * fetched as an explicit pool and scored here (following-level) so the
+   * feed never buries — let alone excludes — self posts or non-followed
+   * users' posts (those arrive via trending/tag/recent pools). Stored
+   * SiteConfig `feedAlgorithm` rows merge by spread, so rows written before
+   * this knob existed keep working (default applies for the missing key).
+   */
+  ownPostsWeight: 0.7,
   locationBonus: 0.15,
   cacheTtlSeconds: 300,
   pageSize: 10,

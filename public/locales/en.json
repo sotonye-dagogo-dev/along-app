@@ -266,5 +266,7 @@
   "avatar.menu.view": "View larger",
   "avatar.menu.title": "Profile photo",
   "avatar.menu.hint": "Pick a style, seed & background",
-  "avatar.menu.camera": "Avatar options"
+  "avatar.menu.camera": "Avatar options",
+  "requestRoute.label": "Request a route",
+  "requestRoute.shortLabel": "Request"
 }
