@@ -600,7 +600,7 @@ export default function AdminUsersPage() {
           label: "Verify",
           icon: Check,
           title: "Mark email verified (user is notified)",
-          className: "bg-success text-white",
+          className: "bg-success text-success-text",
           onSelect: () => handleVerifyChange(u.id, true),
         })
       }
@@ -671,7 +671,7 @@ export default function AdminUsersPage() {
           label: busyLabel("Reverse deletion"),
           icon: Undo2,
           title: "Reverse the pending request — restores the account",
-          className: "bg-success text-white",
+          className: "bg-success text-success-text",
           disabled: busy,
           disabledReason: "Request in progress…",
           onSelect: () => handleCancelDeletion(u),
@@ -804,7 +804,7 @@ export default function AdminUsersPage() {
         <span className="inline-flex items-center gap-1.5 flex-wrap">
           <button onClick={() => handleBulkRole("ADMIN")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-primary-muted text-primary border-none font-semibold cursor-pointer disabled:opacity-50">Make admin</button>
           <button onClick={() => handleBulkRole("USER")} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-bg-elevated text-text-secondary border border-border cursor-pointer disabled:opacity-50">Demote</button>
-          <button onClick={() => handleBulkVerify(true)} disabled={bulk.count === 0 || bulkBusy} title="Mark selected emails verified" className="px-2 py-1 radius-sm bg-success text-white border-none font-semibold cursor-pointer disabled:opacity-50">Verify emails</button>
+          <button onClick={() => handleBulkVerify(true)} disabled={bulk.count === 0 || bulkBusy} title="Mark selected emails verified" className="px-2 py-1 radius-sm bg-success text-success-text border border-success-border font-semibold cursor-pointer disabled:opacity-50">Verify emails</button>
           <button onClick={handleBulkSuspend} disabled={bulk.count === 0 || bulkBusy} className="px-2 py-1 radius-sm bg-error text-error-text border-none font-semibold cursor-pointer disabled:opacity-50">Suspend</button>
           <button onClick={handleBulkDelete} disabled={bulk.count === 0 || bulkBusy} title="Safe deletion: 7-day grace, posts anonymized" className="px-2 py-1 radius-sm bg-error text-error-text border border-error-border font-semibold cursor-pointer disabled:opacity-50">Delete (safe)</button>
         </span>
@@ -876,7 +876,7 @@ export default function AdminUsersPage() {
                 </td>
                 <td className="px-4 py-3 border-b border-border whitespace-nowrap">
                   <span className={`inline-flex items-center px-2 py-0.5 radius-pill text-[10px] font-semibold ${
-                    u.verified ? "bg-success text-white" : "bg-warning text-warning-text"
+                    u.verified ? "bg-success text-success-text border border-success-border" : "bg-warning text-warning-text border border-warning-border"
                   }`}>
                     {u.verified ? "Verified" : "Unverified"}
                   </span>

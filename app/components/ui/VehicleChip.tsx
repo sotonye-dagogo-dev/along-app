@@ -17,14 +17,17 @@ export function VehicleChip({
   // `config.icon` (callers cast free-form route JSON to VehicleType).
   if (!config) return null;
   const Icon = config.icon;
+  const border = config.borderClass ?? "";
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 radius-pill ${config.bgClass} ${config.textClass} ${
+      title={config.label}
+      aria-label={`Vehicle: ${config.label}`}
+      className={`inline-flex items-center gap-1.5 radius-pill border font-semibold ${config.bgClass} ${config.textClass} ${border} ${
         size === "sm" ? "px-2 py-0.5 text-xs" : "px-2.5 py-1 text-sm"
       }`}
     >
-      <Icon size={size === "sm" ? 12 : 14} />
+      <Icon size={size === "sm" ? 12 : 14} aria-hidden="true" />
       <span>{config.label}</span>
     </span>
   );

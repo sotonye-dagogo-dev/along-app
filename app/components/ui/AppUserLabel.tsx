@@ -12,11 +12,18 @@ const tierIconMap: Record<string, React.ElementType> = {
   Trophy,
 }
 
-const tierColorMap: Record<string, string> = {
-  BRONZE: '#CD7F32',
-  SILVER: '#C0C0C0',
-  GOLD: '#FFD700',
-  PLATINUM: '#E5E4E2',
+/**
+ * Theme-safe tier icon colours (design-system §colour-palette, WCAG AA).
+ * Raw metallic hues (SILVER #C0C0C0, GOLD #FFD700, PLATINUM #E5E4E2) are
+ * invisible on the light card in light theme, so icons render in these
+ * darkened display shades instead — same hue family, guaranteed contrast
+ * on both `bg-bg-card` (light) and `bg-bg-card-dark` (dark).
+ */
+const tierIconColorMap: Record<string, string> = {
+  BRONZE: '#92400E',
+  SILVER: '#64748B',
+  GOLD: '#A16207',
+  PLATINUM: '#6B7280',
 }
 
 interface UserLabelUser {
@@ -84,7 +91,8 @@ function AppUserLabel({
             <TierIcon
               size={12}
               className="shrink-0"
-              style={{ color: tierColorMap[user.rewardTier!] ?? tier.color }}
+              aria-label={`${tier.label} tier shield`}
+              style={{ color: tierIconColorMap[user.rewardTier!] ?? tier.color }}
             />
           )}
           {roleLabel && (

@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { Star, Award, Trophy, TrendingUp, UserPlus, Gift, History } from 'lucide-react'
-import { REWARD_TIERS } from '@/app/lib/config'
+import { REWARD_TIERS, rewardTierPillClass } from '@/app/lib/config'
 
 interface RewardHistoryItem {
   id: string
@@ -42,11 +42,8 @@ function RewardsPanel({ tier, points, nextTierLabel, nextTierPoints, recentActiv
     <div className="bg-bg-elevated border border-border radius-lg p-4 mb-4">
       <div className="flex items-center justify-between mb-2.5">
         <span
-          className="inline-flex items-center gap-1 px-2.5 py-0.5 radius-pill text-xs font-semibold"
-          style={{
-            backgroundColor: tierConfig?.color ? `${tierConfig.color}22` : undefined,
-            color: tierConfig?.color ?? undefined,
-          }}
+          title={`${tierConfig?.label ?? tier} tier shield`}
+          className={`inline-flex items-center gap-1 px-2.5 py-0.5 radius-pill text-xs font-semibold border ${rewardTierPillClass(tier)}`}
         >
           {tierIcons[tier] ?? <Star size={12} />}
           {tierConfig?.label ?? tier} Shield

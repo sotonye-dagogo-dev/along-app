@@ -52,26 +52,30 @@ const TRUST_CONFIG = {
   low: {
     icon: AlertTriangle,
     label: "Low",
-    bg: "bg-[#FEE2E2]",
-    text: "text-[#7F1D1D]",
+    bg: "bg-trust-low-bg",
+    text: "text-trust-low-text",
+    border: "border-trust-low-border",
   },
   developing: {
     icon: Clock,
     label: "Developing",
-    bg: "bg-[#FEF3C7]",
-    text: "text-[#92400E]",
+    bg: "bg-trust-developing-bg",
+    text: "text-trust-developing-text",
+    border: "border-trust-developing-border",
   },
   verified: {
     icon: CheckCircle,
     label: "Verified",
-    bg: "bg-[#D1FAE5]",
-    text: "text-[#065F46]",
+    bg: "bg-trust-verified-bg",
+    text: "text-trust-verified-text",
+    border: "border-trust-verified-border",
   },
   trusted: {
     icon: ShieldCheck,
     label: "Trusted",
-    bg: "bg-[#DBEAFE]",
-    text: "text-[#1E3A8A]",
+    bg: "bg-trust-trusted-bg",
+    text: "text-trust-trusted-text",
+    border: "border-trust-trusted-border",
   },
 };
 
@@ -271,7 +275,7 @@ export function TrustBadge({
         aria-label={`Trust score ${displayScore}, ${config.label}. Activate for breakdown.`}
         aria-expanded={tooltipOpen}
         onClick={() => showTooltip && (tooltipOpen ? close() : openTooltip())}
-        className={`inline-flex items-center gap-1 radius-pill ${config.bg} ${config.text} border-none cursor-pointer font-sans ${
+        className={`inline-flex items-center gap-1 radius-pill border cursor-pointer font-sans font-semibold ${config.bg} ${config.text} ${config.border} ${
           size === "sm" ? "px-1.5 py-0.5 text-xs" : "px-2.5 py-1 text-sm"
         }`}
       >

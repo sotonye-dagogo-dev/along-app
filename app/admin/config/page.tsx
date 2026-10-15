@@ -1,9 +1,16 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
-import { Plus, Trash2, Sparkles, GripVertical, ChevronUp, ChevronDown, Pencil, Check, X } from "lucide-react"
+import { Plus, Trash2, Sparkles, GripVertical, ChevronUp, ChevronDown, Pencil, Check, X, RotateCcw, Settings2 } from "lucide-react"
 import { AppInput, AppButton } from "@/app/components/ui"
-import { inferConfigKind } from "@/app/lib/config/admin"
+import {
+  inferConfigKind,
+  ADMIN_SIMPLE_CONFIG_CARDS,
+  ADMIN_DEDICATED_CONFIG_KEYS,
+  getAdminConfigDefault,
+  type AdminSimpleCardMeta,
+  type AdminConfigSource,
+} from "@/app/lib/config/admin"
 import { toastService } from "@/app/lib/services/toastService"
 import { modalService } from "@/app/lib/services/modalService"
 import {
@@ -24,10 +31,236 @@ interface SiteConfigItem {
   value: unknown
   createdAt: string
   updatedAt: string
+  /**
+   * DB-awareness flag from the merged API (Email/Blog Studio parity):
+   * "default" = shipped fallback, no DB row yet; "customized" = DB row
+   * over a shipped default; "custom" = ad-hoc key with no shipped default.
+   * Older payloads omit it — treated as "custom".
+   */
+  source?: AdminConfigSource | string
+}
+
+interface ConfigDefaultEntry {
+  key: string
+  title: string
+  description: string
+  defaultValue: unknown
+}
+
+/** Token-paired source badge — visible in both themes. */
+function SourceBadge({ source }: { source?: string }) {
+  if (source === "customized") {
+    return (
+      <span title="Saved in the database over the shipped default" className="text-[10px] font-semibold px-1.5 py-0.5 radius-pill bg-info text-info-text border border-info-border uppercase shrink-0">
+        Customized
+      </span>
+    )
+  }
+  if (source === "default") {
+    return (
+      <span title="Shipped default — no database row yet. Saving creates one." className="text-[10px] font-semibold px-1.5 py-0.5 radius-pill bg-bg-elevated text-text-secondary border border-border uppercase shrink-0">
+        Default
+      </span>
+    )
+  }
+  return (
+    <span title="Ad-hoc setting with no shipped default" className="text-[10px] font-semibold px-1.5 py-0.5 radius-pill bg-primary-muted text-primary border border-primary/20 uppercase shrink-0">
+      Custom
+    </span>
+  )
+}
+
+function isPlainRecord(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v)
+}
+
+/**
+ * Generic no-code card for a simple config key — toggles / text / number
+ * inputs driven entirely by ADMIN_SIMPLE_CONFIG_CARDS metadata (never raw
+ * JSON), so non-programmer admins can configure the platform. Single-field
+ * cards read/write a primitive; multi-field cards read/write an object
+ * spread-merged over the shipped default (partial stored rows keep working).
+ */
+function SimpleConfigCard({
+  meta,
+  row,
+  onSave,
+  onRestore,
+}: {
+  meta: AdminSimpleCardMeta
+  row: SiteConfigItem | undefined
+  onSave: (key: string, value: unknown) => Promise<string | null>
+  onRestore: (key: string) => void
+}) {
+  const shipped = useMemo(() => getAdminConfigDefault(meta.key)?.defaultValue, [meta.key])
+  const effective: Record<string, unknown> | unknown = useMemo(() => {
+    if (meta.fields.length === 1 && meta.fields[0].id === "value") return row?.value
+    const base = isPlainRecord(shipped) ? { ...shipped } : {}
+    if (isPlainRecord(row?.value)) return { ...base, ...row.value }
+    return base
+  }, [meta.fields, row?.value, shipped])
+  const [drafts, setDrafts] = useState<Record<string, string | boolean> | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const current = (id: string): string | boolean => {
+    if (drafts && id in drafts) return drafts[id]
+    if (meta.fields.length === 1 && meta.fields[0].id === "value") {
+      const v = effective
+      const f = meta.fields[0]
+      if (f.type === "boolean") return v === true
+      return String(v ?? "")
+    }
+    const obj = isPlainRecord(effective) ? effective : {}
+    const f = meta.fields.find((x) => x.id === id)
+    const v = obj[id]
+    if (f?.type === "boolean") return v === true
+    return String(v ?? "")
+  }
+
+  const dirty = useMemo(() => {
+    if (!drafts) return false
+    return meta.fields.some((f) => {
+      const baseVal =
+        meta.fields.length === 1 && f.id === "value"
+          ? (f.type === "boolean" ? effective === true : String((effective as unknown) ?? ""))
+          : (() => {
+              const obj = isPlainRecord(effective) ? (effective as Record<string, unknown>) : {}
+              const v = obj[f.id]
+              return f.type === "boolean" ? v === true : String(v ?? "")
+            })()
+      return drafts[f.id] !== baseVal
+    })
+  }, [drafts, effective, meta.fields])
+
+  const setDraft = (id: string, v: string | boolean) => {
+    setError(null)
+    setDrafts((p) => ({ ...(p ?? {}), [id]: v }))
+  }
+
+  const buildValue = (): { value: unknown; error?: string } => {
+    if (meta.fields.length === 1 && meta.fields[0].id === "value") {
+      const f = meta.fields[0]
+      const raw = current("value")
+      if (f.type === "boolean") return { value: raw === true }
+      if (f.type === "number") {
+        const n = Number(raw)
+        if (!Number.isFinite(n)) return { value: undefined, error: "Enter a valid number" }
+        return { value: Math.floor(n) === n ? n : n }
+      }
+      return { value: String(raw ?? "") }
+    }
+    const out: Record<string, unknown> = {}
+    for (const f of meta.fields) {
+      const raw = current(f.id)
+      if (f.type === "boolean") {
+        out[f.id] = raw === true
+      } else if (f.type === "number") {
+        const n = Number(raw)
+        if (!Number.isFinite(n)) return { value: undefined, error: `Enter a valid number for ${f.label}` }
+        out[f.id] = n
+      } else {
+        out[f.id] = String(raw ?? "")
+      }
+    }
+    return { value: out }
+  }
+
+  const handleSave = async () => {
+    const built = buildValue()
+    if (built.error) {
+      setError(built.error)
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const err = await onSave(meta.key, built.value)
+      if (err) {
+        setError(err)
+      } else {
+        setDrafts(null)
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const customized = row?.source === "customized"
+  const shippedPreview = (() => {
+    try {
+      const s = typeof shipped === "string" ? shipped : JSON.stringify(shipped)
+      return s.length > 120 ? `${s.slice(0, 120)}…` : s
+    } catch {
+      return ""
+    }
+  })()
+
+  return (
+    <div className="bg-bg-card border border-border radius-lg p-5 shadow-xs mb-6">
+      <div className="flex items-center gap-2 mb-1 flex-wrap">
+        <Settings2 size={16} className="text-primary shrink-0" />
+        <h3 className="text-sm font-semibold">{meta.title}</h3>
+        <SourceBadge source={row?.source ?? "default"} />
+      </div>
+      <p className="text-xs text-text-secondary mb-4">{meta.description}</p>
+      <div className={`grid gap-3 ${meta.fields.length > 3 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} max-w-[640px]`}>
+        {meta.fields.map((f) => (
+          <label key={f.id} className={f.type === "boolean" ? "flex items-center gap-2 text-sm cursor-pointer" : "flex flex-col gap-1 text-sm"}>
+            {f.type === "boolean" ? (
+              <>
+                <input
+                  type="checkbox"
+                  checked={current(f.id) === true}
+                  onChange={(e) => setDraft(f.id, e.target.checked)}
+                  className="w-4 h-4 accent-primary"
+                />
+                <span>
+                  {f.label}
+                  <span className="block text-[11px] text-text-muted font-normal">{f.hint}</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-xs font-semibold text-text-secondary">{f.label}</span>
+                <AppInput
+                  type={f.type === "number" ? "number" : "text"}
+                  min={f.min}
+                  max={f.max}
+                  step={f.step}
+                  value={String(current(f.id) ?? "")}
+                  onChange={(e) => setDraft(f.id, e.target.value)}
+                  placeholder={f.placeholder}
+                />
+                <span className="text-[11px] text-text-muted leading-snug">{f.hint}</span>
+              </>
+            )}
+          </label>
+        ))}
+      </div>
+      {customized && (
+        <p className="text-[11px] text-text-muted mt-3 max-w-[640px]" title={(() => { try { return typeof shipped === "string" ? shipped : JSON.stringify(shipped, null, 2) } catch { return "" } })()}>
+          Customized — shipped default: <code className="font-mono">{shippedPreview || "—"}</code>
+        </p>
+      )}
+      {error && <p className="text-xs text-error-text mt-3">{error}</p>}
+      <div className="flex gap-2 mt-3 flex-wrap">
+        <AppButton onClick={handleSave} disabled={!dirty || busy}>
+          {busy ? "Saving..." : "Save"}
+        </AppButton>
+        {customized && (
+          <AppButton variant="secondary" onClick={() => onRestore(meta.key)} disabled={busy}>
+            <RotateCcw size={13} /> Restore to default
+          </AppButton>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function AdminConfigPage() {
   const [configs, setConfigs] = useState<SiteConfigItem[]>([])
+  const [defaults, setDefaults] = useState<ConfigDefaultEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [newKey, setNewKey] = useState("")
   const [newValue, setNewValue] = useState("")
@@ -46,6 +279,7 @@ export default function AdminConfigPage() {
       const data = await res.json()
       const list: SiteConfigItem[] = data.configs ?? []
       setConfigs(list)
+      setDefaults(Array.isArray(data.defaults) ? data.defaults : [])
       setOrder((prev) => {
         const keys = list.map((c) => c.key)
         const kept = prev.filter((k) => keys.includes(k))
@@ -196,16 +430,63 @@ export default function AdminConfigPage() {
 
   useEffect(() => { load() }, [])
 
-  const handleSave = async (key: string, value: unknown) => {
+  const handleSave = async (key: string, value: unknown): Promise<string | null> => {
     try {
       const res = await fetch("/api/admin/config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key, value }),
       })
-      if (!res.ok) throw new Error("Request failed")
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        const msg = (data as { error?: string } | null)?.error ?? "Request failed"
+        toastService.error(msg)
+        return msg
+      }
+      toastService.success(`Saved ${key}`)
       load()
-    } catch (err) { console.error("[AdminError]", err) }
+      return null
+    } catch (err) {
+      console.error("[AdminError]", err)
+      toastService.error("Save failed")
+      return "Save failed"
+    }
+  }
+
+  /**
+   * Restore-to-default (Email/Blog Studio parity): deletes the DB row so
+   * the hardcoded fallback shines through again. Hardcoded updates never
+   * overwrite DB rows automatically — this is the explicit opt-in path.
+   */
+  const handleRestore = async (key: string) => {
+    const def = defaults.find((d) => d.key === key) ?? getAdminConfigDefault(key)
+    modalService.confirm({
+      title: `Restore "${key}" to default?`,
+      description: def
+        ? `The saved override is removed and the shipped default applies again. You can customize it again any time.`
+        : "The saved setting is removed.",
+      variant: "sensitive",
+      confirmLabel: "Restore",
+      onConfirm: () => {
+        modalService.close()
+        void (async () => {
+          try {
+            const res = await fetch("/api/admin/config", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ restore: key }),
+            })
+            const data = await res.json().catch(() => null)
+            if (!res.ok) throw new Error((data as { error?: string } | null)?.error ?? "Request failed")
+            toastService.success(`Restored ${key} to default`)
+            load()
+          } catch (err) {
+            console.error("[AdminError]", err)
+            toastService.error(err instanceof Error ? err.message : "Restore failed")
+          }
+        })()
+      },
+    })
   }
 
   const handleDelete = async (key: string) => {
@@ -271,6 +552,21 @@ export default function AdminConfigPage() {
     return order.filter((k) => map.has(k)).map((k) => map.get(k)!) as SiteConfigItem[]
   }, [configs, order])
 
+  /**
+   * Raw-list rows: only ad-hoc keys. Every shipped default has a dedicated
+   * no-code card above (Early Adopters / Feed Diversity / simple cards), so
+   * the raw JSON list never duplicates them — one editor per key.
+   */
+  const dedicatedKeys = useMemo(
+    () => new Set<string>(ADMIN_DEDICATED_CONFIG_KEYS as unknown as string[]),
+    []
+  )
+  const rawConfigs = useMemo(
+    () => orderedConfigs.filter((c) => !dedicatedKeys.has(c.key)),
+    [orderedConfigs, dedicatedKeys]
+  )
+  const rowFor = (key: string) => configs.find((c) => c.key === key)
+
   const moveKey = (key: string, dir: -1 | 1) => {
     setOrder((prev) => {
       const arr = prev.length ? [...prev] : configs.map((c) => c.key)
@@ -331,9 +627,10 @@ export default function AdminConfigPage() {
       </div>
 
       <div className="bg-bg-card border border-border radius-lg p-5 shadow-xs mb-6">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <Sparkles size={16} className="text-primary" />
           <h3 className="text-sm font-semibold">{EARLY_ADOPTER_CONFIG_META.title}</h3>
+          <SourceBadge source={rowFor(EARLY_ADOPTER_CONFIG_KEY)?.source ?? "default"} />
         </div>
         <p className="text-xs text-text-secondary mb-4">{EARLY_ADOPTER_CONFIG_META.description}</p>
         <div className="flex flex-col gap-3 max-w-[560px]">
@@ -365,18 +662,24 @@ export default function AdminConfigPage() {
             />
           </label>
           {eaError && <p className="text-xs text-error-text">{eaError}</p>}
-          <div>
+          <div className="flex gap-2 flex-wrap">
             <AppButton onClick={handleEarlyAdopterSave} disabled={!eaDirty || eaSaving}>
               {eaSaving ? "Saving..." : "Save badge settings"}
             </AppButton>
+            {rowFor(EARLY_ADOPTER_CONFIG_KEY)?.source === "customized" && (
+              <AppButton variant="secondary" onClick={() => handleRestore(EARLY_ADOPTER_CONFIG_KEY)} disabled={eaSaving}>
+                <RotateCcw size={13} /> Restore to default
+              </AppButton>
+            )}
           </div>
         </div>
       </div>
 
       <div className="bg-bg-card border border-border radius-lg p-5 shadow-xs mb-6">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <Sparkles size={16} className="text-primary" />
           <h3 className="text-sm font-semibold">{FEED_DIVERSITY_CONFIG_META.title}</h3>
+          <SourceBadge source={rowFor(FEED_DIVERSITY_CONFIG_KEY)?.source ?? "default"} />
         </div>
         <p className="text-xs text-text-secondary mb-4">{FEED_DIVERSITY_CONFIG_META.description}</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-[640px]">
@@ -415,6 +718,16 @@ export default function AdminConfigPage() {
           </AppButton>
         </div>
       </div>
+
+      {ADMIN_SIMPLE_CONFIG_CARDS.map((meta) => (
+        <SimpleConfigCard
+          key={meta.key}
+          meta={meta}
+          row={rowFor(meta.key)}
+          onSave={handleSave}
+          onRestore={handleRestore}
+        />
+      ))}
 
       <div className="bg-bg-card border border-border radius-lg p-4 sm:p-5 shadow-xs mb-6 min-w-0">
         <h3 className="text-sm font-semibold mb-1">Add new config</h3>
@@ -462,12 +775,12 @@ export default function AdminConfigPage() {
       </div>
 
       <div className="flex flex-col gap-2 min-w-0">
-        <div className="text-xs text-text-muted">Drag cards or use arrows to reorder (display order only).</div>
+        <div className="text-xs text-text-muted">Custom settings (ad-hoc keys) — shipped defaults live in the cards above. Drag cards or use arrows to reorder (display order only).</div>
         {loading ? (
           <div className="text-center py-8 text-text-muted bg-bg-card border border-border radius-lg">Loading...</div>
-        ) : orderedConfigs.length === 0 ? (
-          <div className="text-center py-8 text-text-muted bg-bg-card border border-border radius-lg">No configs found</div>
-        ) : orderedConfigs.map((c) => {
+        ) : rawConfigs.length === 0 ? (
+          <div className="text-center py-8 text-text-muted bg-bg-card border border-border radius-lg">No custom settings — everything is on shipped defaults</div>
+        ) : rawConfigs.map((c) => {
           const kind = inferConfigKind(c.key, c.value)
           const isEditing = editingKey === c.key
           const preview = typeof c.value === "string" ? c.value : JSON.stringify(c.value)
@@ -506,6 +819,7 @@ export default function AdminConfigPage() {
                 </span>
                 <code className="font-mono text-xs font-semibold truncate flex-1 min-w-0" title={c.key}>{c.key}</code>
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 radius-pill bg-bg-elevated text-text-secondary uppercase shrink-0">{kind}</span>
+                <SourceBadge source={c.source} />
                 <span className="text-[10px] text-text-muted shrink-0 hidden sm:inline">{new Date(c.updatedAt).toLocaleDateString()}</span>
               </div>
               {!isEditing ? (
@@ -528,12 +842,22 @@ export default function AdminConfigPage() {
                   >
                     <Pencil size={10} /> Edit
                   </button>
-                  <button
-                    onClick={() => handleDelete(c.key)}
-                    className="inline-flex items-center gap-1 px-2 py-1 radius-sm text-[10px] font-semibold bg-error text-error-text border-none cursor-pointer hover:bg-error-text hover:text-text-inverse transition-all duration-fast shrink-0"
-                  >
-                    <Trash2 size={10} /> Delete
-                  </button>
+                  {getAdminConfigDefault(c.key) ? (
+                    <button
+                      onClick={() => handleRestore(c.key)}
+                      className="inline-flex items-center gap-1 px-2 py-1 radius-sm text-[10px] font-semibold bg-bg-elevated text-text-secondary border border-border cursor-pointer hover:text-primary shrink-0"
+                      title="Remove the saved override so the shipped default applies again"
+                    >
+                      <RotateCcw size={10} /> Restore to default
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleDelete(c.key)}
+                      className="inline-flex items-center gap-1 px-2 py-1 radius-sm text-[10px] font-semibold bg-error text-error-text border-none cursor-pointer hover:bg-error-text hover:text-text-inverse transition-all duration-fast shrink-0"
+                    >
+                      <Trash2 size={10} /> Delete
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col gap-2 pl-6">
