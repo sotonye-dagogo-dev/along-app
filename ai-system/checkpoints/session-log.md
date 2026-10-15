@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-14 (Sprint 55: trust portal + admin collapse + scrollbars + feed diversity + loose search)
-> - last-verified-against-code: 2026-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community route-request fan-out + location-only draft restore)
+> - last-verified-against-code: 2026-10-15 (tsc 0 errors, jest 86/86 suites 742/742, lint clean on touched files; node_modules installed in-runner)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -2570,3 +2570,19 @@ Nothing pending — feature complete.
 **Notes / Blockers:**
 - None. Non-breaking, all changes additive with fallbacks.
 - Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 61 + this log + dev-history + project-plan + design-system + system-architecture + index + memory reconciled; no architecture drift — additive config registries/API branches/component classes/test only).
+
+**Session 2026-10-15 — Community route-request fan-out + location-only draft restore (execute-feature).**
+**Directive:** route-request notifications must fire whether or not any follow relationship exists; draft saving must survive when the only input is a location (location vanished on restore while fuller drafts kept it). Install node modules + proper QA. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Found:** (1) POST `/api/posts` ROUTE_REQUEST branch fanned out to `getFollowerIds` only — `createNotification` no-ops on `[]`, so non-followers never heard; (2) `ShareRouteModal.applyDraft` gated `setSteps` on `>= 2` — a location-only draft persists as 1 step (sanitize keeps it), so restore never ran and the composer showed empty rows; `if (draft.title)` also left stale titles; (3) `legacyToDraft` hasContent ignored description/tags.
+**Implemented:** NEW `app/lib/config/routeRequestAudience.ts` (community default, maxRecipients 500, bounds 1–5000, excludeDeleted, SiteConfig key + normalize/validate/meta) + barrel export; `notificationService.getRouteRequestAudienceIds` (followers-first then recent non-deleted members to cap, self excluded, never throws, `followers` legacy mode); ROUTE_REQUEST branch uses audience with followers fallback; admin registration (SITE_CONFIG_EDITORS + ADMIN_CONFIG_DEFAULTS + central validation + SimpleConfigCard); applyDraft 1-step → Origin (coords kept) + empty Destination, unconditional title reset; legacy hasContent ≡ hasUsableContent; FAQ `who-sees-request` en+pcm → community-wide notification; NEW `routeRequestAudience.test.ts` (4), `routeDrafts.test.ts` +2, `posts.test.ts` community-audience case.
+**QA:** FULL gate green in-runner (`npm install` completed; postinstall prisma generate skipped — no DB URL in runner, expected): `npx tsc --noEmit` 0 errors; `npx jest` 86/86 suites 742/742 tests; `npm run lint` zero findings on touched files (repo-wide pre-existing items untouched); full `npm run build` deferred to CI/Vercel (needs DB URL, per runner convention).
+**Files Modified:**
+- Edited: `app/api/posts/route.ts`, `app/lib/services/notificationService.ts`, `app/lib/services/routeDraftsService.ts`, `app/lib/config/admin.ts`, `app/lib/config/faq.ts`, `app/lib/config/index.ts`, `app/components/features/posts/ShareRouteModal.tsx`, `app/__tests__/api/posts.test.ts`, `app/__tests__/config/routeDrafts.test.ts`, `ai-system/planning/task-queue.md` (Sprint 62), `ai-system/summaries/dev-history.md` (this entry), `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/lib/config/routeRequestAudience.ts`, `app/__tests__/config/routeRequestAudience.test.ts`
+**Assumptions Made:**
+- Community = all non-deleted users except the actor, capped at 500 (followers guaranteed first so the legacy promise still holds under cap pressure); admins can retune mode/cap via SiteConfig without code changes.
+- Location-only restore pads to Origin + empty Destination because the composer requires ≥2 rows; Share stays disabled until the second location is filled (savable-but-not-shareable, matching draft semantics).
+- Single community Notification row (N recipient rows) rather than per-user rows — matches the existing fan-out shape and keeps push/email mirrors to one message.
+**Notes / Blockers:**
+- None. Non-breaking, all changes additive with fallbacks.
+- Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 62 + this log + dev-history + project-plan + system-architecture + index + memory reconciled; no architecture drift — additive config key/service function/API branch/composer branch/test only).

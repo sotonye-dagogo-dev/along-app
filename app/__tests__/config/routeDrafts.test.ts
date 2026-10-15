@@ -117,4 +117,37 @@ describe("execute-feature: route drafts library (config-driven, restorable)", ()
     expect(updated?.responseTo?.id).toBe("req_123");
     expect(ROUTE_DRAFTS_CONFIG.responseBadgeLabel("Need Marina to Yaba")).toMatch("Need Marina to Yaba");
   });
+
+  it("saves a location-only draft (single stop + coords survive the round-trip)", () => {
+    installMemoryStorage();
+    // The reported bug: a draft with ONLY a location lost it on restore.
+    // Service-level: a single location step (with picked lat/lng) must persist
+    // verbatim so the composer's applyDraft can pad it to Origin + Destination.
+    const saved = routeDraftsService.saveDraft({
+      title: "",
+      description: "",
+      steps: [{ location: "Marina, Lagos", description: "", vehicle: "bus", fare: 0, lat: 6.45, lng: 3.39 }],
+      tags: [],
+      images: [],
+    });
+    expect(saved).not.toBeNull();
+    expect(saved!.steps).toHaveLength(1);
+    expect(saved!.steps[0].location).toBe("Marina, Lagos");
+    const restored = routeDraftsService.getDraft(saved!.id);
+    expect(restored?.steps).toHaveLength(1);
+    expect(restored?.steps[0].location).toBe("Marina, Lagos");
+    expect(restored?.steps[0].lat).toBe(6.45);
+    expect(restored?.steps[0].lng).toBe(3.39);
+  });
+
+  it("treats description/tags-only payloads as usable legacy content", () => {
+    const { store } = installMemoryStorage();
+    store.set(
+      ROUTE_DRAFTS_CONFIG.legacyKey,
+      JSON.stringify({ title: "", description: "scenic route", steps: [], tags: ["lagos"], images: [] })
+    );
+    const migrated = routeDraftsService.listDrafts();
+    expect(migrated).toHaveLength(1);
+    expect(migrated[0].description).toBe("scenic route");
+  });
 });

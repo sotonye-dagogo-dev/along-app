@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (Sprint 55: recall-then-rank search, post-sort diversity, viewport portal rule)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community fan-out + location-only draft restore)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -871,4 +871,19 @@ No public keyless live-traffic API exists; labeling the estimate preserves trust
 - New traffic consumers must use `useRouteTraffic` (or the same debounce→cache→silent-fallback discipline) and render `TrafficLegend` with the `estimated` flag.
 - New floating/inline notices must use opaque `--color-*` surfaces (see `PUSH_PROMPT_CONFIG.surface`).
 **Supersedes:** None (extends Sprint 19 keyless map-stack decision).
+**Superseded by:** None
+
+## Decision 2026-10-15 (Sprint 62): community fan-out with followers-first cap; location-only drafts pad to Origin + Destination
+**Context:** route-request notifications reached followers only (empty follower list = silent no-op); location-only drafts vanished on restore while fuller drafts survived.
+**Decision:** (1) ROUTE_REQUEST fans out to a capped community audience — followers first (legacy promise holds under cap pressure), then recent non-deleted members to `maxRecipients` (500), self excluded, one Notification row with N recipient rows; mode/cap live in SiteConfig `routeRequestAudience` (hardcoded fallback, `followers` legacy mode, central admin validation, no-code card). (2) a 1-step draft restores as Origin (coords kept) + empty Destination with the title reset unconditionally; Share stays disabled until the second location is filled (savable-but-not-shareable); legacy migration uses the same usable-content rule as the saver.
+**Reason:**
+Followers-first keeps the prior guarantee while the cap bounds the write; one notification row reuses the existing fan-out/push-mirror shape with no migration. Padding to two rows respects the composer's ≥2-row invariant instead of special-casing it, and unconditional title reset prevents stale-input leaks.
+**Alternatives Considered:**
+- **Uncapped notify-all-users**: Rejected — unbounded NotificationRecipient writes per request on a large user base.
+- **Separate follower + community notifications**: Rejected — duplicates for followers and doubles push mirrors; one row with a unioned audience is the existing shape.
+- **Allowing single-row composer restore**: Rejected — validation, preview, and submit all assume ≥2 rows; padding keeps one invariant everywhere.
+**Implications:**
+- New fan-out callers must use `getRouteRequestAudienceIds` (never raw `getFollowerIds`) for request-type notifications; tuning is admin-side (mode/cap), not code.
+- New composer restore paths must preserve the 1-step → pad rule and unconditional field resets.
+**Supersedes:** None (extends the Sprint 59/60 request-visibility decisions).
 **Superseded by:** None

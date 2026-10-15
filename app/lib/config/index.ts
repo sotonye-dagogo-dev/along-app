@@ -36,6 +36,15 @@ export { ROUTE_DRAFTS_CONFIG } from "./routeDrafts";
 export type { RouteDraftsConfig } from "./routeDrafts";
 export { REQUEST_ROUTE_TRIGGER_CONFIG } from "./routeRequest";
 export type { RequestRouteTriggerConfig } from "./routeRequest";
+export {
+  ROUTE_REQUEST_AUDIENCE_CONFIG_KEY,
+  DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG,
+  ROUTE_REQUEST_AUDIENCE_LIMITS,
+  ROUTE_REQUEST_AUDIENCE_META,
+  normalizeRouteRequestAudienceConfig,
+  validateRouteRequestAudienceValue,
+} from "./routeRequestAudience";
+export type { RouteRequestAudienceConfig } from "./routeRequestAudience";
 export { POST_SUBMIT_CONFIG } from "./postSubmit";
 export type { PostSubmitConfig } from "./postSubmit";
 export {

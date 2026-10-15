@@ -8,6 +8,8 @@
 
 import { DEFAULT_EARLY_ADOPTER_CONFIG } from "./earlyAdopter";
 import { validateEarlyAdopterConfigValue } from "./earlyAdopter";
+import { DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG } from "./routeRequestAudience";
+import { validateRouteRequestAudienceValue } from "./routeRequestAudience";
 import {
   DEFAULT_FEED_CONFIG,
   FEED_DIVERSITY_CONFIG,
@@ -346,6 +348,12 @@ export const SITE_CONFIG_EDITORS: SiteConfigEditorMeta[] = [
     kind: "json",
   },
   {
+    key: "routeRequestAudience",
+    title: "Route Request Audience",
+    description: "Community vs followers-only + max recipients per request.",
+    kind: "json",
+  },
+  {
     key: "feedDiversity",
     title: "Feed Diversity",
     description: "Max consecutive runs, lookahead window, jitter weight.",
@@ -502,6 +510,14 @@ export const ADMIN_CONFIG_DEFAULTS: AdminConfigDefault[] = [
     kind: "number",
     defaultValue: INVITE_CONFIG.pointsForInviteAccepted,
   },
+  {
+    key: "routeRequestAudience",
+    title: "Route Request Audience",
+    description:
+      "Who gets notified on a route request. Community = followers first, then recent members up to the cap (no follow needed).",
+    kind: "json",
+    defaultValue: { ...DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG },
+  },
 ];
 
 /** Shipped default entry for a key, or undefined for ad-hoc custom keys. */
@@ -583,6 +599,7 @@ function finiteNumber(v: unknown): number | null {
   try {
     const k = String(key ?? "");
     if (k === "earlyAdopterConfig") return validateEarlyAdopterConfigValue(value);
+    if (k === "routeRequestAudience") return validateRouteRequestAudienceValue(value);
     if (k === "feedDiversity") return validateFeedDiversityConfigValue(value);
     if (k === "feedAlgorithm") {
       if (!isPlainObject(value)) return "value must be an object";
@@ -761,6 +778,16 @@ export const ADMIN_SIMPLE_CONFIG_CARDS: AdminSimpleCardMeta[] = [
       { id: "freshSec", label: "Fresh window (s)", hint: "Cached feed serves without network.", type: "number", min: 0, max: 600, step: 5 },
       { id: "retentionSec", label: "Retention (s)", hint: "Stale feed kept for instant paint.", type: "number", min: 60, max: 7200, step: 60 },
       { id: "maxExcludeIds", label: "Max exclude ids", hint: "Cap on pagination dedup ids.", type: "number", min: 10, max: 1000, step: 10 },
+    ],
+  },
+  {
+    key: "routeRequestAudience",
+    title: "Route Request Audience",
+    description: "Who gets notified on a route request — no code, no JSON.",
+    fields: [
+      { id: "mode", label: "Audience mode", hint: '"community" notifies everyone (followers first); "followers" is legacy.', type: "text", placeholder: "community" },
+      { id: "maxRecipients", label: "Max recipients", hint: "Cap on notification rows per request.", type: "number", min: 1, max: 5000, step: 1 },
+      { id: "excludeDeleted", label: "Exclude deleted accounts", hint: "Skip soft-deleted accounts.", type: "boolean" },
     ],
   },
 ];

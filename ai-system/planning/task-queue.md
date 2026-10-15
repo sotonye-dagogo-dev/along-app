@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 59: feed inclusion + PostCard follow + request labels/FAQ + traffic tightening)
-> - last-synced: 2026-10-15 (Sprint 59)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community route-request fan-out + location-only draft restore)
+> - last-synced: 2026-10-15 (Sprint 62)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -870,3 +870,14 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | Tier shields — NEW `REWARD_TIER_DISPLAY` (per-tier pill classes with dark variants) + `rewardTierPillClass` (neutral fallback); `RewardsPanel` pill drops raw-metallic inline style; `AppUserLabel` tier icons use darkened display shades; `AuthLinkPanel` Linked/Enabled `bg-success text-white` → token pairing; same invisible-pattern fix in admin email auto/manual badges, admin users verify actions/pills/buttons, notifications unread count | [x] |
 | [L] | Config Studio parity — `ADMIN_CONFIG_DEFAULTS` (8 shipped defaults) + `mergeAdminConfigsWithDefaults` (stored-wins + backfill + source) + `validateAdminConfigValue` (central gate, delegates earlyAdopter/feedDiversity) + `ADMIN_SIMPLE_CONFIG_CARDS` (6 no-code cards) + `ADMIN_DEDICATED_CONFIG_KEYS`; API GET merged + virtual default rows + `defaults` catalog, PUT `restore` branch + central validation + audit (`config.upsert`/`config.restore-default`), DELETE idempotent; page renders defaults with source badges, no-code cards, restore buttons, raw list limited to ad-hoc keys | [x] |
 | [S] | Tests — NEW `designCompliance.test.ts` (7: defaults catalog + card coverage + merge semantics + central validation + tier display + fallback); `vehicles.test.ts` +1 (saturated wash + border contract, boat/train `-100` updates) | [x] |
+
+## Sprint 62 — Community route-request fan-out + location-only draft restore (2026-10-15, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; same props + API envelopes, additive optional config/service only). QA full in-runner: `npm install` ok, tsc 0 errors, jest 86/86 suites 742/742 tests, next lint clean on touched files.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Route-request audience — NEW `config/routeRequestAudience.ts` (community default, maxRecipients 500 cap 1–5000, excludeDeleted, SiteConfig key + normalize/validate + admin meta) + barrel; `notificationService.getRouteRequestAudienceIds` (followers-first, then recent non-deleted members up to cap, self excluded, never throws, followers-only legacy mode); POST `/api/posts` ROUTE_REQUEST branch fans out to the community audience with followers fallback; admin registration (SITE_CONFIG_EDITORS + ADMIN_CONFIG_DEFAULTS + central validation branch + no-code SimpleConfigCard) | [x] |
+| [S] | Draft restore — `ShareRouteModal.applyDraft` restores 1-step location-only drafts as Origin + empty Destination (coords preserved, title resets unconditionally so empty titles clear stale input, Share stays disabled until the second location is filled); `routeDraftsService.legacyToDraft` hasContent now matches hasUsableContent (description/tags count) | [x] |
+| [S] | Copy — FAQ `who-sees-request` (en + pidgin) now states every member is notified, no follow needed | [x] |
+| [S] | Tests — NEW `routeRequestAudience.test.ts` (4: defaults, normalize caps/fallbacks, validation, admin registration); `routeDrafts.test.ts` +2 (location-only round-trip with coords, description/tags-only legacy migration); `posts.test.ts` ROUTE_REQUEST case asserts community audience recipients | [x] |
