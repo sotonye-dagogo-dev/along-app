@@ -128,6 +128,8 @@ export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";
 export type { PushPromptConfig, PushSubscribeReason } from "./pushPrompt";
 export { PWA_INSTALL_CONFIG, PWA_FAQ_LINKS, PWA_UPDATE_CONFIG, PWA_SW_MESSAGES, isStandaloneDisplay } from "./pwa";
 export type { PwaInstallConfig, PwaUpdateConfig } from "./pwa";
+export { AUTH_OFFLINE_CONFIG, readAuthSnapshot, writeAuthSnapshot, clearAuthSnapshot } from "./authOffline";
+export type { AuthSnapshotUser } from "./authOffline";
 export { ACCOUNT_DELETION_CONFIG, deletionScheduledFor, buildDeletedUserName, buildDeletedEmail, isDeletionOverdue } from "./accountDeletion";
 export type { AccountDeletionStatus } from "./accountDeletion";
 export { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, isSystemTemplate, parseManualEmails } from "./emailManagement";

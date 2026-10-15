@@ -7,7 +7,7 @@
  * two in sync and bump PWA_CACHE_VERSION when the precache list changes.
  */
 
-export const PWA_CACHE_VERSION = "v5";
+export const PWA_CACHE_VERSION = "v6";
 
 export const PWA_CACHE_NAMES = {
   static: `along-static-${PWA_CACHE_VERSION}`,
@@ -50,17 +50,23 @@ export const PWA_PRECACHE_ROUTES = [
 export const PWA_OFFLINE_FALLBACK = "/offline.html" as const;
 
 /**
- * Cached destinations advertised on the offline fallback page. Every entry
- * must be in PWA_PRECACHE_ROUTES (or reliably runtime-cached) so the links
- * actually resolve while offline.
+ * Cached destinations advertised on the offline fallback page. Precached
+ * entries resolve on any device; `runtimeCached` entries resolve when the
+ * user visited them while online (SW dynamic cache: network-first pages +
+ * SWR API caches). Protected pages (/profile, /notifications) must stay out
+ * of the precache list (precaching them would store the login redirect), so
+ * they are advertised as runtime-cached with honest copy.
  */
 export const PWA_CACHED_DESTINATIONS = [
-  { href: "/home", label: "Home feed", description: "Recently loaded posts" },
-  { href: "/explore", label: "Explore", description: "Recently viewed routes" },
-  { href: "/search", label: "Search", description: "Recent searches" },
-  { href: "/faq", label: "FAQ", description: "Help & offline tips" },
-  { href: "/about", label: "About", description: "About Along" },
-  { href: "/blog", label: "Blog", description: "Cached articles" },
+  { href: "/", label: "Landing", description: "Welcome + latest routes", runtimeCached: false },
+  { href: "/home", label: "Home feed", description: "Recently loaded posts", runtimeCached: false },
+  { href: "/explore", label: "Explore", description: "Recently viewed routes", runtimeCached: false },
+  { href: "/search", label: "Search", description: "Recent searches", runtimeCached: false },
+  { href: "/profile", label: "Profile", description: "Your profile, if visited while online", runtimeCached: true },
+  { href: "/notifications", label: "Notifications", description: "Cached notifications, if visited while online", runtimeCached: true },
+  { href: "/faq", label: "FAQ", description: "Help & offline tips", runtimeCached: false },
+  { href: "/about", label: "About", description: "About Along", runtimeCached: false },
+  { href: "/blog", label: "Blog", description: "Cached articles", runtimeCached: false },
 ] as const;
 
 /** API paths the SW must NEVER cache (auth/session integrity). */
@@ -73,11 +79,18 @@ export const PWA_NEVER_CACHE_API = [
 
 /** GET endpoints safe for stale-while-revalidate runtime caching. */
 export const PWA_CACHEABLE_API_PREFIXES = [
+  // NOTE: bare "/api/posts" (no trailing slash) so query-form URLs
+  // ("/api/posts?limit=20&userId=…", used by profile tabs) match too —
+  // "/api/posts/" alone never matches them via startsWith.
+  "/api/posts",
   "/api/posts/feed",
-  "/api/posts/",
   "/api/search",
   "/api/notifications",
   "/api/leaderboard",
+  // Profile surfaces: own/public profile, rewards history, bookmarks tab.
+  "/api/users",
+  "/api/rewards",
+  "/api/bookmarks",
   "/api/site-config",
   "/api/config",
   "/api/faq",

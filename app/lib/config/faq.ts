@@ -181,13 +181,13 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "what-works-offline",
         question: "What can I do while offline?",
         answer:
-          "You can revisit cached pages (Home, Explore, Search, FAQ, About, Blog), read previously loaded routes and posts, and browse your cached content. Anything that needs the network — signing in, posting, uploading photos, live search — will tell you you're offline and ask you to try again when reconnected. Non-critical actions you take offline are queued and sync automatically.",
+          "You can revisit cached pages (Landing, Home, Explore, Search, Profile, Notifications, FAQ, About, Blog), read previously loaded routes and posts, and browse your cached content. Profile and Notifications show the last version you opened while online. Anything that needs the network — signing in, posting, uploading photos, live search — will tell you you're offline and ask you to try again when reconnected. Non-critical actions you take offline are queued and sync automatically.",
       },
       {
         id: "offline-not-cached-page",
         question: "I opened a page offline and saw the offline screen. What now?",
         answer:
-          "That page was never cached on this device. The offline screen lists cached pages you can visit right now (Home feed, Explore, Search, FAQ, About, Blog). Reconnect and open the page once — it will then be cached for next time.",
+          "That page was never cached on this device. The offline screen lists cached pages you can visit right now (Landing, Home feed, Explore, Search, Profile, Notifications, FAQ, About, Blog). Profile and Notifications appear there once you've opened them while online. Reconnect and open the page once — it will then be cached for next time.",
       },
       {
         id: "install-app",
@@ -373,12 +373,12 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "what-works-offline": {
     question: "Wetin I fit do while offline?",
     answer:
-      "You fit revisit cached pages (Home, Explore, Search, FAQ, About, Blog), read routes and posts wey don load before, and browse your cached content. Anything wey need network — sign in, posting, uploading photos, live search — go tell you say you dey offline and make you try again when you don reconnect. Small-small actions wey you do offline dey queue and go sync by demsef.",
+      "You fit revisit cached pages (Landing, Home, Explore, Search, Profile, Notifications, FAQ, About, Blog), read routes and posts wey don load before, and browse your cached content. Profile and Notifications go show di last version wey you open while online. Anything wey need network — sign in, posting, uploading photos, live search — go tell you say you dey offline and make you try again when you don reconnect. Small-small actions wey you do offline dey queue and go sync by demsef.",
   },
   "offline-not-cached-page": {
     question: "I open page offline come see offline screen. Wetin next?",
     answer:
-      "Dat page never enter cache for dis device. Di offline screen dey list cached pages wey you fit visit now-now (Home feed, Explore, Search, FAQ, About, Blog). Reconnect come open di page once — e go come dey cached for next time.",
+      "Dat page never enter cache for dis device. Di offline screen dey list cached pages wey you fit visit now-now (Landing, Home feed, Explore, Search, Profile, Notifications, FAQ, About, Blog). Profile and Notifications go show afta you don open dem once while online. Reconnect come open di page once — e go come dey cached for next time.",
   },
   "install-app": {
     question: "How I go take install Along for my phone or computer?",

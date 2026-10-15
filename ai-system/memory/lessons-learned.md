@@ -852,3 +852,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 **Sprint 63:** ephemeral request fixes (cached-only client attach, server-validated, never persisted) give location-aware fan-out with zero new tracking — pair with a minNearby gate so sparse data fails open to the legacy audience; per-user Json prefs with config-driven normalize (NULL/partial → all-on) keep existing users untouched without backfills; legacy SiteConfig rows need normalize defaults for every added knob or old stored values break the new path.
+
+## Sprint 64 (2026-10-15): offline reload reads as guest; trailing-slash prefix silently skips query-form URLs
+- **Symptom:** "guest banner shows though I never signed out" — plus profile tabs never worked offline even though "/api/posts/" looked cached.
+- **Root causes:** (1) auth state booted empty and learned the session over the network, so any offline reload was indistinguishable from signed-out — UI identity had no memory. (2) startsWith prefix "/api/posts/" never matches "/api/posts?…" — the slash that makes path-form URLs tidy is exactly what excludes query-form URLs, and the mismatch is silent (no error, just no cache).
+- **Fix pattern (reuse):** persist the last server-confirmed session as a TTL-bounded display-only snapshot (hydrated synchronously, cleared only on genuine 401/logout, never used for authorization); for prefix registries always register the BARE path ("/api/posts" covers both "/api/posts?…" and "/api/posts/…") and add a regression test hitting the query form directly. Protected pages stay out of install precache (redirect poisoning) and are advertised as runtime-cached with honest copy.
+- **Supersedes:** None
+- **Superseded by:** None

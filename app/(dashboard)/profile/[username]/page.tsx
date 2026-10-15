@@ -11,6 +11,7 @@ import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 import { EarlyAdopterBadgeFromStatus } from "@/app/components/features/profile"
 import { ReviewsPanel } from "@/app/components/features/reviews"
+import { CachedDataNotice } from "@/app/components/pwa/OfflineBanner"
 
 interface EarlyAdopterPayload {
   enabled: boolean
@@ -245,6 +246,8 @@ export default function OtherProfilePage() {
 
   return (
     <div className="max-w-[680px] mx-auto px-4 py-4">
+      {/* Offline label: public profiles are guest-accessible + runtime-cached. */}
+      <CachedDataNotice compact />
       <div className="h-[180px] bg-gradient-to-br from-primary-dark to-primary radius-lg mb-0 relative" />
 
       <div className="relative px-5">
