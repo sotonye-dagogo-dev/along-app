@@ -57,7 +57,7 @@
 > **Section summary:** The primary user-facing features — posting routes, feed, interactions.
 
 - [x] Post creation API (`app/api/posts/route.ts`)
-- [x] Feed with pagination (`app/api/posts/feed/`, `app/lib/services/feedService.ts`). Sprint 57: first-load readiness gate (single geo-aware fetch, `isReady` skeleton hold, seeded diversity jitter per viewer + UTC day). Sprint 59: explicit own-posts pool at `ownPostsWeight` (= followingWeight) — self + non-followed posts never excluded, ranking gap closed
+- [x] Feed with pagination (`app/api/posts/feed/`, `app/lib/services/feedService.ts`). Sprint 57: first-load readiness gate (single geo-aware fetch, `isReady` skeleton hold, seeded diversity jitter per viewer + UTC day). Sprint 59: explicit own-posts pool at `ownPostsWeight` (= followingWeight) — self + non-followed posts never excluded, ranking gap closed. Sprint 60: two explicit out-of-network discovery pools (open requests from non-followed, no age window; general recent from anyone not followed) at `discoveryWeight` 0.5 + `openRequestWeight` 0.6 — strangers always enter the candidate set, feed/carousel parity
 - [x] Like/unlike posts (`app/api/posts/[id]/like/`, PostCard, post detail page)
 - [x] Comment system (`app/components/features/comments/`)
 - [x] Bookmark/save posts (`app/(dashboard)/bookmarks/`)

@@ -13,6 +13,23 @@ export const DEFAULT_FEED_CONFIG: FeedAlgorithmConfig = {
    * this knob existed keep working (default applies for the missing key).
    */
   ownPostsWeight: 0.7,
+  /**
+   * Out-of-network discovery weight (Sprint 60): recent posts from users
+   * the viewer doesn't follow are fetched as an explicit pool (no 7-day
+   * window, no engagement ordering, no tag prerequisite) and scored here.
+   * Below followingWeight (follow affinity preserved), well above trending
+   * (0.1) so discovery actually surfaces. Stored SiteConfig
+   * `feedAlgorithm` rows merge by spread, so rows written before this knob
+   * existed keep working (feedService guards non-finite to this default).
+   */
+  discoveryWeight: 0.5,
+  /**
+   * Open-request boost (Sprint 60): open route requests from non-followed
+   * users earn this on top of discoveryWeight, keeping feed parity with the
+   * suggestions carousel (which always shows recent open requests). Same
+   * spread-merge / non-finite-guard contract as discoveryWeight.
+   */
+  openRequestWeight: 0.6,
   locationBonus: 0.15,
   cacheTtlSeconds: 300,
   pageSize: 10,

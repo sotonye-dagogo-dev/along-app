@@ -56,6 +56,26 @@ export interface FeedAlgorithmConfig {
    * following-level keeps them visible without excluding anyone else.
    */
   ownPostsWeight: number;
+  /**
+   * Weight for out-of-network discovery (Sprint 60 inclusion guarantee).
+   * The viewer's feed must include posts from users they don't follow:
+   * previously such posts surfaced only via the 7-day engagement-ordered
+   * trending pool or the tag-match pool, so quiet/older/tag-less posts
+   * (notably open route requests, which the suggestions carousel always
+   * shows) could never enter the candidate set. Scored below following
+   * weight so follow affinity is preserved, but well above trending.
+   * Stored SiteConfig `feedAlgorithm` rows merge by spread, so rows written
+   * before this knob existed keep working (non-finite guard falls back).
+   */
+  discoveryWeight: number;
+  /**
+   * Extra weight for open route requests from non-followed users.
+   * Keeps feed parity with the suggestions carousel, which always surfaces
+   * recent open requests regardless of follow graph. Additive with
+   * discoveryWeight (a request earns both), never a filter — no post is
+   * ever excluded for being out-of-network.
+   */
+  openRequestWeight: number;
   locationBonus: number;
   cacheTtlSeconds: number;
   pageSize: number;
