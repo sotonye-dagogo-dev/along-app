@@ -6,6 +6,7 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
+import type { RouteRequestAudienceConfig } from "@/app/lib/config/routeRequestAudience";
 
 export interface CreateNotificationInput {
   type:
@@ -43,11 +44,28 @@ export interface CreateNotificationInput {
 /**
  * Creates one Notification with a recipient row per user.
  * Returns the notification id, or null if creation failed / no recipients.
+ *
+ * Preference-gated (non-breaking): recipient ids are filtered through the
+ * owners' effective notification preferences first — a missing prefs row or
+ * NULL/partial JSON resolves per-key to `true` (current behaviour), so
+ * existing users keep receiving everything until they opt out in the
+ * Notifications settings modal. WELCOME/allowSelf bypasses the self-filter
+ * but still honours prefs (defaults allow it). Never throws.
  */
 export async function createNotification(input: CreateNotificationInput): Promise<string | null> {
-  const recipientIds = [...new Set(input.recipientIds.filter(Boolean))].filter(
+  const deduped = [...new Set(input.recipientIds.filter(Boolean))].filter(
     (id) => input.allowSelf || id !== input.actorId
   );
+  if (deduped.length === 0) return null;
+  let recipientIds = deduped;
+  try {
+    const { filterRecipientsByPreferences } = await import(
+      "@/app/lib/services/notificationPreferenceService"
+    );
+    recipientIds = await filterRecipientsByPreferences(deduped, input.type);
+  } catch {
+    recipientIds = deduped;
+  }
   if (recipientIds.length === 0) return null;
 
   try {
@@ -116,15 +134,68 @@ export async function getFollowerIds(userId: string): Promise<string[]> {
  * members up to the configured cap — so a request notifies recipients whether
  * or not any follow relationship exists. Self is always excluded; deleted
  * accounts are excluded per config. Never throws (falls back to followers).
+ *
+ * Optimistic location filtering (privacy-safe, non-breaking):
+ * - The requester's location is EPHEMERAL: `opts.requestLat/requestLng` are
+ *   used only for this fan-out computation and are never written to the DB,
+ *   never logged, never returned to clients. Valid sources are the request's
+ *   own start coords (route geometry, already stored as the post) or an
+ *   explicit one-shot browser fix attached to the POST body with consent.
+ * - Recipient proximity is derived server-side ONLY from the already-stored,
+ *   consented, nullable `User.lastKnownLat/Lng` (used today for the feed
+ *   nearby boost). Raw coords are never exposed — only a boolean within-radius
+ *   test runs in memory; no coordinates leave the server.
+ * - When filtering is enabled, coords are valid, and at least
+ *   `location.minNearby` recipients fall inside `location.radiusKm`, only the
+ *   nearby subset is returned (capped). Otherwise the fan-out falls back
+ *   gracefully to the full community audience — missing/stale location data
+ *   degrades to "everyone gets notified", never to silence or an error.
+ * - Preference-gated: the final list excludes users who opted out of route
+ *   requests (missing prefs = opted in = current behaviour).
  */
-export async function getRouteRequestAudienceIds(actorId: string): Promise<string[]> {
+export interface RouteRequestAudienceOptions {
+  /** Ephemeral request location (never persisted). Both required to apply. */
+  requestLat?: number | null;
+  requestLng?: number | null;
+}
+
+function toRad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+
+function audienceHaversineKm(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const sLat = Math.sin(dLat / 2);
+  const sLng = Math.sin(dLng / 2);
+  const v =
+    sLat * sLat + Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * sLng * sLng;
+  return 6371 * 2 * Math.atan2(Math.sqrt(v), Math.sqrt(1 - v));
+}
+
+function validRequestFix(lat: unknown, lng: unknown): { lat: number; lng: number } | null {
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  if (lat === 0 && lng === 0) return null; // null-island sentinel, never a real request
+  return { lat, lng };
+}
+
+export async function getRouteRequestAudienceIds(
+  actorId: string,
+  opts?: RouteRequestAudienceOptions
+): Promise<string[]> {
   try {
     const {
       DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG,
+      DEFAULT_ROUTE_REQUEST_LOCATION_FILTER,
       normalizeRouteRequestAudienceConfig,
       ROUTE_REQUEST_AUDIENCE_CONFIG_KEY,
     } = await import("@/app/lib/config/routeRequestAudience");
-    let config = { ...DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG };
+    let config: RouteRequestAudienceConfig = {
+      ...DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG,
+      location: { ...DEFAULT_ROUTE_REQUEST_LOCATION_FILTER },
+    };
     try {
       const { getSiteConfig } = await import("@/app/lib/utils/siteConfig");
       const stored = await getSiteConfig<unknown>(ROUTE_REQUEST_AUDIENCE_CONFIG_KEY, {});
@@ -133,7 +204,16 @@ export async function getRouteRequestAudienceIds(actorId: string): Promise<strin
       /* hardcoded fallback wins when SiteConfig is unreadable */
     }
     const followers = await getFollowerIds(actorId);
-    if (config.mode === "followers") return followers;
+    if (config.mode === "followers") {
+      try {
+        const { filterRecipientsByPreferences } = await import(
+          "@/app/lib/services/notificationPreferenceService"
+        );
+        return await filterRecipientsByPreferences(followers, "ROUTE_REQUEST");
+      } catch {
+        return followers;
+      }
+    }
     const cap = Math.max(1, Math.floor(config.maxRecipients));
     const seen = new Set<string>();
     const ordered: string[] = [];
@@ -162,7 +242,44 @@ export async function getRouteRequestAudienceIds(actorId: string): Promise<strin
         /* followers-only fallback below */
       }
     }
-    return ordered;
+    // Optimistic nearby filtering — best-effort, fails open to `ordered`.
+    const loc = config.location ?? { ...DEFAULT_ROUTE_REQUEST_LOCATION_FILTER };
+    const fix = loc.enabled ? validRequestFix(opts?.requestLat, opts?.requestLng) : null;
+    let audience = ordered;
+    if (fix && ordered.length > 0) {
+      try {
+        const rows = (await prisma.user.findMany({
+          where: { id: { in: ordered } },
+          select: { id: true, lastKnownLat: true, lastKnownLng: true },
+        })) as { id: string; lastKnownLat: number | null; lastKnownLng: number | null }[];
+        const byId = new Map(rows.map((r) => [r.id, r]));
+        const nearby = ordered.filter((id) => {
+          const r = byId.get(id);
+          if (!r || typeof r.lastKnownLat !== "number" || typeof r.lastKnownLng !== "number") return false;
+          if (!Number.isFinite(r.lastKnownLat) || !Number.isFinite(r.lastKnownLng)) return false;
+          try {
+            return audienceHaversineKm(fix.lat, fix.lng, r.lastKnownLat, r.lastKnownLng) <= loc.radiusKm;
+          } catch {
+            return false;
+          }
+        });
+        // Only filter when the nearby cluster is meaningful; otherwise the
+        // request behaves exactly as before (everyone gets notified).
+        if (nearby.length >= Math.max(1, Math.floor(loc.minNearby))) {
+          audience = nearby.slice(0, cap);
+        }
+      } catch {
+        audience = ordered;
+      }
+    }
+    try {
+      const { filterRecipientsByPreferences } = await import(
+        "@/app/lib/services/notificationPreferenceService"
+      );
+      return await filterRecipientsByPreferences(audience, "ROUTE_REQUEST");
+    } catch {
+      return audience;
+    }
   } catch (error) {
     console.error("[notificationService] getRouteRequestAudienceIds failed:", error);
     try {

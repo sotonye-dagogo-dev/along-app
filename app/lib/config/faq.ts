@@ -103,7 +103,19 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "who-sees-request",
         question: "Who sees my route request — do they need to follow me?",
         answer:
-          "Everyone — no follow needed. Requests surface in the Home feed, Explore, and search for the whole community, and every member gets an in-app notification (plus push where enabled) when you post one. Guests need to sign in before they can request or respond.",
+          "Everyone — no follow needed. Requests surface in the Home feed, Explore, and search for the whole community, and every member gets an in-app notification (plus push where enabled) when you post one. Where the request carries a location and enough members nearby have shared one, nearby members are notified first (optimistic nearby filtering); otherwise — or when location is unavailable — the notification gracefully falls back to the whole community so nobody is silently skipped. You can also tune what you receive in Notifications → settings (gear icon); everything is on by default. Guests need to sign in before they can request or respond.",
+      },
+      {
+        id: "request-location-filtering",
+        question: "Are route-request notifications location-based? Is my location stored?",
+        answer:
+          "Partly — and privacy-safe by design. When you post a request, the app may attach a one-shot location (your cached fix if permission was already granted, otherwise the request's own start point) that is used ONLY to compute that one fan-out and is never saved, logged, or shown to anyone. Recipient proximity is checked server-side against the optional last-known fix members already share for the feed nearby boost — raw coordinates are never exposed, only a within-radius yes/no runs in memory. If too few nearby members exist, or no location is available, the notification falls back to the whole community (followers first, then recent members up to the admin cap). Two honest corrections: Along DOES store an optional last-known fix per user (nullable, consent-based, cleared on account deletion) — it is not true that no location data is stored; and background location in the installed app/PWA is limited, so filtering is optimistic, not guaranteed. Someone familiar with a route elsewhere still sees every request in feed, Explore, and search.",
+      },
+      {
+        id: "notification-preferences",
+        question: "How do I customize which notifications I receive?",
+        answer:
+          "Open the Notifications page and tap the settings (gear) icon at the top. Switches cover route requests, new routes from people you follow, responses to your requests, likes, dislikes, comments, mentions, follows, rewards, badges, reports, moderation outcomes, and device push. Everything is ON by default — exactly how Along works today — so existing accounts keep receiving everything until they opt out (a missing setting always means on). Turning a switch off only stops delivery to you; it never affects what others receive. In-app notifications, push, and email follow the same preferences where each channel applies.",
       },
     ],
   },
@@ -169,13 +181,13 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "what-works-offline",
         question: "What can I do while offline?",
         answer:
-          "You can revisit cached pages (Home, Explore, Search, FAQ, About, Blog), read previously loaded routes and posts, and browse your cached content. Anything that needs the network — signing in, posting, uploading photos, live search — will tell you you're offline and ask you to try again when reconnected. Non-critical actions you take offline are queued and sync automatically.",
+          "You can revisit cached pages (Landing, Home, Explore, Search, Profile, Notifications, FAQ, About, Blog), read previously loaded routes and posts, and browse your cached content. Profile and Notifications show the last version you opened while online. Anything that needs the network — signing in, posting, uploading photos, live search — will tell you you're offline and ask you to try again when reconnected. Non-critical actions you take offline are queued and sync automatically.",
       },
       {
         id: "offline-not-cached-page",
         question: "I opened a page offline and saw the offline screen. What now?",
         answer:
-          "That page was never cached on this device. The offline screen lists cached pages you can visit right now (Home feed, Explore, Search, FAQ, About, Blog). Reconnect and open the page once — it will then be cached for next time.",
+          "That page was never cached on this device. The offline screen lists cached pages you can visit right now (Landing, Home feed, Explore, Search, Profile, Notifications, FAQ, About, Blog). Profile and Notifications appear there once you've opened them while online. Reconnect and open the page once — it will then be cached for next time.",
       },
       {
         id: "install-app",
@@ -187,7 +199,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "push-notifications",
         question: "How do push notifications work?",
         answer:
-          "Every in-app notification — likes, comments, mentions, follows, route responses, rewards, badges, and moderation updates — is also sent as a push notification when you enable it, mirroring what you'd get by email. Signed-in users see a small Enable notice (also on the Notifications page) that can be minimized or dismissed; enabling needs a connection and your browser's permission, and the notice explains exactly what to do if permission was blocked or your device needs the installed app first. You can turn push on or off anytime. Tapping a notification opens the relevant post or page.",
+          "Every in-app notification — likes, comments, mentions, follows, route responses, rewards, badges, and moderation updates — is also sent as a push notification when you enable it, mirroring what you'd get by email. Signed-in users see a small Enable notice (also on the Notifications page) that can be minimized or dismissed; enabling needs a connection and your browser's permission, and the notice explains exactly what to do if permission was blocked or your device needs the installed app first. You can turn push on or off anytime — including per-type in Notifications → settings (gear icon). Tapping a notification opens the relevant post or page.",
       },
       {
         id: "staying-signed-in-offline",
@@ -361,12 +373,12 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "what-works-offline": {
     question: "Wetin I fit do while offline?",
     answer:
-      "You fit revisit cached pages (Home, Explore, Search, FAQ, About, Blog), read routes and posts wey don load before, and browse your cached content. Anything wey need network — sign in, posting, uploading photos, live search — go tell you say you dey offline and make you try again when you don reconnect. Small-small actions wey you do offline dey queue and go sync by demsef.",
+      "You fit revisit cached pages (Landing, Home, Explore, Search, Profile, Notifications, FAQ, About, Blog), read routes and posts wey don load before, and browse your cached content. Profile and Notifications go show di last version wey you open while online. Anything wey need network — sign in, posting, uploading photos, live search — go tell you say you dey offline and make you try again when you don reconnect. Small-small actions wey you do offline dey queue and go sync by demsef.",
   },
   "offline-not-cached-page": {
     question: "I open page offline come see offline screen. Wetin next?",
     answer:
-      "Dat page never enter cache for dis device. Di offline screen dey list cached pages wey you fit visit now-now (Home feed, Explore, Search, FAQ, About, Blog). Reconnect come open di page once — e go come dey cached for next time.",
+      "Dat page never enter cache for dis device. Di offline screen dey list cached pages wey you fit visit now-now (Landing, Home feed, Explore, Search, Profile, Notifications, FAQ, About, Blog). Profile and Notifications go show afta you don open dem once while online. Reconnect come open di page once — e go come dey cached for next time.",
   },
   "install-app": {
     question: "How I go take install Along for my phone or computer?",
@@ -436,7 +448,17 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "who-sees-request": {
     question: "Who dey see my route request — dem must follow me?",
     answer:
-      "Everybody — no need to follow. Requests dey show for Home feed, Explore, and search for di whole community, and every member go get in-app notification (plus push where dem on am) when you post one. Guests must sign in before dem fit request or respond.",
+      "Everybody — no need to follow. Requests dey show for Home feed, Explore, and search for di whole community, and every member go get in-app notification (plus push where dem on am) when you post one. Where di request carry location and enough members nearby don share dia own, nearby members go get am first (optimistic nearby filtering); otherwise — or when location no dey — notification go fall back to di whole community so nobody go miss am. You fit still tune wetin you dey receive for Notifications → settings (gear icon); everything dey on by default. Guests must sign in before dem fit request or respond.",
+  },
+  "request-location-filtering": {
+    question: "Route-request notifications dey based on location? Una dey store my location?",
+    answer:
+      "Small — and privacy-safe by design. When you post request, app fit attach one-shot location (your cached fix if you don already grant permission, otherwise di request own start point) wey dem go use ONLY to compute dat one fan-out and dem no dey save am, log am, or show am to anybody. Recipient proximity dem dey check am for server against di optional last-known fix wey members don already share for feed nearby boost — raw coordinates no dey ever show, na only within-radius yes/no dem dey run for memory. If nearby members no reach, or location no dey, notification go fall back to di whole community (followers first, den recent members up to admin cap). Two honest corrections: Along DOES store optional last-known fix per user (e fit empty, na based on consent, dem dey clear am on account deletion) — e no be true say no location data dey stored; and background location for installed app/PWA dey limited, so filtering na optimistic, e no be guarantee. Pesin wey sabi route for elsewhere still dey see every request for feed, Explore, and search.",
+  },
+  "notification-preferences": {
+    question: "How I go take choose which notifications I dey receive?",
+    answer:
+      "Open Notifications page come tap di settings (gear) icon for top. Switches dey cover route requests, new routes from people you dey follow, responses to your requests, likes, dislikes, comments, mentions, follows, rewards, badges, reports, moderation outcomes, and device push. Everything dey ON by default — exactly how Along dey work today — so old accounts go keep receiving everything until dem opt out (setting wey miss mean on). To off switch na only to stop delivery to you; e no dey affect wetin odas dey receive. In-app notifications, push, and email dey follow di same preferences where each channel apply.",
   },
   "how-to-leave-review": {
     question: "How I go take drop platform review?",

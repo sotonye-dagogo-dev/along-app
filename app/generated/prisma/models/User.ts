@@ -402,6 +402,7 @@ export type UserWhereInput = {
   invitedBy?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   invitedUsers?: Prisma.UserListRelationFilter
   deletionRequests?: Prisma.AccountDeletionRequestListRelationFilter
+  notificationPreference?: Prisma.XOR<Prisma.NotificationPreferenceNullableScalarRelationFilter, Prisma.NotificationPreferenceWhereInput> | null
   following?: Prisma.FollowListRelationFilter
   followers?: Prisma.FollowListRelationFilter
   analyticsEvents?: Prisma.AnalyticsEventListRelationFilter
@@ -449,6 +450,7 @@ export type UserOrderByWithRelationInput = {
   invitedBy?: Prisma.UserOrderByWithRelationInput
   invitedUsers?: Prisma.UserOrderByRelationAggregateInput
   deletionRequests?: Prisma.AccountDeletionRequestOrderByRelationAggregateInput
+  notificationPreference?: Prisma.NotificationPreferenceOrderByWithRelationInput
   following?: Prisma.FollowOrderByRelationAggregateInput
   followers?: Prisma.FollowOrderByRelationAggregateInput
   analyticsEvents?: Prisma.AnalyticsEventOrderByRelationAggregateInput
@@ -499,6 +501,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   invitedBy?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
   invitedUsers?: Prisma.UserListRelationFilter
   deletionRequests?: Prisma.AccountDeletionRequestListRelationFilter
+  notificationPreference?: Prisma.XOR<Prisma.NotificationPreferenceNullableScalarRelationFilter, Prisma.NotificationPreferenceWhereInput> | null
   following?: Prisma.FollowListRelationFilter
   followers?: Prisma.FollowListRelationFilter
   analyticsEvents?: Prisma.AnalyticsEventListRelationFilter
@@ -611,6 +614,7 @@ export type UserCreateInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -657,6 +661,7 @@ export type UserUncheckedCreateInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -703,6 +708,7 @@ export type UserUpdateInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -749,6 +755,7 @@ export type UserUncheckedUpdateInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -1276,6 +1283,20 @@ export type UserUpdateOneRequiredWithoutPushSubscriptionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutPushSubscriptionsInput, Prisma.UserUpdateWithoutPushSubscriptionsInput>, Prisma.UserUncheckedUpdateWithoutPushSubscriptionsInput>
 }
 
+export type UserCreateNestedOneWithoutNotificationPreferenceInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutNotificationPreferenceInput, Prisma.UserUncheckedCreateWithoutNotificationPreferenceInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutNotificationPreferenceInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutNotificationPreferenceNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutNotificationPreferenceInput, Prisma.UserUncheckedCreateWithoutNotificationPreferenceInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutNotificationPreferenceInput
+  upsert?: Prisma.UserUpsertWithoutNotificationPreferenceInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutNotificationPreferenceInput, Prisma.UserUpdateWithoutNotificationPreferenceInput>, Prisma.UserUncheckedUpdateWithoutNotificationPreferenceInput>
+}
+
 export type UserCreateNestedOneWithoutDeletionRequestsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutDeletionRequestsInput, Prisma.UserUncheckedCreateWithoutDeletionRequestsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutDeletionRequestsInput
@@ -1329,6 +1350,7 @@ export type UserCreateWithoutInvitedUsersInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -1374,6 +1396,7 @@ export type UserUncheckedCreateWithoutInvitedUsersInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -1424,6 +1447,7 @@ export type UserCreateWithoutInvitedByInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -1469,6 +1493,7 @@ export type UserUncheckedCreateWithoutInvitedByInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -1535,6 +1560,7 @@ export type UserUpdateWithoutInvitedUsersInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -1580,6 +1606,7 @@ export type UserUncheckedUpdateWithoutInvitedUsersInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -1674,6 +1701,7 @@ export type UserCreateWithoutFollowingInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
   pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutUserInput
@@ -1719,6 +1747,7 @@ export type UserUncheckedCreateWithoutFollowingInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutUserInput
@@ -1769,6 +1798,7 @@ export type UserCreateWithoutFollowersInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
   pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutUserInput
@@ -1814,6 +1844,7 @@ export type UserUncheckedCreateWithoutFollowersInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutUserInput
@@ -1875,6 +1906,7 @@ export type UserUpdateWithoutFollowingInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutUserNestedInput
@@ -1920,6 +1952,7 @@ export type UserUncheckedUpdateWithoutFollowingInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutUserNestedInput
@@ -1976,6 +2009,7 @@ export type UserUpdateWithoutFollowersInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutUserNestedInput
@@ -2021,6 +2055,7 @@ export type UserUncheckedUpdateWithoutFollowersInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutUserNestedInput
@@ -2065,6 +2100,7 @@ export type UserCreateWithoutPostsInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2110,6 +2146,7 @@ export type UserUncheckedCreateWithoutPostsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2171,6 +2208,7 @@ export type UserUpdateWithoutPostsInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2216,6 +2254,7 @@ export type UserUncheckedUpdateWithoutPostsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -2261,6 +2300,7 @@ export type UserCreateWithoutCommentsInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2306,6 +2346,7 @@ export type UserUncheckedCreateWithoutCommentsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2367,6 +2408,7 @@ export type UserUpdateWithoutCommentsInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2412,6 +2454,7 @@ export type UserUncheckedUpdateWithoutCommentsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -2457,6 +2500,7 @@ export type UserCreateWithoutLikesInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2502,6 +2546,7 @@ export type UserUncheckedCreateWithoutLikesInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2563,6 +2608,7 @@ export type UserUpdateWithoutLikesInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2608,6 +2654,7 @@ export type UserUncheckedUpdateWithoutLikesInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -2653,6 +2700,7 @@ export type UserCreateWithoutBookmarksInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2698,6 +2746,7 @@ export type UserUncheckedCreateWithoutBookmarksInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2759,6 +2808,7 @@ export type UserUpdateWithoutBookmarksInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -2804,6 +2854,7 @@ export type UserUncheckedUpdateWithoutBookmarksInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -2849,6 +2900,7 @@ export type UserCreateWithoutNotificationsAsActorInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -2894,6 +2946,7 @@ export type UserUncheckedCreateWithoutNotificationsAsActorInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -2955,6 +3008,7 @@ export type UserUpdateWithoutNotificationsAsActorInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -3000,6 +3054,7 @@ export type UserUncheckedUpdateWithoutNotificationsAsActorInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3045,6 +3100,7 @@ export type UserCreateWithoutNotificationsInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3090,6 +3146,7 @@ export type UserUncheckedCreateWithoutNotificationsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3151,6 +3208,7 @@ export type UserUpdateWithoutNotificationsInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -3196,6 +3254,7 @@ export type UserUncheckedUpdateWithoutNotificationsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3241,6 +3300,7 @@ export type UserCreateWithoutActivitiesInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3286,6 +3346,7 @@ export type UserUncheckedCreateWithoutActivitiesInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3347,6 +3408,7 @@ export type UserUpdateWithoutActivitiesInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -3392,6 +3454,7 @@ export type UserUncheckedUpdateWithoutActivitiesInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3437,6 +3500,7 @@ export type UserCreateWithoutBugReportsInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3482,6 +3546,7 @@ export type UserUncheckedCreateWithoutBugReportsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3532,6 +3597,7 @@ export type UserCreateWithoutReviewedBugReportsInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3577,6 +3643,7 @@ export type UserUncheckedCreateWithoutReviewedBugReportsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3638,6 +3705,7 @@ export type UserUpdateWithoutBugReportsInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -3683,6 +3751,7 @@ export type UserUncheckedUpdateWithoutBugReportsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3739,6 +3808,7 @@ export type UserUpdateWithoutReviewedBugReportsInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -3784,6 +3854,7 @@ export type UserUncheckedUpdateWithoutReviewedBugReportsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -3829,6 +3900,7 @@ export type UserCreateWithoutAuthoredReviewsInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3874,6 +3946,7 @@ export type UserUncheckedCreateWithoutAuthoredReviewsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -3924,6 +3997,7 @@ export type UserCreateWithoutReceivedReviewsInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -3969,6 +4043,7 @@ export type UserUncheckedCreateWithoutReceivedReviewsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -4030,6 +4105,7 @@ export type UserUpdateWithoutAuthoredReviewsInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -4075,6 +4151,7 @@ export type UserUncheckedUpdateWithoutAuthoredReviewsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -4131,6 +4208,7 @@ export type UserUpdateWithoutReceivedReviewsInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -4176,6 +4254,7 @@ export type UserUncheckedUpdateWithoutReceivedReviewsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -4222,6 +4301,7 @@ export type UserCreateWithoutAnalyticsEventsInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutUserInput
@@ -4267,6 +4347,7 @@ export type UserUncheckedCreateWithoutAnalyticsEventsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutUserInput
@@ -4328,6 +4409,7 @@ export type UserUpdateWithoutAnalyticsEventsInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutUserNestedInput
@@ -4373,6 +4455,7 @@ export type UserUncheckedUpdateWithoutAnalyticsEventsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutUserNestedInput
@@ -4418,6 +4501,7 @@ export type UserCreateWithoutPushSubscriptionsInput = {
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -4463,6 +4547,7 @@ export type UserUncheckedCreateWithoutPushSubscriptionsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -4524,6 +4609,7 @@ export type UserUpdateWithoutPushSubscriptionsInput = {
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -4569,9 +4655,210 @@ export type UserUncheckedUpdateWithoutPushSubscriptionsInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutNotificationPreferenceInput = {
+  id?: string
+  userName: string
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  avatar?: string | null
+  bio?: string | null
+  location?: string | null
+  verified?: boolean
+  role?: $Enums.UserRole
+  rewardPoints?: number
+  rewardTier?: $Enums.RewardTier
+  inviteCode?: string | null
+  googleId?: string | null
+  avatarConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastKnownLat?: number | null
+  lastKnownLng?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
+  posts?: Prisma.PostCreateNestedManyWithoutUserInput
+  comments?: Prisma.CommentCreateNestedManyWithoutUserInput
+  likes?: Prisma.LikeCreateNestedManyWithoutUserInput
+  bookmarks?: Prisma.BookmarkCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationRecipientCreateNestedManyWithoutUserInput
+  notificationsAsActor?: Prisma.NotificationCreateNestedManyWithoutActorInput
+  activities?: Prisma.UserActivityCreateNestedManyWithoutUserInput
+  bugReports?: Prisma.BugReportCreateNestedManyWithoutReporterInput
+  reviewedBugReports?: Prisma.BugReportCreateNestedManyWithoutReviewerInput
+  authoredReviews?: Prisma.UserReviewCreateNestedManyWithoutReviewerInput
+  receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
+  invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
+  invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestCreateNestedManyWithoutUserInput
+  following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
+  followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
+  analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
+  pushSubscriptions?: Prisma.PushSubscriptionCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutNotificationPreferenceInput = {
+  id?: string
+  userName: string
+  firstName: string
+  lastName: string
+  email: string
+  password: string
+  avatar?: string | null
+  bio?: string | null
+  location?: string | null
+  verified?: boolean
+  role?: $Enums.UserRole
+  rewardPoints?: number
+  rewardTier?: $Enums.RewardTier
+  inviteCode?: string | null
+  invitedById?: string | null
+  googleId?: string | null
+  avatarConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastKnownLat?: number | null
+  lastKnownLng?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  isDeleted?: boolean
+  deletedAt?: Date | string | null
+  deletionRequestedAt?: Date | string | null
+  deletionScheduledFor?: Date | string | null
+  deletionReason?: string | null
+  posts?: Prisma.PostUncheckedCreateNestedManyWithoutUserInput
+  comments?: Prisma.CommentUncheckedCreateNestedManyWithoutUserInput
+  likes?: Prisma.LikeUncheckedCreateNestedManyWithoutUserInput
+  bookmarks?: Prisma.BookmarkUncheckedCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationRecipientUncheckedCreateNestedManyWithoutUserInput
+  notificationsAsActor?: Prisma.NotificationUncheckedCreateNestedManyWithoutActorInput
+  activities?: Prisma.UserActivityUncheckedCreateNestedManyWithoutUserInput
+  bugReports?: Prisma.BugReportUncheckedCreateNestedManyWithoutReporterInput
+  reviewedBugReports?: Prisma.BugReportUncheckedCreateNestedManyWithoutReviewerInput
+  authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
+  receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
+  invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedCreateNestedManyWithoutUserInput
+  following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
+  followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
+  analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutNotificationPreferenceInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutNotificationPreferenceInput, Prisma.UserUncheckedCreateWithoutNotificationPreferenceInput>
+}
+
+export type UserUpsertWithoutNotificationPreferenceInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutNotificationPreferenceInput, Prisma.UserUncheckedUpdateWithoutNotificationPreferenceInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutNotificationPreferenceInput, Prisma.UserUncheckedCreateWithoutNotificationPreferenceInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutNotificationPreferenceInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutNotificationPreferenceInput, Prisma.UserUncheckedUpdateWithoutNotificationPreferenceInput>
+}
+
+export type UserUpdateWithoutNotificationPreferenceInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userName?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  rewardPoints?: Prisma.IntFieldUpdateOperationsInput | number
+  rewardTier?: Prisma.EnumRewardTierFieldUpdateOperationsInput | $Enums.RewardTier
+  inviteCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  googleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastKnownLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posts?: Prisma.PostUpdateManyWithoutUserNestedInput
+  comments?: Prisma.CommentUpdateManyWithoutUserNestedInput
+  likes?: Prisma.LikeUpdateManyWithoutUserNestedInput
+  bookmarks?: Prisma.BookmarkUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationRecipientUpdateManyWithoutUserNestedInput
+  notificationsAsActor?: Prisma.NotificationUpdateManyWithoutActorNestedInput
+  activities?: Prisma.UserActivityUpdateManyWithoutUserNestedInput
+  bugReports?: Prisma.BugReportUpdateManyWithoutReporterNestedInput
+  reviewedBugReports?: Prisma.BugReportUpdateManyWithoutReviewerNestedInput
+  authoredReviews?: Prisma.UserReviewUpdateManyWithoutReviewerNestedInput
+  receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
+  invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
+  invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
+  followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
+  analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutNotificationPreferenceInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userName?: Prisma.StringFieldUpdateOperationsInput | string
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  password?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  location?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  verified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  role?: Prisma.EnumUserRoleFieldUpdateOperationsInput | $Enums.UserRole
+  rewardPoints?: Prisma.IntFieldUpdateOperationsInput | number
+  rewardTier?: Prisma.EnumRewardTierFieldUpdateOperationsInput | $Enums.RewardTier
+  inviteCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  invitedById?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  googleId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarConfig?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  lastKnownLat?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  lastKnownLng?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionRequestedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionScheduledFor?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  posts?: Prisma.PostUncheckedUpdateManyWithoutUserNestedInput
+  comments?: Prisma.CommentUncheckedUpdateManyWithoutUserNestedInput
+  likes?: Prisma.LikeUncheckedUpdateManyWithoutUserNestedInput
+  bookmarks?: Prisma.BookmarkUncheckedUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationRecipientUncheckedUpdateManyWithoutUserNestedInput
+  notificationsAsActor?: Prisma.NotificationUncheckedUpdateManyWithoutActorNestedInput
+  activities?: Prisma.UserActivityUncheckedUpdateManyWithoutUserNestedInput
+  bugReports?: Prisma.BugReportUncheckedUpdateManyWithoutReporterNestedInput
+  reviewedBugReports?: Prisma.BugReportUncheckedUpdateManyWithoutReviewerNestedInput
+  authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
+  receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
+  invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
+  followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
+  analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
+  pushSubscriptions?: Prisma.PushSubscriptionUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutDeletionRequestsInput = {
@@ -4613,6 +4900,7 @@ export type UserCreateWithoutDeletionRequestsInput = {
   receivedReviews?: Prisma.UserReviewCreateNestedManyWithoutRevieweeInput
   invitedBy?: Prisma.UserCreateNestedOneWithoutInvitedUsersInput
   invitedUsers?: Prisma.UserCreateNestedManyWithoutInvitedByInput
+  notificationPreference?: Prisma.NotificationPreferenceCreateNestedOneWithoutUserInput
   following?: Prisma.FollowCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventCreateNestedManyWithoutUserInput
@@ -4658,6 +4946,7 @@ export type UserUncheckedCreateWithoutDeletionRequestsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutReviewerInput
   receivedReviews?: Prisma.UserReviewUncheckedCreateNestedManyWithoutRevieweeInput
   invitedUsers?: Prisma.UserUncheckedCreateNestedManyWithoutInvitedByInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedCreateNestedOneWithoutUserInput
   following?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowerInput
   followers?: Prisma.FollowUncheckedCreateNestedManyWithoutFollowingInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedCreateNestedManyWithoutUserInput
@@ -4719,6 +5008,7 @@ export type UserUpdateWithoutDeletionRequestsInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedBy?: Prisma.UserUpdateOneWithoutInvitedUsersNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -4764,6 +5054,7 @@ export type UserUncheckedUpdateWithoutDeletionRequestsInput = {
   authoredReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutReviewerNestedInput
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -4837,6 +5128,7 @@ export type UserUpdateWithoutInvitedByInput = {
   receivedReviews?: Prisma.UserReviewUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUpdateManyWithoutUserNestedInput
@@ -4882,6 +5174,7 @@ export type UserUncheckedUpdateWithoutInvitedByInput = {
   receivedReviews?: Prisma.UserReviewUncheckedUpdateManyWithoutRevieweeNestedInput
   invitedUsers?: Prisma.UserUncheckedUpdateManyWithoutInvitedByNestedInput
   deletionRequests?: Prisma.AccountDeletionRequestUncheckedUpdateManyWithoutUserNestedInput
+  notificationPreference?: Prisma.NotificationPreferenceUncheckedUpdateOneWithoutUserNestedInput
   following?: Prisma.FollowUncheckedUpdateManyWithoutFollowerNestedInput
   followers?: Prisma.FollowUncheckedUpdateManyWithoutFollowingNestedInput
   analyticsEvents?: Prisma.AnalyticsEventUncheckedUpdateManyWithoutUserNestedInput
@@ -5132,6 +5425,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   invitedBy?: boolean | Prisma.User$invitedByArgs<ExtArgs>
   invitedUsers?: boolean | Prisma.User$invitedUsersArgs<ExtArgs>
   deletionRequests?: boolean | Prisma.User$deletionRequestsArgs<ExtArgs>
+  notificationPreference?: boolean | Prisma.User$notificationPreferenceArgs<ExtArgs>
   following?: boolean | Prisma.User$followingArgs<ExtArgs>
   followers?: boolean | Prisma.User$followersArgs<ExtArgs>
   analyticsEvents?: boolean | Prisma.User$analyticsEventsArgs<ExtArgs>
@@ -5244,6 +5538,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   invitedBy?: boolean | Prisma.User$invitedByArgs<ExtArgs>
   invitedUsers?: boolean | Prisma.User$invitedUsersArgs<ExtArgs>
   deletionRequests?: boolean | Prisma.User$deletionRequestsArgs<ExtArgs>
+  notificationPreference?: boolean | Prisma.User$notificationPreferenceArgs<ExtArgs>
   following?: boolean | Prisma.User$followingArgs<ExtArgs>
   followers?: boolean | Prisma.User$followersArgs<ExtArgs>
   analyticsEvents?: boolean | Prisma.User$analyticsEventsArgs<ExtArgs>
@@ -5274,6 +5569,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     invitedBy: Prisma.$UserPayload<ExtArgs> | null
     invitedUsers: Prisma.$UserPayload<ExtArgs>[]
     deletionRequests: Prisma.$AccountDeletionRequestPayload<ExtArgs>[]
+    notificationPreference: Prisma.$NotificationPreferencePayload<ExtArgs> | null
     following: Prisma.$FollowPayload<ExtArgs>[]
     followers: Prisma.$FollowPayload<ExtArgs>[]
     analyticsEvents: Prisma.$AnalyticsEventPayload<ExtArgs>[]
@@ -5714,6 +6010,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   invitedBy<T extends Prisma.User$invitedByArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$invitedByArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   invitedUsers<T extends Prisma.User$invitedUsersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$invitedUsersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   deletionRequests<T extends Prisma.User$deletionRequestsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$deletionRequestsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AccountDeletionRequestPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  notificationPreference<T extends Prisma.User$notificationPreferenceArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$notificationPreferenceArgs<ExtArgs>>): Prisma.Prisma__NotificationPreferenceClient<runtime.Types.Result.GetResult<Prisma.$NotificationPreferencePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   following<T extends Prisma.User$followingArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$followingArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   followers<T extends Prisma.User$followersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$followersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FollowPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   analyticsEvents<T extends Prisma.User$analyticsEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$analyticsEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AnalyticsEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -6497,6 +6794,25 @@ export type User$deletionRequestsArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   distinct?: Prisma.AccountDeletionRequestScalarFieldEnum | Prisma.AccountDeletionRequestScalarFieldEnum[]
+}
+
+/**
+ * User.notificationPreference
+ */
+export type User$notificationPreferenceArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the NotificationPreference
+   */
+  select?: Prisma.NotificationPreferenceSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the NotificationPreference
+   */
+  omit?: Prisma.NotificationPreferenceOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.NotificationPreferenceInclude<ExtArgs> | null
+  where?: Prisma.NotificationPreferenceWhereInput
 }
 
 /**

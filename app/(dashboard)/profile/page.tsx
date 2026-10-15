@@ -14,6 +14,7 @@ import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCa
 import { AuthLinkPanel } from "@/app/components/features/profile/AuthLinkPanel"
 import { EmailSecurityPanel } from "@/app/components/features/profile/EmailSecurityPanel"
 import { AccountDeletionPanel } from "@/app/components/features/profile/AccountDeletionPanel"
+import { CachedDataNotice } from "@/app/components/pwa/OfflineBanner"
 import { toastService } from "@/app/lib/services/toastService"
 
 const AvatarEditor = dynamic(() => import("@/app/components/features/profile/AvatarEditor").then((m) => m.AvatarEditor), { ssr: false })
@@ -273,6 +274,8 @@ export default function OwnProfilePage() {
 
   return (
     <div className="max-w-[680px] mx-auto px-4 py-4">
+      {/* Offline label: profile shell + tab data are runtime-cached when visited online. */}
+      <CachedDataNotice compact />
       <div className="h-[180px] bg-gradient-to-br from-primary-dark to-primary radius-lg mb-0 relative" />
 
       <div className="relative px-5">

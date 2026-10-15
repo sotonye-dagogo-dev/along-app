@@ -39,12 +39,22 @@ export type { RequestRouteTriggerConfig } from "./routeRequest";
 export {
   ROUTE_REQUEST_AUDIENCE_CONFIG_KEY,
   DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG,
+  DEFAULT_ROUTE_REQUEST_LOCATION_FILTER,
   ROUTE_REQUEST_AUDIENCE_LIMITS,
   ROUTE_REQUEST_AUDIENCE_META,
   normalizeRouteRequestAudienceConfig,
   validateRouteRequestAudienceValue,
 } from "./routeRequestAudience";
-export type { RouteRequestAudienceConfig } from "./routeRequestAudience";
+export type { RouteRequestAudienceConfig, RouteRequestLocationFilterConfig } from "./routeRequestAudience";
+export {
+  NOTIFICATION_PREFERENCE_KEYS,
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  NOTIFICATION_TYPE_TO_PREFERENCE_KEY,
+  NOTIFICATION_PREFERENCES_META,
+  normalizeNotificationPreferences,
+  validateNotificationPreferencesValue,
+} from "./notificationPreferences";
+export type { NotificationPreferenceKey, NotificationPreferenceMap } from "./notificationPreferences";
 export { POST_SUBMIT_CONFIG } from "./postSubmit";
 export type { PostSubmitConfig } from "./postSubmit";
 export {
@@ -118,6 +128,8 @@ export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";
 export type { PushPromptConfig, PushSubscribeReason } from "./pushPrompt";
 export { PWA_INSTALL_CONFIG, PWA_FAQ_LINKS, PWA_UPDATE_CONFIG, PWA_SW_MESSAGES, isStandaloneDisplay } from "./pwa";
 export type { PwaInstallConfig, PwaUpdateConfig } from "./pwa";
+export { AUTH_OFFLINE_CONFIG, readAuthSnapshot, writeAuthSnapshot, clearAuthSnapshot } from "./authOffline";
+export type { AuthSnapshotUser } from "./authOffline";
 export { ACCOUNT_DELETION_CONFIG, deletionScheduledFor, buildDeletedUserName, buildDeletedEmail, isDeletionOverdue } from "./accountDeletion";
 export type { AccountDeletionStatus } from "./accountDeletion";
 export { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, isSystemTemplate, parseManualEmails } from "./emailManagement";

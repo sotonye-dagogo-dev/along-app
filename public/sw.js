@@ -27,7 +27,7 @@
  * - Push mirrors every in-app notification; click focuses/opens the URL.
  */
 
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6";
 const STATIC_CACHE = `along-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `along-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `along-api-${CACHE_VERSION}`;
@@ -54,11 +54,17 @@ const OFFLINE_FALLBACK = "/offline.html";
 
 const NEVER_CACHE_API = ["/api/auth/", "/api/push/", "/api/otp", "/api/admin/"];
 const CACHEABLE_API = [
+  // Bare "/api/posts" so query-form URLs ("/api/posts?limit=…", used by
+  // profile tabs) match — "/api/posts/" alone never matches via startsWith.
+  "/api/posts",
   "/api/posts/feed",
-  "/api/posts/",
   "/api/search",
   "/api/notifications",
   "/api/leaderboard",
+  // Profile surfaces: own/public profile, rewards history, bookmarks tab.
+  "/api/users",
+  "/api/rewards",
+  "/api/bookmarks",
   "/api/site-config",
   "/api/config",
   "/api/faq",

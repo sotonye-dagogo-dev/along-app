@@ -6,6 +6,7 @@ import { HeroCtas, BottomCta, GuestContinueLink } from "@/app/components/ui/Land
 import { LandingHeroCopy, LandingFeatures, LandingCtaHeading, LandingFeedPreviewHeading, LandingFeedEmpty } from "./LandingCopy";
 import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection";
 import { ReviewsCarouselSection } from "@/app/components/features/reviews/ReviewsCarouselSection";
+import LandingOfflineNotice from "./LandingOfflineNotice";
 import { pickFeaturedBlogs } from "@/app/lib/config";
 import { getPublicBlogPosts } from "@/app/lib/utils/blogStore";
 import { prisma } from "@/app/lib/db/prisma";
@@ -175,6 +176,8 @@ export default async function LandingPage() {
   return (
     <>
       <StructuredData data={websiteSchema()} />
+      {/* Offline label for the precached landing shell (client island). */}
+      <LandingOfflineNotice />
 
       {/* Hero */}
       <section

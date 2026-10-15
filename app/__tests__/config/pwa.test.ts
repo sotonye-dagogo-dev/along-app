@@ -35,8 +35,24 @@ describe("pwa config", () => {
 
   it("cached destinations all resolve to precached routes", () => {
     for (const d of PWA_CACHED_DESTINATIONS) {
-      expect(PWA_PRECACHE_ROUTES).toContain(d.href);
+      // Precached shells resolve on any device; runtime-cached pages
+      // (/profile, /notifications) resolve once visited while online — the
+      // SW dynamic cache serves them offline, so they are advertised with
+      // honest runtimeCached copy instead of precache membership.
+      const entry = d as { href: string; runtimeCached?: boolean };
+      if (entry.runtimeCached) {
+        expect(entry.href).toBeTruthy();
+      } else {
+        expect(PWA_PRECACHE_ROUTES).toContain(entry.href);
+      }
       expect(d.label).toBeTruthy();
+    }
+  });
+
+  it("advertises landing, profile + notifications as cached destinations", () => {
+    const hrefs = PWA_CACHED_DESTINATIONS.map((d) => d.href);
+    for (const href of ["/", "/profile", "/notifications"]) {
+      expect(hrefs).toContain(href);
     }
   });
 
@@ -52,6 +68,20 @@ describe("pwa config", () => {
     expect(isCacheableApi("/api/posts/feed")).toBe(true);
     expect(isCacheableApi("/api/search?q=x")).toBe(true);
     expect(isCacheableApi("/api/leaderboard")).toBe(true);
+  });
+
+  it("caches profile + notifications offline surfaces (incl. query-form posts)", () => {
+    // Profile tabs fetch "/api/posts?limit=20&userId=…" (no trailing slash) —
+    // the bare "/api/posts" prefix must match or profile tabs go uncached.
+    expect(isCacheableApi("/api/posts?limit=20&userId=u1")).toBe(true);
+    expect(isCacheableApi("/api/posts/abc")).toBe(true);
+    expect(isCacheableApi("/api/users/u1")).toBe(true);
+    expect(isCacheableApi("/api/users/by-username/someone")).toBe(true);
+    expect(isCacheableApi("/api/rewards/history")).toBe(true);
+    expect(isCacheableApi("/api/bookmarks?limit=20")).toBe(true);
+    expect(isCacheableApi("/api/notifications?filter=unread")).toBe(true);
+    // Session integrity still wins: auth APIs never cache.
+    expect(isCacheableApi("/api/auth/me")).toBe(false);
   });
 
   it("detects keyless map-tile hosts incl. subdomains", () => {

@@ -71,6 +71,14 @@ export const CREATE_POST_SCHEMA = z.object({
   waypoints: z.array(z.object({ lat: z.number(), lng: z.number() })).optional(),
   totalDistanceKm: z.number().optional(),
   estimatedMins: z.number().optional(),
+  /**
+   * Ephemeral request location for optimistic nearby notification filtering
+   * (ROUTE_REQUEST only). Never persisted — the fan-out reads it from the
+   * validated body and discards it. Optional; absent/invalid degrades to the
+   * community-wide audience (graceful fallback, never an error).
+   */
+  requestLat: z.number().min(-90).max(90).optional(),
+  requestLng: z.number().min(-180).max(180).optional(),
 });
 
 export const UPDATE_POST_SCHEMA = CREATE_POST_SCHEMA.partial();

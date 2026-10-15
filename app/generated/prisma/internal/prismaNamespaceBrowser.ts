@@ -69,6 +69,7 @@ export const ModelName = {
   PasswordResetToken: 'PasswordResetToken',
   EmailOtpToken: 'EmailOtpToken',
   PushSubscription: 'PushSubscription',
+  NotificationPreference: 'NotificationPreference',
   AuditLog: 'AuditLog',
   AccountDeletionRequest: 'AccountDeletionRequest'
 } as const
@@ -356,6 +357,17 @@ export const PushSubscriptionScalarFieldEnum = {
 } as const
 
 export type PushSubscriptionScalarFieldEnum = (typeof PushSubscriptionScalarFieldEnum)[keyof typeof PushSubscriptionScalarFieldEnum]
+
+
+export const NotificationPreferenceScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  prefs: 'prefs',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NotificationPreferenceScalarFieldEnum = (typeof NotificationPreferenceScalarFieldEnum)[keyof typeof NotificationPreferenceScalarFieldEnum]
 
 
 export const AuditLogScalarFieldEnum = {
