@@ -93,6 +93,9 @@ interface NewPostPayload {
   waypoints?: { lat: number; lng: number }[]
   /** Idempotency key for this composer session — dedups double-clicks/retries. */
   clientMutationId?: string
+  /** Ephemeral request fix (ROUTE_REQUEST nearby filtering; never persisted). */
+  requestLat?: number
+  requestLng?: number
 }
 
 // In-flight POST /api/posts dedup: a second submit carrying the same

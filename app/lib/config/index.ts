@@ -39,12 +39,22 @@ export type { RequestRouteTriggerConfig } from "./routeRequest";
 export {
   ROUTE_REQUEST_AUDIENCE_CONFIG_KEY,
   DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG,
+  DEFAULT_ROUTE_REQUEST_LOCATION_FILTER,
   ROUTE_REQUEST_AUDIENCE_LIMITS,
   ROUTE_REQUEST_AUDIENCE_META,
   normalizeRouteRequestAudienceConfig,
   validateRouteRequestAudienceValue,
 } from "./routeRequestAudience";
-export type { RouteRequestAudienceConfig } from "./routeRequestAudience";
+export type { RouteRequestAudienceConfig, RouteRequestLocationFilterConfig } from "./routeRequestAudience";
+export {
+  NOTIFICATION_PREFERENCE_KEYS,
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  NOTIFICATION_TYPE_TO_PREFERENCE_KEY,
+  NOTIFICATION_PREFERENCES_META,
+  normalizeNotificationPreferences,
+  validateNotificationPreferencesValue,
+} from "./notificationPreferences";
+export type { NotificationPreferenceKey, NotificationPreferenceMap } from "./notificationPreferences";
 export { POST_SUBMIT_CONFIG } from "./postSubmit";
 export type { PostSubmitConfig } from "./postSubmit";
 export {

@@ -124,7 +124,9 @@ describe("POST /api/posts", () => {
       })
     )
     // Community audience (followers first + non-followers) — not followers-only.
-    expect(getRouteRequestAudienceIds).toHaveBeenCalledWith("u1")
+    // Second arg is the ephemeral request fix (absent coords degrade to the
+    // full audience inside the service — graceful fallback).
+    expect(getRouteRequestAudienceIds).toHaveBeenCalledWith("u1", expect.anything())
     expect(createNotification).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "ROUTE_REQUEST",

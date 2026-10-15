@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, routes: rawRoutes, images, tags, region, startLat, startLng, endLat, endLng, waypoints, totalDistanceKm, estimatedMins, type, description, quotedPostId } = parsed.data;
+    const { title, routes: rawRoutes, images, tags, region, startLat, startLng, endLat, endLng, waypoints, totalDistanceKm, estimatedMins, type, description, quotedPostId, requestLat, requestLng } = parsed.data;
     // Destination is the final stop — strip any fare/vehicle it carries so
     // stored rows never imply a leg beyond the destination (clients already
     // hide + strip; this is the server-side backstop for old clients).
@@ -218,7 +218,16 @@ export async function POST(request: NextRequest) {
       if (type === "ROUTE_REQUEST") {
         let audience: string[] = [];
         try {
-          audience = await getRouteRequestAudienceIds(user.id as string);
+          // Ephemeral request fix for optimistic nearby filtering (never
+          // persisted, never logged): explicit one-shot fix wins, otherwise
+          // the request's own start coords. Invalid/absent degrades to the
+          // full community audience inside the service (graceful fallback).
+          const fixLat = requestLat ?? startLat ?? null;
+          const fixLng = requestLng ?? startLng ?? null;
+          audience = await getRouteRequestAudienceIds(user.id as string, {
+            requestLat: fixLat,
+            requestLng: fixLng,
+          });
         } catch {
           audience = await getFollowerIds(user.id as string);
         }

@@ -13,6 +13,14 @@ export interface RouteRequestBody {
   tags: string[]
   /** Idempotency key for this composer session — dedups double-clicks/retries server-side. */
   clientMutationId?: string
+  /**
+   * Ephemeral one-shot fix for optimistic nearby notification filtering.
+   * Cached-only (never prompts): the server uses it solely for this fan-out
+   * computation and never persists it. Absent/invalid falls back to the
+   * request's own start coords, then to the community-wide audience.
+   */
+  requestLat?: number
+  requestLng?: number
 }
 
 /** An existing ROUTE_REQUEST opened for editing — prefilled, PATCHed, never morphed. */
@@ -212,6 +220,28 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
         routes: [{ location: from.trim() }, { location: to.trim() }],
         tags,
         clientMutationId: mutationKey,
+        // Best-effort ephemeral fix for optimistic nearby filtering:
+        // cached coords only (memory/localStorage), never triggers a
+        // permission prompt; server discards it after the fan-out.
+        ...(await (async () => {
+          try {
+            const { peekBiasCoords } = await import("@/app/lib/utils/geoBias")
+            const bias = peekBiasCoords()
+            if (
+              bias &&
+              Number.isFinite(bias.lat) &&
+              Number.isFinite(bias.lng) &&
+              bias.lat >= -90 && bias.lat <= 90 &&
+              bias.lng >= -180 && bias.lng <= 180 &&
+              !(bias.lat === 0 && bias.lng === 0)
+            ) {
+              return { requestLat: bias.lat, requestLng: bias.lng }
+            }
+          } catch {
+            /* bias unavailable — server falls back gracefully */
+          }
+          return {}
+        })()),
       })
       // Only explicit `true` counts as success — a void/no-op handler must
       // never clear the composer (same vanish-class guard as ShareRouteModal).

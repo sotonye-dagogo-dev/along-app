@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 59: ranking-vs-filter gaps, hide-when-following, env trim, index-free sampling)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: ephemeral-fix location filtering, NULL-means-on prefs, legacy-row normalize)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -850,3 +850,5 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** fan-out = followers-first union with the community to a capped audience (one notification row, never-throw, legacy mode flag); restore must accept every shape the saver can persist (pad, never skip) and reset every field unconditionally. When save and restore disagree on minimums, fix restore to match save — never tighten save to match restore (partial progress is the feature).
 - **Supersedes:** None
 - **Superseded by:** None
+
+**Sprint 63:** ephemeral request fixes (cached-only client attach, server-validated, never persisted) give location-aware fan-out with zero new tracking — pair with a minNearby gate so sparse data fails open to the legacy audience; per-user Json prefs with config-driven normalize (NULL/partial → all-on) keep existing users untouched without backfills; legacy SiteConfig rows need normalize defaults for every added knob or old stored values break the new path.

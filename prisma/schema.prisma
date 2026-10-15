@@ -102,6 +102,8 @@ model User {
 
   deletionRequests AccountDeletionRequest[]
 
+  notificationPreference NotificationPreference?
+
   // Self-referential many-to-many for following
   following       Follow[]         @relation("UserFollowing")
   followers       Follow[]         @relation("UserFollowers")
@@ -509,6 +511,23 @@ model PushSubscription {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, endpoint])
+  @@index([userId])
+}
+
+// NotificationPreference — per-user opt-outs (one row per user, created on
+// first save). Missing row OR null/partial `prefs` JSON resolves per-key to
+// `true` (current platform behaviour) via normalizeNotificationPreferences,
+// so existing users with NULL (no row) keep receiving everything — full
+// backward compatibility, no backfill needed.
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  prefs     Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
 }
 
