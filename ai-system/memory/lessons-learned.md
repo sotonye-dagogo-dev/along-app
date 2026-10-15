@@ -836,3 +836,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** when users report missing rows, audit RANKING before FILTERING (log pool contributions); follow/status affordances need a cached GET + hook, not just POST/DELETE; trim every server-read env key at the check site (both the gate and the consumer); sample by explicit index, never by re-finding references; null-island (0,0) is a data smell — strip placeholders, keep real geometry. Tests assert the graceful shape (empty heuristic, no throw), not just the happy path.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 61 (2026-10-15): white-on-pastel pills, near-white flag washes, studio parity shape
+- **Symptom:** "badges aren't visible in light theme" — vehicle flags washed into the white card; Linked/Enabled/tier shields unreadable; admin config board empty on a fresh DB with JSON-only editing.
+- **Root causes:** (1) light washes (`-50`) with no border on white cards; `bg-success/error` (pastel bg token) paired with `text-white` instead of its `*-text` mate — the token names make the pairing self-evident (`bg-success` ↔ `text-success-text` ↔ `border-success-border`); raw metallic data hues reused as text. (2) config API returned DB rows only, so shipped defaults were invisible until saved.
+- **Fix pattern (reuse):** flags/badges = saturated wash (`-100`) + dark-grade text + matching border, all with dark variants; NEVER `bg-<pastel> text-white`; NEVER raw data hues as text — add a display registry with darkened in-family shades + neutral fallback. Studios = shipped-defaults catalog + stored-wins read-time merge + central validator + explicit restore-by-delete + source badges, so fresh DBs render fully and hardcoded updates never clobber saved rows.
+- **Supersedes:** None
+- **Superseded by:** None

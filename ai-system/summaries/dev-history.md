@@ -1398,3 +1398,10 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Implemented:** two explicit discovery pools (open requests from non-followed, no age window; general recent from anyone not followed) at `discoveryWeight` 0.5 + `openRequestWeight` 0.6 (+0.05 recency), spread-merge safe, non-finite → default.
 **QA:** full gate green in-runner — tsc 0 errors, jest 84/84 suites 728/728 tests, lint clean on touched files, build deferred to CI/Vercel.
 **Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
+
+**Session 2026-10-15 — Design-system visibility + Config Studio parity (execute-feature).**
+**Directive:** vehicle flags/icons (post cards + details) and enabled/linked/tier shield icons/text in profile tabs (connected accounts + points) unreadable in light theme; hardcoded admin-config defaults on the config page with no-code editing, DB-aware + default-rollback like email/blog studios.
+**Found:** near-white `-50` vehicle washes with no border; `bg-success/error text-white` white-on-pastel pills (AuthLinkPanel, admin email/users, notifications) — same class as the earlier EmailSecurityPanel fix; raw metallic tier hues in RewardsPanel/AppUserLabel; TrustBadge hardcoded hex; config API DB-rows-only with no defaults/restore/audit/idempotency.
+**Implemented:** `-100` washes + per-type `borderClass` + bordered semibold chips; tokenized TrustBadge + border; `REWARD_TIER_DISPLAY`/`rewardTierPillClass` + all pill fixes; `ADMIN_CONFIG_DEFAULTS`/`mergeAdminConfigsWithDefaults`/`validateAdminConfigValue`/`ADMIN_SIMPLE_CONFIG_CARDS`/`ADMIN_DEDICATED_CONFIG_KEYS` + merged GET/virtual rows/`defaults` catalog + `restore` + audit + idempotent DELETE + page badges/cards/raw-list split.
+**QA:** full gate green in-runner — tsc 0 errors, jest 85/85 suites 736/736 tests, lint clean on touched files, build deferred to CI/Vercel.
+**Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.

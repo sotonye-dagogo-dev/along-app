@@ -81,7 +81,7 @@ export {
   hasMapboxKey,
 } from "./mapStack";
 export type { MapStackConfig, MapVectorStyleName, MapRoutingProvider, MapGeocodeProvider, MapLibreRasterStyle, MapExpandConfig, LandmarkGeocodeConfig } from "./mapStack";
-export { REWARD_TIERS, POINTS_CONFIG } from "./rewards";
+export { REWARD_TIERS, POINTS_CONFIG, REWARD_TIER_DISPLAY, rewardTierPillClass } from "./rewards";
 export { INVITE_CONFIG } from "./inviteConfig";
 export { LEADERBOARD_LINKS_CONFIG } from "./leaderboardLinks";
 export { PROFILE_QUICK_LINKS_CONFIG } from "./profileQuickLinks";
@@ -115,8 +115,8 @@ export { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, isSystemTemplate, parseM
 export type { EmailTemplateRecord, EmailRecipientSelection, EmailRecipientMode } from "./emailManagement";
 export { EMAIL_DEFAULT_VARIABLES, EMAIL_ICONS, composeEmailDocument, composeEmailText } from "./email";
 export { getEffectiveEnv, isProduction, isDevelopment, getAppUrl, resolveDatabaseUrl } from "./env";
-export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, ADMIN_USER_FILTERS, ADMIN_USER_ROW_ACTIONS, ADMIN_TABLE_ACTIONS_META, SITE_CONFIG_EDITORS, inferConfigKind, formatDelta, parseAdminDashboardPeriod, parseAdminUserFilter, deletionQueryForFilter, isDeletedAdminUser, allowedUserRowActions, canShowUserRowAction } from "./admin";
-export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId, AdminDashboardPeriod, AdminUserFilterId, AdminUserRowActionId, AdminUserDeletionState } from "./admin";
+export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, ADMIN_USER_FILTERS, ADMIN_USER_ROW_ACTIONS, ADMIN_TABLE_ACTIONS_META, SITE_CONFIG_EDITORS, ADMIN_CONFIG_DEFAULTS, ADMIN_SIMPLE_CONFIG_CARDS, ADMIN_DEDICATED_CONFIG_KEYS, inferConfigKind, formatDelta, parseAdminDashboardPeriod, parseAdminUserFilter, deletionQueryForFilter, isDeletedAdminUser, allowedUserRowActions, canShowUserRowAction, getAdminConfigDefault, mergeAdminConfigsWithDefaults, validateAdminConfigValue } from "./admin";
+export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId, AdminDashboardPeriod, AdminUserFilterId, AdminUserRowActionId, AdminUserDeletionState, AdminConfigDefault, AdminConfigSource, MergedAdminConfig, AdminSimpleFieldMeta, AdminSimpleCardMeta } from "./admin";
 export { VALIDATION_RULES } from "./validationRules";
 export {
   PROFILE_VALIDATION_CONFIG,

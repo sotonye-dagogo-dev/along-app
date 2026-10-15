@@ -94,7 +94,7 @@ export function AuthLinkPanel() {
           {!status.hasGoogle ? (
             <AppButton variant="secondary" size="sm" onClick={handleLinkGoogle}>Connect</AppButton>
           ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-success text-white text-xs font-medium"><Shield size={12} />Linked</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 radius-pill bg-success text-success-text border border-success-border text-xs font-semibold"><Shield size={12} />Linked</span>
           )}
         </div>
 
@@ -105,7 +105,7 @@ export function AuthLinkPanel() {
               <div className="text-sm font-medium text-text-primary">Password</div>
               <div className="text-xs text-text-muted">{status.hasPassword ? "You can sign in with email & password" : "Add a password to enable email sign-in"}</div>
             </div>
-            {status.hasPassword && <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-success text-white text-xs font-medium"><Shield size={12} />Enabled</span>}
+            {status.hasPassword && <span className="inline-flex items-center gap-1 px-2.5 py-1 radius-pill bg-success text-success-text border border-success-border text-xs font-semibold"><Shield size={12} />Enabled</span>}
           </div>
           {!status.hasPassword && (
             <form onSubmit={handleAddPassword} className="flex gap-2 mt-1">

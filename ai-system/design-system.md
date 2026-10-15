@@ -1,8 +1,8 @@
 # Design System
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (token-driven scrollbars §scrollbars; trust tooltip portal note)
-> - last-verified-against-code: 2026-10-14 (SCROLLBAR_CONFIG consumed by AdminShell + TrustBadge; globals.css scrollbar rules on --color-* tokens)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 61: flag/badge visibility contract — vehicle -100 washes + borders, trust token classes, tier-shield display registry, white-on-pastel pill sweep)
+> - last-verified-against-code: 2026-10-15 (VEHICLE_REGISTRY borderClass + chip border/semibold; TrustBadge bg-trust-*/text-trust-*/border-trust-* tokens; REWARD_TIER_DISPLAY pills; AuthLinkPanel/admin-email/admin-users/notifications token pairings; tsc 0, jest 85/85)
 > - staleness-policy: re-verify if UI components or styling dependencies change
 
 > **Overview:** Along uses Tailwind CSS 4 (CSS-first `@theme` tokens in `app/globals.css`) plus a universal library of App* components (`app/components/ui/`, 42 files) built on Tailwind + Lucide React. `antd@^5.23.3` remains a declared dependency in `package.json` but is NOT imported anywhere in `app/` (verified 2026-10-08: zero `antd` / `@ant-design` imports) — App* wrappers do not wrap Ant Design in the current code. Color tokens are defined as CSS custom properties supporting light and dark modes via a `class`-based dark mode toggle (`ThemeProvider` toggles `dark` on document root). Zero emoji policy — all icons use Lucide React exclusively (72 `lucide-react` imports across `app/`).

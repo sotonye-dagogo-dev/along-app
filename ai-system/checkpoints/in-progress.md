@@ -1,9 +1,9 @@
-# In Progress — idle (Sprint 59 closed 2026-10-15)
+# In Progress — idle (Sprint 61 closed 2026-10-15)
 
-> No active work. Last sprint: feed inclusion + PostCard follow + request labels/FAQ + traffic tightening (Sprint 59, QA green: tsc 0, jest 83/83 723/723, lint clean, build clean). See `session-log.md` + `task-queue.md` Sprint 59.
+> No active work. Last sprint: design-system visibility (vehicle flags, trust tokens, tier shields, white-on-pastel pill sweep) + Config Studio parity (shipped defaults, stored-wins merge, central validation, no-code cards, restore, audit, idempotent delete) — Sprint 61, QA green: tsc 0, jest 85/85 736/736, lint clean on touched files, build deferred to CI/Vercel. See `session-log.md` + `task-queue.md` Sprint 61.
 
 ## Discrepancy report (update-ai-system chain)
 
-- Corrected config-file counts to the verified true value (77 incl. index.ts): repo-map claimed 77 pre-sprint (off by one — true value was 76) and dependency-graph claimed 74 (stale since Sprint 55). Both now read 77 verified 2026-10-15.
-- Corrected a stale test-count constraint in system-architecture (282/32 → 723/83, verified by this sprint's full jest run).
-- One false-doc risk avoided: feed "exclusion" reports were ranking, not filtering — documented in lessons-learned so future reports audit ranking first.
+- Verified config-file count still 77 incl. index.ts (no new config files this sprint — admin.ts/rewards.ts/vehicles.ts extended in place); repo-map + dependency-graph headers updated without count drift.
+- Verified test figures from this sprint's in-runner full jest run (85 suites / 736 tests, up from 84/728: +designCompliance 7, +vehicles visibility 1).
+- No false-doc claims found this run: dependency-graph's long config-inventory line (previously cited from a stale snapshot) was re-read live and extended with a dedicated Sprint 61 node instead of editing text that no longer exists.
