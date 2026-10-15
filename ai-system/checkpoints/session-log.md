@@ -2537,3 +2537,19 @@ Nothing pending — feature complete.
 **Notes / Blockers:**
 - None. Non-breaking, all changes additive with fallbacks.
 - Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 59 + this log + dev-history + index + memory + architecture reconciled; no architecture drift — additive config/service/hook/component/route/test only).
+
+**Session 2026-10-15 — Feed out-of-network discovery guarantee (execute-feature).**
+**Directive:** tighten assurance that a user's feed includes posts from users outside their network (not following / not followed); a route request from a non-network user appeared in the suggestions carousel but not the feed. Install node modules + proper QA. Config/metadata-driven, modular, non-breaking + update-ai-system chain.
+**Found:** asymmetry by design — suggestions surfaces recent open `ROUTE_REQUEST`s regardless of follow graph (no age window), while the feed had no guaranteed out-of-network candidate path: trending is 7-day + engagement-ordered (quiet requests sink), tag needs activity overlap (cold viewers get nothing), recent is a tiny most-recent window (older stranger posts fall out). Sprint 59 closed the own-posts ranking gap but left this candidate-generation gap.
+**Implemented:** two explicit discovery pools in `feedService.getFeed` (open requests from non-followed authors, no age window, recency-ordered; general recent posts from anyone not followed, engagement/tag-agnostic) scored at new `discoveryWeight` 0.5 + `openRequestWeight` 0.6 (+0.05 recency) — below followingWeight, above trendingWeight; spread-merge safe with non-finite → default (never zero); cursor/exclude/archived/backfill honored; NEW `feedDiscovery.test.ts` (5).
+**QA:** FULL gate green in-runner (`npm install` completed; postinstall prisma generate skipped — no DB URL in runner, expected): `npx tsc --noEmit` 0 errors; `npx jest` 84/84 suites 728/728 tests; `npm run lint` zero findings on touched files (repo-wide pre-existing items untouched); full `npm run build` deferred to CI/Vercel (needs DB URL, per runner convention).
+**Files Modified:**
+- Edited: `app/lib/types/index.ts`, `app/lib/config/feedAlgorithm.ts`, `app/lib/services/feedService.ts`, `ai-system/planning/task-queue.md` (Sprint 60), `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/__tests__/config/feedDiscovery.test.ts`
+**Assumptions Made:**
+- Discovery = not-followed (superset covering both "not following" and "not followed by"): followers-not-followed-back and strangers both qualify, so neither direction can exclude a post.
+- Open requests earn discoveryWeight + openRequestWeight additively (dedup merges scores), matching the suggestions-carousel priority that motivated the report.
+- Discovery weights default below followingWeight so follow affinity stays dominant; admins can retune via SiteConfig `feedAlgorithm` without code changes.
+**Notes / Blockers:**
+- None. Non-breaking, all changes additive with fallbacks.
+- Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 60 + this log + dev-history + project-plan + system-architecture reconciled; no architecture drift — additive config keys/service pools/test only).
