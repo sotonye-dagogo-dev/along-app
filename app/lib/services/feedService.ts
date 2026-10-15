@@ -266,7 +266,16 @@ class FeedService {
     // non-followed users' posts arrive via trending/tag/recent — no pool
     // filters by "must follow / must be followed", so neither group is ever
     // excluded. Dedup happens in the score map below (same id counted once).
-    const [ownPosts, followingPosts, trendingPosts, tagPosts, recentPosts] = await Promise.all([
+    // Sprint 60 adds two EXPLICIT out-of-network discovery pools so a post
+    // from a user the viewer doesn't follow can never miss the candidate
+    // set: quiet/older/tag-less open route requests previously fell through
+    // every pool (trending is 7-day + engagement-ordered, tag needs activity
+    // overlap, recent is a tiny most-recent window) while the suggestions
+    // carousel always surfaces them — the reported feed/carousel mismatch.
+    const outOfNetworkFilter =
+      followingIds.length > 0 ? { userId: { notIn: [...followingIds, userId] } } : { userId: { not: userId } };
+    const discoveryInclude = { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } };
+    const [ownPosts, followingPosts, trendingPosts, tagPosts, recentPosts, discoveryRequests, discoveryOutOfNetwork] = await Promise.all([
       safeFindManyPosts({
         where: { userId, ...excludeFilter, ...cursorFilter },
         include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
@@ -300,6 +309,26 @@ class FeedService {
       safeFindManyPosts({
         where: { ...excludeFilter, ...recentCursorFilter },
         include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } }, quotedPost: { select: { id: true, title: true, type: true, createdAt: true, user: { select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true } } } } },
+        orderBy: { createdAt: "desc" },
+        take: limit + backfill,
+      }),
+      // Open route requests from out-of-network authors — feed parity with
+      // the suggestions carousel (which always shows recent open requests
+      // regardless of follow graph). No age window, recency-ordered, so a
+      // quiet older request still enters the candidate set.
+      safeFindManyPosts({
+        where: { type: "ROUTE_REQUEST", ...outOfNetworkFilter, ...excludeFilter, ...cursorFilter },
+        include: discoveryInclude,
+        orderBy: { createdAt: "desc" },
+        take: limit + backfill,
+      }),
+      // General out-of-network discovery — recent posts from anyone the
+      // viewer doesn't follow (followers-not-followed + strangers alike),
+      // regardless of engagement or tags. Guarantees strangers appear even
+      // when trending/tag/recent windows miss them.
+      safeFindManyPosts({
+        where: { ...outOfNetworkFilter, ...excludeFilter, ...cursorFilter },
+        include: discoveryInclude,
         orderBy: { createdAt: "desc" },
         take: limit + backfill,
       }),
@@ -398,6 +427,25 @@ class FeedService {
         ? config.ownPostsWeight
         : config.followingWeight;
     addWithScore(ownPosts, ownWeight);
+    // Out-of-network discovery (Sprint 60): scored below following-weight
+    // so follow affinity is preserved, but well above trending/recent so
+    // strangers actually surface. Open requests earn discoveryWeight +
+    // openRequestWeight (additive, matching the suggestions-carousel
+    // priority). Non-finite stored values (legacy SiteConfig rows written
+    // before these knobs) fall back to the hardcoded defaults — never to
+    // zero, which would silently re-exclude strangers.
+    const discoveryWeight =
+      typeof (config as { discoveryWeight?: unknown }).discoveryWeight === "number" &&
+      Number.isFinite((config as { discoveryWeight?: unknown }).discoveryWeight)
+        ? (config as { discoveryWeight: number }).discoveryWeight
+        : 0.5;
+    const openRequestWeight =
+      typeof (config as { openRequestWeight?: unknown }).openRequestWeight === "number" &&
+      Number.isFinite((config as { openRequestWeight?: unknown }).openRequestWeight)
+        ? (config as { openRequestWeight: number }).openRequestWeight
+        : 0.6;
+    addWithScore(discoveryOutOfNetwork, discoveryWeight, 0.05);
+    addWithScore(discoveryRequests, openRequestWeight, 0.05);
 
     // If total scored posts < limit (e.g. cold-start with few posts), ensure we still fill up to limit with recent posts not yet scored
     if (postMap.size < limit) {

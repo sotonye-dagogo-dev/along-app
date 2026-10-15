@@ -849,3 +849,12 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Route-request FAQ + locales — NEW `route-requests` category (5 items: request/respond/tracking/request-vs-route/who-sees) + FAQ_PCM pidgin for all 5; `requestRoute.label`/`shortLabel` in en+pcm (270/270 parity, REQUIRED_KEYS += 2) | [x] |
 | [M] | Traffic tightening — `hasTomtomKey`/`hasMapboxKey`/`viaMapbox`/`viaTomtom` trim pasted env values; NEW `stripNullIsland` (legacy (0,0) placeholders dropped, real stops kept) + `validCoords` rejects null-island; TomTom chunk `indexOf` → explicit indices + speed sanity; per-provider try/catch so a throwing provider falls through to heuristic; legacy guarantee documented (traffic computed live per view, nothing stored → pre-traffic posts never excluded, base line always renders) | [x] |
 | [S] | Tests — NEW `sprint59.test.ts` (14: own-weight, follow config/responsive/registry, trigger labels/layout, FAQ en+pcm, key trim, null-island strip, degenerate graceful shapes, keyless heuristic); `locales.test.ts` REQUIRED_KEYS += 2 | [x] |
+
+## Sprint 60 — Feed out-of-network discovery guarantee (2026-10-15, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, no removed APIs; same props + API envelopes, additive optional config keys only). QA full in-runner: `npm install` ok, tsc 0 errors, jest 84/84 suites 728/728 tests, lint clean on touched files.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Feed discovery — two explicit out-of-network pools in `feedService.getFeed` (open `ROUTE_REQUEST`s from non-followed authors, no age window, recency-ordered for suggestions-carousel parity; general recent posts from anyone not followed, engagement/tag-agnostic) scored at new `FeedAlgorithmConfig.discoveryWeight` (0.5) + `openRequestWeight` (0.6) with recency bonus 0.05; below followingWeight (affinity preserved), above trendingWeight (discovery surfaces); spread-merge safe + non-finite guard to defaults (never zero); cursor/exclude/archived/backfill honored in both pools | [x] |
+| [S] | Tests — NEW `feedDiscovery.test.ts` (5: finite positive weights, follow-dominant/trending-beating ordering, request ≥ discovery priority, legacy-row fallback never zero, admin-tuned values honored) | [x] |

@@ -1391,3 +1391,10 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Implemented:** explicit own-posts pool at `ownPostsWeight` (= followingWeight); `POST_FOLLOW_CONFIG` + follow-status GET + `useFollowStatus` + FollowButton responsive variant + `PostCardFollow`; in-button responsive request labels (trigger + composer); `route-requests` FAQ + PCM + locale keys; traffic trim/strip/index/guard hardening.
 **QA:** full gate green in-runner — tsc 0 errors, jest 83/83 suites 723/723 tests, lint clean on touched files, `npm run build` clean.
 **Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
+
+**Session 2026-10-15 — Feed out-of-network discovery guarantee (execute-feature).**
+**Directive:** feed must include posts from users outside the viewer's network; suggestions carousel showed a non-network route request the feed omitted.
+**Found:** candidate-generation gap (not a filter gap): trending 7-day + engagement-ordered, tag needs activity overlap, recent window tiny — quiet/older/tag-less stranger posts (notably open requests) never entered the candidate set while suggestions always surfaces them.
+**Implemented:** two explicit discovery pools (open requests from non-followed, no age window; general recent from anyone not followed) at `discoveryWeight` 0.5 + `openRequestWeight` 0.6 (+0.05 recency), spread-merge safe, non-finite → default.
+**QA:** full gate green in-runner — tsc 0 errors, jest 84/84 suites 728/728 tests, lint clean on touched files, build deferred to CI/Vercel.
+**Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
