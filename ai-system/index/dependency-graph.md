@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 59: postFollow/useFollowStatus/PostCardFollow edges + follow GET + faq route-requests + traffic hardening)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 61: admin defaults/merge/validate/simple-cards edges + rewards tier-display + vehicles borderClass)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -254,6 +254,11 @@ AdminStats (`app/api/admin/stats` — period-aware overview [Sprint 43])
     → Config: admin (`ADMIN_DASHBOARD_PERIODS` + `parseAdminDashboardPeriod` 7/30/90 clamp)
     → Prisma (batched): user/post/bug counts + validity aggregates + windowed signup series
     → Consumed by: `app/admin/page.tsx` (period `<select>` drives fetch + cards + signups chart + labels)
+
+AdminConfig (`app/api/admin/config` — defaults-merge + restore + validation [Sprint 61])
+    → Config: admin (`ADMIN_CONFIG_DEFAULTS` shipped defaults + `mergeAdminConfigsWithDefaults` stored-wins/backfill/source + `validateAdminConfigValue` central gate + `ADMIN_SIMPLE_CONFIG_CARDS` no-code cards + `ADMIN_DEDICATED_CONFIG_KEYS` one-editor-per-key) + rewards (`REWARD_TIER_DISPLAY`/`rewardTierPillClass` light/dark-safe shields) + vehicles (`borderClass` light/dark borders)
+    → Prisma: SiteConfig read (merged, virtual default rows) + validated upsert + delete-on-restore; DELETE idempotent; `config.upsert`/`config.restore-default` audit
+    → Consumed by: `app/admin/config/page.tsx` (Default/Customized/Custom source badges, no-code cards with restore, raw list limited to ad-hoc keys)
 
 PushSubscriptionService
     → PushSubscriptionModel (Prisma)

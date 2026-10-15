@@ -227,7 +227,7 @@ export default function NotificationsPage() {
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
             {tab === "unread" && unreadCount > 0 && (
-              <span className="inline-block ml-1 px-1.5 py-0.5 radius-pill text-[10px] font-semibold bg-error text-white align-top leading-tight">
+              <span className="inline-block ml-1 px-1.5 py-0.5 radius-pill text-[10px] font-semibold bg-error text-error-text border border-error-border align-top leading-tight">
                 {unreadCount}
               </span>
             )}

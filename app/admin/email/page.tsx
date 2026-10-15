@@ -815,7 +815,7 @@ export default function AdminEmailPage() {
                     return (
                       <label key={v} className="flex flex-col gap-0.5 text-xs">
                         <span className="font-mono text-text-muted flex items-center gap-1.5">{`{{${v}}}`}
-                          <span className={`text-[9px] font-bold uppercase tracking-wide px-1 py-px radius-pill ${auto ? "bg-success text-white" : "bg-warning text-warning-text"}`}>
+                          <span className={`text-[9px] font-bold uppercase tracking-wide px-1 py-px radius-pill border ${auto ? "bg-success text-success-text border-success-border" : "bg-warning text-warning-text border-warning-border"}`}>
                             {auto ? "auto" : "manual*"}
                           </span>
                         </span>

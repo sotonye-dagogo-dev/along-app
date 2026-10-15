@@ -8,6 +8,13 @@ export interface VehicleConfig {
   color: string;
   bgClass: string;
   textClass: string;
+  /**
+   * Border pairing for the flag chip (light + dark variants, e.g.
+   * "border-yellow-300 dark:border-yellow-800"). Optional so legacy
+   * call sites/tests constructing partial configs keep compiling;
+   * VehicleChip falls back to no extra border class when absent.
+   */
+  borderClass?: string;
 }
 
 export type RouteStatus = "on-time" | "delayed" | "cancelled" | "diverted" | "unknown";

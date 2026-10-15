@@ -6,6 +6,17 @@
  * so admin UI stays metadata-driven and non-breaking.
  */
 
+import { DEFAULT_EARLY_ADOPTER_CONFIG } from "./earlyAdopter";
+import { validateEarlyAdopterConfigValue } from "./earlyAdopter";
+import {
+  DEFAULT_FEED_CONFIG,
+  FEED_DIVERSITY_CONFIG,
+  FEED_STREAM_CONFIG,
+} from "./feedAlgorithm";
+import { validateFeedDiversityConfigValue } from "./feedAlgorithm";
+import { DEFAULT_EMAIL_CONFIG } from "./email";
+import { INVITE_CONFIG } from "./inviteConfig";
+
 export const ADMIN_LAYOUT_CONFIG = {
   sidebarWidth: 240,
   collapsedWidth: 72,
@@ -341,6 +352,18 @@ export const SITE_CONFIG_EDITORS: SiteConfigEditorMeta[] = [
     kind: "json",
   },
   {
+    key: "feedAlgorithm",
+    title: "Feed Algorithm Weights",
+    description: "Follow / tag / trending / discovery scoring weights (advanced JSON).",
+    kind: "json",
+  },
+  {
+    key: "feedStream",
+    title: "Feed Stream",
+    description: "Pagination + polling + cache windows (advanced JSON).",
+    kind: "json",
+  },
+  {
     key: "emailConfig",
     title: "Email Sender",
     description: "From name / address used for transactional mail.",
@@ -393,3 +416,358 @@ export function formatDelta(deltaPct: number | null, value: number): {
     direction: deltaPct > 0 ? "up" : "down",
   };
 }
+
+/**
+ * Hardcoded admin-config defaults registry — the Config Studio's
+ * "shipped defaults" twin of the Email Studio (`DEFAULT_EMAIL_TEMPLATES`)
+ * and Blog Studio (`getDefaultBlogPosts`).
+ *
+ * Contract (mirrors both studios, DB-aware):
+ * - Readers merge stored SiteConfig rows OVER these defaults at read time
+ *   (`mergeAdminConfigsWithDefaults`) — stored wins per key, new shipped
+ *   defaults backfill automatically without a migration.
+ * - Hardcoded updates NEVER overwrite DB-saved versions; the explicit
+ *   `restore` path (API `PUT { restore: key }` → row deleted) is the only
+ *   way a default shines through again.
+ * - The Config page renders every entry here even when the DB row is
+ *   missing, so a fresh database still shows a fully configurable board
+ *   with no programming knowledge required.
+ */
+export interface AdminConfigDefault {
+  key: string;
+  title: string;
+  description: string;
+  kind: SiteConfigFieldKind;
+  defaultValue: unknown;
+}
+
+export const ADMIN_CONFIG_DEFAULTS: AdminConfigDefault[] = [
+  {
+    key: "earlyAdopterConfig",
+    title: "Early Adopters Badge",
+    description:
+      "Toggle + limit + label for the First N Users badge. Qualification is automatic (N earliest-joined users).",
+    kind: "json",
+    defaultValue: { ...DEFAULT_EARLY_ADOPTER_CONFIG },
+  },
+  {
+    key: "feedDiversity",
+    title: "Feed Diversity",
+    description:
+      "Max consecutive runs, lookahead window, jitter weight. Worst case degrades to relevance order.",
+    kind: "json",
+    defaultValue: { ...FEED_DIVERSITY_CONFIG },
+  },
+  {
+    key: "feedAlgorithm",
+    title: "Feed Algorithm Weights",
+    description:
+      "Follow / tag / trending / discovery scoring weights. Stored rows merge by spread — partial edits keep working.",
+    kind: "json",
+    defaultValue: { ...DEFAULT_FEED_CONFIG },
+  },
+  {
+    key: "feedStream",
+    title: "Feed Stream",
+    description:
+      "Pagination + polling + cache windows for the home feed stream.",
+    kind: "json",
+    defaultValue: { ...FEED_STREAM_CONFIG },
+  },
+  {
+    key: "emailConfig",
+    title: "Email Sender",
+    description: "From name / address used for transactional mail.",
+    kind: "json",
+    defaultValue: { ...DEFAULT_EMAIL_CONFIG },
+  },
+  {
+    key: "maintenanceMode",
+    title: "Maintenance Mode",
+    description: "Simple on/off platform flag (boolean).",
+    kind: "boolean",
+    defaultValue: false,
+  },
+  {
+    key: "announcementBanner",
+    title: "Announcement Banner",
+    description: "Short text banner shown platform-wide (empty = hidden).",
+    kind: "text",
+    defaultValue: "",
+  },
+  {
+    key: "inviteRewardPoints",
+    title: "Invite Reward Points",
+    description: "Points awarded per accepted invite (number).",
+    kind: "number",
+    defaultValue: INVITE_CONFIG.pointsForInviteAccepted,
+  },
+];
+
+/** Shipped default entry for a key, or undefined for ad-hoc custom keys. */
+export function getAdminConfigDefault(key: string): AdminConfigDefault | undefined {
+  try {
+    return ADMIN_CONFIG_DEFAULTS.find((d) => d.key === String(key ?? ""));
+  } catch {
+    return undefined;
+  }
+}
+
+export type AdminConfigSource = "default" | "customized" | "custom";
+
+export interface MergedAdminConfig {
+  key: string;
+  value: unknown;
+  /** default = shipped fallback (no DB row); customized = DB row over a shipped default; custom = ad-hoc key with no shipped default. */
+  source: AdminConfigSource;
+  /** Shipped fallback value when one exists (for "Default: …" display + restore). */
+  defaultValue?: unknown;
+}
+
+/**
+ * Merge stored SiteConfig rows over the shipped defaults (never throws).
+ * Stored wins per key; missing known keys backfill from defaults with
+ * `source: "default"`; unknown stored keys pass through as `"custom"`.
+ * Pure — safe for API + client + tests.
+ */
+export function mergeAdminConfigsWithDefaults(
+  stored: { key: string; value: unknown }[]
+): MergedAdminConfig[] {
+  try {
+    const rows = Array.isArray(stored) ? stored : [];
+    const seen = new Set<string>();
+    const merged: MergedAdminConfig[] = [];
+    for (const row of rows) {
+      const key = String((row as { key?: unknown })?.key ?? "");
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const def = getAdminConfigDefault(key);
+      merged.push({
+        key,
+        value: (row as { value?: unknown })?.value,
+        source: def ? "customized" : "custom",
+        ...(def ? { defaultValue: def.defaultValue } : {}),
+      });
+    }
+    for (const def of ADMIN_CONFIG_DEFAULTS) {
+      if (seen.has(def.key)) continue;
+      merged.push({
+        key: def.key,
+        value: def.defaultValue,
+        source: "default",
+        defaultValue: def.defaultValue,
+      });
+    }
+    merged.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+    return merged;
+  } catch {
+    return [];
+  }
+}
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
+function finiteNumber(v: unknown): number | null {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Central admin-config validator — one gate for every known key so the
+ * API rejects bad shapes with a clear 400 instead of silently storing a
+ * row that degrades to defaults at read time. Unknown (ad-hoc) keys
+ * pass (generic kind editors validate them). Never throws.
+ */export function validateAdminConfigValue(key: string, value: unknown): string | null {
+  try {
+    const k = String(key ?? "");
+    if (k === "earlyAdopterConfig") return validateEarlyAdopterConfigValue(value);
+    if (k === "feedDiversity") return validateFeedDiversityConfigValue(value);
+    if (k === "feedAlgorithm") {
+      if (!isPlainObject(value)) return "value must be an object";
+      const numericKeys = [
+        "followingWeight",
+        "matchingTagsWeight",
+        "trendingWeight",
+        "ownPostsWeight",
+        "discoveryWeight",
+        "openRequestWeight",
+        "locationBonus",
+        "cacheTtlSeconds",
+        "pageSize",
+      ];
+      for (const field of numericKeys) {
+        const raw = (value as Record<string, unknown>)[field];
+        if (raw === undefined) continue;
+        if (finiteNumber(raw) === null) return `${field} must be a number`;
+      }
+      const pageSize = (value as Record<string, unknown>).pageSize;
+      if (pageSize !== undefined && Math.floor(Number(pageSize)) < 1)
+        return "pageSize must be an integer >= 1";
+      return null;
+    }
+    if (k === "feedStream") {
+      if (!isPlainObject(value)) return "value must be an object";
+      const numericKeys = ["pageSize", "pollIntervalMs", "freshSec", "retentionSec", "maxExcludeIds"];
+      for (const field of numericKeys) {
+        const raw = (value as Record<string, unknown>)[field];
+        if (raw === undefined) continue;
+        if (finiteNumber(raw) === null) return `${field} must be a number`;
+      }
+      return null;
+    }
+    if (k === "emailConfig") {
+      if (!isPlainObject(value)) return "value must be an object";
+      const v = value as Record<string, unknown>;
+      for (const field of ["fromName", "fromEmail", "replyTo"]) {
+        const raw = v[field];
+        if (raw === undefined) continue;
+        if (typeof raw !== "string" || raw.trim().length === 0)
+          return `${field} must be a non-empty string`;
+      }
+      const mail = v.fromEmail;
+      if (mail !== undefined && !String(mail).includes("@"))
+        return "fromEmail must be a valid email address";
+      return null;
+    }
+    if (k === "maintenanceMode") {
+      return typeof value === "boolean" ? null : "value must be a boolean";
+    }
+    if (k === "announcementBanner") {
+      if (typeof value !== "string") return "value must be a string";
+      if (value.length > 500) return "value must be <= 500 chars";
+      return null;
+    }
+    if (k === "inviteRewardPoints") {
+      const n = finiteNumber(value);
+      if (n === null || Math.floor(n) < 0) return "value must be a number >= 0";
+      if (Math.floor(n) > 100000) return "value must be <= 100000";
+      return null;
+    }
+    return null;
+  } catch {
+    return "invalid value";
+  }
+}
+
+/**
+ * No-code card metadata for the Config Studio — every card below renders
+ * as toggles / text / number inputs (never raw JSON), so non-programmer
+ * admins can configure the platform. Early Adopters + Feed Diversity keep
+ * their bespoke cards on the page (same metadata shape, richer editors);
+ * everything here renders through one generic `SimpleConfigCard`.
+ *
+ * Single-field cards use field id `"value"` (primitive read/write);
+ * multi-field cards read/write an object spread-merged over the shipped
+ * default (partial stored rows keep working, same as feedService).
+ */
+export interface AdminSimpleFieldMeta {
+  id: string;
+  label: string;
+  hint: string;
+  type: "text" | "number" | "boolean";
+  min?: number;
+  max?: number;
+  step?: number;
+  placeholder?: string;
+}
+
+export interface AdminSimpleCardMeta {
+  key: string;
+  title: string;
+  description: string;
+  fields: AdminSimpleFieldMeta[];
+}
+
+export const ADMIN_SIMPLE_CONFIG_CARDS: AdminSimpleCardMeta[] = [
+  {
+    key: "maintenanceMode",
+    title: "Maintenance Mode",
+    description: "Simple on/off platform flag. No code, no JSON.",
+    fields: [
+      {
+        id: "value",
+        label: "Enable maintenance mode",
+        hint: "When on, the platform shows a maintenance notice.",
+        type: "boolean",
+      },
+    ],
+  },
+  {
+    key: "announcementBanner",
+    title: "Announcement Banner",
+    description: "Short text banner shown platform-wide. Empty hides it.",
+    fields: [
+      {
+        id: "value",
+        label: "Banner text",
+        hint: "Max 500 characters. Leave empty to hide the banner.",
+        type: "text",
+        placeholder: "e.g. New routes in Lagos are live!",
+      },
+    ],
+  },
+  {
+    key: "inviteRewardPoints",
+    title: "Invite Reward Points",
+    description: "Points awarded per accepted invite.",
+    fields: [
+      {
+        id: "value",
+        label: "Points per accepted invite",
+        hint: "Whole number, 0 or more.",
+        type: "number",
+        min: 0,
+        max: 100000,
+        step: 1,
+      },
+    ],
+  },
+  {
+    key: "emailConfig",
+    title: "Email Sender",
+    description: "From name / address used for transactional mail.",
+    fields: [
+      { id: "fromName", label: "From name", hint: "Display name on sent mail.", type: "text", placeholder: "Along" },
+      { id: "fromEmail", label: "From email", hint: "Must be a valid address.", type: "text", placeholder: "mail@alongng.com" },
+      { id: "replyTo", label: "Reply-to", hint: "Where replies go.", type: "text", placeholder: "support@alongng.com" },
+    ],
+  },
+  {
+    key: "feedAlgorithm",
+    title: "Feed Algorithm Weights",
+    description:
+      "Follow / tag / trending / discovery scoring weights. Small numbers tune the mix — the feed never drops rows.",
+    fields: [
+      { id: "followingWeight", label: "Following", hint: "Affinity for followed authors.", type: "number", min: 0, max: 5, step: 0.05 },
+      { id: "matchingTagsWeight", label: "Matching tags", hint: "Affinity for your tags.", type: "number", min: 0, max: 5, step: 0.05 },
+      { id: "trendingWeight", label: "Trending", hint: "Boost for trending posts.", type: "number", min: 0, max: 5, step: 0.05 },
+      { id: "ownPostsWeight", label: "Own posts", hint: "So your own posts keep surfacing.", type: "number", min: 0, max: 5, step: 0.05 },
+      { id: "discoveryWeight", label: "Discovery", hint: "Out-of-network recent posts.", type: "number", min: 0, max: 5, step: 0.05 },
+      { id: "openRequestWeight", label: "Open requests", hint: "Boost for open route requests.", type: "number", min: 0, max: 5, step: 0.05 },
+      { id: "locationBonus", label: "Nearby bonus", hint: "Extra for routes near you.", type: "number", min: 0, max: 5, step: 0.05 },
+      { id: "pageSize", label: "Page size", hint: "Posts per feed page.", type: "number", min: 1, max: 50, step: 1 },
+      { id: "cacheTtlSeconds", label: "Cache TTL (s)", hint: "Feed cache lifetime.", type: "number", min: 0, max: 3600, step: 30 },
+    ],
+  },
+  {
+    key: "feedStream",
+    title: "Feed Stream",
+    description: "Pagination + polling + cache windows for the home feed stream.",
+    fields: [
+      { id: "pageSize", label: "Page size", hint: "Posts per stream request.", type: "number", min: 1, max: 50, step: 1 },
+      { id: "pollIntervalMs", label: "Poll interval (ms)", hint: "Background new-post checks.", type: "number", min: 5000, max: 300000, step: 5000 },
+      { id: "freshSec", label: "Fresh window (s)", hint: "Cached feed serves without network.", type: "number", min: 0, max: 600, step: 5 },
+      { id: "retentionSec", label: "Retention (s)", hint: "Stale feed kept for instant paint.", type: "number", min: 60, max: 7200, step: 60 },
+      { id: "maxExcludeIds", label: "Max exclude ids", hint: "Cap on pagination dedup ids.", type: "number", min: 10, max: 1000, step: 10 },
+    ],
+  },
+];
+
+/** Card keys with dedicated (non-generic) editors — hidden from the raw list. */
+export const ADMIN_DEDICATED_CONFIG_KEYS = [
+  "earlyAdopterConfig",
+  "feedDiversity",
+  ...ADMIN_SIMPLE_CONFIG_CARDS.map((c) => c.key),
+] as const;
