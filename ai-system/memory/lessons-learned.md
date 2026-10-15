@@ -843,3 +843,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** flags/badges = saturated wash (`-100`) + dark-grade text + matching border, all with dark variants; NEVER `bg-<pastel> text-white`; NEVER raw data hues as text — add a display registry with darkened in-family shades + neutral fallback. Studios = shipped-defaults catalog + stored-wins read-time merge + central validator + explicit restore-by-delete + source badges, so fresh DBs render fully and hardcoded updates never clobber saved rows.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 62 (2026-10-15): follower-only fan-out reads as "no notification"; length-gated restore drops short drafts
+- **Symptom:** "route-request notifications don't reach non-followers" — plus "my location-only draft lost its location on restore while fuller drafts kept theirs".
+- **Root causes:** (1) fan-out read `getFollowerIds` only, and `createNotification` no-ops on `[]` — an empty follow graph meant silence by construction, not by failure. (2) `applyDraft` gated `setSteps` on `length >= 2` while the saver legitimately persists 1-step drafts — restore and save disagreed on the minimum, so the shortest (most common partial) input was the one that never came back; `if (draft.title)` additionally leaked stale titles into empty-title restores.
+- **Fix pattern (reuse):** fan-out = followers-first union with the community to a capped audience (one notification row, never-throw, legacy mode flag); restore must accept every shape the saver can persist (pad, never skip) and reset every field unconditionally. When save and restore disagree on minimums, fix restore to match save — never tighten save to match restore (partial progress is the feature).
+- **Supersedes:** None
+- **Superseded by:** None

@@ -28,6 +28,7 @@ jest.mock("@/app/lib/services/qstashService", () => ({
 jest.mock("@/app/lib/services/notificationService", () => ({
   createNotification: jest.fn().mockResolvedValue("n1"),
   getFollowerIds: jest.fn().mockResolvedValue(["follower-1"]),
+  getRouteRequestAudienceIds: jest.fn().mockResolvedValue(["follower-1", "stranger-1"]),
   invalidateNotificationCaches: jest.fn().mockResolvedValue(undefined),
 }))
 jest.mock("@/app/lib/db/redis", () => ({
@@ -36,7 +37,7 @@ jest.mock("@/app/lib/db/redis", () => ({
 
 import { prisma } from "@/app/lib/db/prisma"
 import { getUserFromRequest } from "@/app/lib/utils/auth"
-import { createNotification, getFollowerIds } from "@/app/lib/services/notificationService"
+import { createNotification, getFollowerIds, getRouteRequestAudienceIds } from "@/app/lib/services/notificationService"
 
 const mockPrisma = prisma as unknown as {
   post: { create: jest.Mock; findUnique: jest.Mock; findMany: jest.Mock }
@@ -97,7 +98,7 @@ describe("POST /api/posts", () => {
     expect(mockPrisma.post.create).not.toHaveBeenCalled()
   })
 
-  it("creates a ROUTE_REQUEST and fans out to followers", async () => {
+  it("creates a ROUTE_REQUEST and fans out community-wide (no follow needed)", async () => {
     mockAuth.mockResolvedValue({ id: "u1" })
     mockPrisma.post.create.mockResolvedValue({
       id: "p1",
@@ -122,8 +123,14 @@ describe("POST /api/posts", () => {
         }),
       })
     )
-    expect(getFollowerIds).toHaveBeenCalledWith("u1")
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ type: "ROUTE_REQUEST" }))
+    // Community audience (followers first + non-followers) — not followers-only.
+    expect(getRouteRequestAudienceIds).toHaveBeenCalledWith("u1")
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "ROUTE_REQUEST",
+        recipientIds: ["follower-1", "stranger-1"],
+      })
+    )
   })
 
   it("creates a ROUTE_RESPONSE that quotes the request and notifies its author", async () => {

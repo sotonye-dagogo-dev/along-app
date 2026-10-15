@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 61: admin defaults/merge/validate/simple-cards edges + rewards tier-display + vehicles borderClass)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: route-request audience edges posts→notificationService→routeRequestAudience/SiteConfig)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -222,7 +222,7 @@ Map Renderers (RouteMap.tsx, explore/page.tsx)
 
 NotificationService
     → NotificationModel, PushSubscriptionModel (Prisma)
-    → Fan-out: ROUTE_REQUEST → followers; ROUTE_RESPONSE → requester (non-blocking)
+    → Fan-out: ROUTE_REQUEST → community audience (followers-first + recent members to cap, no follow needed) [Sprint 62]; ROUTE_RESPONSE → requester (non-blocking)
     → WELCOME notification on signup (non-blocking)
     → sendPushNotification (utility)
     → QStash (background delivery)

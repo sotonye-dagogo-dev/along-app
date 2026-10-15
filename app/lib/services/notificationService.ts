@@ -96,7 +96,7 @@ export async function invalidateNotificationCaches(userIds: string[]): Promise<v
   } catch { /* cache invalidation is non-critical */ }
 }
 
-/** Follower ids of a user (the fan-out set used for route requests). */
+/** Follower ids of a user (the fan-out set used for new-route posts). */
 export async function getFollowerIds(userId: string): Promise<string[]> {
   try {
     const followers = await prisma.follow.findMany({
@@ -107,6 +107,69 @@ export async function getFollowerIds(userId: string): Promise<string[]> {
   } catch (error) {
     console.error("[notificationService] getFollowerIds failed:", error);
     return [];
+  }
+}
+
+/**
+ * Community-wide audience for ROUTE_REQUEST notifications (config-driven).
+ * Followers are guaranteed first, then the net widens to recent community
+ * members up to the configured cap — so a request notifies recipients whether
+ * or not any follow relationship exists. Self is always excluded; deleted
+ * accounts are excluded per config. Never throws (falls back to followers).
+ */
+export async function getRouteRequestAudienceIds(actorId: string): Promise<string[]> {
+  try {
+    const {
+      DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG,
+      normalizeRouteRequestAudienceConfig,
+      ROUTE_REQUEST_AUDIENCE_CONFIG_KEY,
+    } = await import("@/app/lib/config/routeRequestAudience");
+    let config = { ...DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG };
+    try {
+      const { getSiteConfig } = await import("@/app/lib/utils/siteConfig");
+      const stored = await getSiteConfig<unknown>(ROUTE_REQUEST_AUDIENCE_CONFIG_KEY, {});
+      config = normalizeRouteRequestAudienceConfig(stored, config);
+    } catch {
+      /* hardcoded fallback wins when SiteConfig is unreadable */
+    }
+    const followers = await getFollowerIds(actorId);
+    if (config.mode === "followers") return followers;
+    const cap = Math.max(1, Math.floor(config.maxRecipients));
+    const seen = new Set<string>();
+    const ordered: string[] = [];
+    const push = (id: string) => {
+      if (!id || id === actorId || seen.has(id)) return;
+      if (ordered.length >= cap) return;
+      seen.add(id);
+      ordered.push(id);
+    };
+    followers.forEach(push);
+    if (ordered.length < cap) {
+      try {
+        const where: Record<string, unknown> = { id: { not: actorId } };
+        if (config.excludeDeleted) where.isDeleted = false;
+        const community = await prisma.user.findMany({
+          where: where as never,
+          select: { id: true },
+          orderBy: { createdAt: "desc" },
+          take: cap,
+        });
+        for (const u of community as { id: string }[]) {
+          push(u.id);
+          if (ordered.length >= cap) break;
+        }
+      } catch {
+        /* followers-only fallback below */
+      }
+    }
+    return ordered;
+  } catch (error) {
+    console.error("[notificationService] getRouteRequestAudienceIds failed:", error);
+    try {
+      return await getFollowerIds(actorId);
+    } catch {
+      return [];
+    }
   }
 }
 
