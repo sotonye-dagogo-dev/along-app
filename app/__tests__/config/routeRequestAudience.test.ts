@@ -1,5 +1,6 @@
 import {
   DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG,
+  DEFAULT_ROUTE_REQUEST_LOCATION_FILTER,
   ROUTE_REQUEST_AUDIENCE_CONFIG_KEY,
   normalizeRouteRequestAudienceConfig,
   validateRouteRequestAudienceValue,
@@ -34,5 +35,42 @@ describe("execute-feature: route-request community audience (config-driven)", ()
     expect(def).toBeDefined();
     expect(validateAdminConfigValue(ROUTE_REQUEST_AUDIENCE_CONFIG_KEY, { mode: "bogus" })).toMatch("mode");
     expect(validateAdminConfigValue(ROUTE_REQUEST_AUDIENCE_CONFIG_KEY, { mode: "community", maxRecipients: 100 })).toBeNull();
+  });
+
+  it("ships optimistic location filtering with graceful fallback defaults", () => {
+    expect(DEFAULT_ROUTE_REQUEST_LOCATION_FILTER.enabled).toBe(true);
+    expect(DEFAULT_ROUTE_REQUEST_LOCATION_FILTER.radiusKm).toBeGreaterThan(0);
+    expect(DEFAULT_ROUTE_REQUEST_LOCATION_FILTER.minNearby).toBeGreaterThan(0);
+    expect(DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG.location).toEqual(
+      DEFAULT_ROUTE_REQUEST_LOCATION_FILTER
+    );
+  });
+
+  it("normalizes legacy rows without location to location defaults (non-breaking)", () => {
+    const legacy = normalizeRouteRequestAudienceConfig({ mode: "community", maxRecipients: 500 });
+    expect(legacy.location?.enabled).toBe(true);
+    expect(legacy.location?.radiusKm).toBe(DEFAULT_ROUTE_REQUEST_LOCATION_FILTER.radiusKm);
+    expect(legacy.location?.minNearby).toBe(DEFAULT_ROUTE_REQUEST_LOCATION_FILTER.minNearby);
+    expect(normalizeRouteRequestAudienceConfig(null).location?.enabled).toBe(true);
+    // Caps + fallbacks on the location knobs (never break fan-out).
+    expect(
+      normalizeRouteRequestAudienceConfig({ location: { radiusKm: 99999 } }).location?.radiusKm
+    ).toBeLessThanOrEqual(500);
+    expect(
+      normalizeRouteRequestAudienceConfig({ location: { minNearby: 0 } }).location?.minNearby
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      normalizeRouteRequestAudienceConfig({ location: "nope" }).location?.enabled
+    ).toBe(true);
+  });
+
+  it("validates location filter values", () => {
+    expect(
+      validateRouteRequestAudienceValue({ location: { enabled: true, radiusKm: 50, minNearby: 3 } })
+    ).toBeNull();
+    expect(validateRouteRequestAudienceValue({ location: { enabled: "yes" } })).toMatch("boolean");
+    expect(validateRouteRequestAudienceValue({ location: { radiusKm: 0 } })).toMatch("radiusKm");
+    expect(validateRouteRequestAudienceValue({ location: { minNearby: 0 } })).toMatch("minNearby");
+    expect(validateRouteRequestAudienceValue({ location: "nearby" })).toMatch("object");
   });
 });

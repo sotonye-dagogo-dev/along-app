@@ -130,6 +130,11 @@ export type EmailOtpToken = Prisma.EmailOtpTokenModel
  */
 export type PushSubscription = Prisma.PushSubscriptionModel
 /**
+ * Model NotificationPreference
+ * 
+ */
+export type NotificationPreference = Prisma.NotificationPreferenceModel
+/**
  * Model AuditLog
  * 
  */

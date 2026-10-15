@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community route-request fan-out + location-only draft restore)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: location-aware fan-out + notification preferences)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
@@ -1410,3 +1410,11 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Implemented:** NEW `config/routeRequestAudience.ts` (community default, 500 cap / 1–5000 bounds, excludeDeleted, SiteConfig key + normalize/validate + admin meta) + barrel; `notificationService.getRouteRequestAudienceIds` (followers-first, then recent non-deleted members to cap, self excluded, never throws, followers-only legacy mode); ROUTE_REQUEST branch uses the audience with followers fallback; admin registration (editors + defaults + central validation + no-code card); applyDraft 1-step → Origin + empty Destination with coords, unconditional title reset; legacy hasContent matches hasUsableContent; FAQ who-sees-request (en + pidgin) states community-wide notification.
 **QA:** full gate green in-runner (`npm install` ok): `npx tsc --noEmit` 0 errors; `npx jest` 86/86 suites 742/742 tests (NEW routeRequestAudience 4, routeDrafts +2, posts community-audience case); `next lint` zero findings on touched files (pre-existing errors in untouched files left alone); build deferred to CI/Vercel (needs DB URL).
 **Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
+
+**Session 2026-10-15 — Optimistic location-aware route-request fan-out + notification preferences (execute-feature).**
+**Directive:** PM-conversation verdict + optimistic location filtering without privacy violations (graceful fallback to Sprint 62 everyone-notified); preferences modal via gear icon on notifications page (defaults = current behaviour, NULL-safe); FAQs + docs. Install modules + QA. Config/metadata-driven, non-breaking + update-ai-system chain.
+**Verdict:** install→push PARTLY TRUE (permission-gated); follow-free broadcast TRUE; "we don't store location" FALSE (`lastKnownLat/Lng` nullable/consented/feed-boost/deletion-cleared — corrected in copy); background-limits LARGELY TRUE; webhook-storage block TRUE-ish; mobility/familiarity TRUE → optimistic-filter + guaranteed fallback.
+**Found:** audience fn location-blind; no prefs store/API/UI; POST dropped request fixes; FAQ had no location/preferences story.
+**Implemented:** audience `location { enabled, radiusKm, minNearby }` + ephemeral-fix fan-out (nearby-only when `>= minNearby`, else full fallback; coords never persisted/logged/exposed); POST `requestLat/requestLng` passthrough; `notificationPreferences` config + `NotificationPreference` model/migration + service + central `createNotification` filter + `GET/PUT /api/notifications/preferences`; cached-only bias attach in RequestRouteModal; gear + `NotificationPreferencesModal`; FAQ `who-sees-request` update + `request-location-filtering` + `notification-preferences` (en+pcm) + push note.
+**QA:** full gate green in-runner — tsc 0 errors, jest 87/87 suites 750/750 tests, lint clean on touched files, next build clean.
+**Compliance:** non-breaking, one additive table + additive optional fields only, never-throw fallbacks; config/metadata-driven throughout.

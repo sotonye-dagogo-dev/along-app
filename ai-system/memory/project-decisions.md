@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community fan-out + location-only draft restore)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: location-aware fan-out + notification preferences)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -886,4 +886,18 @@ Followers-first keeps the prior guarantee while the cap bounds the write; one no
 - New fan-out callers must use `getRouteRequestAudienceIds` (never raw `getFollowerIds`) for request-type notifications; tuning is admin-side (mode/cap), not code.
 - New composer restore paths must preserve the 1-step → pad rule and unconditional field resets.
 **Supersedes:** None (extends the Sprint 59/60 request-visibility decisions).
+**Superseded by:** None
+
+**Decision:** (1) Route-request fan-out is optimistically location-aware: an ephemeral request fix (`requestLat/requestLng`, cached-only client attach or request start coords, never persisted/logged/exposed) is tested server-side against stored nullable `lastKnownLat/Lng` via in-memory haversine; nearby-only delivery applies only when `nearby >= location.minNearby` (default 3) inside `location.radiusKm` (default 50) — otherwise the Sprint 62 full community audience fires unchanged. (2) Per-user notification preferences gate delivery centrally in `createNotification` (all types): 13 keys, all-true defaults = current behaviour, missing row / NULL / partial JSON = opted-in, so existing users are unaffected until they toggle the gear modal on the Notifications page.
+**Reason:**
+Ephemeral request location + already-collected feed-boost fix gives nearby relevance with zero new tracking, zero new PII, and zero coordinate exposure; the minNearby gate guarantees sparse-data areas degrade to "everyone gets notified" rather than silence. Central prefs filtering (fail-open, never-throw) keeps every present and future fan-out caller consistent without per-callsite branches.
+**Alternatives Considered:**
+- **Persisting request/recipient precise locations for targeting**: Rejected — privacy/regulatory risk (the PM's own concern) plus stale-fix inaccuracy; ephemeral compute + existing nullable fix is sufficient.
+- **Nearby-first ranking of the full audience (no filtering)**: Rejected as the only behaviour — ranking alone is not "filtering" as directed; the minNearby-gated subset IS the filter, with the full audience as the documented fallback.
+- **Per-type boolean columns on User**: Rejected — schema churn per future type; a single nullable Json row with config-driven normalize/validate extends without migrations.
+**Implications:**
+- New fan-out callers pass `{ requestLat, requestLng }` where a request location exists and rely on the service fallback otherwise; never persist the fix.
+- New notification types must add a key (or map to an existing one) in `NOTIFICATION_TYPE_TO_PREFERENCE_KEY`; unmapped types fail open (delivered).
+- Prefs-gated push follows automatically (same recipient list drives `fanOutPush`); email-channel prefs remain future work.
+**Supersedes:** None (extends the Sprint 62 community-audience decision).
 **Superseded by:** None

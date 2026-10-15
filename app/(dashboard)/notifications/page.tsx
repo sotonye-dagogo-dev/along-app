@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Heart, ThumbsDown, MessageCircle, UserPlus, AtSign, Star, Award, CheckCircle, Sparkles, ClipboardList, Reply, Route as RouteIcon, Bell, ShieldCheck } from "lucide-react"
+import { Heart, ThumbsDown, MessageCircle, UserPlus, AtSign, Star, Award, CheckCircle, Sparkles, ClipboardList, Reply, Route as RouteIcon, Bell, ShieldCheck, Settings } from "lucide-react"
 import { AppAvatar, AppEmptyState, ViewMoreButton } from "@/app/components/ui"
 import { EMPTY_STATES } from "@/app/lib/config"
 import { AVATAR_DISPLAY_CONFIG, asAvatarConfig } from "@/app/lib/config/avatar"
@@ -12,6 +12,7 @@ import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { PushManager } from "@/app/components/pwa/PushManager"
 import { CachedDataNotice } from "@/app/components/pwa/OfflineBanner"
+import { NotificationPreferencesModal } from "@/app/components/features/notifications/NotificationPreferencesModal"
 
 interface NotificationItem {
   id: string
@@ -85,6 +86,7 @@ interface NotificationsResponse {
 
 export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState<"all" | "unread" | "rewards">("all")
+  const [prefsOpen, setPrefsOpen] = useState(false)
   const { user, isLoading: authLoading } = useAuth()
 
   const params = new URLSearchParams()
@@ -203,13 +205,24 @@ export default function NotificationsPage() {
     <div className="max-w-[640px] mx-auto px-4">
       <div className="flex items-center justify-between py-4 border-b border-border">
         <h1 className="text-[22px] font-semibold tracking-tight">Notifications</h1>
-        <button
-          onClick={markAllRead}
-          className="inline-flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-xs font-medium text-text-secondary cursor-pointer font-sans hover:text-primary hover:bg-primary-muted transition-colors duration-fast"
-        >
-          Mark all as read
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setPrefsOpen(true)}
+            aria-label="Notification settings"
+            title="Notification settings"
+            className="inline-flex items-center justify-center w-9 h-9 radius-md border-none bg-transparent text-text-secondary cursor-pointer hover:text-primary hover:bg-primary-muted transition-colors duration-fast"
+          >
+            <Settings size={18} aria-hidden />
+          </button>
+          <button
+            onClick={markAllRead}
+            className="inline-flex items-center gap-1 px-3 py-1.5 radius-md border-none bg-transparent text-xs font-medium text-text-secondary cursor-pointer font-sans hover:text-primary hover:bg-primary-muted transition-colors duration-fast"
+          >
+            Mark all as read
+          </button>
+        </div>
       </div>
+      <NotificationPreferencesModal open={prefsOpen} onClose={() => setPrefsOpen(false)} />
 
       <div className="pt-3">
         <PushManager />

@@ -1,7 +1,7 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community route-request fan-out + location-only draft restore)
+> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: optimistic location-aware fan-out + notification preferences)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -189,3 +189,4 @@
 - [x] Sprint 56 (2026-10-14) — Studio tightening: blog reorder parity + CTA buttons (token CSS, sanitizer allowlist, round-trip) + generous sticky previews via STUDIO_LAYOUT_CONFIG (Email/Blog/AvatarEditor) + feedDiversity Studio card (KEY/META/normalize/validate, API guard, reset) + zero-result query analytics (AnalyticsEvent log, admin aggregation + dashboard section) (studioTightening 4 suites + blogCompliance CTA/allowlist; FULL gate green in-runner: tsc 0, jest 79/79 684/684, lint clean on touched files, build clean)
 - [x] Sprint 61 (2026-10-15) — Design-system visibility + Config Studio parity (vehicle `-100` washes + borders; TrustBadge tokens; tier-shield display registry + white-on-pastel pill fixes; admin hardcoded defaults + stored-wins merge + central validation + no-code cards + restore + audit + idempotent delete) (designCompliance 7 + vehicles +1 suites; FULL gate green in-runner: tsc 0, jest 85/85 736/736, lint clean on touched files, build deferred to CI/Vercel)
 - [x] Sprint 62 (2026-10-15) — Community route-request fan-out + location-only draft restore (routeRequestAudience config + getRouteRequestAudienceIds + POST audience fan-out + admin card; applyDraft 1-step restore + legacy hasContent; FAQ en+pcm) (routeRequestAudience 4 + routeDrafts +2 + posts community case; FULL gate green in-runner: tsc 0, jest 86/86 742/742, lint clean on touched files, build deferred to CI/Vercel)
+- [x] Sprint 63 (2026-10-15) — Optimistic location-aware route-request fan-out + notification preferences (audience location { enabled/radiusKm/minNearby } + ephemeral-fix fan-out with community fallback; preferences config + NotificationPreference model/migration + service + central filter + GET/PUT API + gear modal; PM-verdict + location + preferences FAQs en+pcm) (notificationPreferences 5 + routeRequestAudience +3 location + posts audience-arg update; FULL gate green in-runner: tsc 0, jest 87/87 750/750, lint clean on touched files, build clean)
