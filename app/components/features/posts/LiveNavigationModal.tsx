@@ -33,6 +33,8 @@ interface LiveNavigationModalProps {
   /** Traffic-aware duration + estimate flag (non-breaking additive). */
   trafficAdjustedMins?: number | null
   trafficEstimated?: boolean
+  /** Dominant vehicle — forwarded for mode-aware traffic lookups. */
+  vehicle?: string | null
 }
 
 /**
@@ -56,6 +58,7 @@ export default function LiveNavigationModal({
   onClose,
   trafficAdjustedMins = null,
   trafficEstimated = true,
+  vehicle = null,
 }: LiveNavigationModalProps) {
   useEffect(() => {
     if (!open) return
@@ -116,6 +119,7 @@ export default function LiveNavigationModal({
                 distance={totalDistanceKm ?? undefined}
                 duration={estimatedMins ?? undefined}
                 trafficAdjustedMins={trafficAdjustedMins}
+                vehicle={vehicle}
                 userLocation={userLocation}
                 followUser={!!userLocation}
               />

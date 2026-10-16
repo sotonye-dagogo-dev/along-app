@@ -23,6 +23,7 @@ import { useRouteTrace } from "@/app/lib/hooks/useRouteTrace"
 import { useRouteTraffic } from "@/app/lib/hooks/useRouteTraffic"
 import polyline from "@mapbox/polyline"
 import { buildRoutePinsFromPost } from "@/app/lib/config/routePins"
+import { dominantVehicleForSteps, resolveJourneyDuration } from "@/app/lib/config/journeyTime"
 import type { VehicleType } from "@/app/lib/types"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
 
@@ -192,6 +193,16 @@ export default function PostDetailPage() {
     }, 150)
     return () => clearTimeout(t)
   }, [highlightCommentId, commentsLoading, comments.length])
+
+  // Quick-link deep-link (?navigate=1 from post-card "Navigate" links):
+  // opens the live navigation overlay on load. Runs once per post id so a
+  // user-dismissed modal stays dismissed within the session.
+  useEffect(() => {
+    try {
+      if (searchParams?.get("navigate") === "1") setShowNavigation(true)
+    } catch { /* non-critical */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId])
 
   const liked = post?._isLiked ?? false
   const likesCount = post?.likes ?? 0
@@ -498,12 +509,30 @@ export default function PostDetailPage() {
     }
   }, [post, baseRoutePins, routes])
   const routePins = backfilledPins ?? baseRoutePins
+  // Dominant vehicle across the legs that travel (destination excluded) —
+  // drives mode-aware durations + traffic sensitivity (a trek keeps walking
+  // pace and shrugs off road traffic; a ferry ignores it entirely).
+  const detailVehicle = useMemo(() => dominantVehicleForSteps(routes), [routes])
   // Road-snapped trace for the full stop sequence (same pipeline as the
   // composer preview). Silent straight-line fallback when offline/tracing
   // fails — RouteMap draws through all pins either way.
-  const { liveTrace } = useRouteTrace(routePins)
+  const { liveTrace } = useRouteTrace(routePins, detailVehicle)
   // Traffic overlay coords: the snapped polyline when available (same
   // geometry RouteMap renders, so chunk indices agree), else the pins.
+  // Base duration is vehicle-aware: stored value wins, else the
+  // mode-adjusted trace/estimate (a trek's base must be walking pace before
+  // traffic even applies). The overlay itself remaps across geometry swaps
+  // so colors persist through tracing updates.
+  const detailBaseDuration = useMemo(
+    () =>
+      resolveJourneyDuration(
+        liveTrace ? liveTrace.distance : null,
+        liveTrace ? liveTrace.duration : null,
+        post?.estimatedMins ?? null,
+        detailVehicle
+      ),
+    [liveTrace, post?.estimatedMins, detailVehicle]
+  )
   const trafficCoords = useMemo(() => {
     if (liveTrace?.polyline) {
       try {
@@ -515,7 +544,7 @@ export default function PostDetailPage() {
     }
     return routePins
   }, [liveTrace?.polyline, routePins])
-  const { traffic: postTraffic } = useRouteTraffic(trafficCoords, post?.estimatedMins ?? null)
+  const { traffic: postTraffic } = useRouteTraffic(trafficCoords, detailBaseDuration, detailVehicle)
 
   if (loading) {
     return (
@@ -728,9 +757,11 @@ export default function PostDetailPage() {
           encodedPolyline={liveTrace?.polyline}
           height={280}
           showOverlay={true}
-          distance={post.totalDistanceKm ?? undefined}
-          duration={post.estimatedMins ?? undefined}
+          distance={post.totalDistanceKm ?? liveTrace?.distance ?? undefined}
+          duration={detailBaseDuration > 0 ? detailBaseDuration : undefined}
+          trafficOverride={postTraffic ?? undefined}
           trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
+          vehicle={detailVehicle}
           userLocation={mapUserLocation}
           followUser={false}
         />
@@ -849,10 +880,11 @@ export default function PostDetailPage() {
           steps={routes}
           pins={routePins}
           encodedPolyline={liveTrace?.polyline}
-          totalDistanceKm={post.totalDistanceKm}
-          estimatedMins={post.estimatedMins}
+          totalDistanceKm={post.totalDistanceKm ?? liveTrace?.distance ?? null}
+          estimatedMins={detailBaseDuration > 0 ? detailBaseDuration : post.estimatedMins}
           trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
           trafficEstimated={postTraffic?.estimated ?? true}
+          vehicle={detailVehicle}
           userLocation={userLocation}
           onUserLocationChange={setUserLocation}
           onClose={() => { setShowNavigation(false); setUserLocation(null) }}

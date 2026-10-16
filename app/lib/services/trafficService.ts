@@ -9,6 +9,7 @@ import {
   type TrafficLevel,
   type TrafficProvider,
 } from "@/app/lib/config/traffic";
+import { adjustDurationForVehicleAndTraffic } from "@/app/lib/config/journeyTime";
 import { hasMapboxKey, MAP_STACK_CONFIG } from "@/app/lib/config/mapStack";
 
 export interface TrafficCoord {
@@ -118,21 +119,23 @@ export function chunkCoords(coords: TrafficCoord[]): { from: number; to: number 
   return out;
 }
 
-export function trafficCacheKey(coords: TrafficCoord[]): string {
+export function trafficCacheKey(coords: TrafficCoord[], vehicle?: string | null): string {
   const sig = coords
     .filter((_, i) => i % Math.max(1, Math.floor(coords.length / 20)) === 0)
     .map((c) => `${c.lat.toFixed(3)},${c.lng.toFixed(3)}`)
     .join(">");
   // Hour bucket: heuristic estimates + live traffic both shift hourly.
   const hour = new Date().getHours();
-  return `maps:traffic:${sig}:${hour}`;
+  const mode = typeof vehicle === "string" && vehicle.trim().length > 0 ? vehicle.trim().toLowerCase() : "auto";
+  return `maps:traffic:${sig}:${hour}:${mode}`;
 }
 
 function finish(
   coords: TrafficCoord[],
   levels: TrafficLevel[],
   provider: TrafficProvider,
-  baseDurationMins: number
+  baseDurationMins: number,
+  vehicle?: string | null
 ): TrafficResult {
   const chunks = chunkCoords(coords);
   const counts: Record<TrafficLevel, number> = { low: 0, moderate: 0, heavy: 0 };
@@ -147,7 +150,15 @@ function finish(
     provider,
     estimated: provider === "heuristic",
     baseDurationMins: base,
-    adjustedDurationMins: base > 0 ? adjustDurationForLevels(base, counts, Math.max(chunks.length, 1)) : 0,
+    // Vehicle-aware: immune modes (trekking/boat/train) keep the base
+    // duration while road modes take the full traffic blend. Unknown modes
+    // fall back to the legacy full blend (safe default).
+    adjustedDurationMins:
+      base > 0
+        ? typeof vehicle === "string" && vehicle.trim().length > 0
+          ? adjustDurationForVehicleAndTraffic(base, counts, Math.max(chunks.length, 1), vehicle)
+          : adjustDurationForLevels(base, counts, Math.max(chunks.length, 1))
+        : 0,
   };
 }
 
@@ -264,7 +275,8 @@ async function viaTomtom(coords: TrafficCoord[]): Promise<TrafficLevel[] | null>
  */
 export async function getTrafficForRoute(
   coords: TrafficCoord[],
-  baseDurationMins: number
+  baseDurationMins: number,
+  vehicle?: string | null
 ): Promise<TrafficResult> {
   // Strip (0,0) placeholders first so a legacy row with mostly-real stops
   // keeps its overlay instead of failing validation outright.
@@ -273,7 +285,7 @@ export async function getTrafficForRoute(
   if (safe.length < 2) {
     return { segments: [], provider: "heuristic", estimated: true, baseDurationMins: 0, adjustedDurationMins: 0 };
   }
-  const key = trafficCacheKey(safe);
+  const key = trafficCacheKey(safe, vehicle);
   try {
     const cached = await redis.get<TrafficResult>(key);
     if (cached && Array.isArray(cached.segments)) return cached;
@@ -288,13 +300,13 @@ export async function getTrafficForRoute(
       if (name === "mapbox") {
         if (!hasMapboxKey()) continue;
         const levels = await viaMapbox(safe);
-        if (levels) result = finish(safe, levels, "mapbox", baseDurationMins);
+        if (levels) result = finish(safe, levels, "mapbox", baseDurationMins, vehicle);
       } else if (name === "tomtom") {
         if (!hasTomtomKey()) continue;
         const levels = await viaTomtom(safe);
-        if (levels) result = finish(safe, levels, "tomtom", baseDurationMins);
+        if (levels) result = finish(safe, levels, "tomtom", baseDurationMins, vehicle);
       } else {
-        result = finish(safe, heuristicLevels(safe), "heuristic", baseDurationMins);
+        result = finish(safe, heuristicLevels(safe), "heuristic", baseDurationMins, vehicle);
       }
     } catch {
       result = null;
@@ -302,7 +314,7 @@ export async function getTrafficForRoute(
     }
     if (result) break;
   }
-  const finalResult = result ?? finish(safe, heuristicLevels(safe), "heuristic", baseDurationMins);
+  const finalResult = result ?? finish(safe, heuristicLevels(safe), "heuristic", baseDurationMins, vehicle);
   try {
     await redis.set(key, finalResult, { ex: TRAFFIC_CONFIG.cacheTtlSec });
   } catch {

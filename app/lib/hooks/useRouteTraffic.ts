@@ -20,12 +20,20 @@ function sigFor(pins: TrafficPin[]): string {
  * Shared traffic hook — debounced `POST /api/maps/traffic` with a short
  * memory cache + silent null fallback (the route renders untrafficked when
  * offline, rate-limited, or failed). Callers pass canonical route coords +
- * the base duration; the hook returns per-chunk levels and the adjusted
- * duration. Non-breaking: pure client hook, safe to mount anywhere.
+ * the base duration (+ optional dominant vehicle so immune modes like
+ * trekking/boat/train keep their base duration); the hook returns
+ * per-chunk levels and the adjusted duration. Non-breaking: pure client
+ * hook, safe to mount anywhere.
+ *
+ * Persistence contract: the last good result is KEPT across geometry
+ * changes (pins → road-snapped trace swaps the coord count 10×). The
+ * renderer remaps chunk indices proportionally (see `remapTrafficSegments`),
+ * so traffic colors never vanish mid-trace — they only sharpen on refetch.
  */
 export function useRouteTraffic(
   coords: TrafficPin[] | null | undefined,
-  baseDurationMins?: number | null
+  baseDurationMins?: number | null,
+  vehicle?: string | null
 ) {
   const valid = useMemo(
     () =>
@@ -41,6 +49,7 @@ export function useRouteTraffic(
   );
   const sig = valid.length >= 2 ? sigFor(valid) : "";
   const base = typeof baseDurationMins === "number" && Number.isFinite(baseDurationMins) ? Math.round(baseDurationMins) : 0;
+  const mode = typeof vehicle === "string" && vehicle.trim().length > 0 ? vehicle.trim().toLowerCase() : "";
   const [traffic, setTraffic] = useState<TrafficResult | null>(null);
   const seqRef = useRef(0);
 
@@ -49,7 +58,11 @@ export function useRouteTraffic(
       setTraffic(null);
       return;
     }
-    const cacheKey = `route-traffic:${sig}:${base}`;
+    // NOTE: the previous result is intentionally KEPT while the refetch for
+    // the new geometry is in flight (no setTraffic(null) here) — the map
+    // remaps the old chunks proportionally so colors persist across tracing
+    // updates instead of flashing off.
+    const cacheKey = `route-traffic:${sig}:${base}:${mode}`;
     const cached = memoryCache.get<TrafficResult>(cacheKey);
     if (cached) {
       setTraffic(cached);
@@ -61,7 +74,11 @@ export function useRouteTraffic(
         const res = await fetch("/api/maps/traffic", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ coords: valid, baseDurationMins: base }),
+          body: JSON.stringify({
+            coords: valid,
+            baseDurationMins: base,
+            ...(mode ? { vehicle: mode } : {}),
+          }),
         });
         if (!res.ok) return; // silent — untrafficked line stays
         const data = (await res.json()) as TrafficResult;
@@ -74,7 +91,7 @@ export function useRouteTraffic(
     }, TRAFFIC_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sig, base]);
+  }, [sig, base, mode]);
 
   return { traffic };
 }

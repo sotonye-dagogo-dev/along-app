@@ -120,8 +120,19 @@ export {
 } from "./earlyAdopter";
 export type { EarlyAdopterConfig } from "./earlyAdopter";
 export { RATE_LIMITS } from "./rateLimits";
-export { TRAFFIC_CONFIG, levelForCongestion, heuristicCongestion, adjustDurationForLevels, hasTomtomKey } from "./traffic";
-export type { TrafficConfig, TrafficLevel, TrafficLevelMeta, TrafficProvider } from "./traffic";
+export { TRAFFIC_CONFIG, levelForCongestion, heuristicCongestion, adjustDurationForLevels, remapTrafficSegments, hasTomtomKey } from "./traffic";
+export type { TrafficConfig, TrafficLevel, TrafficLevelMeta, TrafficProvider, RemappableTrafficSegment } from "./traffic";
+export {
+  JOURNEY_TIME_CONFIG,
+  speedForVehicle,
+  trafficSensitivityForVehicle,
+  shouldRecomputeFromDistance,
+  estimateDurationMins,
+  adjustDurationForVehicleAndTraffic,
+  dominantVehicleForSteps,
+  resolveJourneyDuration,
+} from "./journeyTime";
+export type { JourneyVehicleMeta, JourneyTimeConfig, JourneyStepLike } from "./journeyTime";
 export { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES, cooldownKeyFor, attemptsKeyFor, maskEmail } from "./authVerification";
 export type { AuthVerificationConfig } from "./authVerification";
 export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";

@@ -3,7 +3,7 @@
 import { useState, useReducer, useContext, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, ClipboardList, Reply, Archive, MessagesSquare } from "lucide-react"
+import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, ClipboardList, Reply, Archive, MessagesSquare, Navigation } from "lucide-react"
 import { AppCard, AppUserLabel, TrustBadge, VehicleChip, ImageLightbox } from "@/app/components/ui"
 import { PostMenu, type PostMenuPost } from "@/app/components/features/moderation"
 import { PostCardFollow } from "./PostCardFollow"
@@ -529,6 +529,19 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             // overlay lives on the post detail map + live navigation.
             showTraffic={false}
           />
+          {/* Quick link to the navigation/route guide (route-bearing posts
+              only — never on ROUTE_REQUEST cards, which have no guide).
+              Deep-links to the detail view with ?navigate=1 so the live
+              navigation overlay opens on arrival. */}
+          <Link
+            href={POST_ACTIONS_CONFIG.navigatePath(post.id)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`${POST_ACTIONS_CONFIG.navigateAriaLabel} for ${post.title}`}
+            className={`mt-1.5 ${POST_ACTIONS_CONFIG.navigateClass}`}
+          >
+            <Navigation size={13} aria-hidden />
+            {tf("post.navigate", POST_ACTIONS_CONFIG.navigateLabel)}
+          </Link>
         </div>
       )}
 

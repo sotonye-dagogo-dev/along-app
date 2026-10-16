@@ -8,7 +8,7 @@ import type { MapRef } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import polyline from '@mapbox/polyline'
 import { getMapStyleStack, rasterFallbackDepth, MAP_STACK_CONFIG, MAP_EXPAND_CONFIG } from '@/app/lib/config/mapStack'
-import { TRAFFIC_CONFIG } from '@/app/lib/config/traffic'
+import { TRAFFIC_CONFIG, remapTrafficSegments } from '@/app/lib/config/traffic'
 import type { TrafficResult } from '@/app/lib/services/trafficService'
 import { useRouteTraffic } from '@/app/lib/hooks/useRouteTraffic'
 import { MAP_PINS_CONFIG } from '@/app/lib/config/mapPins'
@@ -49,6 +49,13 @@ interface RouteMapProps {
   showTraffic?: boolean
   trafficOverride?: TrafficResult | null
   trafficAdjustedMins?: number | null
+  /**
+   * Dominant vehicle for this route (non-breaking additive): scales the
+   * traffic delay (trekking/boat/train stay near base) and is forwarded to
+   * the traffic lookup so estimates stay mode-aware. Omit for legacy
+   * full-traffic behaviour.
+   */
+  vehicle?: string | null
 }
 
 function MapSkeleton() {
@@ -88,6 +95,7 @@ function RouteMap({
   showTraffic = true,
   trafficOverride,
   trafficAdjustedMins = null,
+  vehicle = null,
 }: RouteMapProps) {
   const [isDark, setIsDark] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
@@ -160,16 +168,26 @@ function RouteMap({
   // Traffic overlay: self-fetches per-chunk levels unless the caller
   // supplies `trafficOverride` (shared with the navigation guide). Silent
   // null fallback keeps the base line when offline/rate-limited/failed.
+  // The last good result is KEPT across geometry swaps (straight pins line
+  // → road-snapped trace) and remapped proportionally below, so the
+  // traffic colors persist instead of vanishing on every re-trace.
   const { traffic: fetchedTraffic } = useRouteTraffic(
     showTraffic && trafficOverride === undefined ? routeCoords : null,
-    duration ?? undefined
+    duration ?? undefined,
+    vehicle ?? undefined
   )
   const traffic = trafficOverride !== undefined ? trafficOverride : fetchedTraffic
   const trafficSegments = useMemo(() => {
     if (!traffic || !Array.isArray(traffic.segments)) return []
-    return traffic.segments.filter(
+    const moderate = traffic.segments.filter(
       (s) => (s.level === "moderate" || s.level === "heavy") && routeCoords.length >= 2
     )
+    // Geometry-generation guard: chunk indices belong to the geometry the
+    // lookup ran on. When the tracer swaps geometries (2-pin line →
+    // 200-point road trace) the old indices would collapse onto a tiny head
+    // slice and the colors would "disappear" — fractional remapping keeps
+    // each chunk's share of the route until the refetch lands.
+    return remapTrafficSegments(moderate, routeCoords.length)
   }, [traffic, routeCoords.length])
   const overlayDuration = trafficAdjustedMins ?? traffic?.adjustedDurationMins ?? null
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { memoryCache } from "@/app/lib/cache/memoryCache";
 import { estimateRoute, traceSignature } from "@/app/lib/utils/geo";
+import { resolveJourneyDuration } from "@/app/lib/config/journeyTime";
 
 export interface TracePin {
   lat: number;
@@ -35,15 +36,19 @@ function isUsable(p: TracePin): boolean {
  * their canonical pins; the hook returns the live trace (or null while
  * estimating/offline) plus display-ready distance/duration.
  *
+ * Non-breaking vehicle-aware extension: pass the route's dominant vehicle
+ * so slow/rail/water modes estimate at their own speed (OSRM trace
+ * durations assume cars).
  * Non-breaking: pure client hook, no API changes, safe to mount anywhere.
  */
-export function useRouteTrace(pins: TracePin[] | null | undefined) {
+export function useRouteTrace(pins: TracePin[] | null | undefined, vehicle?: string | null) {
   const validPins = useMemo(() => (Array.isArray(pins) ? pins.filter(isUsable) : []), [pins]);
   const sig = validPins.length >= 2 ? traceSignature(validPins) : "";
+  const mode = typeof vehicle === "string" && vehicle.trim().length > 0 ? vehicle.trim().toLowerCase() : "";
   const estimate = useMemo(
-    () => estimateRoute(validPins.length >= 2 ? validPins : []),
+    () => estimateRoute(validPins.length >= 2 ? validPins : [], mode || null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sig]
+    [sig, mode]
   );
   const [trace, setTrace] = useState<(RouteTrace & { sig: string }) | null>(null);
   const [tracing, setTracing] = useState(false);
@@ -97,10 +102,19 @@ export function useRouteTrace(pins: TracePin[] | null | undefined) {
   }, [sig]);
 
   const liveTrace = trace && trace.sig === sig ? trace : null;
+  // Vehicle-aware duration: car-trace durations mislead for slow/rail/water
+  // modes, so those recompute from the traced distance at their own speed.
+  const displayDistance = liveTrace ? liveTrace.distance : estimate.distanceKm;
+  const displayDuration = resolveJourneyDuration(
+    liveTrace ? liveTrace.distance : null,
+    liveTrace ? liveTrace.duration : null,
+    estimate.durationMins,
+    mode || null
+  );
   return {
     liveTrace,
     tracing,
-    displayDistance: liveTrace ? liveTrace.distance : estimate.distanceKm,
-    displayDuration: liveTrace ? liveTrace.duration : estimate.durationMins,
+    displayDistance,
+    displayDuration,
   };
 }
