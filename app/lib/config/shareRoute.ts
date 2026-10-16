@@ -32,6 +32,14 @@ export interface ShareRouteModalConfig {
   photoRemoveButtonClass: string;
   /** Icon size (px) for the per-photo remove X. */
   photoRemoveIconSize: number;
+  /**
+   * Dismiss control on the "Replying to …" response banner. Lets the user
+   * abandon a route-request response mid-composer (changed mind, posting
+   * something else first, or resuming another draft) without closing the
+   * modal. Dismissal only unlinks the request — typed input is preserved.
+   */
+  responseBannerDismissLabel: string;
+  responseBannerDismissTitle: string;
 }
 
 export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
@@ -51,4 +59,6 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
   photoRemoveButtonClass:
     "absolute top-1 right-1 z-10 w-7 h-7 rounded-circle bg-black/85 text-white flex items-center justify-center border border-white/60 ring-2 ring-white/80 shadow-md opacity-100 visible hover:bg-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors",
   photoRemoveIconSize: 14,
+  responseBannerDismissLabel: "Stop responding to this request",
+  responseBannerDismissTitle: "Dismiss — share a normal route instead",
 };

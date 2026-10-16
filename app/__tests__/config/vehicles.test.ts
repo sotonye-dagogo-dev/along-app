@@ -24,7 +24,7 @@ describe("VEHICLE_REGISTRY boat + train options", () => {
     // Saturated light wash (not the near-white -50 that dissolved into the
     // white card) + dark text + matching border (light-theme visibility).
     expect(boat.bgClass).toContain("bg-cyan-100");
-    expect(boat.textClass).toContain("text-cyan-800");
+    expect(boat.textClass).toMatch(/text-cyan-900/);
     expect(boat.borderClass).toContain("border-cyan-300");
   });
 
@@ -36,7 +36,7 @@ describe("VEHICLE_REGISTRY boat + train options", () => {
     expect(["function", "object"]).toContain(typeof train.icon);
     expect(train.color).toBe("#6D28D9");
     expect(train.bgClass).toContain("bg-violet-100");
-    expect(train.textClass).toContain("text-violet-800");
+    expect(train.textClass).toMatch(/text-violet-900/);
     expect(train.borderClass).toContain("border-violet-300");
   });
 
@@ -54,8 +54,9 @@ describe("VEHICLE_REGISTRY boat + train options", () => {
     for (const [key, entry] of Object.entries(VEHICLE_REGISTRY)) {
       // No near-white -50 wash (invisible on the white card in light theme).
       expect(entry.bgClass).not.toMatch(/-(50)(\s|$)/);
-      // Dark-grade label + a border pairing with a dark variant.
-      expect(entry.textClass).toMatch(/text-\S+-800/);
+      // Dark-grade label (-800 or darker -900 for max light-theme contrast)
+      // + a border pairing with a dark variant.
+      expect(entry.textClass).toMatch(/text-\S+-(800|900)/);
       expect(entry.borderClass ?? "").toMatch(/border-\S+-300/);
       expect(entry.borderClass ?? "").toContain("dark:");
     }

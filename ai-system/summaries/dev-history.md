@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: location-aware fan-out + notification preferences)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
@@ -1424,4 +1424,11 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Found:** precache guest-shell only with no documented runtime path for protected pages; "/api/posts/" trailing-slash prefix never matched query-form profile URLs + /api/users|rewards|bookmarks missing; AuthProvider booted null so offline reloads read as guest; CachedDataNotice only on /notifications.
 **Implemented:** NEW `config/authOffline.ts` (7-day TTL server-confirmed session snapshot, corrupt/stale-safe) + barrel; AuthProvider sync-hydrate + refresh-on-200 + clear-on-genuine-401/logout; GuestBanner offline-with-snapshot suppression; pwa.ts v5→v6 (destinations += landing + runtimeCached /profile + /notifications, cacheable APIs += bare /api/posts fix + /api/users + /api/rewards + /api/bookmarks); sw.js v6 mirror; offline.html + FAQ (en+pcm) list all 9 pages with visited-while-online caveat; NEW `LandingOfflineNotice` island; CachedDataNotice on both profile pages.
 **QA:** full gate green in-runner — tsc 0 errors, jest 88/88 suites 757/757 tests, lint clean on touched files, next build clean.
+**Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.
+
+**Session 2026-10-16 — Post-card detail links + response-banner dismiss + vehicle contrast (execute-feature, Sprint 65).**
+**Directive:** route text (in addition to title) should route to the detail post view from the card (except tags/maps with own actions); share-route modal needs an X on the respond-to-request banner to dismiss it (changed mind / post something else first / add another draft); vehicle icons still low-visibility in light theme — darken text for badge/app contrast. Install node modules + proper QA. Config/metadata-driven, non-breaking + update-ai-system chain.
+**Found:** (1) PostCard title linked but description + route-step text were inert `<div>`/`<p>` — no path to detail except the title; (2) response banner had no exit — a user who opened Respond (or restored a response draft) could only close the whole modal, losing flow; prop-owned `responseTo` (home) and post-derived `responseTo` (detail) needed different clearing paths; (3) vehicle light labels sat at `-800` on `-100` washes — readable but thin against white cards (plus a stray trailing space in the taxi entry); `vehicles.test.ts` pinned `-800` literally.
+**Implemented:** `POST_ACTIONS_CONFIG` += `detailTextLinksEnabled`/`detailDescriptionClass`/`detailRouteStepClass`; PostCard description + step location/description render as encoded-`postPath` Links with stopPropagation + aria-labels (tags/maps untouched; title uses the same helper); `SHARE_ROUTE_MODAL_CONFIG` += `responseBannerDismissLabel/Title`; ShareRouteModal += optional `onClearResponse` + `dismissResponse` (restored-linkage clear + parent callback, modal stays open, input/tags/images preserved, hidden in edit mode since linkage is immutable); home stable `clearRespondTo` (Escape-listener-safe); post-detail `respondUnlinked` gate reset on open/close/submit; `VEHICLE_REGISTRY` light text `-800`→`-900` all 9 types; NEW `postCardDetailLinks.test.ts` (4) + vehicles test updates.
+**QA:** full gate green in-runner (`npm ci` ok): `npx tsc --noEmit` 0 errors; `npx jest --ci` 89/89 suites 761/761 tests; `next lint` exit 0 (1 pre-existing `prefer-const` error in untouched `accountDeletionService.ts` + pre-existing warnings, none on touched files); full `next build` clean.
 **Compliance:** non-breaking, no migration, no new deps, additive-only with never-throw fallbacks; config/metadata-driven throughout.

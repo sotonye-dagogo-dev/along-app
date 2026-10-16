@@ -67,6 +67,12 @@ export interface PostActionsConfig {
   commentEditLabel: string;
   commentEditSuccess: string;
   commentEditError: string;
+  // --- Post-card detail navigation (metadata-driven). Title already links;
+  // route/description text links too so the whole textual body expands to the
+  // detail view. Tags + maps keep their own actions (excluded by design).
+  detailTextLinksEnabled: boolean;
+  detailDescriptionClass: string;
+  detailRouteStepClass: string;
 }
 
 export const POST_ACTIONS_CONFIG: PostActionsConfig = {
@@ -131,4 +137,9 @@ export const POST_ACTIONS_CONFIG: PostActionsConfig = {
   commentEditLabel: "Edit comment",
   commentEditSuccess: "Comment updated",
   commentEditError: "Couldn't save your comment. Please try again.",
+  detailTextLinksEnabled: true,
+  detailDescriptionClass:
+    "text-sm text-text-secondary mt-1 line-clamp-3 no-underline hover:underline cursor-pointer",
+  detailRouteStepClass:
+    "text-sm font-medium text-text-primary no-underline hover:underline cursor-pointer",
 };

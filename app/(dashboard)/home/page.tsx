@@ -179,6 +179,13 @@ function HomeContent() {
     setOpenDraftsOnShare(false)
   }, [])
 
+  // Banner-X dismissal: unlink the request but keep the modal open so the
+  // user can post something else first or resume another draft. Stable
+  // identity (see AppModal Escape-listener note above).
+  const clearRespondTo = useCallback(() => {
+    setRespondTo(null)
+  }, [])
+
   const closeRequestModal = useCallback(() => {
     setShowRequestModal(false)
     setEditRequest(null)
@@ -711,6 +718,7 @@ function HomeContent() {
         isOpen={showShareModal}
         onClose={closeShareModal}
         responseTo={respondTo}
+        onClearResponse={clearRespondTo}
         startWithDraftsOpen={openDraftsOnShare}
         onSubmit={async (data) => submitPost(data)}
         onRequestRoute={openRequestFromShare}

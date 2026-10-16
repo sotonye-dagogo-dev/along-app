@@ -95,6 +95,14 @@ interface ShareRouteModalProps {
   isOpen: boolean
   onClose: () => void
   responseTo?: RespondToRequest | null
+  /**
+   * Clears the parent-owned `responseTo` (e.g. feed `respondTo` state) when
+   * the user dismisses the response banner. Optional — when absent, only the
+   * modal-local restored linkage is cleared. Never closes the modal; typed
+   * input, tags and images are preserved so the user can post something else
+   * first or resume another draft.
+   */
+  onClearResponse?: () => void
   /** Opens the request-route flow (e.g. user meant to request, not share). Optional — trigger hidden when absent. */
   onRequestRoute?: () => void
   /** Open with the saved-drafts panel expanded (used by the home drafts resume chip). */
@@ -147,7 +155,7 @@ function newMutationKey(): string {
 const TRACE_CACHE_TTL = 600 // 10 min — same route re-edits don't re-trace
 const TRACE_DEBOUNCE_MS = 1000
 
-export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, startWithDraftsOpen, onSubmit, editPost, onEditSubmit }: ShareRouteModalProps) {
+export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearResponse, onRequestRoute, startWithDraftsOpen, onSubmit, editPost, onEditSubmit }: ShareRouteModalProps) {
   const [restoredResponseTo, setRestoredResponseTo] = useState<RespondToRequest | null>(null)
   /**
    * Response linkage of the post being edited (ROUTE_RESPONSE only). Derived
@@ -484,6 +492,23 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   )
   const canShare =
     composerValidation.valid && !isSubmitting && !uploading
+
+  /**
+   * Dismiss the response linkage (banner X). Unlinks the request so the
+   * composer returns to normal share mode — modal stays open, typed input /
+   * tags / images are preserved (only the linkage is dropped, never the
+   * user's work). Parent-owned `responseTo` clears via `onClearResponse`
+   * when provided; the modal-local restored linkage always clears. Editing
+   * a response never reaches here (banner X hidden — linkage immutable).
+   */
+  const dismissResponse = useCallback(() => {
+    setRestoredResponseTo(null)
+    try {
+      onClearResponse?.()
+    } catch {
+      /* never-throw: linkage already cleared locally */
+    }
+  }, [onClearResponse])
 
   const clearStepError = (index: number, field: keyof StepFieldErrors) => {
     setFieldErrors((prev) => {
@@ -1061,7 +1086,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                 <line x1="8" y1="12" x2="16" y2="12" />
               </svg>
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-[11px] font-semibold tracking-wider uppercase text-text-muted">
                 {isEditing ? "Editing a response to" : "Replying to"}{effectiveResponseTo.user ? ` ${effectiveResponseTo.user.firstName} ${effectiveResponseTo.user.lastName}` : ""}&apos;s request
               </div>
@@ -1070,6 +1095,17 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                 <div className="text-[11px] text-text-muted mt-0.5">Response linkage is preserved — saving keeps this reply attached to the request.</div>
               )}
             </div>
+            {!isEditing && (
+              <button
+                type="button"
+                onClick={dismissResponse}
+                title={SHARE_ROUTE_MODAL_CONFIG.responseBannerDismissTitle}
+                aria-label={SHARE_ROUTE_MODAL_CONFIG.responseBannerDismissLabel}
+                className="shrink-0 flex items-center justify-center w-7 h-7 rounded-circle border-none bg-transparent text-text-secondary cursor-pointer hover:bg-bg-elevated hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors"
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
         )}
 

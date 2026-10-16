@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: prefs + location edges notifications-page→preferences-API→notificationPreferenceService→NotificationPreference; posts→notificationService(requestLat/Lng)→routeRequestAudience-location)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: no new edges — PostCard→postActions detail fields, ShareRouteModal→shareRoute dismiss copy, home/posts-detail→onClearResponse optional prop; vehicles grade change is value-only)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -175,7 +175,7 @@ TrustBreakdownService (`app/lib/services/trustBreakdownService.ts` — single + 
     → Consumed by: GET /api/posts (list), GET /api/posts/feed (via feedService + guest path), searchService, GET /api/suggestions, GET /api/bookmarks, GET /api/posts/[id], workers/validity-recompute, POST /api/posts (create-time score [Sprint 38; + richness context Sprint 40])
 
 PostShareService + usePostShare
-    → Config: postActions (shareLabel/shareTitleDefault/postPath + like/dislike active + icon classes [Sprint 42])
+    → Config: postActions (shareLabel/shareTitleDefault/postPath + like/dislike active + icon classes [Sprint 42] + detailTextLinks fields [Sprint 65])
     → Services: toastService (hook only; service is dep-free)
     → Consumed by: PostCard (fallback), ProfilePostCard, home/page, search/SearchPage, posts/[id]/page, bookmarks/page
 

@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community route-request fan-out + location-only draft restore)
-> - last-verified-against-code: 2026-10-15 (tsc 0 errors, jest 86/86 suites 742/742, lint clean on touched files; node_modules installed in-runner)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
+> - last-verified-against-code: 2026-10-16 (tsc 0 errors, jest 89/89 suites 761/761, lint exit 0 with 1 pre-existing error in untouched file, next build clean; node_modules installed in-runner)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -2618,3 +2618,19 @@ Nothing pending — feature complete.
 **Notes / Blockers:**
 - None. Non-breaking, all changes additive with fallbacks.
 - Chain: execute-feature → chained update-ai-system.md executed (this log + dev-history + lessons-learned + system-architecture reconciled; no architecture drift — additive config module + additive config keys/test/client-island only).
+
+**Session 2026-10-16 — Post-card detail links + response-banner dismiss + vehicle contrast (execute-feature, Sprint 65).**
+**Directive:** route text + title route to detail from the card (tags/maps keep own actions); X on the share-route respond banner to dismiss (changed mind / post something else first / another draft); vehicle icons deeper light-theme contrast via darkened text. Install modules + QA. Config/metadata-driven, non-breaking + update-ai-system chain.
+**Found:** (1) PostCard body text inert — only the title linked to detail; (2) response banner inescapable without closing the modal — prop-owned (home `respondTo` state) vs post-derived (detail page) linkage needed separate clearing; edit-mode linkage immutable so no dismiss there; (3) vehicle `-800`-on-`-100` thin on white cards; test pinned `-800` literally.
+**Implemented:** postActions += `detailTextLinksEnabled`/`detailDescriptionClass`/`detailRouteStepClass`; PostCard description + step texts → encoded detail Links (stopPropagation, aria-labels; tags/maps untouched); shareRoute += `responseBannerDismissLabel/Title`; ShareRouteModal += optional `onClearResponse` + `dismissResponse` (never closes, preserves input, hidden when editing); home `clearRespondTo` (stable identity); detail `respondUnlinked` gate (open/close/submit reset); vehicles light text → `-900` ×9 (dark unchanged); NEW `postCardDetailLinks.test.ts` (4) + vehicles test updates.
+**QA:** FULL gate green in-runner (`npm ci` completed): `npx tsc --noEmit` 0 errors; `npx jest --ci` 89/89 suites 761/761 tests (NEW postCardDetailLinks 4, vehicles contract updated); `next lint` exit 0 — zero findings on touched files (1 pre-existing `prefer-const` error in untouched `accountDeletionService.ts` + pre-existing warnings left alone); full `next build` clean.
+**Files Modified:**
+- Edited: `app/lib/config/postActions.ts`, `app/lib/config/shareRoute.ts`, `app/lib/config/vehicles.ts`, `app/components/features/posts/PostCard.tsx`, `app/components/features/posts/ShareRouteModal.tsx`, `app/(dashboard)/home/page.tsx`, `app/(dashboard)/posts/[id]/page.tsx`, `app/__tests__/config/vehicles.test.ts`, `ai-system/planning/task-queue.md` (Sprint 64 pointer + Sprint 65), `ai-system/summaries/dev-history.md` (this entry), `ai-system/checkpoints/session-log.md` (this entry)
+- Created: `app/__tests__/config/postCardDetailLinks.test.ts`
+**Assumptions Made:**
+- "Route text" = description + per-step location/description (the whole textual body). Fare chips, images (lightbox), and action buttons keep their behaviours — only text navigates.
+- Dismissing the response keeps the inherited "Re: …" title/tags the user may already have edited — only the linkage drops, never user input. A fresh draft saved after dismiss carries no linkage.
+- Dark-theme vehicle labels (`-300`) already pass contrast; only the light grade deepened, per the directive's suggested fix.
+**Notes / Blockers:**
+- None. Non-breaking, all changes additive with fallbacks.
+- Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 65 + this log + dev-history + project-plan + project-decisions + lessons-learned + system-architecture + index + in-progress reconciled; no architecture drift — additive config fields/optional prop/test only). Drift noted: Sprint 64 has session-log/dev-history/lessons entries but had no task-queue section and in-progress.md still named Sprint 63 — recorded a post-hoc Sprint 64 pointer section and corrected in-progress.
