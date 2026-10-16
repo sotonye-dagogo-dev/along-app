@@ -132,3 +132,39 @@ export function adjustDurationForLevels(
     (counts.heavy / total) * levels.heavy.delayFactor;
   return Math.max(Math.round(baseMins * blended), Math.round(baseMins));
 }
+
+export interface RemappableTrafficSegment {
+  from: number;
+  to: number;
+  level: TrafficLevel;
+}
+
+/**
+ * Remap traffic segments computed for one geometry length onto a new
+ * geometry length (pure). The tracer first draws a straight pins line and
+ * then swaps in the road-snapped trace (10× the points): raw `from`/`to`
+ * indices from the old geometry would collapse onto a tiny head slice of
+ * the new line and the traffic colors would "vanish". Fractional remapping
+ * keeps each chunk's *share* of the route, so the overlay persists across
+ * every tracing update with logical fallbacks (empty → [], degenerate →
+ * clamped to the new line).
+ */
+export function remapTrafficSegments<T extends RemappableTrafficSegment>(
+  segments: T[],
+  newLength: number
+): T[] {
+  if (!Array.isArray(segments) || segments.length === 0) return [];
+  if (!Number.isFinite(newLength) || newLength < 2) return [];
+  const oldLength = Math.max(...segments.map((s) => s.to)) + 1;
+  if (!Number.isFinite(oldLength) || oldLength < 2) return [];
+  // Same geometry generation — indices already agree, no work needed.
+  if (oldLength === Math.round(newLength)) return segments;
+  const n = Math.floor(newLength);
+  return segments.map((s) => {
+    const fracFrom = s.from / oldLength;
+    const fracToExclusive = (s.to + 1) / oldLength;
+    const from = Math.max(0, Math.min(n - 2, Math.floor(fracFrom * n)));
+    const to = Math.max(from + 1, Math.min(n - 1, Math.ceil(fracToExclusive * n) - 1));
+    return { ...s, from, to };
+  });
+}

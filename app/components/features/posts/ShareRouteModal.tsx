@@ -24,6 +24,7 @@ import { toastService } from "@/app/lib/services/toastService"
 import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config/mediaCleanup"
 import { cleanupComposerPhotos, decideComposerPhotoCleanup } from "@/app/lib/utils/composerMedia"
 import { estimateRoute, traceSignature, getCurrentPosition, reverseGeocode } from "@/app/lib/utils/geo"
+import { dominantVehicleForSteps, resolveJourneyDuration } from "@/app/lib/config/journeyTime"
 import { memoryCache } from "@/app/lib/cache/memoryCache"
 import type { VehicleType } from "@/app/lib/types"
 import DraftingCoach from "./DraftingCoach"
@@ -414,12 +415,27 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
     () => steps.filter((s) => s.location && s.lat && s.lng).map((s) => ({ lat: s.lat!, lng: s.lng! })),
     [steps]
   )
-  const estimate = useMemo(() => estimateRoute(realPins.length >= 2 ? realPins : []), [realPins])
+  // Dominant vehicle across the legs that actually travel (destination
+  // excluded) — drives mode-aware durations + traffic sensitivity so a trek
+  // isn't timed like a car and a ferry isn't slowed by road traffic.
+  const previewVehicle = useMemo(() => dominantVehicleForSteps(steps), [steps])
+  const estimate = useMemo(
+    () => estimateRoute(realPins.length >= 2 ? realPins : [], previewVehicle),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [realPins, previewVehicle]
+  )
   const traceSig = realPins.length >= 2 ? traceSignature(realPins) : ""
   // Only trust a trace that matches the pins currently on screen
   const liveTrace = trace && trace.sig === traceSig ? trace : null
   const displayDistance = liveTrace ? liveTrace.distance : estimate.distanceKm
-  const displayDuration = liveTrace ? liveTrace.duration : estimate.durationMins
+  // Vehicle-aware: slow/rail/water modes recompute from the traced distance
+  // (OSRM durations assume cars); road modes trust the trace, else estimate.
+  const displayDuration = resolveJourneyDuration(
+    liveTrace ? liveTrace.distance : null,
+    liveTrace ? liveTrace.duration : null,
+    estimate.durationMins,
+    previewVehicle
+  )
   // Destination is the final stop — its fare/vehicle are meaningless, so the
   // total only sums the legs that actually travel somewhere.
   const totalFare = steps.reduce((sum, s, i) => sum + (isDestinationStep(i, steps.length) ? 0 : (s.fare || 0)), 0)
@@ -1480,6 +1496,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                     distance={displayDistance > 0 ? displayDistance : undefined}
                     duration={displayDuration > 0 ? displayDuration : undefined}
                     fare={`₦${totalFare.toLocaleString()}`}
+                    vehicle={previewVehicle}
                   />
                   <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted">
                     <span>{liveTrace ? "Live route" : "Estimated route — updates as you edit"}</span>

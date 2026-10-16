@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: no new edges — PostCard→postActions detail fields, ShareRouteModal→shareRoute dismiss copy, home/posts-detail→onClearResponse optional prop; vehicles grade change is value-only)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 67: +journeyTime.ts registry → geo/useRouteTrace/trafficService/maps-traffic/ShareRouteModal/post-detail; traffic.ts += remapTrafficSegments → RouteMap; postActions += navigate fields → PostCard + posts/[id] ?navigate deep-link; LiveNavigationModal += vehicle)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -175,7 +175,7 @@ TrustBreakdownService (`app/lib/services/trustBreakdownService.ts` — single + 
     → Consumed by: GET /api/posts (list), GET /api/posts/feed (via feedService + guest path), searchService, GET /api/suggestions, GET /api/bookmarks, GET /api/posts/[id], workers/validity-recompute, POST /api/posts (create-time score [Sprint 38; + richness context Sprint 40])
 
 PostShareService + usePostShare
-    → Config: postActions (shareLabel/shareTitleDefault/postPath + like/dislike active + icon classes [Sprint 42] + detailTextLinks fields [Sprint 65])
+    → Config: postActions (shareLabel/shareTitleDefault/postPath + like/dislike active + icon classes [Sprint 42] + detailTextLinks fields [Sprint 65] + navigate label/path/class → PostCard Navigate quick link + posts/[id] ?navigate=1 auto-open [Sprint 67])
     → Services: toastService (hook only; service is dep-free)
     → Consumed by: PostCard (fallback), ProfilePostCard, home/page, search/SearchPage, posts/[id]/page, bookmarks/page
 
@@ -216,7 +216,8 @@ Map Renderers (RouteMap.tsx, explore/page.tsx)
     → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset; dark light-parity — filter `"none"`, dark raster mirrors light) + mapPins (`MAP_PINS_CONFIG` center anchor/zero offset, `routePinLabel` 1-based, `snapEndpointsToPolyline`, `tracking` timeouts [Sprint 23]) + routePins (`buildRoutePinsFromPost` origin+intermediates+destination, `buildTraceInputFromPins`, `ROUTE_PINS_CONFIG` [Sprint 28])
     → Shared visuals: MapPins.tsx (`MapRoutePin` numbered dot, `MapUserDot` info-blue + glory ring + radar) — token classes only, no hardcoded hex
     → Shared location: `useUserLocation` hook (passive fix + watch; explore override + post-detail fallback [Sprint 23])
-    → Shared trace: `useRouteTrace` hook (estimate + debounced `/api/routes/trace` + memory cache + silent fallback [Sprint 28] — composer preview + post detail)
+    → Shared trace: `useRouteTrace` hook (estimate + debounced `/api/routes/trace` + memory cache + silent fallback [Sprint 28] — composer preview + post detail; Sprint 67 += optional vehicle → mode-aware durations via `resolveJourneyDuration`)
+    → Shared traffic: `useRouteTraffic` hook (debounced `/api/maps/traffic` + memory cache + silent fallback; Sprint 67 += optional vehicle passthrough + last-good-result persistence across geometry swaps — RouteMap remaps via `remapTrafficSegments`)
     → Live overlay: `LiveNavigationModal` (map + NavigationGuide together, `LIVE_NAVIGATION_CONFIG` [Sprint 28] — post detail)
     → MapLibre GL vector tiles (keyless) — zero `NEXT_PUBLIC_*` map keys read (+ `maplibre-gl.css` import required by every renderer [Sprint 23])
 

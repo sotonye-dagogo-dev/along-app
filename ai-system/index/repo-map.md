@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: no new modules — additive config fields + optional prop + 1 test file; 79 config files unchanged)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 67: +journeyTime.ts config + journeyTime.test.ts; 15 files touched, structure otherwise unchanged)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 

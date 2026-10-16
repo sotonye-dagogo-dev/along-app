@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 67: vehicle-aware journey times + persistent traffic overlay + post-card Navigate quick link)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
@@ -33,6 +33,32 @@ P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module
 ---
 
 ## History
+
+## 2026-10-16 — Execute-Feature: Vehicle-Aware Journey Times + Persistent Traffic Overlay + Post-Card Navigate Link (Sprint 67)
+
+**Summary:**
+Traffic colors vanished whenever the tracer swapped the straight pins-line for the road-snapped trace (chunk indices belonged to the old geometry), journey times assumed cars for every mode (a trek timed like a taxi, ferries slowed by road traffic), and post cards had no entry point into the navigation guide. All three are fixed config-first: a new journey-time registry (per-vehicle speeds + traffic sensitivity), proportional traffic remapping in the renderer, and a metadata-driven Navigate quick link that deep-links (`?navigate=1`) into the live-navigation overlay.
+
+**Completed:**
+- NEW `lib/config/journeyTime.ts` (speeds: trekking 5 / bike 16 / keke 25 / bus 22 / taxi-bolt-car 28-30 / boat 18 / train 60 km/h; sensitivity: trekking 0.05 / bike 0.35 / road 0.9-1 / boat-train 0; pure helpers: speed/sensitivity/recompute/estimate/vehicle-blend/dominant-steps/resolve-duration, destination-excluded, unknown-mode fallbacks)
+- Traffic persistence: NEW `remapTrafficSegments` (fractional chunk remap, pure, identity on same geometry, [] on degenerate) in `lib/config/traffic.ts`; RouteMap keeps the last good result across geometry swaps and remaps before slicing; `useRouteTraffic` keeps prior result during refetch + optional vehicle param (memory-cache key extended)
+- Vehicle-aware durations end-to-end: `geo.estimateRoute(points, vehicle?)`, `useRouteTrace(pins, vehicle?)` (slow/rail/water recompute from traced distance), `trafficService.getTrafficForRoute(coords, base, vehicle?)` (sensitivity-scaled blend, vehicle-suffixed Redis key), `POST /api/maps/traffic` accepts optional `vehicle`; ShareRouteModal preview + post detail compute the dominant vehicle and pass it to RouteMap/traffic/guide; stored nulls fall back to mode-adjusted trace/estimate
+- Post-card Navigate quick link: `POST_ACTIONS_CONFIG` navigate fields (label/path `?navigate=1`/class, non-request cards with coords only); post detail auto-opens `LiveNavigationModal` on `?navigate=1` (once per post id); `LiveNavigationModal` forwards optional `vehicle`
+- NEW `app/__tests__/config/journeyTime.test.ts` (16 assertions: speeds/fallbacks, immunity/dampening, destination exclusion, remap persistence)
+
+**Key Changes:**
+- New: `app/lib/config/journeyTime.ts`, `app/__tests__/config/journeyTime.test.ts`
+- Edited: `lib/config/{traffic,postActions,index}.ts`, `lib/utils/geo.ts`, `lib/hooks/{useRouteTraffic,useRouteTrace}.ts`, `lib/services/trafficService.ts`, `app/api/maps/traffic/route.ts`, `components/features/posts/{RouteMap,PostCard,ShareRouteModal,LiveNavigationModal}.tsx`, `app/(dashboard)/posts/[id]/page.tsx`
+
+**QA gate (this runner — no node_modules, full gate deferred to CI):**
+- `node --experimental-strip-types` pure-logic harness — 27/27 checks pass (speeds, sensitivities, blends, dominant-vehicle, resolve-duration, remap full/split/identity/degenerate)
+- `npx tsc --noEmit` — only missing-module noise (no project deps installed); no new type errors introduced by inspection
+- `npx jest` / `next build` — deferred to CI (no node_modules in runner)
+
+**Next Sprint Focus:**
+FAQ/maps docs for vehicle-aware durations + traffic persistence; admin-editable journey-time knobs if non-technical tuning is needed.
+
+---
 
 ## 2026-10-09 — Execute-Feature: Route Accuracy (preview = post view) + Live-Navigation Overlay + Admin Users Type Fix (Sprint 28)
 

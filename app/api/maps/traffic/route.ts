@@ -4,12 +4,15 @@ import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 
 /**
  * POST /api/maps/traffic — traffic overlay for a route.
- * Body: { coords: [{ lat, lng }, ...] (2..200), baseDurationMins?: number }
- * or { polyline: string, baseDurationMins?: number }.
+ * Body: { coords: [{ lat, lng }, ...] (2..200), baseDurationMins?: number,
+ *   vehicle?: string }
+ * or { polyline: string, baseDurationMins?: number, vehicle?: string }.
  * Keyed live providers (Mapbox congestion / TomTom flow) only when their
  * env keys exist; otherwise a deterministic keyless estimate explicitly
- * flagged `estimated: true`. Sanitized errors; guest-open (map previews
- * need it pre-login); maps-bucket limited.
+ * flagged `estimated: true`. `vehicle` (optional dominant mode) scales the
+ * traffic delay — immune modes (trekking/boat/train) keep the base
+ * duration. Sanitized errors; guest-open (map previews need it pre-login);
+ * maps-bucket limited.
  */
 export async function POST(request: NextRequest) {
   const limited = checkRateLimit(request, "maps");
@@ -17,7 +20,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { coords, polyline, baseDurationMins } = body ?? {};
+    const { coords, polyline, baseDurationMins, vehicle } = body ?? {};
 
     let list: { lat: number; lng: number }[] | null = null;
     if (Array.isArray(coords)) list = coords;
@@ -48,7 +51,8 @@ export async function POST(request: NextRequest) {
       typeof baseDurationMins === "number" && Number.isFinite(baseDurationMins) && baseDurationMins >= 0
         ? Math.round(baseDurationMins)
         : 0;
-    const result = await trafficService.getTrafficForRoute(list, base);
+    const mode = typeof vehicle === "string" && vehicle.trim().length > 0 ? vehicle.trim().slice(0, 30) : null;
+    const result = await trafficService.getTrafficForRoute(list, base, mode);
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.warn("[maps/traffic] request failed", (error as Error)?.message);
