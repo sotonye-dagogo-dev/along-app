@@ -11,7 +11,7 @@ export const metadata = buildMetadata({
 
 const content = `# Terms of Service
 
-**Last updated: June 2026**
+**Last updated: October 2026**
 
 ## Acceptance of Terms
 
@@ -36,6 +36,14 @@ When sharing routes on Along:
 ## Trust Scores
 
 Trust scores are calculated algorithmically based on community interactions, route detail, corroboration, and recency. Along reserves the right to adjust scores to maintain platform integrity.
+
+## Travel Times & Traffic Estimates
+
+Journey totals show as a range (free-flow time to with-traffic time) and per-stretch times always add up to those totals. Traffic overlays are estimates — keyless by default from typical conditions, live where optional provider keys are configured — and are cached on-device with periodic refresh. They are a guide, not a guarantee: always verify critical trips through official sources.
+
+## Account Deletion
+
+You may request deletion of your account from your profile. Requests enter a 7-day grace period during which your account is archived (posts hidden or anonymised) and you may reverse the request; after completion, personal information is deleted within 30 days while anonymised post data may be retained for platform integrity.
 
 ## Termination
 

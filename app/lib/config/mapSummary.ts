@@ -28,6 +28,18 @@ export interface MapSummaryConfig {
   trafficLoadingText: string;
   /** Fallback when no summary value is available. */
   emptyText: string;
+  /**
+   * Separator for the traffic-aware total range ("62–75 min"): the lower
+   * bound is the free-flow base, the upper bound adds the yellow/red delay.
+   * Showing the range (not a single figure) is what keeps the header total
+   * consistent with the per-stretch times, which always sum to the bounds.
+   */
+  rangeSeparator: string;
+  /**
+   * Title tooltip for a ranged total (explains base vs with-traffic).
+   * Pure copy — no hardcoded strings in renderers.
+   */
+  rangeTitle: string;
 }
 
 export const MAP_SUMMARY_CONFIG: MapSummaryConfig = {
@@ -36,6 +48,8 @@ export const MAP_SUMMARY_CONFIG: MapSummaryConfig = {
   distanceDecimals: 1,
   trafficLoadingText: "Calculating traffic…",
   emptyText: "—",
+  rangeSeparator: "–",
+  rangeTitle: "Free-flow time – with-traffic time for current conditions",
 };
 
 /** Finite positive number guard (rejects 0, NaN, Infinity, negatives). */
@@ -78,6 +92,57 @@ export function formatSummaryDistanceKm(km: number): string {
   if (!Number.isFinite(km) || km <= 0) return MAP_SUMMARY_CONFIG.emptyText;
   if (km >= 1) return `${km.toFixed(MAP_SUMMARY_CONFIG.distanceDecimals)}`;
   return `${Math.round(km * 1000)}m`.replace(/m$/, "");
+}
+
+/**
+ * Format a traffic-aware total as a range ("62–75 min" / "1h 2m–1h 15m").
+ * Single value when traffic matches the base (or is unavailable); pure with
+ * the empty-text fallback so loading/zero states hide instead of flashing.
+ */
+export function formatDurationRange(base: unknown, adjusted: unknown): string {
+  const b = typeof base === "number" && Number.isFinite(base) && base > 0 ? Math.round(base) : 0;
+  const a = typeof adjusted === "number" && Number.isFinite(adjusted) && adjusted > 0 ? Math.round(adjusted) : 0;
+  if (b <= 0) return MAP_SUMMARY_CONFIG.emptyText;
+  if (a <= 0 || a === b) return formatSummaryDurationMins(b);
+  return `${formatSummaryDurationMins(b)}${MAP_SUMMARY_CONFIG.rangeSeparator}${formatSummaryDurationMins(a)}`;
+}
+
+/**
+ * Split a minute total across legs by weight (largest-remainder, pure).
+ * The returned ints always sum exactly to `total` — this is the consistency
+ * contract: per-stretch times add up to the header total instead of drifting
+ * by ±1 min per leg from independent rounding.
+ */
+export function splitMinsByWeights(totalMins: unknown, weights: number[] | null | undefined): number[] {
+  if (!Array.isArray(weights) || weights.length === 0) return [];
+  if (!Number.isFinite(totalMins as number) || (totalMins as number) <= 0) {
+    return weights.map(() => 0);
+  }
+  const total = Math.round(totalMins as number);
+  const safe = weights.map((w) => (Number.isFinite(w) && w > 0 ? w : 0));
+  const sum = safe.reduce((a, b) => a + b, 0);
+  if (sum <= 0) {
+    // No signal — even split keeps the sum contract.
+    const each = Math.floor(total / safe.length);
+    const out = safe.map(() => each);
+    let rest = total - each * safe.length;
+    for (let i = 0; rest > 0 && i < out.length; i++, rest--) out[i] += 1;
+    return out;
+  }
+  const exact = safe.map((w) => (total * w) / sum);
+  const floored = exact.map((e) => Math.floor(e));
+  let remainder = total - floored.reduce((a, b) => a + b, 0);
+  const order = exact
+    .map((e, i) => ({ i, frac: e - Math.floor(e) }))
+    .sort((a, b) => b.frac - a.frac)
+    .map((o) => o.i);
+  const out = [...floored];
+  for (const idx of order) {
+    if (remainder <= 0) break;
+    out[idx] += 1;
+    remainder -= 1;
+  }
+  return out;
 }
 
 /** Format minutes for summary bars ("1h 6m" / "45 min"). Pure. */

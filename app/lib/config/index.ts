@@ -120,7 +120,7 @@ export {
 } from "./earlyAdopter";
 export type { EarlyAdopterConfig } from "./earlyAdopter";
 export { RATE_LIMITS } from "./rateLimits";
-export { TRAFFIC_CONFIG, levelForCongestion, heuristicCongestion, adjustDurationForLevels, remapTrafficSegments, hasTomtomKey } from "./traffic";
+export { TRAFFIC_CONFIG, levelForCongestion, heuristicCongestion, adjustDurationForLevels, remapTrafficSegments, rebaseTrafficResult, trafficClientKey, hasTomtomKey } from "./traffic";
 export type { TrafficConfig, TrafficLevel, TrafficLevelMeta, TrafficProvider, RemappableTrafficSegment } from "./traffic";
 export {
   JOURNEY_TIME_CONFIG,
@@ -128,6 +128,7 @@ export {
   trafficSensitivityForVehicle,
   shouldRecomputeFromDistance,
   estimateDurationMins,
+  legTrafficFactor,
   adjustDurationForVehicleAndTraffic,
   dominantVehicleForSteps,
   resolveJourneyDuration,

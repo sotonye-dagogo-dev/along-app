@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 69: +mapSummary.ts guards/formatters/remaining + mapSummary.test.ts + routeLegs.test.ts; mapTooltips.ts += leg helpers; routeSteps.ts += totalFareForSteps; structure otherwise unchanged)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 70: mapSummary.ts += range/split helpers, journeyTime.ts += legTrafficFactor, traffic.ts += rebase/client-key/client knobs, +journeyConsistency.test.ts; structure otherwise unchanged)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from `Get-ChildItem -Recurse` or `tree` command. Manual content only where intent cannot be derived from structure.
 

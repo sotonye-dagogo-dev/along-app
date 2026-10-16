@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 69: +mapSummary.ts → RouteMap overlay + NavigationGuide bars; mapTooltips leg helpers → leg-aware taps; routeSteps.totalFareForSteps; LiveNavigationModal += totalFare)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 70: mapSummary range/split → RouteMap overlay/tooltips + NavigationGuide bars; journeyTime legTrafficFactor; traffic rebase/client-key → useRouteTraffic persistent cache)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 

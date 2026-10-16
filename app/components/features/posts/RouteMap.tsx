@@ -20,6 +20,7 @@ import {
   legDistanceKm,
   legEstMins,
   legIndexForCoord,
+  legLengthShare,
   legRangeLabel,
   nearestCoordIndex,
   pinBordersOnRoute,
@@ -29,10 +30,14 @@ import {
   type MapTooltipModePreference,
 } from '@/app/lib/config/mapTooltips'
 import {
+  MAP_SUMMARY_CONFIG,
+  formatDurationRange,
   isValidDistanceKm,
   isValidDurationMins,
   shouldShowTrafficAdjusted,
+  splitMinsByWeights,
 } from '@/app/lib/config/mapSummary'
+import { legTrafficFactor } from '@/app/lib/config/journeyTime'
 import { MAP_PINS_CONFIG } from '@/app/lib/config/mapPins'
 import { MapRoutePin, MapUserDot } from './MapPins'
 import { TrafficLegend } from './TrafficLegend'
@@ -258,6 +263,8 @@ function RouteMap({
     lat: number
     lng: number
     estMins: number
+    /** Free-flow minutes for this stretch (range lower bound). */
+    baseMins: number
     distKm: number
     /** Route-leg context (0-based leg among pins-1 legs, -1 when unknown). */
     legIndex: number
@@ -307,6 +314,76 @@ function RouteMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeCoords.length, routeSig, pinsForLegsKey])
   const totalLegs = legBorders.length >= 2 ? legBorders.length - 1 : 0
+  // Consistent leg totals (config-driven): per-stretch minutes are split from
+  // the SAME totals the header shows, so the stretches always sum to the
+  // header instead of drifting via independent rounding. Shares come from
+  // polyline length; the adjusted split is weighted by each leg's traffic
+  // factor (vehicle-aware) and largest-remainder apportioned.
+  const legShares = useMemo(() => {
+    try {
+      if (legBorders.length >= 2 && routeCoords.length >= 2) {
+        const out: number[] = []
+        for (let leg = 0; leg < legBorders.length - 1; leg++) {
+          const b = legBorders[leg]
+          const n = legBorders[leg + 1]
+          if (b === undefined || n === undefined) {
+            out.push(0)
+            continue
+          }
+          try {
+            out.push(legLengthShare(routeCoords, b, n))
+          } catch {
+            out.push(0)
+          }
+        }
+        return out
+      }
+      return []
+    } catch {
+      return []
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legBorders, routeCoords.length, routeSig])
+  const legLevels = useMemo(() => {
+    try {
+      if (legBorders.length < 2) return [] as ("low" | "moderate" | "heavy")[]
+      return legBorders.slice(0, -1).map((_, leg) => {
+        const bounds = legBounds(legBorders, leg)
+        if (!bounds) return "low" as const
+        try {
+          return worstLevelInRange(allSegments, bounds.from, bounds.to)
+        } catch {
+          return "low" as const
+        }
+      })
+    } catch {
+      return [] as ("low" | "moderate" | "heavy")[]
+    }
+  }, [legBorders, allSegments])
+  const consistentLegTimes = useMemo(() => {
+    try {
+      const n = Math.max(legShares.length, 1)
+      const shares = legShares.length === n ? legShares : Array(n).fill(1 / Math.max(n, 1))
+      const baseTotal = Number.isFinite(baseMinsForStretch) && baseMinsForStretch > 0 ? Math.round(baseMinsForStretch) : 0
+      const adjustedTotal = Number.isFinite(overlayDuration) && (overlayDuration as number) > 0 ? Math.round(overlayDuration as number) : baseTotal
+      const baseLegs = splitMinsByWeights(baseTotal, shares)
+      const factors = shares.map((_, i) => {
+        try {
+          return legTrafficFactor(legLevels[i] ?? "low", vehicle ?? null)
+        } catch {
+          return 1
+        }
+      })
+      const weights = baseLegs.map((b, i) => {
+        const f = Number.isFinite(factors[i]) && (factors[i] as number) > 0 ? (factors[i] as number) : 1
+        return (b > 0 ? b : shares[i] ?? 0) * f
+      })
+      const adjustedLegs = splitMinsByWeights(adjustedTotal, weights)
+      return { baseLegs, adjustedLegs, baseTotal, adjustedTotal }
+    } catch {
+      return { baseLegs: [] as number[], adjustedLegs: [] as number[], baseTotal: 0, adjustedTotal: 0 }
+    }
+  }, [legShares, legLevels, baseMinsForStretch, overlayDuration, vehicle])
   const interactiveLayerIds = useMemo(() => {
     if (routeCoords.length < 2) return undefined as unknown as string[]
     const ids = ["route-line", "route-hit-line"]
@@ -391,8 +468,30 @@ function RouteMap({
         legIndex = 0
       }
       const level = worstLevelInRange(allSegments, legFrom, legTo)
-      const delayFactor = TRAFFIC_CONFIG.levels[level]?.delayFactor ?? 1
       const totalKmForLeg = typeof distance === "number" && Number.isFinite(distance) ? distance : 0
+      // Consistent stretch time: the leg's share of the SAME adjusted total
+      // the header shows (largest-remainder split), so all stretches sum to
+      // the header instead of exceeding it via independent rounding.
+      let consistentMins = 0
+      try {
+        if (legIndex >= 0 && consistentLegTimes.adjustedLegs[legIndex] !== undefined) {
+          consistentMins = consistentLegTimes.adjustedLegs[legIndex] as number
+        } else {
+          const delayFactor = TRAFFIC_CONFIG.levels[level]?.delayFactor ?? 1
+          consistentMins = legEstMins(baseMinsForStretch, routeCoords, legFrom, legTo, delayFactor)
+        }
+      } catch {
+        const delayFactor = TRAFFIC_CONFIG.levels[level]?.delayFactor ?? 1
+        consistentMins = legEstMins(baseMinsForStretch, routeCoords, legFrom, legTo, delayFactor)
+      }
+      let consistentBase = 0
+      try {
+        if (legIndex >= 0 && consistentLegTimes.baseLegs[legIndex] !== undefined) {
+          consistentBase = consistentLegTimes.baseLegs[legIndex] as number
+        }
+      } catch {
+        consistentBase = 0
+      }
       setMiniAnchor(null)
       setSelectedStretch({
         from: legFrom,
@@ -400,7 +499,8 @@ function RouteMap({
         level,
         lat: lngLat.lat,
         lng: lngLat.lng,
-        estMins: legEstMins(baseMinsForStretch, routeCoords, legFrom, legTo, delayFactor),
+        estMins: consistentMins,
+        baseMins: consistentBase,
         distKm: legDistanceKm(totalKmForLeg, routeCoords, legFrom, legTo),
         legIndex,
         totalLegs: Math.max(1, legCount),
@@ -758,7 +858,10 @@ function RouteMap({
                 {selectedStretch.estMins > 0 && (
                   <li className="flex items-center gap-1 text-xs text-text-secondary">
                     <Clock size={12} aria-hidden className="shrink-0" />
-                    {MAP_TOOLTIPS_CONFIG.detailed.stretchTimeLabel} {selectedStretch.estMins} min
+                    {MAP_TOOLTIPS_CONFIG.detailed.stretchTimeLabel}{" "}
+                    {selectedStretch.baseMins > 0 && selectedStretch.baseMins !== selectedStretch.estMins
+                      ? formatDurationRange(selectedStretch.baseMins, selectedStretch.estMins)
+                      : `${selectedStretch.estMins} min`}
                   </li>
                 )}
                 {selectedStretch.distKm > 0 && (
@@ -859,14 +962,21 @@ function RouteMap({
 
       {(() => {
         // Summary bar guards (config-driven, nullsafe): each chip hides
-        // independently when invalid; traffic-adjusted renders only when both
-        // base and adjusted are finite + positive and different — so a
-        // still-loading lookup (adjusted 0) never flashes "0 min with traffic".
+        // independently when invalid; traffic renders as a RANGE
+        // ("62–75 min": base free-flow – with-traffic) so the header total
+        // always matches the per-stretch times, which split from these same
+        // bounds. A still-loading lookup (adjusted 0) falls back to the base.
         const showDistance = isValidDistanceKm(distance)
         const showDuration = isValidDurationMins(duration)
         const showTraffic = shouldShowTrafficAdjusted(overlayDuration, duration)
         const showFare = typeof fare === "string" && fare.trim().length > 0
         if (!showOverlay || (!showDistance && !showDuration && !showFare)) return null
+        const rangeLabel = showTraffic
+          ? formatDurationRange(duration, overlayDuration)
+          : `${duration}min`
+        const rangeTitle = showTraffic
+          ? `${MAP_SUMMARY_CONFIG.rangeTitle} (${duration} min ${TRAFFIC_CONFIG.legend.durationSuffix} ${overlayDuration} min${traffic?.estimated === false ? "" : " (estimated)"})`
+          : undefined
         return (
           <div className="glass absolute bottom-0 left-0 right-0 z-[3] p-3 flex items-center gap-4 text-sm">
             {showDistance && (
@@ -876,11 +986,9 @@ function RouteMap({
               </span>
             )}
             {showDuration && (
-              <span className="flex items-center gap-1 text-text-secondary">
+              <span className="flex items-center gap-1 text-text-secondary" title={rangeTitle}>
                 <Clock size={14} />
-                {showTraffic
-                  ? `${overlayDuration}min ${TRAFFIC_CONFIG.legend.durationSuffix}`
-                  : `${duration}min`}
+                {rangeLabel}
               </span>
             )}
             {showFare && (

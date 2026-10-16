@@ -931,3 +931,8 @@ Chunk shares are equal by construction (≤12 even slices), so chunk tooltips co
 - **Midpoint anchoring with auto-pan**: Rejected — panning the map to a distant midpoint disorients the user; rendering where they tapped needs no camera move.
 **Supersedes:** Extends the Sprint 68 tooltip decision (chunk → leg resolution, midpoint → tap anchor; registry kept, helpers added).
 **Superseded by:** None
+
+## Sprint 70 decisions (2026-10-16)
+
+**Decision:** Journey totals render as a range (free-flow base – with-traffic adjusted) and per-stretch times split from those same bounds via largest-remainder apportionment, so stretches sum to the header by construction. Geometry-scoped traffic cache keys (pins+vehicle, never base) with `rebaseTrafficResult` rescaling minutes locally — a base change (pins estimate → road-snapped trace) never triggers a redundant rate-limited lookup.
+**Decision:** Traffic client freshness = 300s fresh + 600s stale-while-revalidate + 120s background refresh while mounted, over the hourly server bucket. "Somewhat live" without hammering the maps rate-limit bucket; revisits within seconds render the last good overlay instantly.

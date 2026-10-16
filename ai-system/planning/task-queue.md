@@ -951,3 +951,15 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Guide bars — `NavigationGuide` += optional `totalFare` (derived fallback), guarded traffic banner shows remaining adjusted vs remaining base + remaining-km in progress row; header shows distance/time/fare/stops with independent guards; `LiveNavigationModal` += optional `totalFare` forwarded to guide + map overlay | [x] |
 | [S] | Detail wiring — `posts/[id]` computes `detailDistance` (live trace wins) + `detailDuration` (vehicle-aware base wins) + `detailFareTotal`/`detailFareLabel`, passes to map + modal | [x] |
 | [S] | Tests — NEW `mapSummary.test.ts` (10: guards, "0 min" rejection, formatting, remaining math) + NEW `routeLegs.test.ts` (8: borders, distinct legs, labels, worst-level, shares, fare total) | [x] |
+
+## Sprint 70 — Consistent journey totals + resilient traffic cache + docs (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive config helpers + additive optional fields only; same props + API envelopes; no migration, no new deps). QA full in-runner: `npm install` ok, tsc 0 errors, jest 94/94 suites 816/816 tests, next lint clean on touched files, full `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Consistent totals — `mapSummary.ts` += `rangeSeparator`/`rangeTitle` + `formatDurationRange` (base–adjusted range, single when equal, empty-text when invalid) + `splitMinsByWeights` (largest-remainder, parts always sum to total); `journeyTime.ts` += `legTrafficFactor` (vehicle-scaled delay); `traffic.ts` += `rebaseTrafficResult` (rescale minutes w/o refetch) + `trafficClientKey` + client knobs (`clientCacheTtlSec` 300, `clientStaleSec` 600, `refreshIntervalSec` 120, `debounceMs` 900) + barrel exports | [x] |
+| [M] | Traffic caching — `useRouteTraffic` rewrite: geometry-scoped key (pins+vehicle, never base) + memory → localStorage read-through + stale-while-revalidate + `refreshIntervalSec` background refresh while mounted + silent failure keeps last good + base-only changes rebase locally (zero network) | [x] |
+| [M] | Surface wiring — `RouteMap` overlay shows range with explanatory title; stretch tooltips split from the same totals (`consistentLegTimes`: length-share base split, traffic-weighted adjusted split) + range display per stretch; `NavigationGuide` header + live remaining banner show ranges | [x] |
+| [S] | Docs — FAQ `map-traffic-duration` rewritten (range + stretch-sum guarantee + caching cadence, en+pcm) + `map-traffic-legend` stretch-tap hint (en+pcm); `request-location-filtering` shortened ~60% (en+pcm, same facts); privacy (location/traffic/offline/7-day deletion sections) + terms (traffic-estimate + deletion-grace sections) updated; README Maps & traffic section (range + caching strategy) | [x] |
+| [S] | Tests — NEW `journeyConsistency.test.ts` (10: range, split-sum contract, factors, rebase, client keys, knob sanity) | [x] |
