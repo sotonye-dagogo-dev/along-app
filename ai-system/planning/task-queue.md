@@ -912,3 +912,14 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Response dismiss — `SHARE_ROUTE_MODAL_CONFIG` += `responseBannerDismissLabel/Title`; `ShareRouteModal` += optional `onClearResponse` + `dismissResponse` (clears restored linkage + parent callback, never closes modal, input preserved, hidden while editing); home stable `clearRespondTo`; post-detail `respondUnlinked` gate (reset on open/close/submit) | [x] |
 | [S] | Vehicle contrast — `VEHICLE_REGISTRY` light text `-800` → `-900` all 9 types (dark variants unchanged; stray-space fix on taxi); contract comment updated | [x] |
 | [S] | Tests — NEW `postCardDetailLinks.test.ts` (4: nav flag + encoded path, link token classes, dismiss copy, `-900` grade); `vehicles.test.ts` updated (boat/train `-900`, contract regex `-(800\|900)`) | [x] |
+
+## Sprint 66 — Config studio links + vehicle badge readability (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive config metadata + additive UI only; same props + API envelopes; no migration, no new deps; sender editing relocated, not removed). QA static in-runner (no node_modules; full tsc/jest/build deferred to CI — expected jest 89 suites / 762 tests, +1 studio-links test).
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Studio links — `admin.ts` += `ADMIN_STUDIO_MANAGED_KEYS` (blogPosts/emailConfig/emailTemplates/emailTemplateToggles) + `ADMIN_STUDIO_LINKS` (Email/Blog Studio href/CTA/description) + barrel; Config page renders metadata-driven link cards (Customized badge on DB overrides), raw list hides studio keys via extended `ADMIN_DEDICATED_CONFIG_KEYS`; `emailConfig` removed from `ADMIN_SIMPLE_CONFIG_CARDS` (defaults/validator/API/service reads kept) | [x] |
+| [S] | Sender relocation — Email Studio += collapsible Sender identity card (fromName/fromEmail/replyTo via generic config API, shipped-default backfill, inline validation) so the removed Config-page card loses no capability | [x] |
+| [S] | Vehicle readability — `VEHICLE_REGISTRY` light wash `-100`→`-200` / border `-300`→`-400` ×9 (trekking gray-300; dark unchanged); `VehicleChip` += `shadow-xs` + icon `strokeWidth={2.5}` (route-request-flag structure); PostCard + post detail pick it up with zero per-surface changes | [x] |
+| [S] | Tests — `vehicles.test.ts` contract → `-200`/`-400` (+`-100` rejection); `designCompliance.test.ts` += studio-links test + no-code-card test counts studio links | [x] |

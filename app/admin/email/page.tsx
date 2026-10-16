@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Code, PenLine, Send, Plus, Trash2, RefreshCw, Type, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
 import { toastService } from "@/app/lib/services/toastService";
 import { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, parseManualEmails } from "@/app/lib/config/emailManagement";
+import { DEFAULT_EMAIL_CONFIG } from "@/app/lib/config/email";
 import { STUDIO_LAYOUT_CONFIG, studioPreviewStyle } from "@/app/lib/config/studioLayout";
 import { composeEmailDocument } from "@/app/lib/config/email";
 import type { EmailTemplate } from "@/app/lib/config/email";
@@ -153,6 +154,51 @@ export default function AdminEmailPage() {
 
   useEffect(() => { load(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sender identity — relocated from the Config page (directive: email
+  // management lives in the Email Studio). Backed by the `emailConfig`
+  // SiteConfig row via the generic config API; shipped defaults backfill.
+  const [sender, setSender] = useState({ ...DEFAULT_EMAIL_CONFIG });
+  const [senderSaving, setSenderSaving] = useState(false);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/config");
+        if (!res.ok) return;
+        const data = await res.json();
+        const row = (data.configs ?? []).find((c: { key: string }) => c.key === "emailConfig");
+        const v = row?.value as Partial<typeof DEFAULT_EMAIL_CONFIG> | undefined;
+        if (v && typeof v === "object") {
+          setSender({
+            fromName: typeof v.fromName === "string" && v.fromName.trim() ? v.fromName : DEFAULT_EMAIL_CONFIG.fromName,
+            fromEmail: typeof v.fromEmail === "string" && v.fromEmail.trim() ? v.fromEmail : DEFAULT_EMAIL_CONFIG.fromEmail,
+            replyTo: typeof v.replyTo === "string" && v.replyTo.trim() ? v.replyTo : DEFAULT_EMAIL_CONFIG.replyTo,
+          });
+        }
+      } catch { /* shipped defaults stand in */ }
+    })();
+  }, []);
+  const saveSender = async () => {
+    if (!sender.fromEmail.includes("@")) {
+      toastService.error("From email must be a valid address");
+      return;
+    }
+    setSenderSaving(true);
+    try {
+      const res = await fetch("/api/admin/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "emailConfig", value: sender }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error((data as { error?: string } | null)?.error ?? "Save failed");
+      toastService.success("Sender identity saved");
+    } catch (e) {
+      toastService.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSenderSaving(false);
+    }
+  };
 
   const current = useMemo(() => templates.find((t) => t.name === selected), [templates, selected]);
   const effectiveEnabled = current ? (toggles[current.name] ?? current.enabled ?? true) : true;
@@ -463,6 +509,37 @@ export default function AdminEmailPage() {
           </button>
         </div>
       </div>
+
+      <details className="bg-bg-card border border-border radius-lg px-4 py-3">
+        <summary className="text-sm font-semibold cursor-pointer list-none flex items-center gap-2">
+          <Send size={14} className="text-primary" /> Sender identity
+          <span className="text-[11px] font-normal text-text-muted">— From name / address on transactional mail</span>
+        </summary>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+          {([
+            { id: "fromName", label: "From name", placeholder: "Along" },
+            { id: "fromEmail", label: "From email", placeholder: "mail@alongng.com" },
+            { id: "replyTo", label: "Reply-to", placeholder: "support@alongng.com" },
+          ] as const).map((f) => (
+            <label key={f.id} className="text-xs flex flex-col gap-1">
+              <span className="text-text-muted font-medium">{f.label}</span>
+              <input
+                value={sender[f.id]}
+                onChange={(e) => setSender((p) => ({ ...p, [f.id]: e.target.value }))}
+                placeholder={f.placeholder}
+                className="rounded-md border border-border bg-bg-base px-3 py-2 text-sm"
+              />
+            </label>
+          ))}
+        </div>
+        <button
+          onClick={saveSender}
+          disabled={senderSaving}
+          className="mt-3 inline-flex items-center gap-1.5 px-3 py-2 radius-md bg-primary text-white text-xs font-semibold border-none cursor-pointer disabled:opacity-60"
+        >
+          {senderSaving ? "Saving…" : "Save sender"}
+        </button>
+      </details>
 
       <div className="flex gap-2 flex-wrap">
         {templates.map((t) => {

@@ -10,7 +10,7 @@ export interface VehicleConfig {
   textClass: string;
   /**
    * Border pairing for the flag chip (light + dark variants, e.g.
-   * "border-yellow-300 dark:border-yellow-800"). Optional so legacy
+   * "border-yellow-400 dark:border-yellow-800"). Optional so legacy
    * call sites/tests constructing partial configs keep compiling;
    * VehicleChip falls back to no extra border class when absent.
    */
