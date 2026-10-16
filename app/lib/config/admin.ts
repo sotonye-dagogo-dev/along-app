@@ -742,16 +742,6 @@ export const ADMIN_SIMPLE_CONFIG_CARDS: AdminSimpleCardMeta[] = [
     ],
   },
   {
-    key: "emailConfig",
-    title: "Email Sender",
-    description: "From name / address used for transactional mail.",
-    fields: [
-      { id: "fromName", label: "From name", hint: "Display name on sent mail.", type: "text", placeholder: "Along" },
-      { id: "fromEmail", label: "From email", hint: "Must be a valid address.", type: "text", placeholder: "mail@alongng.com" },
-      { id: "replyTo", label: "Reply-to", hint: "Where replies go.", type: "text", placeholder: "support@alongng.com" },
-    ],
-  },
-  {
     key: "feedAlgorithm",
     title: "Feed Algorithm Weights",
     description:
@@ -792,9 +782,61 @@ export const ADMIN_SIMPLE_CONFIG_CARDS: AdminSimpleCardMeta[] = [
   },
 ];
 
+/**
+ * Studio-managed SiteConfig keys — blog + email live in their dedicated
+ * studios (`/admin/blog`, `/admin/email`), which ship visual builders,
+ * previews, and send flows the generic Config page cannot offer. These keys
+ * never render as editable cards or raw JSON rows on the Config page;
+ * they render as link cards (ADMIN_STUDIO_LINKS) pointing at the studios.
+ * The shipped defaults + central validator stay in this module so the API
+ * gate and read-time fallbacks keep working — only the Config-page surface
+ * is a link, never an editor.
+ */
+export const ADMIN_STUDIO_MANAGED_KEYS = [
+  "blogPosts",
+  "emailConfig",
+  "emailTemplates",
+  "emailTemplateToggles",
+] as const;
+
+export interface AdminStudioLinkMeta {
+  /** Studio-managed SiteConfig key(s) this card stands in for. */
+  keys: readonly string[];
+  title: string;
+  description: string;
+  /** Admin route of the dedicated studio. */
+  href: "/admin/email" | "/admin/blog";
+  ctaLabel: string;
+}
+
+/**
+ * Link cards replacing editable Config-page sections for blog + email.
+ * Metadata-driven: the Config page maps over this (never hardcoded
+ * hrefs/labels), so future studios join by appending one entry here.
+ */
+export const ADMIN_STUDIO_LINKS: AdminStudioLinkMeta[] = [
+  {
+    keys: ["emailConfig", "emailTemplates", "emailTemplateToggles"],
+    title: "Email Studio",
+    description:
+      "Sender identity, templates, and sends — visual builder, live preview, and recipient search live here.",
+    href: "/admin/email",
+    ctaLabel: "Open Email Studio",
+  },
+  {
+    keys: ["blogPosts"],
+    title: "Blog Studio",
+    description:
+      "Draft, publish, archive, and edit blog posts — visual builder with preview lives here.",
+    href: "/admin/blog",
+    ctaLabel: "Open Blog Studio",
+  },
+];
+
 /** Card keys with dedicated (non-generic) editors — hidden from the raw list. */
 export const ADMIN_DEDICATED_CONFIG_KEYS = [
   "earlyAdopterConfig",
   "feedDiversity",
+  ...ADMIN_STUDIO_MANAGED_KEYS,
   ...ADMIN_SIMPLE_CONFIG_CARDS.map((c) => c.key),
 ] as const;

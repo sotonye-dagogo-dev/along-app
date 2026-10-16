@@ -10,6 +10,8 @@ import {
   ADMIN_CONFIG_DEFAULTS,
   ADMIN_SIMPLE_CONFIG_CARDS,
   ADMIN_DEDICATED_CONFIG_KEYS,
+  ADMIN_STUDIO_LINKS,
+  ADMIN_STUDIO_MANAGED_KEYS,
   getAdminConfigDefault,
   mergeAdminConfigsWithDefaults,
   validateAdminConfigValue,
@@ -42,11 +44,12 @@ describe("admin config defaults registry (DB-aware, rollback-capable)", () => {
     }
   });
 
-  it("every default key has a no-code card (never JSON-only)", () => {
+  it("every default key has a no-code card or a studio link (never JSON-only)", () => {
     const cardKeys = new Set([
       ...ADMIN_SIMPLE_CONFIG_CARDS.map((c) => c.key),
       "earlyAdopterConfig",
       "feedDiversity",
+      ...ADMIN_STUDIO_LINKS.flatMap((s) => [...s.keys]),
     ]);
     for (const def of ADMIN_CONFIG_DEFAULTS) {
       expect(cardKeys.has(def.key)).toBe(true);
@@ -56,6 +59,29 @@ describe("admin config defaults registry (DB-aware, rollback-capable)", () => {
       expect(
         (ADMIN_DEDICATED_CONFIG_KEYS as readonly string[]).includes(def.key)
       ).toBe(true);
+    }
+  });
+
+  it("blog + email sections link to their studios (never inline editors)", () => {
+    // Every studio-managed key is hidden from the raw list via dedicated keys.
+    for (const key of ADMIN_STUDIO_MANAGED_KEYS) {
+      expect(
+        (ADMIN_DEDICATED_CONFIG_KEYS as readonly string[]).includes(key)
+      ).toBe(true);
+    }
+    // Studio links point at the real admin studios with a CTA each.
+    const hrefs = ADMIN_STUDIO_LINKS.map((s) => s.href).sort();
+    expect(hrefs).toEqual(["/admin/blog", "/admin/email"]);
+    for (const studio of ADMIN_STUDIO_LINKS) {
+      expect(studio.title.length).toBeGreaterThan(0);
+      expect(studio.description.length).toBeGreaterThan(0);
+      expect(studio.ctaLabel.length).toBeGreaterThan(0);
+      expect(studio.keys.length).toBeGreaterThan(0);
+    }
+    // No simple (inline-editable) card duplicates a studio-managed key.
+    const simpleKeys = ADMIN_SIMPLE_CONFIG_CARDS.map((c) => c.key);
+    for (const key of ADMIN_STUDIO_MANAGED_KEYS) {
+      expect(simpleKeys).not.toContain(key);
     }
   });
 
