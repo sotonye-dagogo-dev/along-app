@@ -2696,3 +2696,18 @@ Nothing pending — feature complete.
 **Notes / Blockers:**
 - None. Non-breaking, all changes additive with fallbacks (optional props/fields only; helpers pure + never-throw; tooltips/cache never break maps; docs copy only).
 - Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 70 + this log + dev-history + project-decisions + lessons-learned + system-architecture + index + in-progress reconciled; no architecture drift — additive config helpers + hook internals + copy only).
+
+**Session 2026-10-16 — FAQ sanitization: concise, no providers/internals (execute-feature).**
+**Directive:** Recent FAQs reveal too much technical detail + provider names and are too lengthy vs older concise FAQs. Sanitize; privacy policy, terms, README explicitly out of scope (untouched).
+**Found:** 15+ answers carried internals: `map-traffic-duration` named Mapbox/TomTom + keyless-estimate mechanics + client/server cache cadences + rate-limit rationale; `request-location-filtering` exposed one-shot fixes, server-side checks, nullable consented lastKnown, raw coordinates, best-effort installed-app filtering (plus a false "never saved" claim); `who-sees-request` used "optimistic nearby filtering"/"gracefully falls back"; `notification-preferences` documented missing-setting semantics + per-channel delivery; `avatar-not-showing` exposed post-row/header avatar resolution + 2-minute cache refresh; offline/push/update FAQs carried PWA timings (hourly checks, 1-day snooze), install-sheet mechanics, queued-sync internals; several answers ran 80–150 words vs the ~25–40-word older style.
+**Implemented:** Rewrote all flagged answers in `app/lib/config/faq.ts` (en + `FAQ_PCM` pidgin mirrors, same ids/questions except `request-location-filtering` → "Is my location shared…?" and `map-traffic-duration` → "Why does a route show a time range?"): 1–3 sentences each, zero provider names, zero implementation jargon, no storage claims — location answers say "never shown to anyone else" (honest: request fix is never persisted, no false never-stored claim about the feed-boost fix). Test-critical keywords kept (tracing/numbered, pinch, yellow/red, Report; no "Use the Report Bug page to flag"; all answers > 20 chars; pidgin parity for route-request + traffic ids).
+**QA:** FULL gate green in-runner (`npm install` completed): `npx tsc --noEmit` 0 errors; `npx jest` 94/94 suites 816/816 tests (incl. sprint59/traffic/mapTightening FAQ suites 35/35); banned-term grep clean; keyword + structural checks pass.
+**Files Modified:**
+- Edited: `app/lib/config/faq.ts`, `ai-system/checkpoints/session-log.md` (this entry), `ai-system/checkpoints/in-progress.md` (closed)
+**Assumptions Made:**
+- "Provider names" = map/traffic providers (Mapbox/TomTom); "Google" kept only in the pre-existing sign-up answer where it is functionally required (auth choice), not an implementation leak.
+- Validation FAQs (`share-route-validation`, `share-route-drafts-failure`) stay slightly longer than the oldest FAQs because the content (fare/location/title rules) was explicitly requested in an earlier directive; trimmed to user-actionable rules only.
+**Notes / Blockers:**
+- Privacy policy, terms, README untouched per directive (git status confirms only `faq.ts` + ai-system checkpoints changed).
+- Non-breaking: same export shape, same item ids, no API/UI/logic changes — copy only.
+- Chain: execute-feature §5 — no architecture impact and no [L]/[XL] task-queue entry, so `sync-context`-level close (this log + in-progress clear) applies; `update-ai-system.md` deep sync not triggered.
