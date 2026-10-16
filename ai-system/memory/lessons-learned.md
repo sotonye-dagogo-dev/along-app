@@ -871,3 +871,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** card text navigation = wrap text nodes in the canonical encoded path with stopPropagation, never the whole card (nested-interactive rule); every modal mode needs a config-labeled exit that drops linkage but preserves input (parent-owned state clears via optional callback, derived state via a local gate — edit-immutable modes get no exit); contract tests should assert the GRADE CLASS (`/-(800|900)/`, "dark-grade label") not the literal token, so contrast deepening never fights the suite.
 - **Supersedes:** None (extends Sprint 61 visibility entry: wash/border system kept, label grade deepened).
 - **Superseded by:** None
+
+## Sprint 68 (2026-10-16): a shared viewport must share the object, not re-derive it; modal stacking needs a z-contract
+- **Symptom:** "nav map loses traffic/tracings the detail map has" — plus "expanded map vanishes from the guide", plus "no per-stretch info on taps".
+- **Root causes:** (1) the nav map received the DERIVED duration (`trafficAdjustedMins`) but not the SOURCE result — with `trafficOverride` undefined it self-fetched, doubling cost and diverging mid-refetch. (2) the expand dialog (z-50) rendered behind the live modal (z-[60]) — invisible, not broken. (3) tracings had no hit interaction; the visible line (~3.5px) is untappable on mobile regardless.
+- **Fix pattern (reuse):** when two surfaces show one route, pass the fetched OBJECT down (optional-override prop, legacy self-fetch when omitted) — never pass only its derivatives and let each surface refetch. Keep a documented z-contract for floating layers (page < expand dialog < live modal < expand dialog needs top: z-[70] here — record the ordering where the values live). Tap interaction on thin geometry = invisible wide hit line + interactive layer ids, resolving click → layer/nearest-chunk → anchored marker; tooltips grade by rate cost (full where data exists, link-out where fetching is banned) with pure never-throw helpers and stale-tip clearing on geometry swap.
+- **Supersedes:** None
+- **Superseded by:** None

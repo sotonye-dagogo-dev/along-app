@@ -6,6 +6,7 @@ import { Navigation, X } from "lucide-react"
 import { LIVE_NAVIGATION_CONFIG } from "@/app/lib/config"
 import NavigationGuide from "./NavigationGuide"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
+import type { TrafficResult } from "@/app/lib/services/trafficService"
 
 const RouteMap = dynamic(
   () => import("@/app/components/features/posts/RouteMap").then((m) => ({ default: m.RouteMap })),
@@ -33,6 +34,14 @@ interface LiveNavigationModalProps {
   /** Traffic-aware duration + estimate flag (non-breaking additive). */
   trafficAdjustedMins?: number | null
   trafficEstimated?: boolean
+  /**
+   * Caller-owned traffic result (non-breaking additive): the SAME object
+   * the post detail map renders, forwarded as `trafficOverride` so the
+   * navigation map reuses the traffic data + tracings with zero
+   * re-retrieval (no second `/api/maps/traffic` lookup, no divergent
+   * colors). Omit and the map self-fetches (legacy behaviour).
+   */
+  trafficOverride?: TrafficResult | null
   /** Dominant vehicle — forwarded for mode-aware traffic lookups. */
   vehicle?: string | null
 }
@@ -58,6 +67,7 @@ export default function LiveNavigationModal({
   onClose,
   trafficAdjustedMins = null,
   trafficEstimated = true,
+  trafficOverride,
   vehicle = null,
 }: LiveNavigationModalProps) {
   useEffect(() => {
@@ -118,7 +128,9 @@ export default function LiveNavigationModal({
                 showOverlay={true}
                 distance={totalDistanceKm ?? undefined}
                 duration={estimatedMins ?? undefined}
+                trafficOverride={trafficOverride ?? undefined}
                 trafficAdjustedMins={trafficAdjustedMins}
+                tooltipMode="detailed"
                 vehicle={vehicle}
                 userLocation={userLocation}
                 followUser={!!userLocation}

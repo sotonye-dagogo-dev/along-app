@@ -526,8 +526,13 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             showOverlay={false}
             // Feed mini-maps stay light: no per-card traffic lookup (avoids
             // a fan-out of traffic requests per feed page). Full traffic
-            // overlay lives on the post detail map + live navigation.
+            // overlay lives on the post detail map + live navigation. Taps
+            // on the tracing show a quick-link tooltip instead.
             showTraffic={false}
+            tooltipMode="mini"
+            detailHref={detailHref}
+            navigateHref={POST_ACTIONS_CONFIG.navigatePath(post.id)}
+            postTitle={post.title}
           />
           {/* Quick link to the navigation/route guide (route-bearing posts
               only — never on ROUTE_REQUEST cards, which have no guide).
