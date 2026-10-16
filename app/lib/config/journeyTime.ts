@@ -135,6 +135,18 @@ export function shouldRecomputeFromDistance(vehicle: unknown): boolean {
   return JOURNEY_TIME_CONFIG.recomputeFromDistance.includes(key);
 }
 
+/**
+ * Traffic delay factor for one leg at its worst level, scaled by the
+ * vehicle's sensitivity (pure). Immune modes stay near 1x, road modes take
+ * the full chunk delay. Unknown vehicles assume full exposure (safe
+ * fallback, mirrors adjustDurationForVehicleAndTraffic).
+ */
+export function legTrafficFactor(level: string, vehicle: unknown = null): number {
+  const delay = level === "heavy" ? 1.35 : level === "moderate" ? 1.15 : 1;
+  const sensitivity = trafficSensitivityForVehicle(vehicle);
+  return 1 + (delay - 1) * sensitivity;
+}
+
 /** Duration (mins) for a distance at a vehicle's speed. Pure, min-clamped. */
 export function estimateDurationMins(distanceKm: number, vehicle: unknown = null): number {
   if (!Number.isFinite(distanceKm) || distanceKm <= 0) return 0;

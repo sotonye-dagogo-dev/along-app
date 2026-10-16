@@ -42,6 +42,28 @@ export interface TrafficConfig {
   thresholds: { moderateAt: number; heavyAt: number };
   /** Redis TTL (seconds) for traffic read-through — traffic is volatile. */
   cacheTtlSec: number;
+  /**
+   * Client cache TTL (seconds) for the traffic overlay — memory + persisted
+   * (localStorage) read-through. Longer than one mount so revisiting the same
+   * map seconds later renders instantly from the last good result instead of
+   * flashing untrafficked while the refetch flies.
+   */
+  clientCacheTtlSec: number;
+  /**
+   * Stale window (seconds) beyond `clientCacheTtlSec` where a cached result
+   * still renders immediately (labelled stale) while a background refresh
+   * runs. Keeps maps informative on flaky networks without serving ancient
+   * traffic as fresh.
+   */
+  clientStaleSec: number;
+  /**
+   * Background refresh interval (seconds) while a traffic hook stays mounted.
+   * Traffic is "somewhat live": revalidate on this cadence so the overlay
+   * tracks changing conditions without hammering the rate-limited proxy.
+   */
+  refreshIntervalSec: number;
+  /** Debounce (ms) before a traffic lookup fires after geometry settles. */
+  debounceMs: number;
   /** Max coordinates sampled per traffic lookup (bounds upstream cost). */
   maxSamplePoints: number;
   /** Rush windows in WAT (Africa/Lagos) driving the heuristic estimate. */
@@ -66,6 +88,10 @@ export const TRAFFIC_CONFIG: TrafficConfig = {
   },
   thresholds: { moderateAt: 35, heavyAt: 65 },
   cacheTtlSec: 300,
+  clientCacheTtlSec: 300,
+  clientStaleSec: 600,
+  refreshIntervalSec: 120,
+  debounceMs: 900,
   maxSamplePoints: 60,
   rushWindows: { morning: [7, 10], evening: [16, 20] },
   legend: {
@@ -77,6 +103,16 @@ export const TRAFFIC_CONFIG: TrafficConfig = {
     durationSuffix: "with traffic",
   },
 };
+
+/**
+ * Storage key for the persisted client traffic cache (geometry-scoped).
+ * Pure. Versioned so future schema changes never read stale shapes.
+ */
+export function trafficClientKey(signature: string, vehicleMode: string): string {
+  const sig = typeof signature === "string" ? signature : "";
+  const mode = typeof vehicleMode === "string" && vehicleMode.trim().length > 0 ? vehicleMode.trim().toLowerCase() : "auto";
+  return `along:traffic:v1:${sig}:${mode}`;
+}
 
 /** True when the optional TomTom traffic override is configured (server-only env). */
 export function hasTomtomKey(): boolean {
@@ -149,6 +185,37 @@ export interface RemappableTrafficSegment {
  * every tracing update with logical fallbacks (empty → [], degenerate →
  * clamped to the new line).
  */
+/**
+ * Re-base a cached traffic result onto a new base duration without
+ * re-fetching (pure). The segment levels are geometry-bound and reusable —
+ * only the minutes change when the base estimate settles (e.g. pins estimate
+ * → road-snapped trace). Keeps the overlay + header consistent across those
+ * swaps and avoids a second rate-limited lookup for the same road.
+ */
+export function rebaseTrafficResult<T extends { segments: RemappableTrafficSegment[]; baseDurationMins: number; adjustedDurationMins: number }>(
+  result: T,
+  baseDurationMins: number,
+  adjustForLevels: (base: number, counts: Record<TrafficLevel, number>, total: number) => number
+): T {
+  if (!result || !Array.isArray(result.segments)) return result;
+  if (!Number.isFinite(baseDurationMins) || baseDurationMins <= 0) return result;
+  const base = Math.round(baseDurationMins);
+  if (base === result.baseDurationMins) return result;
+  const counts: Record<TrafficLevel, number> = { low: 0, moderate: 0, heavy: 0 };
+  for (const s of result.segments) {
+    if (s && (s.level === "low" || s.level === "moderate" || s.level === "heavy")) counts[s.level] += 1;
+  }
+  const total = Math.max(result.segments.length, 1);
+  let adjusted: number;
+  try {
+    adjusted = adjustForLevels(base, counts, total);
+  } catch {
+    return result;
+  }
+  if (!Number.isFinite(adjusted) || adjusted <= 0) return result;
+  return { ...result, baseDurationMins: base, adjustedDurationMins: Math.round(adjusted) };
+}
+
 export function remapTrafficSegments<T extends RemappableTrafficSegment>(
   segments: T[],
   newLength: number

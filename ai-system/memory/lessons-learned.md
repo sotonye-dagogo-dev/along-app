@@ -885,3 +885,19 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** domain units over geometry units — resolve taps to legs via pin borders on the snapped trace (monotonic, ends pinned), worst-level for the leg, length-share (haversine, not point-count) for time/distance; anchor markers at `lngLat`. Treat `0`/`null`/`NaN` in summary bars as "not yet known" — centralise in one guard module (`shouldShowTrafficAdjusted` + per-chip `isValid*`) so every bar (detail, nav, preview, guide) hides the same way; single `totalFareForSteps` (destination excluded) for every total.
 - **Supersedes:** Extends the Sprint 68 entry (chunk → leg, midpoint → tap anchor).
 - **Superseded by:** None
+
+## Independent rounding breaks total/stretch consistency
+
+**Context:** Header showed one traffic-adjusted figure while each stretch tooltip rounded independently — sums drifted ±1 min per leg and exceeded the header.
+**What We Learned:** Split displayed parts from the displayed total with largest-remainder apportionment (`splitMinsByWeights`) instead of rounding each part independently; render the total as the range the parts sum to (`formatDurationRange`).
+**Apply When:** Any UI shows a total alongside per-part breakdowns (times, fares, distances).
+**Supersedes:** None
+**Superseded by:** None
+
+## Memory-only caches lose overlays across remounts
+
+**Context:** Traffic cached in memory keyed by sig+base+mode vanished when users exited and returned within seconds (base changed or state reset), while the base tracing rendered fine.
+**What We Learned:** Persist overlay data to localStorage with the same TTL, key by geometry (not derived values like the base duration), re-derive display values locally on hit, and serve stale-while-revalidate with silent failure so the last good result outlives flaky networks.
+**Apply When:** Caching any derived overlay whose inputs settle in stages (estimate → trace) or whose fetch can fail while the base layer succeeds.
+**Supersedes:** None
+**Superseded by:** None

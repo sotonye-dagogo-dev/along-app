@@ -1477,3 +1477,20 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Summary:** Stretch tooltips now reflect the leg actually tapped — pin borders on the snapped trace split the route into origin→stop→destination legs, each tap reports that leg's worst traffic level plus its polyline-length share of time/distance with "Stretch N of M" + "A → B" labels, anchored at the tap point so it never hides off-screen; every summary bar (detail map overlay, live-nav map overlay, share preview, guide header + live banner) is guarded by a shared registry so loading/zero values hide instead of flashing "0 min with traffic (was 1h 6m)", and total fare (travelling legs only, destination excluded) now shows everywhere. Remaining distance/time in the live guide shrink as the user advances (manual or auto-advance). All config/metadata-driven (`mapSummary.ts` + extended `mapTooltips.ts` + `totalFareForSteps`), non-breaking (additive optional props + additive pure helpers only, tooltips/summaries never throw).
 **QA:** tsc 0 errors; jest 93/93 suites 806/806 (NEW mapSummary 10 + routeLegs 8); next lint clean on touched files (fixed unused import + prefer-const); next build clean.
 **Files:** NEW `app/lib/config/mapSummary.ts` + `app/__tests__/config/mapSummary.test.ts` + `app/__tests__/config/routeLegs.test.ts`; edited `mapTooltips.ts` (leg helpers), `routeSteps.ts` (`totalFareForSteps`), `RouteMap.tsx` (leg-aware taps at tap anchor, guarded overlay), `NavigationGuide.tsx` (`totalFare`, guarded + dynamic remaining bars), `LiveNavigationModal.tsx` (`totalFare` forward), `posts/[id]/page.tsx` (detail distance/duration/fare truth), `ShareRouteModal.tsx` (shared fare total, hide ₦0), `accountDeletionService.ts` (lint prefer-const).
+
+## 2026-10-16 — Sprint 70: consistent journey totals + resilient traffic cache + docs
+
+**Summary:**
+Header journey totals (post-detail map overlay + route-guide header) now render as a free-flow–with-traffic range whose bounds the per-stretch times sum to by construction, and the traffic overlay survives remounts, geometry swaps, and flaky networks via a persistent layered cache with background refresh — fixing both halves of the directive (inconsistent totals, vanishing traffic). FAQs, privacy, terms, and README updated to match (location FAQ shortened, pidgin twins kept).
+
+**Completed:**
+- Consistent totals: `mapSummary.ts` += `formatDurationRange` + `splitMinsByWeights` (largest-remainder sum contract) + `rangeSeparator`/`rangeTitle`; `journeyTime.ts` += `legTrafficFactor`; `RouteMap` consistent leg splits + range overlay/tooltips; `NavigationGuide` range header + range remaining banner
+- Resilient cache: `traffic.ts` += `rebaseTrafficResult` + `trafficClientKey` + client knobs (300s/600s/120s/900ms); `useRouteTraffic` memory → localStorage read-through, geometry-scoped keys, stale-while-revalidate, mounted background refresh, silent-fail keeps last good
+- Docs: FAQ traffic/time rewrite + legend stretch hint + shortened location FAQ (en+pcm); privacy location/traffic/offline/retention sections; terms traffic-estimate + deletion-grace sections; README range + caching strategy
+- Tests: NEW `journeyConsistency.test.ts` (10 assertions)
+
+**QA:** tsc 0 errors; jest 94/94 suites 816/816; lint clean on touched files; build clean.
+
+**Files:**
+- Edited: `lib/config/{traffic,mapSummary,journeyTime,index,faq}`, `lib/hooks/useRouteTraffic`, `components/features/posts/{RouteMap,NavigationGuide}`, `(public)/{privacy,terms}/page`, `README.md`
+- Created: `__tests__/config/journeyConsistency.test.ts`

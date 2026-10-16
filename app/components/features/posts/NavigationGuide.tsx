@@ -6,6 +6,8 @@ import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { TRAFFIC_CONFIG } from "@/app/lib/config/traffic"
 import { showStepFare, showStepVehicle, totalFareForSteps } from "@/app/lib/config/routeSteps"
 import {
+  MAP_SUMMARY_CONFIG,
+  formatDurationRange,
   formatFareTotal,
   isValidDistanceKm,
   isValidDurationMins,
@@ -280,9 +282,8 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
                   className="inline-block w-6 h-1.5 rounded-full shrink-0"
                   style={{ background: TRAFFIC_CONFIG.levels.moderate.color }}
                 />
-                <span className="text-xs text-text-secondary">
-                  {formatDuration(remainingAdjusted)} {TRAFFIC_CONFIG.legend.durationSuffix} (was{" "}
-                  {formatDuration(remainingBase)} remaining)
+                <span className="text-xs text-text-secondary" title={MAP_SUMMARY_CONFIG.rangeTitle}>
+                  {formatDurationRange(remainingBase, remainingAdjusted)} remaining {TRAFFIC_CONFIG.legend.durationSuffix}
                 </span>
               </div>
             )}
@@ -399,14 +400,12 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
                 <span
                   title={
                     showTraffic
-                      ? trafficEstimated
-                        ? TRAFFIC_CONFIG.legend.estimatedNote
-                        : TRAFFIC_CONFIG.legend.liveNote
+                      ? `${MAP_SUMMARY_CONFIG.rangeTitle} (${formatDuration(estimatedMins as number)} → ${formatDuration(trafficAdjustedMins as number)} ${TRAFFIC_CONFIG.legend.durationSuffix}; ${trafficEstimated ? TRAFFIC_CONFIG.legend.estimatedNote : TRAFFIC_CONFIG.legend.liveNote})`
                       : undefined
                   }
                 >
                   {showTraffic
-                    ? `${formatDuration(trafficAdjustedMins as number)} ${TRAFFIC_CONFIG.legend.durationSuffix}`
+                    ? formatDurationRange(estimatedMins, trafficAdjustedMins)
                     : formatDuration(estimatedMins as number)}
                 </span>
               )}
