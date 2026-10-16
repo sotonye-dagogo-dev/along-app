@@ -70,3 +70,23 @@ export function normalizeRouteSteps<T extends RouteStepLike>(steps: T[]): T[] {
       : step
   );
 }
+
+/**
+ * Total fare across the legs that actually travel (destination excluded).
+ * Pure, nullsafe: non-numeric / negative / NaN fares count as 0, and a
+ * missing/empty list yields 0 so callers can hide the fare chip.
+ */
+export function totalFareForSteps(
+  steps: (RouteStepLike | null | undefined)[] | null | undefined
+): number {
+  if (!Array.isArray(steps) || steps.length === 0) return 0;
+  let sum = 0;
+  for (let i = 0; i < steps.length; i++) {
+    if (isDestinationStep(i, steps.length)) continue;
+    const raw = (steps[i] as RouteStepLike | null | undefined)?.fare;
+    if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) {
+      sum += raw;
+    }
+  }
+  return Number.isFinite(sum) && sum > 0 ? Math.round(sum) : 0;
+}

@@ -4,7 +4,15 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Navigation, ChevronLeft, ChevronRight, MapPin, BadgeDollarSign, X, LocateFixed, AlertTriangle, Compass, Check } from "lucide-react"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { TRAFFIC_CONFIG } from "@/app/lib/config/traffic"
-import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
+import { showStepFare, showStepVehicle, totalFareForSteps } from "@/app/lib/config/routeSteps"
+import {
+  formatFareTotal,
+  isValidDistanceKm,
+  isValidDurationMins,
+  remainingDistanceKm,
+  remainingDurationMins,
+  shouldShowTrafficAdjusted,
+} from "@/app/lib/config/mapSummary"
 import { LOCATION_FEEDBACK_CONFIG } from "@/app/lib/config/locationFeedback"
 import { toastService } from "@/app/lib/services/toastService"
 import type { VehicleType } from "@/app/lib/types"
@@ -35,6 +43,12 @@ interface NavigationGuideProps {
    */
   trafficAdjustedMins?: number | null
   trafficEstimated?: boolean
+  /**
+   * Total fare across the travelling legs (non-breaking additive). When
+   * omitted it is derived from `steps` (destination excluded) so callers
+   * that already pass steps get the fare chip with zero changes.
+   */
+  totalFare?: number | null
 }
 
 function formatDistance(km: number): string {
@@ -60,7 +74,7 @@ function haversineKm(a: RoutePinCoord, b: RoutePinCoord): number {
   return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s))
 }
 
-export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins, onClose, pins, onUserLocationChange, trafficAdjustedMins = null, trafficEstimated = true }: NavigationGuideProps) {
+export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins, onClose, pins, onUserLocationChange, trafficAdjustedMins = null, trafficEstimated = true, totalFare = null }: NavigationGuideProps) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [isNavigating, setIsNavigating] = useState(false)
   const [userLoc, setUserLoc] = useState<{ lat: number; lng: number; accuracy: number; heading: number | null } | null>(null)
@@ -173,13 +187,37 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
     }
   }, [])
 
-  const stepDistance = totalDistanceKm
-    ? totalDistanceKm / Math.max(validSteps.length - 1, 1)
+  const stepDistance = isValidDistanceKm(totalDistanceKm)
+    ? (totalDistanceKm as number) / Math.max(validSteps.length - 1, 1)
     : null
 
-  const stepDuration = estimatedMins
-    ? Math.round(estimatedMins / Math.max(validSteps.length - 1, 1))
+  const stepDuration = isValidDurationMins(estimatedMins)
+    ? Math.round((estimatedMins as number) / Math.max(validSteps.length - 1, 1))
     : null
+
+  // Summary-bar truth (config-driven, nullsafe): traffic-adjusted renders
+  // only when both figures are finite + positive and different, so a
+  // still-loading lookup (adjusted 0) never flashes "0 min with traffic".
+  // Fare prefers the explicit prop, else derives from the travelling legs.
+  const showTraffic = shouldShowTrafficAdjusted(trafficAdjustedMins, estimatedMins)
+  const resolvedFare = (() => {
+    try {
+      if (typeof totalFare === "number" && Number.isFinite(totalFare) && totalFare > 0) {
+        return Math.round(totalFare)
+      }
+      return totalFareForSteps(validSteps)
+    } catch {
+      return 0
+    }
+  })()
+  const fareLabel = formatFareTotal(resolvedFare)
+  // Live remaining figures shrink as the user advances (manual or
+  // auto-advance): remaining legs / total legs share of the totals, with the
+  // traffic-adjusted duration preferred while navigating.
+  const remainingKm = remainingDistanceKm(totalDistanceKm, currentStepIndex, validSteps.length)
+  const remainingBase = remainingDurationMins(estimatedMins, currentStepIndex, validSteps.length)
+  const remainingAdjusted = remainingDurationMins(trafficAdjustedMins, currentStepIndex, validSteps.length)
+  const showRemainingTraffic = shouldShowTrafficAdjusted(remainingAdjusted, remainingBase)
 
   return (
     <div className="flex flex-col bg-bg-card border border-border radius-xl overflow-hidden shadow-lg">
@@ -235,11 +273,7 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
             </div>
           )}
 
-          {trafficAdjustedMins !== null &&
-            trafficAdjustedMins !== undefined &&
-            estimatedMins !== null &&
-            estimatedMins !== undefined &&
-            trafficAdjustedMins !== estimatedMins && (
+          {showRemainingTraffic && remainingAdjusted !== null && remainingBase !== null && (
               <div className="mx-3 mt-3 flex items-center gap-2 px-3 py-2 radius-md bg-bg-elevated border border-border">
                 <span
                   aria-hidden
@@ -247,8 +281,8 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
                   style={{ background: TRAFFIC_CONFIG.levels.moderate.color }}
                 />
                 <span className="text-xs text-text-secondary">
-                  {formatDuration(trafficAdjustedMins)} {TRAFFIC_CONFIG.legend.durationSuffix} (was{" "}
-                  {formatDuration(estimatedMins)})
+                  {formatDuration(remainingAdjusted)} {TRAFFIC_CONFIG.legend.durationSuffix} (was{" "}
+                  {formatDuration(remainingBase)} remaining)
                 </span>
               </div>
             )}
@@ -257,6 +291,9 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs text-text-muted">
                 Step {currentStepIndex + 1} of {validSteps.length}
+                {remainingKm !== null && remainingKm > 0 && (
+                  <> · {formatDistance(remainingKm)} left</>
+                )}
               </span>
               <span className="text-xs font-medium text-text-primary">
                 {progress.toFixed(0)}% complete
@@ -357,25 +394,24 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
               <span className="text-sm font-semibold text-text-primary">Route Guide</span>
             </div>
             <div className="flex items-center gap-3 text-xs text-text-muted">
-              {totalDistanceKm && <span>{formatDistance(totalDistanceKm)}</span>}
-              {estimatedMins && (
+              {isValidDistanceKm(totalDistanceKm) && <span>{formatDistance(totalDistanceKm as number)}</span>}
+              {isValidDurationMins(estimatedMins) && (
                 <span
                   title={
-                    trafficAdjustedMins !== null &&
-                    trafficAdjustedMins !== undefined &&
-                    trafficAdjustedMins !== estimatedMins
+                    showTraffic
                       ? trafficEstimated
                         ? TRAFFIC_CONFIG.legend.estimatedNote
                         : TRAFFIC_CONFIG.legend.liveNote
                       : undefined
                   }
                 >
-                  {trafficAdjustedMins !== null &&
-                  trafficAdjustedMins !== undefined &&
-                  trafficAdjustedMins !== estimatedMins
-                    ? `${formatDuration(trafficAdjustedMins)} ${TRAFFIC_CONFIG.legend.durationSuffix}`
-                    : formatDuration(estimatedMins)}
+                  {showTraffic
+                    ? `${formatDuration(trafficAdjustedMins as number)} ${TRAFFIC_CONFIG.legend.durationSuffix}`
+                    : formatDuration(estimatedMins as number)}
                 </span>
+              )}
+              {fareLabel && (
+                <span className="font-semibold text-text-secondary">{fareLabel}</span>
               )}
               <span>{validSteps.length} stops</span>
             </div>

@@ -6,7 +6,7 @@ import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, C
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { SHARE_ROUTE_MODAL_CONFIG } from "@/app/lib/config"
-import { ROUTE_STEPS_CONFIG, isDestinationStep, showStepFare, showStepVehicle, normalizeRouteSteps } from "@/app/lib/config/routeSteps"
+import { ROUTE_STEPS_CONFIG, showStepFare, showStepVehicle, normalizeRouteSteps, totalFareForSteps } from "@/app/lib/config/routeSteps"
 import {
   ROUTE_VALIDATION_CONFIG,
   parseFareInput,
@@ -437,8 +437,15 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
     previewVehicle
   )
   // Destination is the final stop — its fare/vehicle are meaningless, so the
-  // total only sums the legs that actually travel somewhere.
-  const totalFare = steps.reduce((sum, s, i) => sum + (isDestinationStep(i, steps.length) ? 0 : (s.fare || 0)), 0)
+  // total only sums the legs that actually travel somewhere (shared helper
+  // keeps preview, detail and guide totals identical).
+  const totalFare = (() => {
+    try {
+      return totalFareForSteps(steps)
+    } catch {
+      return 0
+    }
+  })()
 
   useEffect(() => {
     if (!isOpen || !traceSig) {
@@ -1495,7 +1502,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                     showOverlay={true}
                     distance={displayDistance > 0 ? displayDistance : undefined}
                     duration={displayDuration > 0 ? displayDuration : undefined}
-                    fare={`₦${totalFare.toLocaleString()}`}
+                    fare={totalFare > 0 ? `₦${totalFare.toLocaleString()}` : undefined}
                     vehicle={previewVehicle}
                   />
                   <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted">
