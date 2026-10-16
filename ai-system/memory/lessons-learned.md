@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: ephemeral-fix location filtering, NULL-means-on prefs, legacy-row normalize)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: card-link exits, dismissible response mode, grade-class contract tests)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -858,4 +858,11 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Root causes:** (1) auth state booted empty and learned the session over the network, so any offline reload was indistinguishable from signed-out — UI identity had no memory. (2) startsWith prefix "/api/posts/" never matches "/api/posts?…" — the slash that makes path-form URLs tidy is exactly what excludes query-form URLs, and the mismatch is silent (no error, just no cache).
 - **Fix pattern (reuse):** persist the last server-confirmed session as a TTL-bounded display-only snapshot (hydrated synchronously, cleared only on genuine 401/logout, never used for authorization); for prefix registries always register the BARE path ("/api/posts" covers both "/api/posts?…" and "/api/posts/…") and add a regression test hitting the query form directly. Protected pages stay out of install precache (redirect poisoning) and are advertised as runtime-cached with honest copy.
 - **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 65 (2026-10-16): title-only card links read as broken; modeless response mode needs an exit; tests that pin literal token grades fight contrast fixes
+- **Symptom:** "route text doesn't open the post" — plus "I opened Respond by mistake and can't get back to a normal share without closing everything", plus vehicle flags still thin in light theme after the Sprint 61 wash/border fix.
+- **Root causes:** (1) only the title carried a detail href — body text was inert by omission, not by design. (2) response linkage had entry points (Respond CTA, draft restore, edit fallback) but no exit — `responseTo` was parent-owned or post-derived with no clearing path. (3) `-800` labels were "dark" but one grade shy of max contrast on tinted washes; the test asserted the literal grade (`/-800/`), so the correct fix broke the suite.
+- **Fix pattern (reuse):** card text navigation = wrap text nodes in the canonical encoded path with stopPropagation, never the whole card (nested-interactive rule); every modal mode needs a config-labeled exit that drops linkage but preserves input (parent-owned state clears via optional callback, derived state via a local gate — edit-immutable modes get no exit); contract tests should assert the GRADE CLASS (`/-(800|900)/`, "dark-grade label") not the literal token, so contrast deepening never fights the suite.
+- **Supersedes:** None (extends Sprint 61 visibility entry: wash/border system kept, label grade deepened).
 - **Superseded by:** None

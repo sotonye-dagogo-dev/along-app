@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community route-request fan-out + location-only draft restore)
-> - last-synced: 2026-10-15 (Sprint 62)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
+> - last-synced: 2026-10-16 (Sprint 65)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -893,3 +893,22 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | UI — Notifications header += settings gear button + NEW `NotificationPreferencesModal` (metadata-driven switches, load/save/reset, offline honesty, stable onClose, design-token classes, lucide icons only) | [x] |
 | [S] | Copy — FAQ `who-sees-request` updated (location-aware + preferences) + NEW `request-location-filtering` (privacy-safe verdict: corrects "we don't store location" — nullable consented lastKnown IS stored for feed boost, cleared on deletion; ephemeral request fix, PWA background limits, optimistic-not-guaranteed) + NEW `notification-preferences` (en + pcm); push FAQ notes per-type settings | [x] |
 | [S] | Tests — NEW `notificationPreferences.test.ts` (5: defaults, null/partial normalize, validation, type map, meta coverage); `routeRequestAudience.test.ts` +3 (location defaults, legacy normalize, location validation); `posts.test.ts` audience assertion updated for ephemeral-fix arg | [x] |
+
+## Sprint 64 — Offline coverage for landing/profile/notifications + authenticated-offline guest-banner fix (2026-10-15, execute-feature) [recorded post-hoc]
+
+> **Section summary:** Executed in a prior session — full detail lives in `checkpoints/session-log.md`, `summaries/dev-history.md`, and `memory/lessons-learned.md` (Sprint 64 entries). No task rows were reconstructed here (append-only honesty: rows are not invented after the fact). Known drift: `checkpoints/in-progress.md` still names Sprint 63 as last-closed.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Offline coverage + auth snapshot — see session-log Sprint 64 entry (`config/authOffline.ts`, pwa v6, GuestBanner suppression, LandingOfflineNotice, CachedDataNotice, offline.html + FAQ updates; QA green 88/88 suites 757/757) | [x] |
+
+## Sprint 65 — Post-card detail links + response-banner dismiss + vehicle contrast deepening (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive optional config fields + additive optional `onClearResponse` prop only; same props + API envelopes; no migration, no new deps). QA full in-runner: `npm ci` ok, tsc 0 errors, jest 89/89 suites 761/761 tests, next lint exit 0 (1 pre-existing `prefer-const` error in untouched `accountDeletionService.ts` + pre-existing warnings), full `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Detail navigation — `POST_ACTIONS_CONFIG` += `detailTextLinksEnabled` + `detailDescriptionClass` + `detailRouteStepClass`; `PostCard` description + route-step location/description render as detail `Link`s (encoded `postPath`, stopPropagation, aria-labels); tags + maps untouched (own actions); title migrates to the same encoded path | [x] |
+| [S] | Response dismiss — `SHARE_ROUTE_MODAL_CONFIG` += `responseBannerDismissLabel/Title`; `ShareRouteModal` += optional `onClearResponse` + `dismissResponse` (clears restored linkage + parent callback, never closes modal, input preserved, hidden while editing); home stable `clearRespondTo`; post-detail `respondUnlinked` gate (reset on open/close/submit) | [x] |
+| [S] | Vehicle contrast — `VEHICLE_REGISTRY` light text `-800` → `-900` all 9 types (dark variants unchanged; stray-space fix on taxi); contract comment updated | [x] |
+| [S] | Tests — NEW `postCardDetailLinks.test.ts` (4: nav flag + encoded path, link token classes, dismiss copy, `-900` grade); `vehicles.test.ts` updated (boat/train `-900`, contract regex `-(800\|900)`) | [x] |

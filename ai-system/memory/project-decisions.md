@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: location-aware fan-out + notification preferences)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -900,4 +900,14 @@ Ephemeral request location + already-collected feed-boost fix gives nearby relev
 - New notification types must add a key (or map to an existing one) in `NOTIFICATION_TYPE_TO_PREFERENCE_KEY`; unmapped types fail open (delivered).
 - Prefs-gated push follows automatically (same recipient list drives `fanOutPush`); email-channel prefs remain future work.
 **Supersedes:** None (extends the Sprint 62 community-audience decision).
+**Superseded by:** None
+
+**Decision:** (1) Post-card textual body navigates to detail: `POST_ACTIONS_CONFIG.detailTextLinksEnabled` (+ token link classes) drives PostCard description + route-step text Links to the encoded `postPath`; tags + mini-map keep their own actions and are never wrapped. (2) Response linkage is explicitly dismissible: `SHARE_ROUTE_MODAL_CONFIG.responseBannerDismissLabel/Title` + optional `ShareRouteModal.onClearResponse` — the banner X unlinks the request without closing the modal and without touching user input; edit-mode linkage stays immutable (no X). (3) Vehicle light-theme labels deepen `-800` → `-900` on the existing `-100` washes (dark variants untouched).
+**Reason:**
+Whole-body text navigation matches user expectation (title-only links read as broken); an inescapable response mode forced modal-close to change intent, risking drafted work — dismissal preserves input while freeing the composer for another post/draft. Darkening text (rather than reworking washes/borders) was the directive's suggested minimal fix and maximises contrast against both badge wash and card surface.
+**Alternatives Considered:**
+- **Wrapping the entire card in a link**: Rejected — action buttons, tag links, map interactions and the lightbox inside the card would become nested-interactive violations.
+- **Clearing title/tags on dismiss**: Rejected — destructive to user input; only linkage drops, and post-dismiss drafts simply carry no linkage.
+- **Reworking badge backgrounds/borders for contrast**: Rejected as over-broad — the Sprint 61 wash/border system already works; the residual gap was label grade only.
+**Supersedes:** None (extends the Sprint 61 visibility decision: `-100` wash + border system kept, label grade `-800` → `-900`).
 **Superseded by:** None

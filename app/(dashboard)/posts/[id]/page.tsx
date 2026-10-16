@@ -155,6 +155,10 @@ export default function PostDetailPage() {
   const mapUserLocation = userLocation ?? passiveLocation
   const [editOpen, setEditOpen] = useState(false)
   const [respondOpen, setRespondOpen] = useState(false)
+  // Banner-X dismissal: unlinks the request while keeping the respond modal
+  // open in normal share mode (responseTo is post-derived, so a flag gates
+  // it). Reset whenever the modal (re)opens.
+  const [respondUnlinked, setRespondUnlinked] = useState(false)
 
   const postId = params.id as string
   const ready = !authLoading && Boolean(postId)
@@ -385,6 +389,7 @@ export default function PostDetailPage() {
 
   const handleRespond = () => {
     if (!requireAuth("respond to route requests")) return
+    setRespondUnlinked(false)
     setRespondOpen(true)
   }
 
@@ -408,6 +413,7 @@ export default function PostDetailPage() {
         return false
       }
       setRespondOpen(false)
+      setRespondUnlinked(false)
       toastService.success("Response shared!")
       await refreshPost()
       return true
@@ -948,8 +954,9 @@ export default function PostDetailPage() {
       {isRouteRequest && respondOpen && (
         <ShareRouteModal
           isOpen={respondOpen}
-          onClose={() => setRespondOpen(false)}
-          responseTo={post ? { id: post.id, title: post.title, tags: post.tags, user: { userName: post.user.userName, firstName: post.user.firstName, lastName: post.user.lastName } } : null}
+          onClose={() => { setRespondOpen(false); setRespondUnlinked(false) }}
+          responseTo={respondUnlinked ? null : (post ? { id: post.id, title: post.title, tags: post.tags, user: { userName: post.user.userName, firstName: post.user.firstName, lastName: post.user.lastName } } : null)}
+          onClearResponse={() => setRespondUnlinked(true)}
           onSubmit={handleRespondSubmit}
         />
       )}

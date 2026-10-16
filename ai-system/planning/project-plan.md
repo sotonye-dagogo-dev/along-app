@@ -1,7 +1,7 @@
 # Project Plan
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: optimistic location-aware fan-out + notification preferences)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
@@ -190,3 +190,5 @@
 - [x] Sprint 61 (2026-10-15) — Design-system visibility + Config Studio parity (vehicle `-100` washes + borders; TrustBadge tokens; tier-shield display registry + white-on-pastel pill fixes; admin hardcoded defaults + stored-wins merge + central validation + no-code cards + restore + audit + idempotent delete) (designCompliance 7 + vehicles +1 suites; FULL gate green in-runner: tsc 0, jest 85/85 736/736, lint clean on touched files, build deferred to CI/Vercel)
 - [x] Sprint 62 (2026-10-15) — Community route-request fan-out + location-only draft restore (routeRequestAudience config + getRouteRequestAudienceIds + POST audience fan-out + admin card; applyDraft 1-step restore + legacy hasContent; FAQ en+pcm) (routeRequestAudience 4 + routeDrafts +2 + posts community case; FULL gate green in-runner: tsc 0, jest 86/86 742/742, lint clean on touched files, build deferred to CI/Vercel)
 - [x] Sprint 63 (2026-10-15) — Optimistic location-aware route-request fan-out + notification preferences (audience location { enabled/radiusKm/minNearby } + ephemeral-fix fan-out with community fallback; preferences config + NotificationPreference model/migration + service + central filter + GET/PUT API + gear modal; PM-verdict + location + preferences FAQs en+pcm) (notificationPreferences 5 + routeRequestAudience +3 location + posts audience-arg update; FULL gate green in-runner: tsc 0, jest 87/87 750/750, lint clean on touched files, build clean)
+- [x] Sprint 64 (2026-10-15) — Offline coverage for landing/profile/notifications + authenticated-offline guest-banner fix (authOffline snapshot + pwa v6 destinations/APIs + GuestBanner suppression + LandingOfflineNotice + CachedDataNotice + offline.html/FAQ updates) (authOffline 5 + pwa +3; FULL gate green in-runner: tsc 0, jest 88/88 757/757, lint clean on touched files, build clean)
+- [x] Sprint 65 (2026-10-16) — Post-card detail links + response-banner dismiss + vehicle contrast (postActions detailTextLinks fields + PostCard text Links; shareRoute dismiss copy + onClearResponse/dismissResponse + home/detail wiring; vehicles light text -800→-900) (postCardDetailLinks 4 + vehicles updates; FULL gate green in-runner: tsc 0, jest 89/89 761/761, lint exit 0 with 1 pre-existing untouched-file error, build clean)
