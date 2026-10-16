@@ -261,7 +261,10 @@ export interface MapExpandConfig {
 }
 
 export const MAP_EXPAND_CONFIG: MapExpandConfig = {
-  overlayClass: "fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6",
+  // z-[70] sits above the live-navigation modal (z-[60]) so expanding the
+  // map FROM the navigation guide renders on top instead of vanishing
+  // behind the modal backdrop. Detail-page expansion is unaffected.
+  overlayClass: "fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6",
   backdropClass: "absolute inset-0 bg-black/60 backdrop-blur-sm",
   panelMaxWidthClass: "max-w-4xl",
   panelHeight: "80vh",

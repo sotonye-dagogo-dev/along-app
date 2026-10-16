@@ -761,6 +761,7 @@ export default function PostDetailPage() {
           duration={detailBaseDuration > 0 ? detailBaseDuration : undefined}
           trafficOverride={postTraffic ?? undefined}
           trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
+          tooltipMode="detailed"
           vehicle={detailVehicle}
           userLocation={mapUserLocation}
           followUser={false}
@@ -882,6 +883,7 @@ export default function PostDetailPage() {
           encodedPolyline={liveTrace?.polyline}
           totalDistanceKm={post.totalDistanceKm ?? liveTrace?.distance ?? null}
           estimatedMins={detailBaseDuration > 0 ? detailBaseDuration : post.estimatedMins}
+          trafficOverride={postTraffic ?? undefined}
           trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
           trafficEstimated={postTraffic?.estimated ?? true}
           vehicle={detailVehicle}

@@ -1,7 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 67: +journeyTime.ts registry → geo/useRouteTrace/trafficService/maps-traffic/ShareRouteModal/post-detail; traffic.ts += remapTrafficSegments → RouteMap; postActions += navigate fields → PostCard + posts/[id] ?navigate deep-link; LiveNavigationModal += vehicle)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 68: +mapTooltips.ts registry + pure helpers → RouteMap tooltips; LiveNavigationModal += trafficOverride → inner RouteMap; mapStack expand overlay z-[70])
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -217,8 +217,8 @@ Map Renderers (RouteMap.tsx, explore/page.tsx)
     → Shared visuals: MapPins.tsx (`MapRoutePin` numbered dot, `MapUserDot` info-blue + glory ring + radar) — token classes only, no hardcoded hex
     → Shared location: `useUserLocation` hook (passive fix + watch; explore override + post-detail fallback [Sprint 23])
     → Shared trace: `useRouteTrace` hook (estimate + debounced `/api/routes/trace` + memory cache + silent fallback [Sprint 28] — composer preview + post detail; Sprint 67 += optional vehicle → mode-aware durations via `resolveJourneyDuration`)
-    → Shared traffic: `useRouteTraffic` hook (debounced `/api/maps/traffic` + memory cache + silent fallback; Sprint 67 += optional vehicle passthrough + last-good-result persistence across geometry swaps — RouteMap remaps via `remapTrafficSegments`)
-    → Live overlay: `LiveNavigationModal` (map + NavigationGuide together, `LIVE_NAVIGATION_CONFIG` [Sprint 28] — post detail)
+    → Shared traffic: `useRouteTraffic` hook (debounced `/api/maps/traffic` + memory cache + silent fallback; Sprint 67 += optional vehicle passthrough + last-good-result persistence across geometry swaps — RouteMap remaps via `remapTrafficSegments`; Sprint 68 += single-result sharing — post detail passes its `postTraffic` as `LiveNavigationModal.trafficOverride` → inner `trafficOverride`, zero re-retrieval)
+    → Live overlay: `LiveNavigationModal` (map + NavigationGuide together, `LIVE_NAVIGATION_CONFIG` [Sprint 28] — post detail; Sprint 68 += optional `trafficOverride` shared from the detail map + `tooltipMode="detailed"`; expand dialog z-[70] in `MAP_EXPAND_CONFIG` sits above the modal) + `mapTooltips.ts` (Sprint 68 tooltip registry + pure tap/segment helpers → `RouteMap` detailed/mini stretch + quick-link Markers; PostCard minis stay fetch-free)
     → MapLibre GL vector tiles (keyless) — zero `NEXT_PUBLIC_*` map keys read (+ `maplibre-gl.css` import required by every renderer [Sprint 23])
 
 NotificationService

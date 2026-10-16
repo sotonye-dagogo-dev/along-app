@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
-> - last-synced: 2026-10-16 (Sprint 65)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 68: navigation-guide map parity + tracing tooltips)
+> - last-synced: 2026-10-16 (Sprint 68)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -923,3 +923,16 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Sender relocation — Email Studio += collapsible Sender identity card (fromName/fromEmail/replyTo via generic config API, shipped-default backfill, inline validation) so the removed Config-page card loses no capability | [x] |
 | [S] | Vehicle readability — `VEHICLE_REGISTRY` light wash `-100`→`-200` / border `-300`→`-400` ×9 (trekking gray-300; dark unchanged); `VehicleChip` += `shadow-xs` + icon `strokeWidth={2.5}` (route-request-flag structure); PostCard + post detail pick it up with zero per-surface changes | [x] |
 | [S] | Tests — `vehicles.test.ts` contract → `-200`/`-400` (+`-100` rejection); `designCompliance.test.ts` += studio-links test + no-code-card test counts studio links | [x] |
+
+## Sprint 68 — Navigation-guide map parity + tracing tooltips (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive optional props + additive config module only; same props + API envelopes; no migration, no new deps). QA full in-runner: `npm ci` ok, tsc 0 errors, jest 91/91 suites 790/790 tests, next lint clean on touched files, full `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Shared traffic — `LiveNavigationModal` += optional `trafficOverride` (post detail passes its single `postTraffic`, forwarded as the inner map's `trafficOverride`; one `/api/maps/traffic` lookup serves detail + nav surfaces; omitted → legacy self-fetch; trace polyline was already shared) | [x] |
+| [S] | Expand layering — `MAP_EXPAND_CONFIG.overlayClass` z-50 → z-[70] (live modal is z-[60], so expansion from inside the guide renders on top instead of vanishing behind the backdrop; detail-page expansion unaffected) + `RouteMap` `expandable` flag (default true) for future full-container callers | [x] |
+| [S] | Tooltip registry — NEW `lib/config/mapTooltips.ts` (`MAP_TOOLTIPS_CONFIG` detailed/mini copy + `hitLineWidth` + `cardMaxWidth`; pure never-throw `resolveTooltipMode`/`segmentMidpoint`/`segmentShare`/`segmentEstMins`/`segmentDistanceKm`/`nearestCoordIndex`/`segmentForIndex`/`parseTrafficLayerId`) | [x] |
+| [S] | Tracing tooltips — `RouteMap` += `tooltipMode` auto/detailed/mini (auto follows `showTraffic`) + `detailHref`/`navigateHref`/`postTitle`; invisible `route-hit-line` tap target + `interactiveLayerIds`; detailed stretch Marker (level dot/label, per-stretch est. mins × delayFactor, distance share, live/estimated note, X + Escape, cleared on geometry swap); mini quick-link Marker (post title + View-post/Navigate links, X + Escape, zero fetches) | [x] |
+| [S] | Surface wiring — `PostCard` mini map `tooltipMode="mini"` + detail/navigate hrefs + title; detail map + nav modal `tooltipMode="detailed"`; ShareRouteModal preview inherits detailed tooltips unchanged | [x] |
+| [S] | Tests — NEW `mapTooltips.test.ts` (15: mode resolution, segment math, tap resolution, copy + expand layering) | [x] |

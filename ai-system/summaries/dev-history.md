@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 67: vehicle-aware journey times + persistent traffic overlay + post-card Navigate quick link)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 68: navigation-guide map parity + tracing tooltips)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
@@ -1465,3 +1465,9 @@ CI green confirmation; prod-verify Google welcome mail, verify/change E2E, Studi
 **Implemented:** `ADMIN_STUDIO_MANAGED_KEYS` + `ADMIN_STUDIO_LINKS` metadata (barrel-exported); Config page link cards with Customized badges, raw list hides studio keys; `emailConfig` dropped from simple cards (defaults/validator/API/service untouched); Email Studio Sender identity card (config-API backed); vehicles `-200`/`-400` + chip shadow + heavier icon stroke (PostCard/detail/NavigationGuide inherit via registry).
 **QA:** static in-runner only (no node_modules; tsc/jest/build deferred to CI, expected 89 suites / 762 tests). Re-read verified: balanced hunks, barrel parity, no stale vehicle grades, `emailConfig` reads intact.
 **Compliance:** non-breaking, additive-only with fallbacks; config/metadata-driven throughout.
+
+## 2026-10-16 — Sprint 68: navigation-guide map parity + tracing tooltips
+
+**Summary:** The navigation/route-guide map now renders the SAME traffic data and tracings as the post detail map with zero re-retrieval (`LiveNavigationModal.trafficOverride`, one lookup serving both surfaces); expanding the map from inside the guide no longer vanishes behind the modal (expand overlay z-50 → z-[70], above the live modal's z-[60]); tapping tracings opens config-driven tooltips — per-stretch traffic level + estimated time + distance on detail/nav maps over a wide invisible tap line, and a rate-limit-friendly quick-link card (View post / Open navigation guide) on feed minis. All config/metadata-driven (`mapTooltips.ts` registry + pure helpers), non-breaking (optional props only, tooltips never throw, minis add zero network calls).
+**QA:** tsc 0 errors; jest 91/91 suites 790/790 (NEW mapTooltips 15); next lint clean on touched files; next build clean.
+**Files:** NEW `app/lib/config/mapTooltips.ts` + `app/__tests__/config/mapTooltips.test.ts`; edited `RouteMap.tsx` (`expandable`/`tooltipMode`/`detailHref`/`navigateHref`/`postTitle`, hit layer, stretch + mini Markers), `LiveNavigationModal.tsx` (`trafficOverride`), `PostCard.tsx` (mini tooltip wiring), `posts/[id]/page.tsx` (shared traffic into modal, explicit detailed mode), `mapStack.ts` (expand z-[70]).
