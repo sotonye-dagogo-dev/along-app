@@ -1,3 +1,7 @@
-# In Progress — idle (Sprint 70 closed 2026-10-16)
+# In Progress — idle (FAQ sanitization closed 2026-10-16)
 
-> No active work. Last sprint: consistent journey totals + resilient traffic cache — header totals render as free-flow–with-traffic ranges whose bounds the per-stretch times sum to (largest-remainder splits), traffic survives remounts/geometry-swaps/flaky networks via persistent layered cache (memory → localStorage, geometry-scoped keys, stale-while-revalidate, background refresh), FAQs shortened/refreshed (en+pcm), privacy/terms/README updated — Sprint 70, full QA green in-runner (tsc 0 errors, jest 94/94 suites 816/816, lint clean on touched files, next build clean). See `session-log.md` + `task-queue.md` Sprint 70.
+> No active work. Last task: sanitized recent FAQs in `app/lib/config/faq.ts`
+> (en + pidgin) — concise 1–3-sentence answers, no provider names
+> (Mapbox/TomTom gone), no implementation internals; privacy/terms/README
+> untouched. Full QA green in-runner (tsc 0 errors, jest 94/94 suites 816/816).
+> See `session-log.md`.
