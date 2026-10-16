@@ -24,6 +24,8 @@ import { useRouteTraffic } from "@/app/lib/hooks/useRouteTraffic"
 import polyline from "@mapbox/polyline"
 import { buildRoutePinsFromPost } from "@/app/lib/config/routePins"
 import { dominantVehicleForSteps, resolveJourneyDuration } from "@/app/lib/config/journeyTime"
+import { totalFareForSteps } from "@/app/lib/config/routeSteps"
+import { formatFareTotal, isValidDistanceKm, isValidDurationMins } from "@/app/lib/config/mapSummary"
 import type { VehicleType } from "@/app/lib/types"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
 
@@ -545,6 +547,37 @@ export default function PostDetailPage() {
     return routePins
   }, [liveTrace?.polyline, routePins])
   const { traffic: postTraffic } = useRouteTraffic(trafficCoords, detailBaseDuration, detailVehicle)
+  // Summary-bar truth (config-driven, nullsafe): live trace wins for
+  // distance (road-snapped), vehicle-aware base wins for duration, and total
+  // fare sums the travelling legs (destination excluded). Invalid values
+  // yield undefined so the RouteMap chips hide independently instead of
+  // showing zeros.
+  const detailDistance = useMemo(() => {
+    const live = liveTrace?.distance
+    if (isValidDistanceKm(live)) return live as number
+    if (isValidDistanceKm(post?.totalDistanceKm)) return post?.totalDistanceKm as number
+    return undefined
+  }, [liveTrace?.distance, post?.totalDistanceKm])
+  const detailDuration = useMemo(() => {
+    if (isValidDurationMins(detailBaseDuration)) return detailBaseDuration
+    if (isValidDurationMins(post?.estimatedMins)) return post?.estimatedMins as number
+    return undefined
+  }, [detailBaseDuration, post?.estimatedMins])
+  const detailFareTotal = useMemo(() => {
+    try {
+      return totalFareForSteps(routes)
+    } catch {
+      return 0
+    }
+  }, [routes])
+  const detailFareLabel = useMemo(() => {
+    try {
+      const label = formatFareTotal(detailFareTotal)
+      return label || undefined
+    } catch {
+      return undefined
+    }
+  }, [detailFareTotal])
 
   if (loading) {
     return (
@@ -757,8 +790,9 @@ export default function PostDetailPage() {
           encodedPolyline={liveTrace?.polyline}
           height={280}
           showOverlay={true}
-          distance={post.totalDistanceKm ?? liveTrace?.distance ?? undefined}
-          duration={detailBaseDuration > 0 ? detailBaseDuration : undefined}
+          distance={detailDistance}
+          duration={detailDuration}
+          fare={detailFareLabel}
           trafficOverride={postTraffic ?? undefined}
           trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
           tooltipMode="detailed"
@@ -881,11 +915,12 @@ export default function PostDetailPage() {
           steps={routes}
           pins={routePins}
           encodedPolyline={liveTrace?.polyline}
-          totalDistanceKm={post.totalDistanceKm ?? liveTrace?.distance ?? null}
-          estimatedMins={detailBaseDuration > 0 ? detailBaseDuration : post.estimatedMins}
+          totalDistanceKm={detailDistance ?? null}
+          estimatedMins={detailDuration ?? post.estimatedMins}
           trafficOverride={postTraffic ?? undefined}
           trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
           trafficEstimated={postTraffic?.estimated ?? true}
+          totalFare={detailFareTotal > 0 ? detailFareTotal : null}
           vehicle={detailVehicle}
           userLocation={userLocation}
           onUserLocationChange={setUserLocation}

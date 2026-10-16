@@ -936,3 +936,18 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Tracing tooltips — `RouteMap` += `tooltipMode` auto/detailed/mini (auto follows `showTraffic`) + `detailHref`/`navigateHref`/`postTitle`; invisible `route-hit-line` tap target + `interactiveLayerIds`; detailed stretch Marker (level dot/label, per-stretch est. mins × delayFactor, distance share, live/estimated note, X + Escape, cleared on geometry swap); mini quick-link Marker (post title + View-post/Navigate links, X + Escape, zero fetches) | [x] |
 | [S] | Surface wiring — `PostCard` mini map `tooltipMode="mini"` + detail/navigate hrefs + title; detail map + nav modal `tooltipMode="detailed"`; ShareRouteModal preview inherits detailed tooltips unchanged | [x] |
 | [S] | Tests — NEW `mapTooltips.test.ts` (15: mode resolution, segment math, tap resolution, copy + expand layering) | [x] |
+
+## Sprint 69 — Leg-aware stretch tooltips + summary-bar tightening (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive config modules + additive optional props only; same props + API envelopes; no migration, no new deps). QA full in-runner: `npm install` ok, tsc 0 errors, jest 93/93 suites 806/806 tests, next lint clean on touched files (2 fixed: unused import + prefer-const), full `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Tooltip registry — `mapTooltips.ts` += leg helpers (`legEndpointLabel`/`legRangeLabel`/`legCounterLabel`/`pinBordersOnRoute`/`legIndexForCoord`/`legBounds`/`worstLevelInRange`/`legLengthShare`/`legDistanceKm`/`legEstMins`), all pure + never-throw | [x] |
+| [S] | Leg-aware taps — `RouteMap` resolves taps to the route leg (origin→stop→destination) via pin borders on the snapped trace, worst-level traffic for that leg, polyline-length shares for time/distance; card anchors AT the tap with "Stretch N of M" + "A → B" labels; stale-tip guard extended to leg borders | [x] |
+| [S] | Summary registry — NEW `lib/config/mapSummary.ts` (`MAP_SUMMARY_CONFIG` + `isValid*`/`shouldShowTrafficAdjusted`/`formatFareTotal`/`formatSummary*`/`remainingShare`/`remainingDistanceKm`/`remainingDurationMins`, all pure) | [x] |
+| [S] | Fare totals — `routeSteps.ts` += `totalFareForSteps` (destination excluded, nullsafe); `ShareRouteModal` uses it, hides ₦0; detail page + nav modal derive the same total | [x] |
+| [S] | Map overlay — `RouteMap` summary bar guards each chip independently; traffic-adjusted renders only when base + adjusted are finite + positive and different (kills "0 min with traffic"); fare chip shows when provided | [x] |
+| [S] | Guide bars — `NavigationGuide` += optional `totalFare` (derived fallback), guarded traffic banner shows remaining adjusted vs remaining base + remaining-km in progress row; header shows distance/time/fare/stops with independent guards; `LiveNavigationModal` += optional `totalFare` forwarded to guide + map overlay | [x] |
+| [S] | Detail wiring — `posts/[id]` computes `detailDistance` (live trace wins) + `detailDuration` (vehicle-aware base wins) + `detailFareTotal`/`detailFareLabel`, passes to map + modal | [x] |
+| [S] | Tests — NEW `mapSummary.test.ts` (10: guards, "0 min" rejection, formatting, remaining math) + NEW `routeLegs.test.ts` (8: borders, distinct legs, labels, worst-level, shares, fare total) | [x] |

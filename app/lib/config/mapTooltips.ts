@@ -87,6 +87,203 @@ export const MAP_TOOLTIPS_CONFIG: MapTooltipsConfig = {
   cardMaxWidth: "13rem",
 };
 
+/** Ordered stop index (1-based) label for a leg endpoint. Pure. */
+export function legEndpointLabel(
+  pinIndex: number,
+  totalPins: number,
+  pinLabel?: string | null
+): string {
+  if (!Number.isFinite(pinIndex) || !Number.isFinite(totalPins) || totalPins <= 0) {
+    return typeof pinLabel === "string" && pinLabel.trim().length > 0 ? pinLabel.trim() : "Stop";
+  }
+  const idx = Math.max(0, Math.min(totalPins - 1, Math.floor(pinIndex)));
+  if (typeof pinLabel === "string" && pinLabel.trim().length > 0) {
+    const trimmed = pinLabel.trim();
+    return trimmed.length > 28 ? `${trimmed.slice(0, 27)}…` : trimmed;
+  }
+  if (idx === 0) return "Origin";
+  if (idx === totalPins - 1) return "Destination";
+  return `Stop ${idx + 1}`;
+}
+
+/** "Origin → Stop 2" style label for the leg starting at `legIndex`. Pure. */
+export function legRangeLabel(
+  legIndex: number,
+  pins: { label?: string | null }[] | null | undefined
+): string {
+  const total = Array.isArray(pins) ? pins.length : 0;
+  if (!Array.isArray(pins) || total < 2) return "";
+  if (!Number.isFinite(legIndex) || legIndex < 0 || legIndex >= total - 1) return "";
+  const from = legEndpointLabel(legIndex, total, pins[legIndex]?.label);
+  const to = legEndpointLabel(legIndex + 1, total, pins[legIndex + 1]?.label);
+  return `${from} → ${to}`;
+}
+
+/** "Stretch 2 of 4" counter label. Empty string when not computable. Pure. */
+export function legCounterLabel(legIndex: number, totalLegs: number): string {
+  if (!Number.isFinite(legIndex) || !Number.isFinite(totalLegs)) return "";
+  if (totalLegs <= 0 || legIndex < 0 || legIndex >= totalLegs) return "";
+  return `Stretch ${Math.floor(legIndex) + 1} of ${Math.floor(totalLegs)}`;
+}
+
+/**
+ * Nearest route-coord index for every pin (pure). Returns a monotonic
+ * non-decreasing border list clamped to the geometry, so consecutive pins
+ * that geocode to the same snapped point collapse to a zero-length leg
+ * instead of an inverted range. Empty when inputs are degenerate.
+ */
+export function pinBordersOnRoute(
+  coords: TooltipCoord[] | null | undefined,
+  pins: { lat: number; lng: number }[] | null | undefined
+): number[] {
+  if (!Array.isArray(coords) || coords.length < 2) return [];
+  if (!Array.isArray(pins) || pins.length < 2) return [];
+  const borders: number[] = [];
+  for (const pin of pins) {
+    if (!pin || !Number.isFinite(pin.lat) || !Number.isFinite(pin.lng)) {
+      borders.push(borders.length === 0 ? 0 : borders[borders.length - 1]);
+      continue;
+    }
+    const idx = nearestCoordIndex(coords, pin.lat, pin.lng);
+    const clamped = idx < 0 ? 0 : Math.max(0, Math.min(coords.length - 1, idx));
+    const prev = borders.length === 0 ? 0 : borders[borders.length - 1];
+    borders.push(Math.max(prev, clamped));
+  }
+  // Pin the route ends: the snapped trace starts/ends at the stops, so the
+  // first border is the trace head and the last is the trace tail even when
+  // geocoding jitter pulls a pin slightly off the line.
+  borders[0] = 0;
+  borders[borders.length - 1] = coords.length - 1;
+  return borders;
+}
+
+/** Leg containing a coord index, or -1 (pure). */
+export function legIndexForCoord(borders: number[] | null | undefined, index: number): number {
+  if (!Array.isArray(borders) || borders.length < 2) return -1;
+  if (!Number.isFinite(index) || index < 0) return -1;
+  for (let leg = 0; leg < borders.length - 1; leg++) {
+    const from = borders[leg];
+    const to = borders[leg + 1];
+    if (index >= from && index <= to) {
+      // Shared border points belong to the earlier leg, except the final
+      // tail point which belongs to the last leg.
+      if (index === to && leg < borders.length - 2) continue;
+      return leg;
+    }
+  }
+  // Clamp out-of-range taps to the nearest end leg instead of nothing.
+  if (index < borders[0]) return 0;
+  return borders.length - 2;
+}
+
+/** Bounds of one leg, or null (pure). */
+export function legBounds(
+  borders: number[] | null | undefined,
+  legIndex: number
+): { from: number; to: number } | null {
+  if (!Array.isArray(borders) || borders.length < 2) return null;
+  if (!Number.isFinite(legIndex) || legIndex < 0 || legIndex >= borders.length - 1) return null;
+  const from = Math.max(0, Math.floor(borders[legIndex]));
+  const to = Math.max(from + 1, Math.ceil(borders[legIndex + 1]));
+  return { from, to };
+}
+
+/** Worst traffic level overlapping a coord range (heavy > moderate > low). Pure. */
+export function worstLevelInRange<T extends RemappedSegmentLike>(
+  segments: T[] | null | undefined,
+  from: number,
+  to: number
+): TrafficLevel {
+  if (!Array.isArray(segments) || segments.length === 0) return "low";
+  const lo = Math.min(from, to);
+  const hi = Math.max(from, to);
+  let worst: TrafficLevel = "low";
+  for (const s of segments) {
+    if (!s || s.to < lo || s.from > hi) continue;
+    if (s.level === "heavy") return "heavy";
+    if (s.level === "moderate") worst = "moderate";
+  }
+  return worst;
+}
+
+function haversineKmPure(a: TooltipCoord, b: TooltipCoord): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+
+/**
+ * Share of the route's travelled length covered by a slice (0..1, pure).
+ * Uses polyline length (haversine sum) rather than point counts, so a long
+ * highway leg reports a larger share than a short hop even when both carry
+ * the same number of snapped points. Falls back to count-share on
+ * degenerate geometry.
+ */
+export function legLengthShare(
+  coords: TooltipCoord[] | null | undefined,
+  from: number,
+  to: number
+): number {
+  if (!Array.isArray(coords) || coords.length < 2) return 0;
+  const n = coords.length;
+  const lo = Math.max(0, Math.min(n - 1, Math.floor(Math.min(from, to))));
+  const hi = Math.max(0, Math.min(n - 1, Math.ceil(Math.max(from, to))));
+  if (hi <= lo) return 0;
+  let total = 0;
+  let slice = 0;
+  for (let i = 1; i < n; i++) {
+    const a = coords[i - 1];
+    const b = coords[i];
+    if (!a || !b || !Number.isFinite(a.lat) || !Number.isFinite(a.lng) || !Number.isFinite(b.lat) || !Number.isFinite(b.lng)) {
+      continue;
+    }
+    const d = haversineKmPure(a, b);
+    if (!Number.isFinite(d) || d < 0) continue;
+    total += d;
+    if (i > lo && i <= hi) slice += d;
+  }
+  if (!(total > 0)) return segmentShare(n, from, to);
+  const share = slice / total;
+  return Number.isFinite(share) ? Math.max(0, Math.min(1, share)) : 0;
+}
+
+/** Leg distance (km, 1 decimal) from the route total. Pure. */
+export function legDistanceKm(
+  totalKm: number,
+  coords: TooltipCoord[] | null | undefined,
+  from: number,
+  to: number
+): number {
+  if (!Number.isFinite(totalKm) || totalKm <= 0) return 0;
+  const share = legLengthShare(coords, from, to);
+  if (share <= 0) return 0;
+  return Math.round(totalKm * share * 10) / 10;
+}
+
+/**
+ * Leg time estimate (mins) from the route base, scaled by the leg's own
+ * traffic delay factor. Pure, with the same 1-minute floor as the chunk
+ * helper whenever a base duration exists.
+ */
+export function legEstMins(
+  baseMins: number,
+  coords: TooltipCoord[] | null | undefined,
+  from: number,
+  to: number,
+  delayFactor: number
+): number {
+  if (!Number.isFinite(baseMins) || baseMins <= 0) return 0;
+  const share = legLengthShare(coords, from, to);
+  if (share <= 0) return 0;
+  const factor = Number.isFinite(delayFactor) && delayFactor > 0 ? delayFactor : 1;
+  return Math.max(1, Math.round(baseMins * share * factor));
+}
+
 /** Resolve the effective tooltip mode. `auto` follows traffic depth. */
 export function resolveTooltipMode(
   preference: MapTooltipModePreference | undefined,

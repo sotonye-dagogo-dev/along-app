@@ -15,14 +15,24 @@ import { useRouteTraffic } from '@/app/lib/hooks/useRouteTraffic'
 import {
   MAP_TOOLTIPS_CONFIG,
   resolveTooltipMode,
-  segmentMidpoint,
-  segmentEstMins,
-  segmentDistanceKm,
+  legBounds,
+  legCounterLabel,
+  legDistanceKm,
+  legEstMins,
+  legIndexForCoord,
+  legRangeLabel,
   nearestCoordIndex,
+  pinBordersOnRoute,
   segmentForIndex,
   parseTrafficLayerId,
+  worstLevelInRange,
   type MapTooltipModePreference,
 } from '@/app/lib/config/mapTooltips'
+import {
+  isValidDistanceKm,
+  isValidDurationMins,
+  shouldShowTrafficAdjusted,
+} from '@/app/lib/config/mapSummary'
 import { MAP_PINS_CONFIG } from '@/app/lib/config/mapPins'
 import { MapRoutePin, MapUserDot } from './MapPins'
 import { TrafficLegend } from './TrafficLegend'
@@ -243,10 +253,17 @@ function RouteMap({
     from: number
     to: number
     level: "low" | "moderate" | "heavy"
+    /** Tap anchor — the tooltip renders where the user tapped, not at a
+     * distant segment midpoint, so it is always in view on mobile. */
     lat: number
     lng: number
     estMins: number
     distKm: number
+    /** Route-leg context (0-based leg among pins-1 legs, -1 when unknown). */
+    legIndex: number
+    totalLegs: number
+    legLabel: string
+    legCounter: string
   }
   const [selectedStretch, setSelectedStretch] = useState<SelectedStretch | null>(null)
   const [miniAnchor, setMiniAnchor] = useState<{ lat: number; lng: number } | null>(null)
@@ -276,6 +293,20 @@ function RouteMap({
   }, [miniAnchor])
 
   const baseMinsForStretch = duration ?? traffic?.baseDurationMins ?? 0
+  // Leg borders: each pin's nearest snapped-trace index, monotonic, so a tap
+  // resolves to the route leg (origin→stop→destination) it actually sits on
+  // rather than an arbitrary traffic chunk. Recomputed only when the pin or
+  // geometry identity changes.
+  const pinsForLegsKey = effectivePins.map((p) => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}`).join(">")
+  const legBorders = useMemo(() => {
+    try {
+      return pinBordersOnRoute(routeCoords, effectivePins)
+    } catch {
+      return []
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeCoords.length, routeSig, pinsForLegsKey])
+  const totalLegs = legBorders.length >= 2 ? legBorders.length - 1 : 0
   const interactiveLayerIds = useMemo(() => {
     if (routeCoords.length < 2) return undefined as unknown as string[]
     const ids = ["route-line", "route-hit-line"]
@@ -301,58 +332,87 @@ function RouteMap({
         setMiniAnchor({ lat: lngLat.lat, lng: lngLat.lng })
         return
       }
-      // Detailed: prefer the clicked traffic layer, else nearest stretch.
-      const feats = Array.isArray(ev?.features) ? ev.features : []
-      let seg: { from: number; to: number; level: "low" | "moderate" | "heavy" } | null = null
-      for (const f of feats) {
-        const parsed = parseTrafficLayerId(f?.layer?.id)
-        if (parsed) {
-          const match = segmentForIndex(allSegments, parsed.from)
-          if (match) {
-            seg = match
-            break
-          }
-          seg = { ...parsed, level: "low" as const }
-          break
-        }
-      }
-      if (!seg) {
-        const idx = nearestCoordIndex(routeCoords, lngLat.lat, lngLat.lng)
-        if (idx < 0) {
-          setSelectedStretch(null)
-          return
-        }
-        seg = segmentForIndex(allSegments, idx)
-        if (!seg) {
-          // No traffic chunks (lookup pending/failed): describe the tapped
-          // neighbourhood as an untrafficked stretch instead of nothing.
-          const lo = Math.max(0, idx - 2)
-          const hi = Math.min(routeCoords.length - 1, idx + 2)
-          seg = { from: lo, to: hi, level: "low" }
-        }
-      }
-      const mid = segmentMidpoint(routeCoords, seg.from, seg.to)
-      if (!mid) {
+      // Detailed, leg-aware: the tap resolves to the route leg
+      // (origin→stop→destination) it sits on, so a 4-stretch post shows four
+      // distinct tooltips. Traffic level for the leg is the worst overlapping
+      // traffic chunk; time/distance are that leg's polyline-length share of
+      // the route totals. The card anchors AT the tap so it is always where
+      // the user tapped (no hunting across the map).
+      const tapIdx = nearestCoordIndex(routeCoords, lngLat.lat, lngLat.lng)
+      if (tapIdx < 0) {
         setSelectedStretch(null)
         return
       }
-      const delayFactor = TRAFFIC_CONFIG.levels[seg.level]?.delayFactor ?? 1
+      let legFrom = 0
+      let legTo = routeCoords.length - 1
+      let legIndex = -1
+      let legCount = totalLegs
+      if (legBorders.length >= 2) {
+        const found = legIndexForCoord(legBorders, tapIdx)
+        if (found >= 0) {
+          const bounds = legBounds(legBorders, found)
+          if (bounds) {
+            legFrom = bounds.from
+            legTo = bounds.to
+            legIndex = found
+          }
+        } else {
+          const lo = Math.max(0, tapIdx - 2)
+          const hi = Math.min(routeCoords.length - 1, tapIdx + 2)
+          legFrom = lo
+          legTo = hi
+        }
+      } else {
+        // Single-leg fallback: honour a directly-clicked traffic layer when
+        // leg borders cannot be built (e.g. a lone trace without pins).
+        const feats = Array.isArray(ev?.features) ? ev.features : []
+        let chunkHit: { from: number; to: number } | null = null
+        for (const f of feats) {
+          const parsed = parseTrafficLayerId(f?.layer?.id)
+          if (parsed) {
+            chunkHit = parsed
+            break
+          }
+        }
+        if (chunkHit) {
+          legFrom = Math.max(0, chunkHit.from)
+          legTo = Math.min(routeCoords.length - 1, chunkHit.to)
+        } else {
+          const seg = segmentForIndex(allSegments, tapIdx)
+          if (seg) {
+            legFrom = seg.from
+            legTo = seg.to
+          } else {
+            legFrom = Math.max(0, tapIdx - 2)
+            legTo = Math.min(routeCoords.length - 1, tapIdx + 2)
+          }
+        }
+        legCount = 1
+        legIndex = 0
+      }
+      const level = worstLevelInRange(allSegments, legFrom, legTo)
+      const delayFactor = TRAFFIC_CONFIG.levels[level]?.delayFactor ?? 1
+      const totalKmForLeg = typeof distance === "number" && Number.isFinite(distance) ? distance : 0
       setMiniAnchor(null)
       setSelectedStretch({
-        from: seg.from,
-        to: seg.to,
-        level: seg.level,
-        lat: mid.lat,
-        lng: mid.lng,
-        estMins: segmentEstMins(baseMinsForStretch, seg.from, seg.to, routeCoords.length, seg.level, delayFactor),
-        distKm: segmentDistanceKm(distance ?? 0, seg.from, seg.to, routeCoords.length),
+        from: legFrom,
+        to: legTo,
+        level,
+        lat: lngLat.lat,
+        lng: lngLat.lng,
+        estMins: legEstMins(baseMinsForStretch, routeCoords, legFrom, legTo, delayFactor),
+        distKm: legDistanceKm(totalKmForLeg, routeCoords, legFrom, legTo),
+        legIndex,
+        totalLegs: Math.max(1, legCount),
+        legLabel: legRangeLabel(legIndex, effectivePins),
+        legCounter: legCounterLabel(legIndex, Math.max(1, legCount)),
       })
     } catch {
       // Soft-fail: a tooltip must never break the map.
       setSelectedStretch(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeCoords, allSegments, effectiveTooltipMode, baseMinsForStretch, distance])
+  }, [routeCoords, allSegments, effectiveTooltipMode, baseMinsForStretch, distance, legBorders, totalLegs])
 
   // Pin-to-polyline snapping (same library, same data): the road-snapped
   // trace is authoritative for where the line runs, so origin/destination
@@ -653,7 +713,7 @@ function RouteMap({
         {/* Detailed stretch tooltip (post detail + navigation guide). */}
         {selectedStretch && effectiveTooltipMode === "detailed" && (
           <Marker
-            key={`stretch-tip-${selectedStretch.from}-${selectedStretch.to}`}
+            key={`stretch-tip-${selectedStretch.from}-${selectedStretch.to}-${selectedStretch.legIndex}`}
             latitude={selectedStretch.lat}
             longitude={selectedStretch.lng}
             anchor="bottom"
@@ -665,7 +725,7 @@ function RouteMap({
             >
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <span className="text-xs font-semibold text-text-primary">
-                  {MAP_TOOLTIPS_CONFIG.detailed.title}
+                  {selectedStretch.legCounter || MAP_TOOLTIPS_CONFIG.detailed.title}
                 </span>
                 <button
                   type="button"
@@ -679,6 +739,11 @@ function RouteMap({
                   <X size={12} aria-hidden />
                 </button>
               </div>
+              {selectedStretch.legLabel && (
+                <div className="text-[11px] font-medium text-text-secondary truncate mb-1.5" title={selectedStretch.legLabel}>
+                  {selectedStretch.legLabel}
+                </div>
+              )}
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span
                   aria-hidden
@@ -792,30 +857,41 @@ function RouteMap({
         </div>
       )}
 
-      {showOverlay && (distance || duration || fare) && (
-        <div className="glass absolute bottom-0 left-0 right-0 z-[3] p-3 flex items-center gap-4 text-sm">
-          {distance && (
-            <span className="flex items-center gap-1 text-text-secondary">
-              <Navigation size={14} />
-              {distance}km
-            </span>
-          )}
-          {duration && (
-            <span className="flex items-center gap-1 text-text-secondary">
-              <Clock size={14} />
-              {overlayDuration && overlayDuration !== duration
-                ? `${overlayDuration}min ${TRAFFIC_CONFIG.legend.durationSuffix}`
-                : `${duration}min`}
-            </span>
-          )}
-          {fare && (
-            <span className="flex items-center gap-1 text-text-secondary font-semibold ml-auto">
-              <DollarSign size={14} />
-              {fare}
-            </span>
-          )}
-        </div>
-      )}
+      {(() => {
+        // Summary bar guards (config-driven, nullsafe): each chip hides
+        // independently when invalid; traffic-adjusted renders only when both
+        // base and adjusted are finite + positive and different — so a
+        // still-loading lookup (adjusted 0) never flashes "0 min with traffic".
+        const showDistance = isValidDistanceKm(distance)
+        const showDuration = isValidDurationMins(duration)
+        const showTraffic = shouldShowTrafficAdjusted(overlayDuration, duration)
+        const showFare = typeof fare === "string" && fare.trim().length > 0
+        if (!showOverlay || (!showDistance && !showDuration && !showFare)) return null
+        return (
+          <div className="glass absolute bottom-0 left-0 right-0 z-[3] p-3 flex items-center gap-4 text-sm">
+            {showDistance && (
+              <span className="flex items-center gap-1 text-text-secondary">
+                <Navigation size={14} />
+                {distance}km
+              </span>
+            )}
+            {showDuration && (
+              <span className="flex items-center gap-1 text-text-secondary">
+                <Clock size={14} />
+                {showTraffic
+                  ? `${overlayDuration}min ${TRAFFIC_CONFIG.legend.durationSuffix}`
+                  : `${duration}min`}
+              </span>
+            )}
+            {showFare && (
+              <span className="flex items-center gap-1 text-text-secondary font-semibold ml-auto">
+                <DollarSign size={14} />
+                {fare}
+              </span>
+            )}
+          </div>
+        )
+      })()}
 
       {expandable && (
         <button

@@ -878,3 +878,10 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** when two surfaces show one route, pass the fetched OBJECT down (optional-override prop, legacy self-fetch when omitted) — never pass only its derivatives and let each surface refetch. Keep a documented z-contract for floating layers (page < expand dialog < live modal < expand dialog needs top: z-[70] here — record the ordering where the values live). Tap interaction on thin geometry = invisible wide hit line + interactive layer ids, resolving click → layer/nearest-chunk → anchored marker; tooltips grade by rate cost (full where data exists, link-out where fetching is banned) with pure never-throw helpers and stale-tip clearing on geometry swap.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 69 (2026-10-16): chunk tooltips converge — resolve legs; zero is loading, not data
+- **Symptom:** "same tooltip on every stretch of a 4-stretch post + have to hunt for the card" — plus "0 min with traffic (was 1h 6m)", plus detail bar missing fare.
+- **Root causes:** (1) tooltips sliced the GEOMETRY (≤12 even traffic chunks), not the ROUTE (legs between stops) — equal slices yield equal shares, so every tap agreed. (2) cards anchored at chunk midpoints, potentially screens away from the finger. (3) traffic-adjusted rendered on naive `!==` — the loading state (`adjusted 0` vs base 66) passes it; the detail map never received a fare prop at all, and the share preview formatted `0` as `₦0`.
+- **Fix pattern (reuse):** domain units over geometry units — resolve taps to legs via pin borders on the snapped trace (monotonic, ends pinned), worst-level for the leg, length-share (haversine, not point-count) for time/distance; anchor markers at `lngLat`. Treat `0`/`null`/`NaN` in summary bars as "not yet known" — centralise in one guard module (`shouldShowTrafficAdjusted` + per-chip `isValid*`) so every bar (detail, nav, preview, guide) hides the same way; single `totalFareForSteps` (destination excluded) for every total.
+- **Supersedes:** Extends the Sprint 68 entry (chunk → leg, midpoint → tap anchor).
+- **Superseded by:** None

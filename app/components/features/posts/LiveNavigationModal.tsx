@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import dynamic from "next/dynamic"
 import { Navigation, X } from "lucide-react"
 import { LIVE_NAVIGATION_CONFIG } from "@/app/lib/config"
+import { formatFareTotal } from "@/app/lib/config/mapSummary"
 import NavigationGuide from "./NavigationGuide"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
 import type { TrafficResult } from "@/app/lib/services/trafficService"
@@ -34,6 +35,8 @@ interface LiveNavigationModalProps {
   /** Traffic-aware duration + estimate flag (non-breaking additive). */
   trafficAdjustedMins?: number | null
   trafficEstimated?: boolean
+  /** Total fare across travelling legs (non-breaking additive). */
+  totalFare?: number | null
   /**
    * Caller-owned traffic result (non-breaking additive): the SAME object
    * the post detail map renders, forwarded as `trafficOverride` so the
@@ -68,6 +71,7 @@ export default function LiveNavigationModal({
   trafficAdjustedMins = null,
   trafficEstimated = true,
   trafficOverride,
+  totalFare = null,
   vehicle = null,
 }: LiveNavigationModalProps) {
   useEffect(() => {
@@ -128,6 +132,14 @@ export default function LiveNavigationModal({
                 showOverlay={true}
                 distance={totalDistanceKm ?? undefined}
                 duration={estimatedMins ?? undefined}
+                fare={(() => {
+                  try {
+                    const label = formatFareTotal(totalFare)
+                    return label || undefined
+                  } catch {
+                    return undefined
+                  }
+                })()}
                 trafficOverride={trafficOverride ?? undefined}
                 trafficAdjustedMins={trafficAdjustedMins}
                 tooltipMode="detailed"
@@ -144,6 +156,7 @@ export default function LiveNavigationModal({
               estimatedMins={estimatedMins}
               trafficAdjustedMins={trafficAdjustedMins}
               trafficEstimated={trafficEstimated}
+              totalFare={totalFare}
               pins={pins.map((p) => ({ lat: p.lat, lng: p.lng }))}
               onUserLocationChange={onUserLocationChange}
             />
