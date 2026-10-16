@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 62: community route-request fan-out + location-only draft restore)
-> - last-synced: 2026-10-15 (Sprint 62)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 68: navigation-guide map parity + tracing tooltips)
+> - last-synced: 2026-10-16 (Sprint 68)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -893,3 +893,73 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | UI — Notifications header += settings gear button + NEW `NotificationPreferencesModal` (metadata-driven switches, load/save/reset, offline honesty, stable onClose, design-token classes, lucide icons only) | [x] |
 | [S] | Copy — FAQ `who-sees-request` updated (location-aware + preferences) + NEW `request-location-filtering` (privacy-safe verdict: corrects "we don't store location" — nullable consented lastKnown IS stored for feed boost, cleared on deletion; ephemeral request fix, PWA background limits, optimistic-not-guaranteed) + NEW `notification-preferences` (en + pcm); push FAQ notes per-type settings | [x] |
 | [S] | Tests — NEW `notificationPreferences.test.ts` (5: defaults, null/partial normalize, validation, type map, meta coverage); `routeRequestAudience.test.ts` +3 (location defaults, legacy normalize, location validation); `posts.test.ts` audience assertion updated for ephemeral-fix arg | [x] |
+
+## Sprint 64 — Offline coverage for landing/profile/notifications + authenticated-offline guest-banner fix (2026-10-15, execute-feature) [recorded post-hoc]
+
+> **Section summary:** Executed in a prior session — full detail lives in `checkpoints/session-log.md`, `summaries/dev-history.md`, and `memory/lessons-learned.md` (Sprint 64 entries). No task rows were reconstructed here (append-only honesty: rows are not invented after the fact). Known drift: `checkpoints/in-progress.md` still names Sprint 63 as last-closed.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Offline coverage + auth snapshot — see session-log Sprint 64 entry (`config/authOffline.ts`, pwa v6, GuestBanner suppression, LandingOfflineNotice, CachedDataNotice, offline.html + FAQ updates; QA green 88/88 suites 757/757) | [x] |
+
+## Sprint 65 — Post-card detail links + response-banner dismiss + vehicle contrast deepening (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive optional config fields + additive optional `onClearResponse` prop only; same props + API envelopes; no migration, no new deps). QA full in-runner: `npm ci` ok, tsc 0 errors, jest 89/89 suites 761/761 tests, next lint exit 0 (1 pre-existing `prefer-const` error in untouched `accountDeletionService.ts` + pre-existing warnings), full `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Detail navigation — `POST_ACTIONS_CONFIG` += `detailTextLinksEnabled` + `detailDescriptionClass` + `detailRouteStepClass`; `PostCard` description + route-step location/description render as detail `Link`s (encoded `postPath`, stopPropagation, aria-labels); tags + maps untouched (own actions); title migrates to the same encoded path | [x] |
+| [S] | Response dismiss — `SHARE_ROUTE_MODAL_CONFIG` += `responseBannerDismissLabel/Title`; `ShareRouteModal` += optional `onClearResponse` + `dismissResponse` (clears restored linkage + parent callback, never closes modal, input preserved, hidden while editing); home stable `clearRespondTo`; post-detail `respondUnlinked` gate (reset on open/close/submit) | [x] |
+| [S] | Vehicle contrast — `VEHICLE_REGISTRY` light text `-800` → `-900` all 9 types (dark variants unchanged; stray-space fix on taxi); contract comment updated | [x] |
+| [S] | Tests — NEW `postCardDetailLinks.test.ts` (4: nav flag + encoded path, link token classes, dismiss copy, `-900` grade); `vehicles.test.ts` updated (boat/train `-900`, contract regex `-(800\|900)`) | [x] |
+
+## Sprint 66 — Config studio links + vehicle badge readability (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive config metadata + additive UI only; same props + API envelopes; no migration, no new deps; sender editing relocated, not removed). QA static in-runner (no node_modules; full tsc/jest/build deferred to CI — expected jest 89 suites / 762 tests, +1 studio-links test).
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Studio links — `admin.ts` += `ADMIN_STUDIO_MANAGED_KEYS` (blogPosts/emailConfig/emailTemplates/emailTemplateToggles) + `ADMIN_STUDIO_LINKS` (Email/Blog Studio href/CTA/description) + barrel; Config page renders metadata-driven link cards (Customized badge on DB overrides), raw list hides studio keys via extended `ADMIN_DEDICATED_CONFIG_KEYS`; `emailConfig` removed from `ADMIN_SIMPLE_CONFIG_CARDS` (defaults/validator/API/service reads kept) | [x] |
+| [S] | Sender relocation — Email Studio += collapsible Sender identity card (fromName/fromEmail/replyTo via generic config API, shipped-default backfill, inline validation) so the removed Config-page card loses no capability | [x] |
+| [S] | Vehicle readability — `VEHICLE_REGISTRY` light wash `-100`→`-200` / border `-300`→`-400` ×9 (trekking gray-300; dark unchanged); `VehicleChip` += `shadow-xs` + icon `strokeWidth={2.5}` (route-request-flag structure); PostCard + post detail pick it up with zero per-surface changes | [x] |
+| [S] | Tests — `vehicles.test.ts` contract → `-200`/`-400` (+`-100` rejection); `designCompliance.test.ts` += studio-links test + no-code-card test counts studio links | [x] |
+
+## Sprint 68 — Navigation-guide map parity + tracing tooltips (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive optional props + additive config module only; same props + API envelopes; no migration, no new deps). QA full in-runner: `npm ci` ok, tsc 0 errors, jest 91/91 suites 790/790 tests, next lint clean on touched files, full `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Shared traffic — `LiveNavigationModal` += optional `trafficOverride` (post detail passes its single `postTraffic`, forwarded as the inner map's `trafficOverride`; one `/api/maps/traffic` lookup serves detail + nav surfaces; omitted → legacy self-fetch; trace polyline was already shared) | [x] |
+| [S] | Expand layering — `MAP_EXPAND_CONFIG.overlayClass` z-50 → z-[70] (live modal is z-[60], so expansion from inside the guide renders on top instead of vanishing behind the backdrop; detail-page expansion unaffected) + `RouteMap` `expandable` flag (default true) for future full-container callers | [x] |
+| [S] | Tooltip registry — NEW `lib/config/mapTooltips.ts` (`MAP_TOOLTIPS_CONFIG` detailed/mini copy + `hitLineWidth` + `cardMaxWidth`; pure never-throw `resolveTooltipMode`/`segmentMidpoint`/`segmentShare`/`segmentEstMins`/`segmentDistanceKm`/`nearestCoordIndex`/`segmentForIndex`/`parseTrafficLayerId`) | [x] |
+| [S] | Tracing tooltips — `RouteMap` += `tooltipMode` auto/detailed/mini (auto follows `showTraffic`) + `detailHref`/`navigateHref`/`postTitle`; invisible `route-hit-line` tap target + `interactiveLayerIds`; detailed stretch Marker (level dot/label, per-stretch est. mins × delayFactor, distance share, live/estimated note, X + Escape, cleared on geometry swap); mini quick-link Marker (post title + View-post/Navigate links, X + Escape, zero fetches) | [x] |
+| [S] | Surface wiring — `PostCard` mini map `tooltipMode="mini"` + detail/navigate hrefs + title; detail map + nav modal `tooltipMode="detailed"`; ShareRouteModal preview inherits detailed tooltips unchanged | [x] |
+| [S] | Tests — NEW `mapTooltips.test.ts` (15: mode resolution, segment math, tap resolution, copy + expand layering) | [x] |
+
+## Sprint 69 — Leg-aware stretch tooltips + summary-bar tightening (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive config modules + additive optional props only; same props + API envelopes; no migration, no new deps). QA full in-runner: `npm install` ok, tsc 0 errors, jest 93/93 suites 806/806 tests, next lint clean on touched files (2 fixed: unused import + prefer-const), full `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [S] | Tooltip registry — `mapTooltips.ts` += leg helpers (`legEndpointLabel`/`legRangeLabel`/`legCounterLabel`/`pinBordersOnRoute`/`legIndexForCoord`/`legBounds`/`worstLevelInRange`/`legLengthShare`/`legDistanceKm`/`legEstMins`), all pure + never-throw | [x] |
+| [S] | Leg-aware taps — `RouteMap` resolves taps to the route leg (origin→stop→destination) via pin borders on the snapped trace, worst-level traffic for that leg, polyline-length shares for time/distance; card anchors AT the tap with "Stretch N of M" + "A → B" labels; stale-tip guard extended to leg borders | [x] |
+| [S] | Summary registry — NEW `lib/config/mapSummary.ts` (`MAP_SUMMARY_CONFIG` + `isValid*`/`shouldShowTrafficAdjusted`/`formatFareTotal`/`formatSummary*`/`remainingShare`/`remainingDistanceKm`/`remainingDurationMins`, all pure) | [x] |
+| [S] | Fare totals — `routeSteps.ts` += `totalFareForSteps` (destination excluded, nullsafe); `ShareRouteModal` uses it, hides ₦0; detail page + nav modal derive the same total | [x] |
+| [S] | Map overlay — `RouteMap` summary bar guards each chip independently; traffic-adjusted renders only when base + adjusted are finite + positive and different (kills "0 min with traffic"); fare chip shows when provided | [x] |
+| [S] | Guide bars — `NavigationGuide` += optional `totalFare` (derived fallback), guarded traffic banner shows remaining adjusted vs remaining base + remaining-km in progress row; header shows distance/time/fare/stops with independent guards; `LiveNavigationModal` += optional `totalFare` forwarded to guide + map overlay | [x] |
+| [S] | Detail wiring — `posts/[id]` computes `detailDistance` (live trace wins) + `detailDuration` (vehicle-aware base wins) + `detailFareTotal`/`detailFareLabel`, passes to map + modal | [x] |
+| [S] | Tests — NEW `mapSummary.test.ts` (10: guards, "0 min" rejection, formatting, remaining math) + NEW `routeLegs.test.ts` (8: borders, distinct legs, labels, worst-level, shares, fare total) | [x] |
+
+## Sprint 70 — Consistent journey totals + resilient traffic cache + docs (2026-10-16, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive config helpers + additive optional fields only; same props + API envelopes; no migration, no new deps). QA full in-runner: `npm install` ok, tsc 0 errors, jest 94/94 suites 816/816 tests, next lint clean on touched files, full `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Consistent totals — `mapSummary.ts` += `rangeSeparator`/`rangeTitle` + `formatDurationRange` (base–adjusted range, single when equal, empty-text when invalid) + `splitMinsByWeights` (largest-remainder, parts always sum to total); `journeyTime.ts` += `legTrafficFactor` (vehicle-scaled delay); `traffic.ts` += `rebaseTrafficResult` (rescale minutes w/o refetch) + `trafficClientKey` + client knobs (`clientCacheTtlSec` 300, `clientStaleSec` 600, `refreshIntervalSec` 120, `debounceMs` 900) + barrel exports | [x] |
+| [M] | Traffic caching — `useRouteTraffic` rewrite: geometry-scoped key (pins+vehicle, never base) + memory → localStorage read-through + stale-while-revalidate + `refreshIntervalSec` background refresh while mounted + silent failure keeps last good + base-only changes rebase locally (zero network) | [x] |
+| [M] | Surface wiring — `RouteMap` overlay shows range with explanatory title; stretch tooltips split from the same totals (`consistentLegTimes`: length-share base split, traffic-weighted adjusted split) + range display per stretch; `NavigationGuide` header + live remaining banner show ranges | [x] |
+| [S] | Docs — FAQ `map-traffic-duration` rewritten (range + stretch-sum guarantee + caching cadence, en+pcm) + `map-traffic-legend` stretch-tap hint (en+pcm); `request-location-filtering` shortened ~60% (en+pcm, same facts); privacy (location/traffic/offline/7-day deletion sections) + terms (traffic-estimate + deletion-grace sections) updated; README Maps & traffic section (range + caching strategy) | [x] |
+| [S] | Tests — NEW `journeyConsistency.test.ts` (10: range, split-sum contract, factors, rebase, client keys, knob sanity) | [x] |

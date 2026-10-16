@@ -23,6 +23,9 @@ import { useRouteTrace } from "@/app/lib/hooks/useRouteTrace"
 import { useRouteTraffic } from "@/app/lib/hooks/useRouteTraffic"
 import polyline from "@mapbox/polyline"
 import { buildRoutePinsFromPost } from "@/app/lib/config/routePins"
+import { dominantVehicleForSteps, resolveJourneyDuration } from "@/app/lib/config/journeyTime"
+import { totalFareForSteps } from "@/app/lib/config/routeSteps"
+import { formatFareTotal, isValidDistanceKm, isValidDurationMins } from "@/app/lib/config/mapSummary"
 import type { VehicleType } from "@/app/lib/types"
 import type { RoutePin } from "@/app/components/features/posts/RouteMap"
 
@@ -155,6 +158,10 @@ export default function PostDetailPage() {
   const mapUserLocation = userLocation ?? passiveLocation
   const [editOpen, setEditOpen] = useState(false)
   const [respondOpen, setRespondOpen] = useState(false)
+  // Banner-X dismissal: unlinks the request while keeping the respond modal
+  // open in normal share mode (responseTo is post-derived, so a flag gates
+  // it). Reset whenever the modal (re)opens.
+  const [respondUnlinked, setRespondUnlinked] = useState(false)
 
   const postId = params.id as string
   const ready = !authLoading && Boolean(postId)
@@ -188,6 +195,16 @@ export default function PostDetailPage() {
     }, 150)
     return () => clearTimeout(t)
   }, [highlightCommentId, commentsLoading, comments.length])
+
+  // Quick-link deep-link (?navigate=1 from post-card "Navigate" links):
+  // opens the live navigation overlay on load. Runs once per post id so a
+  // user-dismissed modal stays dismissed within the session.
+  useEffect(() => {
+    try {
+      if (searchParams?.get("navigate") === "1") setShowNavigation(true)
+    } catch { /* non-critical */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId])
 
   const liked = post?._isLiked ?? false
   const likesCount = post?.likes ?? 0
@@ -385,6 +402,7 @@ export default function PostDetailPage() {
 
   const handleRespond = () => {
     if (!requireAuth("respond to route requests")) return
+    setRespondUnlinked(false)
     setRespondOpen(true)
   }
 
@@ -408,6 +426,7 @@ export default function PostDetailPage() {
         return false
       }
       setRespondOpen(false)
+      setRespondUnlinked(false)
       toastService.success("Response shared!")
       await refreshPost()
       return true
@@ -492,12 +511,30 @@ export default function PostDetailPage() {
     }
   }, [post, baseRoutePins, routes])
   const routePins = backfilledPins ?? baseRoutePins
+  // Dominant vehicle across the legs that travel (destination excluded) —
+  // drives mode-aware durations + traffic sensitivity (a trek keeps walking
+  // pace and shrugs off road traffic; a ferry ignores it entirely).
+  const detailVehicle = useMemo(() => dominantVehicleForSteps(routes), [routes])
   // Road-snapped trace for the full stop sequence (same pipeline as the
   // composer preview). Silent straight-line fallback when offline/tracing
   // fails — RouteMap draws through all pins either way.
-  const { liveTrace } = useRouteTrace(routePins)
+  const { liveTrace } = useRouteTrace(routePins, detailVehicle)
   // Traffic overlay coords: the snapped polyline when available (same
   // geometry RouteMap renders, so chunk indices agree), else the pins.
+  // Base duration is vehicle-aware: stored value wins, else the
+  // mode-adjusted trace/estimate (a trek's base must be walking pace before
+  // traffic even applies). The overlay itself remaps across geometry swaps
+  // so colors persist through tracing updates.
+  const detailBaseDuration = useMemo(
+    () =>
+      resolveJourneyDuration(
+        liveTrace ? liveTrace.distance : null,
+        liveTrace ? liveTrace.duration : null,
+        post?.estimatedMins ?? null,
+        detailVehicle
+      ),
+    [liveTrace, post?.estimatedMins, detailVehicle]
+  )
   const trafficCoords = useMemo(() => {
     if (liveTrace?.polyline) {
       try {
@@ -509,7 +546,38 @@ export default function PostDetailPage() {
     }
     return routePins
   }, [liveTrace?.polyline, routePins])
-  const { traffic: postTraffic } = useRouteTraffic(trafficCoords, post?.estimatedMins ?? null)
+  const { traffic: postTraffic } = useRouteTraffic(trafficCoords, detailBaseDuration, detailVehicle)
+  // Summary-bar truth (config-driven, nullsafe): live trace wins for
+  // distance (road-snapped), vehicle-aware base wins for duration, and total
+  // fare sums the travelling legs (destination excluded). Invalid values
+  // yield undefined so the RouteMap chips hide independently instead of
+  // showing zeros.
+  const detailDistance = useMemo(() => {
+    const live = liveTrace?.distance
+    if (isValidDistanceKm(live)) return live as number
+    if (isValidDistanceKm(post?.totalDistanceKm)) return post?.totalDistanceKm as number
+    return undefined
+  }, [liveTrace?.distance, post?.totalDistanceKm])
+  const detailDuration = useMemo(() => {
+    if (isValidDurationMins(detailBaseDuration)) return detailBaseDuration
+    if (isValidDurationMins(post?.estimatedMins)) return post?.estimatedMins as number
+    return undefined
+  }, [detailBaseDuration, post?.estimatedMins])
+  const detailFareTotal = useMemo(() => {
+    try {
+      return totalFareForSteps(routes)
+    } catch {
+      return 0
+    }
+  }, [routes])
+  const detailFareLabel = useMemo(() => {
+    try {
+      const label = formatFareTotal(detailFareTotal)
+      return label || undefined
+    } catch {
+      return undefined
+    }
+  }, [detailFareTotal])
 
   if (loading) {
     return (
@@ -722,9 +790,13 @@ export default function PostDetailPage() {
           encodedPolyline={liveTrace?.polyline}
           height={280}
           showOverlay={true}
-          distance={post.totalDistanceKm ?? undefined}
-          duration={post.estimatedMins ?? undefined}
+          distance={detailDistance}
+          duration={detailDuration}
+          fare={detailFareLabel}
+          trafficOverride={postTraffic ?? undefined}
           trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
+          tooltipMode="detailed"
+          vehicle={detailVehicle}
           userLocation={mapUserLocation}
           followUser={false}
         />
@@ -843,10 +915,13 @@ export default function PostDetailPage() {
           steps={routes}
           pins={routePins}
           encodedPolyline={liveTrace?.polyline}
-          totalDistanceKm={post.totalDistanceKm}
-          estimatedMins={post.estimatedMins}
+          totalDistanceKm={detailDistance ?? null}
+          estimatedMins={detailDuration ?? post.estimatedMins}
+          trafficOverride={postTraffic ?? undefined}
           trafficAdjustedMins={postTraffic?.adjustedDurationMins ?? null}
           trafficEstimated={postTraffic?.estimated ?? true}
+          totalFare={detailFareTotal > 0 ? detailFareTotal : null}
+          vehicle={detailVehicle}
           userLocation={userLocation}
           onUserLocationChange={setUserLocation}
           onClose={() => { setShowNavigation(false); setUserLocation(null) }}
@@ -948,8 +1023,9 @@ export default function PostDetailPage() {
       {isRouteRequest && respondOpen && (
         <ShareRouteModal
           isOpen={respondOpen}
-          onClose={() => setRespondOpen(false)}
-          responseTo={post ? { id: post.id, title: post.title, tags: post.tags, user: { userName: post.user.userName, firstName: post.user.firstName, lastName: post.user.lastName } } : null}
+          onClose={() => { setRespondOpen(false); setRespondUnlinked(false) }}
+          responseTo={respondUnlinked ? null : (post ? { id: post.id, title: post.title, tags: post.tags, user: { userName: post.user.userName, firstName: post.user.firstName, lastName: post.user.lastName } } : null)}
+          onClearResponse={() => setRespondUnlinked(true)}
           onSubmit={handleRespondSubmit}
         />
       )}

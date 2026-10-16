@@ -502,7 +502,7 @@ export async function deleteUserNow(
       if (adminCount <= 1)
         return { ok: false, error: "Last admin cannot be deleted — promote another admin first" };
     }
-    let pending = await prisma.accountDeletionRequest.findFirst({
+    const pending = await prisma.accountDeletionRequest.findFirst({
       where: { userId, status: "PENDING" },
       orderBy: { requestedAt: "desc" },
     });

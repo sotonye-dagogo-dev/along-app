@@ -6,7 +6,7 @@ import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, C
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { SHARE_ROUTE_MODAL_CONFIG } from "@/app/lib/config"
-import { ROUTE_STEPS_CONFIG, isDestinationStep, showStepFare, showStepVehicle, normalizeRouteSteps } from "@/app/lib/config/routeSteps"
+import { ROUTE_STEPS_CONFIG, showStepFare, showStepVehicle, normalizeRouteSteps, totalFareForSteps } from "@/app/lib/config/routeSteps"
 import {
   ROUTE_VALIDATION_CONFIG,
   parseFareInput,
@@ -24,6 +24,7 @@ import { toastService } from "@/app/lib/services/toastService"
 import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config/mediaCleanup"
 import { cleanupComposerPhotos, decideComposerPhotoCleanup } from "@/app/lib/utils/composerMedia"
 import { estimateRoute, traceSignature, getCurrentPosition, reverseGeocode } from "@/app/lib/utils/geo"
+import { dominantVehicleForSteps, resolveJourneyDuration } from "@/app/lib/config/journeyTime"
 import { memoryCache } from "@/app/lib/cache/memoryCache"
 import type { VehicleType } from "@/app/lib/types"
 import DraftingCoach from "./DraftingCoach"
@@ -95,6 +96,14 @@ interface ShareRouteModalProps {
   isOpen: boolean
   onClose: () => void
   responseTo?: RespondToRequest | null
+  /**
+   * Clears the parent-owned `responseTo` (e.g. feed `respondTo` state) when
+   * the user dismisses the response banner. Optional — when absent, only the
+   * modal-local restored linkage is cleared. Never closes the modal; typed
+   * input, tags and images are preserved so the user can post something else
+   * first or resume another draft.
+   */
+  onClearResponse?: () => void
   /** Opens the request-route flow (e.g. user meant to request, not share). Optional — trigger hidden when absent. */
   onRequestRoute?: () => void
   /** Open with the saved-drafts panel expanded (used by the home drafts resume chip). */
@@ -147,7 +156,7 @@ function newMutationKey(): string {
 const TRACE_CACHE_TTL = 600 // 10 min — same route re-edits don't re-trace
 const TRACE_DEBOUNCE_MS = 1000
 
-export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequestRoute, startWithDraftsOpen, onSubmit, editPost, onEditSubmit }: ShareRouteModalProps) {
+export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearResponse, onRequestRoute, startWithDraftsOpen, onSubmit, editPost, onEditSubmit }: ShareRouteModalProps) {
   const [restoredResponseTo, setRestoredResponseTo] = useState<RespondToRequest | null>(null)
   /**
    * Response linkage of the post being edited (ROUTE_RESPONSE only). Derived
@@ -406,15 +415,37 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
     () => steps.filter((s) => s.location && s.lat && s.lng).map((s) => ({ lat: s.lat!, lng: s.lng! })),
     [steps]
   )
-  const estimate = useMemo(() => estimateRoute(realPins.length >= 2 ? realPins : []), [realPins])
+  // Dominant vehicle across the legs that actually travel (destination
+  // excluded) — drives mode-aware durations + traffic sensitivity so a trek
+  // isn't timed like a car and a ferry isn't slowed by road traffic.
+  const previewVehicle = useMemo(() => dominantVehicleForSteps(steps), [steps])
+  const estimate = useMemo(
+    () => estimateRoute(realPins.length >= 2 ? realPins : [], previewVehicle),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [realPins, previewVehicle]
+  )
   const traceSig = realPins.length >= 2 ? traceSignature(realPins) : ""
   // Only trust a trace that matches the pins currently on screen
   const liveTrace = trace && trace.sig === traceSig ? trace : null
   const displayDistance = liveTrace ? liveTrace.distance : estimate.distanceKm
-  const displayDuration = liveTrace ? liveTrace.duration : estimate.durationMins
+  // Vehicle-aware: slow/rail/water modes recompute from the traced distance
+  // (OSRM durations assume cars); road modes trust the trace, else estimate.
+  const displayDuration = resolveJourneyDuration(
+    liveTrace ? liveTrace.distance : null,
+    liveTrace ? liveTrace.duration : null,
+    estimate.durationMins,
+    previewVehicle
+  )
   // Destination is the final stop — its fare/vehicle are meaningless, so the
-  // total only sums the legs that actually travel somewhere.
-  const totalFare = steps.reduce((sum, s, i) => sum + (isDestinationStep(i, steps.length) ? 0 : (s.fare || 0)), 0)
+  // total only sums the legs that actually travel somewhere (shared helper
+  // keeps preview, detail and guide totals identical).
+  const totalFare = (() => {
+    try {
+      return totalFareForSteps(steps)
+    } catch {
+      return 0
+    }
+  })()
 
   useEffect(() => {
     if (!isOpen || !traceSig) {
@@ -484,6 +515,23 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
   )
   const canShare =
     composerValidation.valid && !isSubmitting && !uploading
+
+  /**
+   * Dismiss the response linkage (banner X). Unlinks the request so the
+   * composer returns to normal share mode — modal stays open, typed input /
+   * tags / images are preserved (only the linkage is dropped, never the
+   * user's work). Parent-owned `responseTo` clears via `onClearResponse`
+   * when provided; the modal-local restored linkage always clears. Editing
+   * a response never reaches here (banner X hidden — linkage immutable).
+   */
+  const dismissResponse = useCallback(() => {
+    setRestoredResponseTo(null)
+    try {
+      onClearResponse?.()
+    } catch {
+      /* never-throw: linkage already cleared locally */
+    }
+  }, [onClearResponse])
 
   const clearStepError = (index: number, field: keyof StepFieldErrors) => {
     setFieldErrors((prev) => {
@@ -1061,7 +1109,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                 <line x1="8" y1="12" x2="16" y2="12" />
               </svg>
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-[11px] font-semibold tracking-wider uppercase text-text-muted">
                 {isEditing ? "Editing a response to" : "Replying to"}{effectiveResponseTo.user ? ` ${effectiveResponseTo.user.firstName} ${effectiveResponseTo.user.lastName}` : ""}&apos;s request
               </div>
@@ -1070,6 +1118,17 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                 <div className="text-[11px] text-text-muted mt-0.5">Response linkage is preserved — saving keeps this reply attached to the request.</div>
               )}
             </div>
+            {!isEditing && (
+              <button
+                type="button"
+                onClick={dismissResponse}
+                title={SHARE_ROUTE_MODAL_CONFIG.responseBannerDismissTitle}
+                aria-label={SHARE_ROUTE_MODAL_CONFIG.responseBannerDismissLabel}
+                className="shrink-0 flex items-center justify-center w-7 h-7 rounded-circle border-none bg-transparent text-text-secondary cursor-pointer hover:bg-bg-elevated hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors"
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
         )}
 
@@ -1443,7 +1502,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onRequest
                     showOverlay={true}
                     distance={displayDistance > 0 ? displayDistance : undefined}
                     duration={displayDuration > 0 ? displayDuration : undefined}
-                    fare={`₦${totalFare.toLocaleString()}`}
+                    fare={totalFare > 0 ? `₦${totalFare.toLocaleString()}` : undefined}
+                    vehicle={previewVehicle}
                   />
                   <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted">
                     <span>{liveTrace ? "Live route" : "Estimated route — updates as you edit"}</span>

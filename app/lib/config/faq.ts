@@ -109,7 +109,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "request-location-filtering",
         question: "Are route-request notifications location-based? Is my location stored?",
         answer:
-          "Partly — and privacy-safe by design. When you post a request, the app may attach a one-shot location (your cached fix if permission was already granted, otherwise the request's own start point) that is used ONLY to compute that one fan-out and is never saved, logged, or shown to anyone. Recipient proximity is checked server-side against the optional last-known fix members already share for the feed nearby boost — raw coordinates are never exposed, only a within-radius yes/no runs in memory. If too few nearby members exist, or no location is available, the notification falls back to the whole community (followers first, then recent members up to the admin cap). Two honest corrections: Along DOES store an optional last-known fix per user (nullable, consent-based, cleared on account deletion) — it is not true that no location data is stored; and background location in the installed app/PWA is limited, so filtering is optimistic, not guaranteed. Someone familiar with a route elsewhere still sees every request in feed, Explore, and search.",
+          "Only partly. When you post a request, the app may attach a one-shot location (your cached fix if permission was already granted, otherwise the request's own start point) that is used only for that one fan-out — it is never saved, logged, or shown to anyone. Recipient proximity is checked server-side against the optional last-known fix members already share for the feed nearby boost (nullable, consent-based, cleared on account deletion); raw coordinates are never exposed. If too few nearby members exist, or no location is available, the request simply goes to the whole community — and filtering is best-effort on installed apps, so every request still appears in feed, Explore, and search.",
       },
       {
         id: "notification-preferences",
@@ -151,13 +151,13 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "map-traffic-legend",
         question: "What do the yellow and red stretches on a route mean?",
         answer:
-          "They are traffic overlays on the route line: yellow means medium traffic on that stretch, red means heavy traffic, and the base green line means free flow. Tap or hover the “i” icon on any route map (or in live navigation) to see the legend — it also tells you whether the data is live or an estimate based on typical conditions for that time of day.",
+          "They are traffic overlays on the route line: yellow means medium traffic on that stretch, red means heavy traffic, and the base green line means free flow. Tap or hover the “i” icon on any route map (or in live navigation) to see the legend — it also tells you whether the data is live or an estimate based on typical conditions for that time of day. Tap the route line itself to see that stretch's traffic level, time share, and distance.",
       },
       {
         id: "map-traffic-duration",
-        question: "Why does a route show two different travel times?",
+        question: "Why does a route show a time range, and do the stretches add up?",
         answer:
-          "The base time is the free-flow estimate for the route; the “with traffic” time adds the expected delay from the yellow (medium) and red (heavy) stretches. Without any provider keys configured, Along shows a keyless estimate from typical rush-hour patterns (morning and evening peaks) — clearly labeled as estimated — and upgrades to live Mapbox or TomTom traffic automatically when those optional keys are configured. Refresh when back online for the latest picture.",
+          "Totals show as a range (e.g. 62–75 min): the lower bound is the free-flow time and the upper bound adds the expected delay from the yellow (medium) and red (heavy) stretches. Every stretch time is split from those same totals, so the stretches always add up to the header — tap any stretch on the map for its share. Without any provider keys, Along shows a keyless estimate from typical rush-hour patterns (morning and evening peaks), clearly labeled as estimated, and upgrades to live Mapbox or TomTom traffic automatically when those optional keys are configured. Traffic is cached on your device and refreshed about every 2 minutes while a map is open (hourly on the server) to stay rate-limit friendly; refresh when back online for the latest picture.",
       },
       {
         id: "map-zoom-move-mobile",
@@ -353,12 +353,12 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "map-traffic-legend": {
     question: "Wetin di yellow and red parts for route mean?",
     answer:
-      "Na traffic overlay for di route line: yellow mean medium traffic for dat stretch, red mean heavy traffic, and di green line mean road free. Tap or hover di “i” icon for any route map (or inside live navigation) make you see di legend — e go still tell you whether na live data or estimate from how road take dey be for dat time of day.",
+      "Na traffic overlay for di route line: yellow mean medium traffic for dat stretch, red mean heavy traffic, and di green line mean road free. Tap or hover di “i” icon for any route map (or inside live navigation) make you see di legend — e go still tell you whether na live data or estimate from how road take dey be for dat time of day. Tap di route line itsef make you see dat stretch traffic level, time share, and distance.",
   },
   "map-traffic-duration": {
-    question: "Why route take show two different travel time?",
+    question: "Why route take show time range, and stretches go add up?",
     answer:
-      "Di base time na free-road estimate for di route; di “with traffic” time don add di delay wey di yellow (medium) and red (heavy) stretches go cause. Without any provider keys, Along dey show keyless estimate from how rush-hour take dey be (morning and evening peak) — we go label am as estimate — and e go upgrade to live Mapbox or TomTom traffic by itsef when dem configure di optional keys. Refresh when you come back online make you get di latest.",
+      "Totals dey show as range (e.g. 62–75 min): di lower one na free-road time and di upper one don add delay from yellow (medium) and red (heavy) stretches. Every stretch time dem split am from those same totals, so stretches go always add up reach header — tap any stretch for map make you see im own share. Without provider keys, Along dey show keyless estimate from how rush-hour take dey be (morning and evening peak) — we go label am as estimate — and e go upgrade to live Mapbox or TomTom traffic by itsef when dem configure di optional keys. Traffic dey cached for your device and e dey refresh about every 2 minutes while map dey open (hourly for server) so we no go abuse rate limit; refresh when you come back online make you get di latest.",
   },
   "map-zoom-move-mobile": {
     question: "How I go take zoom and move map for mobile?",
@@ -453,7 +453,7 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "request-location-filtering": {
     question: "Route-request notifications dey based on location? Una dey store my location?",
     answer:
-      "Small — and privacy-safe by design. When you post request, app fit attach one-shot location (your cached fix if you don already grant permission, otherwise di request own start point) wey dem go use ONLY to compute dat one fan-out and dem no dey save am, log am, or show am to anybody. Recipient proximity dem dey check am for server against di optional last-known fix wey members don already share for feed nearby boost — raw coordinates no dey ever show, na only within-radius yes/no dem dey run for memory. If nearby members no reach, or location no dey, notification go fall back to di whole community (followers first, den recent members up to admin cap). Two honest corrections: Along DOES store optional last-known fix per user (e fit empty, na based on consent, dem dey clear am on account deletion) — e no be true say no location data dey stored; and background location for installed app/PWA dey limited, so filtering na optimistic, e no be guarantee. Pesin wey sabi route for elsewhere still dey see every request for feed, Explore, and search.",
+      "Small. When you post request, app fit attach one-shot location (your cached fix if you don already grant permission, otherwise di request own start point) wey dem go use only for dat one fan-out — dem no dey save am, log am, or show am to anybody. Dem dey check proximity for server against di optional last-known fix wey members don already share for feed boost (e fit empty, na based on consent, dem dey clear am on account deletion); raw coordinates no dey ever show. If nearby members no reach, or location no dey, request go simply go whole community — and filtering na best-effort for installed apps, so every request still dey show for feed, Explore, and search.",
   },
   "notification-preferences": {
     question: "How I go take choose which notifications I dey receive?",

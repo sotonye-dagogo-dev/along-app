@@ -67,6 +67,21 @@ export interface PostActionsConfig {
   commentEditLabel: string;
   commentEditSuccess: string;
   commentEditError: string;
+  // --- Post-card detail navigation (metadata-driven). Title already links;
+  // route/description text links too so the whole textual body expands to the
+  // detail view. Tags + maps keep their own actions (excluded by design).
+  detailTextLinksEnabled: boolean;
+  detailDescriptionClass: string;
+  detailRouteStepClass: string;
+  // --- Post-card navigation quick link (metadata-driven). Rendered only for
+  // route-bearing posts (never ROUTE_REQUEST — requests have no guide).
+  // Deep-links to the detail view with ?navigate=1 so the live navigation
+  // overlay opens on arrival.
+  navigateLabel: string;
+  navigateAriaLabel: string;
+  navigateParam: string;
+  navigateClass: string;
+  navigatePath: (postId: string) => string;
 }
 
 export const POST_ACTIONS_CONFIG: PostActionsConfig = {
@@ -131,4 +146,15 @@ export const POST_ACTIONS_CONFIG: PostActionsConfig = {
   commentEditLabel: "Edit comment",
   commentEditSuccess: "Comment updated",
   commentEditError: "Couldn't save your comment. Please try again.",
+  detailTextLinksEnabled: true,
+  detailDescriptionClass:
+    "text-sm text-text-secondary mt-1 line-clamp-3 no-underline hover:underline cursor-pointer",
+  detailRouteStepClass:
+    "text-sm font-medium text-text-primary no-underline hover:underline cursor-pointer",
+  navigateLabel: "Navigate",
+  navigateAriaLabel: "Open navigation guide",
+  navigateParam: "navigate",
+  navigateClass:
+    "inline-flex items-center gap-1.5 text-xs font-semibold text-primary no-underline hover:underline",
+  navigatePath: (postId: string) => `/posts/${encodeURIComponent(postId)}?navigate=1`,
 };

@@ -4,13 +4,16 @@
  * location inputs ("use my current location" autofill).
  */
 
+import { LOCATION_FEEDBACK_CONFIG } from "@/app/lib/config/locationFeedback";
+import { speedForVehicle } from "@/app/lib/config/journeyTime";
+
 export interface GeoPoint {
   lat: number;
   lng: number;
 }
 
 const EARTH_RADIUS_KM = 6371;
-const AVG_URBAN_SPEED_KMH = 22; // danfo/keke/bus mixed traffic
+const AVG_URBAN_SPEED_KMH = 22; // danfo/keke/bus mixed traffic (legacy fallback — vehicle-aware callers pass a mode)
 
 function toRad(deg: number): number {
   return (deg * Math.PI) / 180;
@@ -30,8 +33,13 @@ export interface RouteEstimate {
   durationMins: number;
 }
 
-/** Instant, offline-friendly straight-line estimate for a pin sequence. */
-export function estimateRoute(points: GeoPoint[]): RouteEstimate {
+/**
+ * Instant, offline-friendly straight-line estimate for a pin sequence.
+ * Non-breaking vehicle-aware extension: pass a vehicle key (e.g. "trekking",
+ * "bike", "boat", "train") to estimate at that mode's speed; omitted →
+ * the legacy mixed-traffic average.
+ */
+export function estimateRoute(points: GeoPoint[], vehicle?: string | null): RouteEstimate {
   if (points.length < 2) return { distanceKm: 0, durationMins: 0 };
   let total = 0;
   for (let i = 1; i < points.length; i++) {
@@ -39,7 +47,16 @@ export function estimateRoute(points: GeoPoint[]): RouteEstimate {
   }
   // Road travel is typically ~1.3x straight-line distance
   const distanceKm = Math.round(total * 1.3 * 10) / 10;
-  const durationMins = Math.max(1, Math.round((distanceKm / AVG_URBAN_SPEED_KMH) * 60));
+  let speedKmh = AVG_URBAN_SPEED_KMH;
+  try {
+    if (typeof vehicle === "string" && vehicle.trim().length > 0) {
+      const s = speedForVehicle(vehicle);
+      if (Number.isFinite(s) && s > 0) speedKmh = s;
+    }
+  } catch {
+    // Fall back to the legacy average.
+  }
+  const durationMins = Math.max(1, Math.round((distanceKm / speedKmh) * 60));
   return { distanceKm, durationMins };
 }
 
@@ -47,8 +64,6 @@ export function estimateRoute(points: GeoPoint[]): RouteEstimate {
 export function traceSignature(points: GeoPoint[]): string {
   return points.map((p) => `${p.lat.toFixed(3)},${p.lng.toFixed(3)}`).join(">");
 }
-
-import { LOCATION_FEEDBACK_CONFIG } from "@/app/lib/config/locationFeedback";
 
 /** Resolves the browser geolocation fix. Rejects with a friendly message. */
 export function getCurrentPosition(timeoutMs = 8000): Promise<GeoPoint & { accuracy?: number }> {

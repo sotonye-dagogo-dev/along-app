@@ -1,7 +1,7 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: location-aware fan-out + notification preferences)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -901,3 +901,38 @@ Ephemeral request location + already-collected feed-boost fix gives nearby relev
 - Prefs-gated push follows automatically (same recipient list drives `fanOutPush`); email-channel prefs remain future work.
 **Supersedes:** None (extends the Sprint 62 community-audience decision).
 **Superseded by:** None
+
+**Decision:** (1) Post-card textual body navigates to detail: `POST_ACTIONS_CONFIG.detailTextLinksEnabled` (+ token link classes) drives PostCard description + route-step text Links to the encoded `postPath`; tags + mini-map keep their own actions and are never wrapped. (2) Response linkage is explicitly dismissible: `SHARE_ROUTE_MODAL_CONFIG.responseBannerDismissLabel/Title` + optional `ShareRouteModal.onClearResponse` — the banner X unlinks the request without closing the modal and without touching user input; edit-mode linkage stays immutable (no X). (3) Vehicle light-theme labels deepen `-800` → `-900` on the existing `-100` washes (dark variants untouched).
+**Reason:**
+Whole-body text navigation matches user expectation (title-only links read as broken); an inescapable response mode forced modal-close to change intent, risking drafted work — dismissal preserves input while freeing the composer for another post/draft. Darkening text (rather than reworking washes/borders) was the directive's suggested minimal fix and maximises contrast against both badge wash and card surface.
+**Alternatives Considered:**
+- **Wrapping the entire card in a link**: Rejected — action buttons, tag links, map interactions and the lightbox inside the card would become nested-interactive violations.
+- **Clearing title/tags on dismiss**: Rejected — destructive to user input; only linkage drops, and post-dismiss drafts simply carry no linkage.
+- **Reworking badge backgrounds/borders for contrast**: Rejected as over-broad — the Sprint 61 wash/border system already works; the residual gap was label grade only.
+**Supersedes:** None (extends the Sprint 61 visibility decision: `-100` wash + border system kept, label grade `-800` → `-900`).
+**Superseded by:** None
+
+**Decision:** (1) The navigation map is a second viewport onto the SAME route data, not a second route: `LiveNavigationModal.trafficOverride` receives the post detail page's single traffic result and forwards it as the inner map's `trafficOverride` (trace polyline was already shared) — one lookup, identical colors, zero re-retrieval; omission preserves legacy self-fetch. (2) Expanded map layers above the live modal (`MAP_EXPAND_CONFIG` z-[70] over the modal's z-[60]) rather than disabling Expand inside the guide; `RouteMap.expandable` (default true) exists for future full-container callers. (3) Tracing tooltips are depth-graded by rate cost: `mapTooltips.ts` registry + `RouteMap.tooltipMode` auto|detailed|mini (auto follows `showTraffic`) — detailed stretch tooltips (level + per-stretch ETA via level delayFactor + distance share + live/estimated note) on traffic-bearing maps, mini quick-link tooltips (post title + View-post/Navigate links, zero fetches) on feed cards; taps resolve via an invisible wide hit line + `interactiveLayerIds` (clicked traffic layer → nearest chunk → stretch marker), never throwing.
+**Reason:**
+Duplicate traffic lookups double upstream cost and let the two surfaces disagree mid-refetch; a shared object converges both. The "vanishing" expansion was pure layering (z-50 dialog behind a z-60 modal), so layering — not removal — is the minimal fix. Feed cards intentionally skip per-card traffic (fan-out), so their tooltip must link out rather than fetch; per-stretch ETA reuses the server's own delay factors so the slice always agrees with the shown total.
+**Alternatives Considered:**
+- **Disabling Expand inside the live modal**: Rejected — the directive asked for expansion to work, and the modal map is not always maximized (mobile shows 38% map); layering fixes all cases with one token change.
+- **Mini tooltips fetching on demand**: Rejected — tap-to-fetch per card reintroduces the fan-out the `showTraffic={false}` policy was built to prevent; the quick links route users to surfaces that already hold the data.
+- **Per-stretch server round-trip for ETA**: Rejected — the client already holds base duration + level factors; a new endpoint would add latency, cost, and a second source of truth for the same number.
+**Supersedes:** None (extends the Sprint 58 traffic-overlay decision: provider chain + legend kept, surfaces now share one result; extends the 2026-10-11 expansion-containment decision: contained dialog kept, z raised above the live modal).
+**Superseded by:** None
+
+**Decision:** (1) A "stretch" is the route leg between consecutive stops (origin→stop→destination), not a traffic chunk: `mapTooltips.ts` leg helpers (`pinBordersOnRoute` monotonic borders on the snapped trace → `legIndexForCoord`/`legBounds`) resolve each tap to its leg; the leg's traffic is the worst overlapping chunk and its time/distance are polyline-length shares of the route totals — so a 4-leg post yields four distinct tooltips. (2) Stretch cards anchor AT the tap (`lngLat`, not the segment midpoint) with "Stretch N of M" + "A → B" labels, so the card is always where the finger landed. (3) Every summary bar funnels through `mapSummary.ts` guards — `shouldShowTrafficAdjusted` requires finite + positive + different base/adjusted (a loading `0` never renders "0 min with traffic"), per-chip `isValid*` hides independently, `totalFareForSteps` (destination excluded) is the single fare total for composer preview + detail overlay + guide header, and the live guide shows remaining (not total) adjusted-vs-base plus remaining-km that shrink as the user advances.
+**Reason:**
+Chunk shares are equal by construction (≤12 even slices), so chunk tooltips converge to the same numbers on multi-leg posts; only leg resolution varies with the stops the user actually tapped. Midpoints of long highway legs sit far from the tap, forcing the reported hunt — tap-anchoring removes the search. The "0 min" flash was a loading-state leak (hook keeps last-good `null` → service `adjusted 0` vs base 66 passes a naive `!==` check); positivity + finiteness closes it without touching the fetch pipeline. Remaining (not total) is the honest live figure once navigation has started.
+**Alternatives Considered:**
+- **Per-leg server round-trip for leg ETA/distance**: Rejected — the client already holds the snapped polyline (length shares), the base duration, and the level delay factors; a new endpoint adds latency/cost and a second source of truth.
+- **Hiding the whole bar while traffic loads**: Rejected — distance/fare are already known; only the traffic suffix waits, so per-chip guards keep the bar useful during retrieval.
+- **Midpoint anchoring with auto-pan**: Rejected — panning the map to a distant midpoint disorients the user; rendering where they tapped needs no camera move.
+**Supersedes:** Extends the Sprint 68 tooltip decision (chunk → leg resolution, midpoint → tap anchor; registry kept, helpers added).
+**Superseded by:** None
+
+## Sprint 70 decisions (2026-10-16)
+
+**Decision:** Journey totals render as a range (free-flow base – with-traffic adjusted) and per-stretch times split from those same bounds via largest-remainder apportionment, so stretches sum to the header by construction. Geometry-scoped traffic cache keys (pins+vehicle, never base) with `rebaseTrafficResult` rescaling minutes locally — a base change (pins estimate → road-snapped trace) never triggers a redundant rate-limited lookup.
+**Decision:** Traffic client freshness = 300s fresh + 600s stale-while-revalidate + 120s background refresh while mounted, over the hourly server bucket. "Somewhat live" without hammering the maps rate-limit bucket; revisits within seconds render the last good overlay instantly.

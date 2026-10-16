@@ -1,16 +1,24 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
-import { Plus, Trash2, Sparkles, GripVertical, ChevronUp, ChevronDown, Pencil, Check, X, RotateCcw, Settings2 } from "lucide-react"
+import Link from "next/link"
+import { Plus, Trash2, Sparkles, GripVertical, ChevronUp, ChevronDown, Pencil, Check, X, RotateCcw, Settings2, Mail, Newspaper, ArrowRight } from "lucide-react"
 import { AppInput, AppButton } from "@/app/components/ui"
 import {
   inferConfigKind,
   ADMIN_SIMPLE_CONFIG_CARDS,
   ADMIN_DEDICATED_CONFIG_KEYS,
+  ADMIN_STUDIO_LINKS,
   getAdminConfigDefault,
   type AdminSimpleCardMeta,
   type AdminConfigSource,
 } from "@/app/lib/config/admin"
+
+/** Icon twin for each studio link — Lucide-only, metadata-keyed (never emoji). */
+const STUDIO_LINK_ICONS = {
+  "/admin/email": Mail,
+  "/admin/blog": Newspaper,
+} as const
 import { toastService } from "@/app/lib/services/toastService"
 import { modalService } from "@/app/lib/services/modalService"
 import {
@@ -554,8 +562,9 @@ export default function AdminConfigPage() {
 
   /**
    * Raw-list rows: only ad-hoc keys. Every shipped default has a dedicated
-   * no-code card above (Early Adopters / Feed Diversity / simple cards), so
-   * the raw JSON list never duplicates them — one editor per key.
+   * no-code card above (Early Adopters / Feed Diversity / simple cards) and
+   * studio-managed keys (blog + email) render as studio link cards instead,
+   * so the raw JSON list never duplicates them — one editor per key.
    */
   const dedicatedKeys = useMemo(
     () => new Set<string>(ADMIN_DEDICATED_CONFIG_KEYS as unknown as string[]),
@@ -718,6 +727,40 @@ export default function AdminConfigPage() {
           </AppButton>
         </div>
       </div>
+
+      {/*
+        Studio-managed sections (blog + email) render as link cards, never
+        as editors: the Email/Blog Studios ship visual builders, previews,
+        and send flows the generic page cannot offer. Metadata-driven via
+        ADMIN_STUDIO_LINKS — future studios join by appending one entry.
+      */}
+      {ADMIN_STUDIO_LINKS.map((studio) => {
+        const StudioIcon = STUDIO_LINK_ICONS[studio.href]
+        const managed = studio.keys
+          .map((k) => rowFor(k))
+          .filter((r): r is SiteConfigItem => !!r)
+        const customized = managed.filter((r) => r.source === "customized").length
+        return (
+          <div key={studio.href} className="bg-bg-card border border-border radius-lg p-5 shadow-xs mb-6">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <StudioIcon size={16} className="text-primary shrink-0" />
+              <h3 className="text-sm font-semibold">{studio.title}</h3>
+              {customized > 0 && (
+                <span title={`${customized} saved override${customized === 1 ? "" : "s"} live in the studio`} className="text-[10px] font-semibold px-1.5 py-0.5 radius-pill bg-info text-info-text border border-info-border uppercase shrink-0">
+                  Customized
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-text-secondary mb-4">{studio.description}</p>
+            <Link
+              href={studio.href}
+              className="inline-flex items-center gap-1.5 px-3 py-2 radius-md bg-primary text-white text-xs font-semibold no-underline hover:bg-primary-light transition-colors duration-fast"
+            >
+              {studio.ctaLabel} <ArrowRight size={13} />
+            </Link>
+          </div>
+        )
+      })}
 
       {ADMIN_SIMPLE_CONFIG_CARDS.map((meta) => (
         <SimpleConfigCard

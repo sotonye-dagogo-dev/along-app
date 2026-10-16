@@ -3,7 +3,7 @@
 import { useState, useReducer, useContext, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, ClipboardList, Reply, Archive, MessagesSquare } from "lucide-react"
+import { Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, ClipboardList, Reply, Archive, MessagesSquare, Navigation } from "lucide-react"
 import { AppCard, AppUserLabel, TrustBadge, VehicleChip, ImageLightbox } from "@/app/components/ui"
 import { PostMenu, type PostMenuPost } from "@/app/components/features/moderation"
 import { PostCardFollow } from "./PostCardFollow"
@@ -278,6 +278,12 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
 
   const cardVariant = post.isPlatformGen ? "suggestion" : "default"
   const trustLevel = (post.validityTier as "low" | "developing" | "verified" | "trusted") ?? "developing"
+  // Detail navigation (metadata-driven via POST_ACTIONS_CONFIG): title already
+  // linked; description + route-step text link too. Tags + maps keep their own
+  // actions and are never wrapped. stopPropagation keeps card-level handlers
+  // (where present) from double-firing.
+  const detailHref = POST_ACTIONS_CONFIG.postPath(post.id)
+  const textLinksEnabled = POST_ACTIONS_CONFIG.detailTextLinksEnabled !== false
 
   return (
     <AppCard variant={cardVariant} hover className={post.isPlatformGen ? "" : ""}>
@@ -374,14 +380,25 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
 
       <div className="px-4 pb-2">
         <Link
-          href={`/posts/${post.id}`}
+          href={detailHref}
           onClick={(e) => e.stopPropagation()}
           className="text-lg font-semibold text-text-primary no-underline hover:underline"
         >
           {post.title}
         </Link>
-        {post.description && (
-          <p className="text-sm text-text-secondary mt-1 line-clamp-3">{post.description}</p>
+        {post.description && textLinksEnabled ? (
+          <Link
+            href={detailHref}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`View details for ${post.title}`}
+            className={`block ${POST_ACTIONS_CONFIG.detailDescriptionClass}`}
+          >
+            {post.description}
+          </Link>
+        ) : (
+          post.description && (
+            <p className="text-sm text-text-secondary mt-1 line-clamp-3">{post.description}</p>
+          )
         )}
       </div>
 
@@ -421,11 +438,33 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
                 {index + 1}
               </div>
               <div className="flex-1 min-w-0">
-                {step.location && (
-                  <div className="text-sm font-medium text-text-primary truncate">{step.location}</div>
+                {step.location && textLinksEnabled ? (
+                  <Link
+                    href={detailHref}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`View details for ${post.title}`}
+                    className={`block truncate ${POST_ACTIONS_CONFIG.detailRouteStepClass}`}
+                  >
+                    {step.location}
+                  </Link>
+                ) : (
+                  step.location && (
+                    <div className="text-sm font-medium text-text-primary truncate">{step.location}</div>
+                  )
                 )}
-                {step.description && (
-                  <div className="text-xs text-text-secondary mt-0.5">{step.description}</div>
+                {step.description && textLinksEnabled ? (
+                  <Link
+                    href={detailHref}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`View details for ${post.title}`}
+                    className="block text-xs text-text-secondary mt-0.5 no-underline hover:underline cursor-pointer"
+                  >
+                    {step.description}
+                  </Link>
+                ) : (
+                  step.description && (
+                    <div className="text-xs text-text-secondary mt-0.5">{step.description}</div>
+                  )
                 )}
                 {!step.location && !step.description && (
                   <span className="text-sm text-text-muted italic">Stop {index + 1}</span>
@@ -487,9 +526,27 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             showOverlay={false}
             // Feed mini-maps stay light: no per-card traffic lookup (avoids
             // a fan-out of traffic requests per feed page). Full traffic
-            // overlay lives on the post detail map + live navigation.
+            // overlay lives on the post detail map + live navigation. Taps
+            // on the tracing show a quick-link tooltip instead.
             showTraffic={false}
+            tooltipMode="mini"
+            detailHref={detailHref}
+            navigateHref={POST_ACTIONS_CONFIG.navigatePath(post.id)}
+            postTitle={post.title}
           />
+          {/* Quick link to the navigation/route guide (route-bearing posts
+              only — never on ROUTE_REQUEST cards, which have no guide).
+              Deep-links to the detail view with ?navigate=1 so the live
+              navigation overlay opens on arrival. */}
+          <Link
+            href={POST_ACTIONS_CONFIG.navigatePath(post.id)}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`${POST_ACTIONS_CONFIG.navigateAriaLabel} for ${post.title}`}
+            className={`mt-1.5 ${POST_ACTIONS_CONFIG.navigateClass}`}
+          >
+            <Navigation size={13} aria-hidden />
+            {tf("post.navigate", POST_ACTIONS_CONFIG.navigateLabel)}
+          </Link>
         </div>
       )}
 

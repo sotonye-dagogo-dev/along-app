@@ -120,8 +120,20 @@ export {
 } from "./earlyAdopter";
 export type { EarlyAdopterConfig } from "./earlyAdopter";
 export { RATE_LIMITS } from "./rateLimits";
-export { TRAFFIC_CONFIG, levelForCongestion, heuristicCongestion, adjustDurationForLevels, hasTomtomKey } from "./traffic";
-export type { TrafficConfig, TrafficLevel, TrafficLevelMeta, TrafficProvider } from "./traffic";
+export { TRAFFIC_CONFIG, levelForCongestion, heuristicCongestion, adjustDurationForLevels, remapTrafficSegments, rebaseTrafficResult, trafficClientKey, hasTomtomKey } from "./traffic";
+export type { TrafficConfig, TrafficLevel, TrafficLevelMeta, TrafficProvider, RemappableTrafficSegment } from "./traffic";
+export {
+  JOURNEY_TIME_CONFIG,
+  speedForVehicle,
+  trafficSensitivityForVehicle,
+  shouldRecomputeFromDistance,
+  estimateDurationMins,
+  legTrafficFactor,
+  adjustDurationForVehicleAndTraffic,
+  dominantVehicleForSteps,
+  resolveJourneyDuration,
+} from "./journeyTime";
+export type { JourneyVehicleMeta, JourneyTimeConfig, JourneyStepLike } from "./journeyTime";
 export { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES, cooldownKeyFor, attemptsKeyFor, maskEmail } from "./authVerification";
 export type { AuthVerificationConfig } from "./authVerification";
 export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";
@@ -136,8 +148,8 @@ export { EMAIL_MANAGEMENT_CONFIG, EMAIL_BUILDER_CONFIG, isSystemTemplate, parseM
 export type { EmailTemplateRecord, EmailRecipientSelection, EmailRecipientMode } from "./emailManagement";
 export { EMAIL_DEFAULT_VARIABLES, EMAIL_ICONS, composeEmailDocument, composeEmailText } from "./email";
 export { getEffectiveEnv, isProduction, isDevelopment, getAppUrl, resolveDatabaseUrl } from "./env";
-export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, ADMIN_USER_FILTERS, ADMIN_USER_ROW_ACTIONS, ADMIN_TABLE_ACTIONS_META, SITE_CONFIG_EDITORS, ADMIN_CONFIG_DEFAULTS, ADMIN_SIMPLE_CONFIG_CARDS, ADMIN_DEDICATED_CONFIG_KEYS, inferConfigKind, formatDelta, parseAdminDashboardPeriod, parseAdminUserFilter, deletionQueryForFilter, isDeletedAdminUser, allowedUserRowActions, canShowUserRowAction, getAdminConfigDefault, mergeAdminConfigsWithDefaults, validateAdminConfigValue } from "./admin";
-export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId, AdminDashboardPeriod, AdminUserFilterId, AdminUserRowActionId, AdminUserDeletionState, AdminConfigDefault, AdminConfigSource, MergedAdminConfig, AdminSimpleFieldMeta, AdminSimpleCardMeta } from "./admin";
+export { ADMIN_LAYOUT_CONFIG, ADMIN_METRICS_META, ADMIN_BULK_SELECT_META, ADMIN_DASHBOARD_PERIODS, ADMIN_USER_DELETION_META, ADMIN_USER_FILTERS, ADMIN_USER_ROW_ACTIONS, ADMIN_TABLE_ACTIONS_META, SITE_CONFIG_EDITORS, ADMIN_CONFIG_DEFAULTS, ADMIN_SIMPLE_CONFIG_CARDS, ADMIN_DEDICATED_CONFIG_KEYS, ADMIN_STUDIO_MANAGED_KEYS, ADMIN_STUDIO_LINKS, inferConfigKind, formatDelta, parseAdminDashboardPeriod, parseAdminUserFilter, deletionQueryForFilter, isDeletedAdminUser, allowedUserRowActions, canShowUserRowAction, getAdminConfigDefault, mergeAdminConfigsWithDefaults, validateAdminConfigValue } from "./admin";
+export type { SiteConfigFieldKind, SiteConfigEditorMeta, AdminBulkActionId, AdminDashboardPeriod, AdminUserFilterId, AdminUserRowActionId, AdminUserDeletionState, AdminConfigDefault, AdminConfigSource, MergedAdminConfig, AdminSimpleFieldMeta, AdminSimpleCardMeta, AdminStudioLinkMeta } from "./admin";
 export { VALIDATION_RULES } from "./validationRules";
 export {
   PROFILE_VALIDATION_CONFIG,

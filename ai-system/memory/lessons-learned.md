@@ -1,7 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 63: ephemeral-fix location filtering, NULL-means-on prefs, legacy-row normalize)
+> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: card-link exits, dismissible response mode, grade-class contract tests)
 P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -859,3 +859,45 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Fix pattern (reuse):** persist the last server-confirmed session as a TTL-bounded display-only snapshot (hydrated synchronously, cleared only on genuine 401/logout, never used for authorization); for prefix registries always register the BARE path ("/api/posts" covers both "/api/posts?…" and "/api/posts/…") and add a regression test hitting the query form directly. Protected pages stay out of install precache (redirect poisoning) and are advertised as runtime-cached with honest copy.
 - **Supersedes:** None
 - **Superseded by:** None
+
+## Sprint 67 (2026-10-16): traffic indices belong to a geometry generation; car-trace durations lie for non-car modes
+- **Symptom:** "traffic colors vanish after the map re-traces" — plus "my trek is timed like a taxi".
+- **Root causes:** (1) traffic chunks are index ranges into the coord list the lookup ran on; when the tracer swaps a 2-point pins line for a 200-point road trace, stale indices collapse onto a head sliver and the overlay reads as gone. (2) OSRM/Mapbox durations assume cars, and the estimate helper had one speed for every mode — so slow/rail/water legs inherited driving times and road-traffic delays they never experience.
+- **Fix pattern (reuse):** index-based overlays must REMAP fractionally onto new geometry lengths (share-of-route, not absolute indices) and the fetching hook must KEEP the last good result during refetch — persistence is a renderer contract, not a fetch-speed race. Mode-aware timing = one zero-dep registry (speed + traffic-sensitivity per vehicle, immune modes at 0) with pure helpers, destination legs excluded from the dominant-mode vote, unknown modes falling back to full road behaviour; slow/rail/water recompute from traced DISTANCE while road modes trust trace duration.
+- **Supersedes:** None (extends Sprint 58 traffic entry: provider chain kept, duration math now mode-scaled).
+- **Superseded by:** None
+- **Symptom:** "route text doesn't open the post" — plus "I opened Respond by mistake and can't get back to a normal share without closing everything", plus vehicle flags still thin in light theme after the Sprint 61 wash/border fix.
+- **Root causes:** (1) only the title carried a detail href — body text was inert by omission, not by design. (2) response linkage had entry points (Respond CTA, draft restore, edit fallback) but no exit — `responseTo` was parent-owned or post-derived with no clearing path. (3) `-800` labels were "dark" but one grade shy of max contrast on tinted washes; the test asserted the literal grade (`/-800/`), so the correct fix broke the suite.
+- **Fix pattern (reuse):** card text navigation = wrap text nodes in the canonical encoded path with stopPropagation, never the whole card (nested-interactive rule); every modal mode needs a config-labeled exit that drops linkage but preserves input (parent-owned state clears via optional callback, derived state via a local gate — edit-immutable modes get no exit); contract tests should assert the GRADE CLASS (`/-(800|900)/`, "dark-grade label") not the literal token, so contrast deepening never fights the suite.
+- **Supersedes:** None (extends Sprint 61 visibility entry: wash/border system kept, label grade deepened).
+- **Superseded by:** None
+
+## Sprint 68 (2026-10-16): a shared viewport must share the object, not re-derive it; modal stacking needs a z-contract
+- **Symptom:** "nav map loses traffic/tracings the detail map has" — plus "expanded map vanishes from the guide", plus "no per-stretch info on taps".
+- **Root causes:** (1) the nav map received the DERIVED duration (`trafficAdjustedMins`) but not the SOURCE result — with `trafficOverride` undefined it self-fetched, doubling cost and diverging mid-refetch. (2) the expand dialog (z-50) rendered behind the live modal (z-[60]) — invisible, not broken. (3) tracings had no hit interaction; the visible line (~3.5px) is untappable on mobile regardless.
+- **Fix pattern (reuse):** when two surfaces show one route, pass the fetched OBJECT down (optional-override prop, legacy self-fetch when omitted) — never pass only its derivatives and let each surface refetch. Keep a documented z-contract for floating layers (page < expand dialog < live modal < expand dialog needs top: z-[70] here — record the ordering where the values live). Tap interaction on thin geometry = invisible wide hit line + interactive layer ids, resolving click → layer/nearest-chunk → anchored marker; tooltips grade by rate cost (full where data exists, link-out where fetching is banned) with pure never-throw helpers and stale-tip clearing on geometry swap.
+- **Supersedes:** None
+- **Superseded by:** None
+
+## Sprint 69 (2026-10-16): chunk tooltips converge — resolve legs; zero is loading, not data
+- **Symptom:** "same tooltip on every stretch of a 4-stretch post + have to hunt for the card" — plus "0 min with traffic (was 1h 6m)", plus detail bar missing fare.
+- **Root causes:** (1) tooltips sliced the GEOMETRY (≤12 even traffic chunks), not the ROUTE (legs between stops) — equal slices yield equal shares, so every tap agreed. (2) cards anchored at chunk midpoints, potentially screens away from the finger. (3) traffic-adjusted rendered on naive `!==` — the loading state (`adjusted 0` vs base 66) passes it; the detail map never received a fare prop at all, and the share preview formatted `0` as `₦0`.
+- **Fix pattern (reuse):** domain units over geometry units — resolve taps to legs via pin borders on the snapped trace (monotonic, ends pinned), worst-level for the leg, length-share (haversine, not point-count) for time/distance; anchor markers at `lngLat`. Treat `0`/`null`/`NaN` in summary bars as "not yet known" — centralise in one guard module (`shouldShowTrafficAdjusted` + per-chip `isValid*`) so every bar (detail, nav, preview, guide) hides the same way; single `totalFareForSteps` (destination excluded) for every total.
+- **Supersedes:** Extends the Sprint 68 entry (chunk → leg, midpoint → tap anchor).
+- **Superseded by:** None
+
+## Independent rounding breaks total/stretch consistency
+
+**Context:** Header showed one traffic-adjusted figure while each stretch tooltip rounded independently — sums drifted ±1 min per leg and exceeded the header.
+**What We Learned:** Split displayed parts from the displayed total with largest-remainder apportionment (`splitMinsByWeights`) instead of rounding each part independently; render the total as the range the parts sum to (`formatDurationRange`).
+**Apply When:** Any UI shows a total alongside per-part breakdowns (times, fares, distances).
+**Supersedes:** None
+**Superseded by:** None
+
+## Memory-only caches lose overlays across remounts
+
+**Context:** Traffic cached in memory keyed by sig+base+mode vanished when users exited and returned within seconds (base changed or state reset), while the base tracing rendered fine.
+**What We Learned:** Persist overlay data to localStorage with the same TTL, key by geometry (not derived values like the base duration), re-derive display values locally on hit, and serve stale-while-revalidate with silent failure so the last good result outlives flaky networks.
+**Apply When:** Caching any derived overlay whose inputs settle in stages (estimate → trace) or whose fetch can fail while the base layer succeeds.
+**Supersedes:** None
+**Superseded by:** None
