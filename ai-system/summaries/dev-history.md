@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 68: navigation-guide map parity + tracing tooltips)
-P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 71: location input power-ups)
+> P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,33 @@ P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module
 ---
 
 ## History
+
+## 2026-10-17 — Execute-Feature: Location Input Power-Ups (Sprint 71)
+
+**Summary:**
+Location fields only recognised bare `lat, lng` pairs, could not resolve Plus Codes (Open Location Codes), and house-numbered addresses often blanked when fast geocoders missed them. Paren/bracket-wrapped coordinates now parse; Plus Codes decode fully offline (Nominatim/Photon do not support them — verified upstream); short codes recover against the viewer bias; house-numbered queries get a round-2 stripped retry plus an Overpass `addr:housenumber` scan. All config-driven, keyless-first, never-throw; client still never hits upstreams.
+
+**Completed:**
+- Paren-aware `parseCoordinateQuery` (`(6.5244, 3.3792)`, `[...]`); existing range guards unchanged
+- Offline OLC stack in `locationSuggestions.ts` (`classifyPlusCode`/`decodePlusCode`/`encodePlusCode`/`recoverNearestPlusCode`/`parsePlusCodeQuery`) ported from google/open-location-code (Apache-2.0), 60/60 official vector checks green
+- `geocodeForward`: intent pins (coords + `plus-codes`), bounded reverse-geocode label in parallel with fast providers, short-code recovery via `near`, round-2 numeric-address fallback (`stripLeadingHouseNumber` + `geocodeViaOverpassAddress`)
+- Config copy: `locationPlaceholder`/`locationEmptyStateHint`/`numericAddressFallback`/`plusCodeProviderName`; ShareRouteModal/RouteStepInput/RequestRouteModal wired
+- NEW `app/__tests__/config/locationIntent.test.ts` (22 assertions)
+
+**Key Changes:**
+- Edited: `app/lib/config/locationSuggestions.ts`, `app/lib/services/mapProxyService.ts`, ShareRouteModal/RouteStepInput/RequestRouteModal placeholders
+- New: `app/__tests__/config/locationIntent.test.ts`
+
+**QA gate (this runner — node_modules installed):**
+- `npx tsc --noEmit` — 0 errors
+- `npx jest` — 95/95 suites, 838/838 tests
+- `npm run build` — clean
+- `npm run lint` — exit 1 from pre-existing `no-explicit-any` in untouched `app/api/posts/feed/route.ts` + `app/api/suggestions/route.ts`; 0 errors in touched files
+
+**Next Sprint Focus:**
+Optional: short-code recovery via a locality token when no viewer bias is granted; FAQ note on plus-code support if users ask.
+
+---
 
 ## 2026-10-16 — Execute-Feature: Vehicle-Aware Journey Times + Persistent Traffic Overlay + Post-Card Navigate Link (Sprint 67)
 

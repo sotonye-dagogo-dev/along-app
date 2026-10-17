@@ -1,7 +1,6 @@
-# In Progress — idle (FAQ sanitization closed 2026-10-16)
+# In Progress — idle (location input power-ups closed 2026-10-17)
 
-> No active work. Last task: sanitized recent FAQs in `app/lib/config/faq.ts`
-> (en + pidgin) — concise 1–3-sentence answers, no provider names
-> (Mapbox/TomTom gone), no implementation internals; privacy/terms/README
-> untouched. Full QA green in-runner (tsc 0 errors, jest 94/94 suites 816/816).
-> See `session-log.md`.
+> No active work. Last task: Sprint 71 — paren-aware coordinates, offline
+> Plus Code (OLC) decode + short-code recovery, numeric-address round-2
+> recall. Full QA green in-runner (tsc 0 errors, jest 95/95 suites 838/838,
+> next build clean; lint pre-existing anys only). See `session-log.md`.

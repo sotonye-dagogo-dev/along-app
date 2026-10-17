@@ -1274,7 +1274,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                           onChange={(e) => handleGeoInput(index, e.target.value)}
                           onFocus={() => setStepExtra(index, { _focused: true })}
                           onBlur={() => setTimeout(() => setStepExtra(index, { _focused: false }), 160)}
-                          placeholder="Search location..."
+                          placeholder={LOCATION_SUGGESTIONS_CONFIG.locationPlaceholder}
                           aria-label={index === 0 ? "Origin location" : index === steps.length - 1 ? "Destination location" : `Stop ${index} location`}
                           aria-invalid={Boolean(fieldErrors.steps[index]?.location)}
                           className={`w-full h-10 pl-[34px] pr-3 py-2.5 border radius-sm text-sm font-sans outline-none transition-colors duration-fast bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted ${fieldErrorClass(Boolean(fieldErrors.steps[index]?.location))}`}
@@ -1311,7 +1311,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                             ))}
                             {(step._geoResults ?? []).length === 0 && !step._geoLoading && !step._locating && (
                               <div className="px-3 py-2 text-xs text-text-muted">
-                                Type to search places, or use your current location
+                                {LOCATION_SUGGESTIONS_CONFIG.locationEmptyStateHint}, or use your current location
                               </div>
                             )}
                           </div>
