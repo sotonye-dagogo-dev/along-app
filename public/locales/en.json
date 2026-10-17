@@ -268,5 +268,10 @@
   "avatar.menu.hint": "Pick a style, seed & background",
   "avatar.menu.camera": "Avatar options",
   "requestRoute.label": "Request a route",
-  "requestRoute.shortLabel": "Request"
+  "requestRoute.shortLabel": "Request",
+  "siteNotice.maintenanceTitle": "Under maintenance",
+  "siteNotice.maintenanceBody": "Along is undergoing maintenance right now. Reading still works — posting and saving are paused until we're back.",
+  "siteNotice.maintenanceAdminNote": "Admin tools stay available to you during maintenance.",
+  "siteNotice.announcementLabel": "Announcement",
+  "siteNotice.dismiss": "Dismiss notice"
 }

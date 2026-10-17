@@ -54,9 +54,11 @@ export function EmailSecurityPanel({ onChanged }: Props) {
         if (linkRes.ok) setStatus(await linkRes.json());
         if (meRes.ok) {
           const d = await meRes.json();
-          const u = d.user ?? d;
-          setVerified(typeof u.verified === "boolean" ? u.verified : null);
-          setEmail(u.email ?? "");
+          const u = d && typeof d === "object" && "user" in d ? d.user : d;
+          if (u && typeof u === "object") {
+            setVerified(typeof u.verified === "boolean" ? u.verified : null);
+            setEmail(u.email ?? "");
+          }
         }
       } catch { /* ignore */ }
       finally { setLoading(false); }

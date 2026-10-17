@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/app/providers/ThemeProvider";
 import { I18nProvider } from "@/app/providers/I18nProvider";
 import ThemeToggle from "@/app/components/ui/ThemeToggle";
 import BackToTop from "@/app/components/ui/BackToTop";
+import { SiteNotices } from "@/app/components/ui/SiteNotices";
 import { OfflineBanner } from "@/app/components/pwa/OfflineBanner";
 import { PwaNotices } from "@/app/components/pwa/PwaNotices";
 import { ServiceWorkerRegistrar } from "@/app/components/pwa/ServiceWorkerRegistrar";
@@ -118,8 +119,6 @@ export default function RootLayout({
         <Script id="resource-hints" strategy="afterInteractive">
           {`
             const hints = [
-              { rel: "preconnect", href: "https://fonts.googleapis.com" },
-              { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
               ${MAP_STACK_CONFIG.preconnectHosts
                 .map((h) => `{ rel: "preconnect", href: ${JSON.stringify(h)} },`)
                 .join("\n              ")}
@@ -141,6 +140,7 @@ export default function RootLayout({
                   <GlobalModalProvider>
                     <GlobalToastProvider>
                       <CookieConsentProvider>
+                        <SiteNotices />
                         {children}
                         <ThemeToggle />
                         <BackToTop />

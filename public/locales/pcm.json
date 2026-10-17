@@ -268,5 +268,10 @@
   "avatar.menu.hint": "Pick style, seed & background",
   "avatar.menu.camera": "Avatar options",
   "requestRoute.label": "Request route",
-  "requestRoute.shortLabel": "Request"
+  "requestRoute.shortLabel": "Request",
+  "siteNotice.maintenanceTitle": "We dey do maintenance",
+  "siteNotice.maintenanceBody": "Along dey do maintenance right now. You fit still read — posting and saving don hold small till we come back.",
+  "siteNotice.maintenanceAdminNote": "Admin tools still dey work for you while maintenance dey go on.",
+  "siteNotice.announcementLabel": "Important notice",
+  "siteNotice.dismiss": "Close am"
 }
