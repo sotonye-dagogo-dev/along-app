@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 68: navigation-guide map parity + tracing tooltips)
-> - last-verified-against-code: 2026-10-16 (tsc 0 errors, jest 91/91 suites 790/790, lint clean on touched files, next build clean; node_modules installed in-runner)
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 71: location input power-ups — paren coords + Plus Codes + numeric-address recall)
+> - last-verified-against-code: 2026-10-17 (tsc 0 errors, jest 95/95 suites 838/838, lint pre-existing anys only, next build clean; node_modules installed in-runner)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,35 @@
 ---
 
 ## Sessions
+
+---
+
+## Session — 2026-10-17 (Sprint 71: location input power-ups — paren coords + Plus Codes + numeric-address recall)
+
+**Completed:**
+- Paren/bracket-aware coordinate fast-path: `parseCoordinateQuery` strips optional `()`/`[]` wrappers so `"(6.5244, 3.3792)"` pins as an exact hit (existing range guards keep postal codes / house numbers / fare ranges off this path)
+- Offline Plus Code (Open Location Code) support: ported google/open-location-code algorithm (Apache-2.0) into `locationSuggestions.ts` (`classifyPlusCode`/`decodePlusCode`/`encodePlusCode`/`recoverNearestPlusCode`/`parsePlusCodeQuery`); full codes resolve without a reference; short codes recover against viewer `near`; provider name `plus-codes`. Verified against official `test_data/{decoding,shortCodeTests,validityTests}.csv` (60/60 vector checks in a node harness before Jest)
+- `geocodeForward` intent layer: coordinate + plus-code pins first; optional bounded reverse-geocode label (parallel with fast providers, same provider name, silent on failure) so users see a human place name next to the raw pin
+- Numeric-address recall (round-2 only, merge-empty gate): `stripLeadingHouseNumber` retry of fast providers + NEW `geocodeViaOverpassAddress` (`addr:housenumber` + `addr:street`, labels without `name`); happy-path cost/latency unchanged
+- Config-driven copy: `LOCATION_SUGGESTIONS_CONFIG` += `numericAddressFallback`/`plusCodeProviderName`/`locationPlaceholder`/`locationEmptyStateHint`; ShareRouteModal/RouteStepInput/RequestRouteModal placeholders + empty-state wired
+- QA full in-runner: `npm install` ok, `npx tsc --noEmit` 0 errors, `npx jest` 95/95 suites 838/838 tests (was 94/94 + 816/816; +22 in NEW `locationIntent.test.ts`), `npm run build` clean; lint exit 1 is pre-existing `no-explicit-any` in untouched `app/api/posts/feed/route.ts` + `app/api/suggestions/route.ts` (0 errors in touched files)
+
+**Files Modified:**
+- Edited: `app/lib/config/locationSuggestions.ts` (paren coords, OLC helpers, strip house number, config fields), `app/lib/services/mapProxyService.ts` (intent pins, reverse enrich, plus-code, overpass address), `app/components/features/posts/{ShareRouteModal,RouteStepInput,RequestRouteModal}.tsx` (placeholder/empty-state from config)
+- New: `app/__tests__/config/locationIntent.test.ts`
+- Docs: task-queue (Sprint 71), dev-history (Sprint 71), this log, test-results, project-decisions, system-architecture (Maps row), in-progress reset
+
+**Next Task:**
+Optional short-code recovery via a locality token when no viewer bias is granted; FAQ note on plus-code support if users ask.
+
+**Assumptions Made:**
+- Keyless providers do not resolve plus codes (Nominatim #914 closed out-of-scope, Photon says handle client-side) — local decode is the correct approach, not an upstream call.
+- Short codes without `near` stay unpinned (guessing a hemisphere is worse than falling through to providers).
+- Numeric-address + reverse-label enrichment only run when the fast merge is empty / in parallel respectively — never on the happy path.
+
+**Notes / Blockers:**
+- `npm install` already present from prior sessions; no package.json changes.
+- Chain: execute-feature Step 5 → update-ai-system deep sync executed in this session.
 
 ---
 

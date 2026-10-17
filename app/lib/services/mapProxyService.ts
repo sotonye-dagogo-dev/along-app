@@ -11,7 +11,9 @@ import {
 import {
   LOCATION_SUGGESTIONS_CONFIG,
   parseCoordinateQuery,
+  parsePlusCodeQuery,
   reorderQueryTokens,
+  stripLeadingHouseNumber,
 } from "@/app/lib/config/locationSuggestions";
 
 /**
@@ -527,6 +529,85 @@ async function geocodeViaOverpass(query: string, limit: number): Promise<MapGeoc
   return hits.length > 0 ? hits : null;
 }
 
+function overpassAddressLabel(tags: OverpassTags): string | null {
+  const street = typeof tags["addr:street"] === "string" ? tags["addr:street"].trim() : "";
+  const num = typeof tags["addr:housenumber"] === "string" ? tags["addr:housenumber"].trim() : "";
+  if (!street && !num) return null;
+  const name = typeof tags.name === "string" ? tags.name.trim() : "";
+  if (name) return overpassLabel(tags);
+  const line1 = [num, street].filter(Boolean).join(" ");
+  const rest = [tags["addr:suburb"], tags["addr:city"], tags["addr:state"], tags["addr:country"]]
+    .filter((s): s is string => typeof s === "string" && s.length > 0)
+    .join(", ");
+  const label = rest ? `${line1}, ${rest}` : line1;
+  return label ? label.slice(0, 220) : null;
+}
+
+/**
+ * Keyless Overpass address recall for house-numbered queries the fast index
+ * providers miss ("2 Pockock Street"). Matches `addr:housenumber` +
+ * `addr:street` on OSM nodes/ways/relations. Round-2 only — never on the
+ * happy path. Never throws.
+ */
+async function geocodeViaOverpassAddress(
+  houseNumber: string,
+  street: string,
+  limit: number
+): Promise<MapGeocodeHit[] | null> {
+  const num = houseNumber.trim().slice(0, 12);
+  const streetSafe = escapeOverpassRegex(street.trim().slice(0, 60));
+  if (!num || !streetSafe) return null;
+  const cap = Math.min(Math.max(limit, 1), LANDMARK_GEOCODE_CONFIG.overpassMaxElements);
+  const timeout = LANDMARK_GEOCODE_CONFIG.overpassTimeoutSec;
+  const ql =
+    `[out:json][timeout:${timeout}];(` +
+    `nwr["addr:housenumber"="${num.replace(/"/g, "")}"]["addr:street"~"${streetSafe}",i];` +
+    `);out center ${cap};`;
+  let data: { elements?: OverpassElement[] } | null = null;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+    try {
+      const res = await fetch(`${MAP_STACK_CONFIG.upstreams.overpass}/interpreter`, {
+        method: "POST",
+        headers: {
+          "User-Agent": MAP_STACK_CONFIG.serverIdentity.userAgent,
+          Referer: MAP_STACK_CONFIG.serverIdentity.referer,
+          Accept: "application/json",
+          "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+        },
+        body: `data=${encodeURIComponent(ql)}`,
+        signal: controller.signal,
+      });
+      if (!res.ok) return null;
+      data = (await res.json()) as { elements?: OverpassElement[] };
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch {
+    return null;
+  }
+  const elements = data?.elements;
+  if (!Array.isArray(elements) || elements.length === 0) return null;
+  const hits: MapGeocodeHit[] = [];
+  for (const el of elements.slice(0, cap)) {
+    try {
+      const tags = el.tags;
+      if (!tags) continue;
+      const label = overpassAddressLabel(tags);
+      const lat = typeof el.lat === "number" ? el.lat : el.center?.lat;
+      const lon = typeof el.lon === "number" ? el.lon : el.center?.lon;
+      if (!label || typeof lat !== "number" || typeof lon !== "number") continue;
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
+      hits.push({ display_name: label, lat: String(lat), lon: String(lon), provider: "overpass" });
+    } catch {
+      continue;
+    }
+  }
+  return hits.length > 0 ? hits : null;
+}
+
 /** Dedup key: normalized label + coords rounded to ~100m (same place, all providers). */
 export function geocodeDedupKey(hit: MapGeocodeHit): string {
   const lat = Number(hit.lat);
@@ -555,13 +636,17 @@ export function rankGeocodeHits(hits: MapGeocodeHit[], near?: MapPin | null): Ma
  * Forward geocode via server proxy — broad by design. The fast keyless
  * providers fire in PARALLEL (one shared budget each) and hits merge +
  * dedupe into one suggestion list, so a place buried in one source still
- * surfaces from another. `lat, lng` coordinate queries resolve to an exact
- * pin hit first (providers rarely answer raw coordinates). When the fast
- * merge is empty, ONE fallback batch runs Overpass (last-resort landmark
- * scan) plus a token-reorder retry of the fast providers (order-tolerant
- * input like "Nigeria Lagos"). Optionally re-ranked near the viewer's
- * position when `near` is supplied (nearby first, never filtered).
- * Never throws.
+ * surfaces from another. Explicit location intents are pinned first:
+ * - `lat, lng` (optionally parenthesised) → exact pin, plus an optional
+ *   bounded reverse-geocode label for a human-readable place name.
+ * - Plus Code (Open Location Code, full or short) → offline local decode;
+ *   short codes recover against the viewer bias (`near`).
+ * When the fast merge is empty, ONE fallback batch runs Overpass
+ * (landmark scan + house-numbered address recall), a token-reorder retry
+ * and a house-number-stripped retry of the fast providers (order- and
+ * number-tolerant input like "Nigeria Lagos" / "2 Pockock Street").
+ * Optionally re-ranked near the viewer's position when `near` is supplied
+ * (nearby first, never filtered). Never throws.
  */
 export async function geocodeForward(query: string, limit = LOCATION_SUGGESTIONS_CONFIG.limit, near?: MapPin | null): Promise<MapGeocodeHit[]> {
   const q = query.trim().slice(0, LOCATION_SUGGESTIONS_CONFIG.maxQueryLength);
@@ -586,22 +671,37 @@ export async function geocodeForward(query: string, limit = LOCATION_SUGGESTIONS
       merged.push(h);
     }
   };
-  // Coordinate fast-path: raw "lat, lng" input is an exact pin — surface it
-  // first (labelled with what the user typed) and still merge provider hits
-  // after it. Range-gated by parseCoordinateQuery, so postal codes and
-  // house numbers never take this path.
+  const budget = LOCATION_SUGGESTIONS_CONFIG.providerTimeoutMs;
+  const coordName = LOCATION_SUGGESTIONS_CONFIG.coordinateProviderName;
+  const plusName = LOCATION_SUGGESTIONS_CONFIG.plusCodeProviderName;
+  // Location intents — exact user input, pinned ahead of provider hits.
+  // Coordinate fast-path: raw "lat, lng" (optionally parenthesised) is an
+  // exact pin. Range-gated by parseCoordinateQuery, so postal codes and
+  // house numbers never take this path. Plus codes decode offline (keyless
+  // providers do not resolve them); short codes recover against `near`.
   const coords = parseCoordinateQuery(q);
-  if (coords) {
-    pushAll([
-      {
+  const plusPin = parsePlusCodeQuery(q, near && Number.isFinite(near.lat) && Number.isFinite(near.lng) ? near : null);
+  const intentPin: MapGeocodeHit | null = coords
+    ? {
         display_name: q,
         lat: String(coords.lat),
         lon: String(coords.lng),
-        provider: LOCATION_SUGGESTIONS_CONFIG.coordinateProviderName,
-      },
-    ]);
-  }
-  const budget = LOCATION_SUGGESTIONS_CONFIG.providerTimeoutMs;
+        provider: coordName,
+      }
+    : plusPin
+      ? {
+          display_name: plusPin.code,
+          lat: String(plusPin.lat),
+          lon: String(plusPin.lng),
+          provider: plusName,
+        }
+      : null;
+  // Bounded reverse enrich for coordinate/plus-code intents — parallel with
+  // the fast providers so the happy path pays no extra latency. Failure is
+  // silent: the raw pin alone is still a valid suggestion.
+  const reverseEnrich: Promise<string | null> = intentPin
+    ? bounded(() => geocodeReverse(Number(intentPin.lat), Number(intentPin.lon)), budget)
+    : Promise.resolve(null);
   const runProvider = (name: MapGeocodeProvider, text: string): Promise<MapGeocodeHit[] | null> => {
     if (name === "nominatim") return bounded(() => geocodeViaNominatim(text, safeLimit, near), budget);
     if (name === "photon") return bounded(() => geocodeViaPhoton(text, safeLimit, near), budget);
@@ -618,10 +718,28 @@ export async function geocodeForward(query: string, limit = LOCATION_SUGGESTIONS
   const round1Order = LOCATION_SUGGESTIONS_CONFIG.overpassFallbackOnly
     ? fastOrder
     : MAP_STACK_CONFIG.geocodeOrder;
-  const round1 = await Promise.all(round1Order.map((name) => runProvider(name, q)));
+  const [round1, reverseLabel] = await Promise.all([
+    Promise.all(round1Order.map((name) => runProvider(name, q))),
+    reverseEnrich,
+  ]);
+  // Intent pins first (raw pin, then optional reverse label), then providers.
+  if (intentPin) {
+    pushAll([intentPin]);
+    if (typeof reverseLabel === "string" && reverseLabel.length > 0) {
+      pushAll([
+        {
+          display_name: reverseLabel,
+          lat: intentPin.lat,
+          lon: intentPin.lon,
+          provider: intentPin.provider,
+        },
+      ]);
+    }
+  }
   round1.forEach(pushAll);
   // Round 2 — only when nothing merged: Overpass fallback + token-reorder
-  // retry in ONE parallel batch (single extra budget, never two).
+  // retry + house-number-stripped address recall in ONE parallel batch
+  // (single extra budget, never two).
   if (merged.length === 0) {
     const round2: Promise<MapGeocodeHit[] | null>[] = [];
     if (LOCATION_SUGGESTIONS_CONFIG.overpassFallbackOnly && MAP_STACK_CONFIG.geocodeOrder.includes("overpass")) {
@@ -631,18 +749,38 @@ export async function geocodeForward(query: string, limit = LOCATION_SUGGESTIONS
     if (reordered) {
       for (const name of fastOrder) round2.push(runProvider(name, reordered));
     }
+    // Numeric-address recall: "2 Pockock Street" → retry fast providers with
+    // "Pockock Street" and an Overpass addr:housenumber/addr:street scan.
+    // Config-gated and merge-empty-only, so the happy path is unchanged.
+    if (LOCATION_SUGGESTIONS_CONFIG.numericAddressFallback) {
+      const numericMatch = /^(\d{1,6})\s+(.+)$/.exec(q);
+      const stripped = stripLeadingHouseNumber(q);
+      if (numericMatch && stripped) {
+        for (const name of fastOrder) round2.push(runProvider(name, stripped));
+        if (MAP_STACK_CONFIG.geocodeOrder.includes("overpass")) {
+          round2.push(
+            bounded(
+              () => geocodeViaOverpassAddress(numericMatch[1], numericMatch[2], safeLimit),
+              budget
+            )
+          );
+        }
+      }
+    }
     if (round2.length > 0) {
       const round2Hits = await Promise.all(round2);
       round2Hits.forEach(pushAll);
     }
   }
-  // Explicit coordinates are exact user intent — pin them first even when a
-  // viewer bias would otherwise rank nearer provider hits above them.
-  const coordName = LOCATION_SUGGESTIONS_CONFIG.coordinateProviderName;
+  // Explicit coordinates / plus codes are exact user intent — pin them first
+  // even when a viewer bias would otherwise rank nearer provider hits above
+  // them. Short plus codes that could not be recovered (no `near`) fall
+  // through to provider hits only.
+  const pinned = new Set([coordName, plusName]);
   const ranked = rankGeocodeHits(merged, near);
   const finalHits = [
-    ...ranked.filter((h) => h.provider === coordName),
-    ...ranked.filter((h) => h.provider !== coordName),
+    ...ranked.filter((h) => pinned.has(h.provider)),
+    ...ranked.filter((h) => !pinned.has(h.provider)),
   ].slice(0, safeLimit);
   try {
     // Empty merges cache SHORT (OSM gains places daily; a 30-day empty
