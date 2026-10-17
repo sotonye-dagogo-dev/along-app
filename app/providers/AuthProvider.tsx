@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useEffect, useState, useCallback, useRef } from "react";
+import { createContext, useEffect, useLayoutEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toastService } from "@/app/lib/services/toastService";
 import {
@@ -8,6 +8,13 @@ import {
   writeAuthSnapshot,
   clearAuthSnapshot,
 } from "@/app/lib/config/authOffline";
+
+// Layout effect on the client, no-op on the server: the offline snapshot is
+// applied after hydration but before paint, so the signed-in identity shows
+// on first paint (no guest-banner flash) without a server/client markup
+// divergence (React #418 structural mismatch from a sync useState initializer).
+const useIsoLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type User = {
   id: string;
@@ -42,16 +49,23 @@ type AuthContextValue = {
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Hydrate synchronously from the last server-confirmed session so an
-  // offline reload keeps the signed-in identity (no guest-banner flash) even
-  // before /api/auth/me can respond. Display-only: APIs still validate the
-  // httpOnly cookie server-side.
-  const [user, setUser] = useState<User | null>(() => readAuthSnapshot() as User | null);
-  // When we boot from a snapshot we are *not* loading the identity — only
+  // Start guest/anonymous on the server and on the client's first render —
+  // identical markup, no hydration mismatch. The last server-confirmed
+  // session is applied in the isomorphic layout effect below (post-hydration,
+  // pre-paint), so an offline reload still boots signed-in with no
+  // guest-banner flash. Display-only: APIs validate the httpOnly cookie.
+  const [user, setUser] = useState<User | null>(null);
+  // Booting from a snapshot means we are *not* loading the identity — only
   // revalidating it. Starting unblocked keeps offline first paint signed-in.
-  const [isLoading, setIsLoading] = useState<boolean>(() => readAuthSnapshot() === null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const router = useRouter();
   const fetchingRef = useRef(false);
+
+  useIsoLayoutEffect(() => {
+    const snapshot = readAuthSnapshot() as User | null;
+    if (snapshot) setUser(snapshot);
+    setIsLoading(snapshot === null);
+  }, []);
 
   const fetchUser = useCallback(async (retried = false) => {
     if (fetchingRef.current) return;
@@ -61,19 +75,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         try {
           const data = await res.json();
-          const next = (data.user ?? data) as User;
-          setUser(next);
-          // Server-confirmed — refresh the offline snapshot.
-          writeAuthSnapshot({
-            id: next.id,
-            userName: next.userName,
-            firstName: next.firstName,
-            lastName: next.lastName,
-            email: next.email,
-            avatar: next.avatar,
-            avatarConfig: next.avatarConfig ?? null,
-            role: next.role,
-          });
+          // `{ user }` envelope (incl. the guest `{ user: null }` response)
+          // or a bare user object — never `data.user ?? data`, which would
+          // promote the whole envelope to a "user" when user is null.
+          const next = (
+            data && typeof data === "object" && "user" in data ? data.user : data
+          ) as User | null;
+          if (next && typeof next === "object" && "id" in next) {
+            setUser(next);
+            // Server-confirmed — refresh the offline snapshot.
+            writeAuthSnapshot({
+              id: next.id,
+              userName: next.userName,
+              firstName: next.firstName,
+              lastName: next.lastName,
+              email: next.email,
+              avatar: next.avatar,
+              avatarConfig: next.avatarConfig ?? null,
+              role: next.role,
+            });
+          } else {
+            // Server-confirmed signed-out (guest) — drop any stale snapshot.
+            setUser(null);
+            clearAuthSnapshot();
+          }
         } catch {
           // Non-JSON response (e.g. gateway timeout HTML) — transient, keep session.
           console.warn("[AuthProvider] /api/auth/me non-JSON — transient, session kept");

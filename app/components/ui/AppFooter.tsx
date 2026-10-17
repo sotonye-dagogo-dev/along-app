@@ -61,7 +61,9 @@ export function AppFooter() {
 
         <div className="text-center pt-4 border-t border-border">
           <p className="text-xs text-text-muted">
-            &copy; {new Date().getFullYear()} Along. {tLink("footer.rights", "All rights reserved.")}
+            &copy;{" "}
+            <span suppressHydrationWarning>{new Date().getFullYear()}</span> Along.{" "}
+            {tLink("footer.rights", "All rights reserved.")}
           </p>
           <p className="text-xs opacity-60 hover:opacity-100 transition-opacity duration-base mt-1">
             {tLink("footer.builtBy", "Built by")}{" "}

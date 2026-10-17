@@ -11,7 +11,11 @@ export async function GET() {
     const token = cookieStore.get("access_token")?.value;
 
     if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      // Guest — no session cookie. 200 with a null user (not a 401) so
+      // signed-out browsing never logs console errors or burns the auth
+      // rate-limit bucket on pointless /auth/refresh retries. Invalid /
+      // unknown-user tokens still 401 below (and clear the stale cookies).
+      return NextResponse.json({ user: null }, { status: 200 });
     }
 
     let payload: { userId: string; role: string };

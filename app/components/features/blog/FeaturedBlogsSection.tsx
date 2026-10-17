@@ -26,7 +26,14 @@ function formatDate(raw: string): string {
   try {
     const d = new Date(raw);
     if (Number.isNaN(d.getTime())) return "";
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    // Fixed UTC so the server-rendered text and every client timezone agree
+    // (hydration #418 — locale/timezone-dependent text nodes).
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    });
   } catch {
     return "";
   }
