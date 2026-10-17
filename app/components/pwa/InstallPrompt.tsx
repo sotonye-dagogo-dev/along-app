@@ -57,7 +57,14 @@ export function InstallPrompt() {
   const [collapsed, setCollapsed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  // iOS is read from the UA once after mount — never during render, so the
+  // server and client first paint always match (hydration #418, text nodes).
+  const [isIos, setIsIos] = useState(false);
   const deferredRef = useRef<BeforeInstallPromptEvent | null>(null);
+  // Fresh flag refs for the beforeinstallprompt handler (closure is created
+  // once on mount, long before installed/dismissed state may flip).
+  const installedRef = useRef(false);
+  const dismissedRef = useRef(false);
 
   const copy = PWA_INSTALL_CONFIG.copy;
   const tt = useCallback(
@@ -74,12 +81,19 @@ export function InstallPrompt() {
 
   useEffect(() => {
     try {
+      setIsIos(typeof navigator !== "undefined" && isLikelyIos(navigator.userAgent));
+    } catch {
+      /* generic help — keep false */
+    }
+    try {
       if (isStandaloneDisplay()) {
+        installedRef.current = true;
         setInstalled(true);
         writeLocal(PWA_INSTALL_CONFIG.storage.installedKey, "1");
         return;
       }
       if (readLocal(PWA_INSTALL_CONFIG.storage.installedKey) === "1") {
+        installedRef.current = true;
         setInstalled(true);
         return;
       }
@@ -90,6 +104,7 @@ export function InstallPrompt() {
         dismissedAt > 0 &&
         Date.now() - dismissedAt < PWA_INSTALL_CONFIG.storage.dismissTtlMs
       ) {
+        dismissedRef.current = true;
         setDismissed(true);
       }
     } catch {
@@ -97,16 +112,24 @@ export function InstallPrompt() {
     }
 
     const onBip = (e: Event) => {
-      try {
-        e.preventDefault();
-      } catch {
-        /* some browsers throw when already handled */
+      // Suppress the browser's own mini-infobar only when our deferred card
+      // will actually render — not when already installed or recently
+      // dismissed (Chrome logs "beforeinstallprompt event not shown" if the
+      // prompt is cancelled without a visible candidate UI).
+      const cardWillRender = !installedRef.current && !dismissedRef.current;
+      if (cardWillRender) {
+        try {
+          e.preventDefault();
+        } catch {
+          /* some browsers throw when already handled */
+        }
       }
       const bip = e as BeforeInstallPromptEvent;
       deferredRef.current = bip;
       setDeferred(bip);
     };
     const onInstalled = () => {
+      installedRef.current = true;
       setInstalled(true);
       setDeferred(null);
       deferredRef.current = null;
@@ -135,6 +158,7 @@ export function InstallPrompt() {
   }, []);
 
   const dismiss = useCallback(() => {
+    dismissedRef.current = true;
     setDismissed(true);
     writeLocal(PWA_INSTALL_CONFIG.storage.dismissedAtKey, String(Date.now()));
   }, []);
@@ -154,6 +178,7 @@ export function InstallPrompt() {
         () => ({ outcome: "dismissed" }) as { outcome: "accepted" | "dismissed" },
       );
       if (choice.outcome === "accepted") {
+        installedRef.current = true;
         setInstalled(true);
         writeLocal(PWA_INSTALL_CONFIG.storage.installedKey, "1");
         try {
@@ -186,17 +211,9 @@ export function InstallPrompt() {
   const body = tt("pwa.installBody", copy.body);
   const installLabel = tt("pwa.installCta", copy.install);
   const laterLabel = tt("pwa.installLater", copy.later);
-  let helpLine = copy.manualHelp;
-  try {
-    if (
-      typeof navigator !== "undefined" &&
-      isLikelyIos(navigator.userAgent)
-    ) {
-      helpLine = copy.iosHelp;
-    }
-  } catch {
-    /* keep generic help */
-  }
+  // Derived from the effect-owned flag — the UA is never read in render, so
+  // server HTML and the client's first paint always agree (hydration #418).
+  const helpLine = isIos ? copy.iosHelp : copy.manualHelp;
 
   if (collapsed) {
     return (

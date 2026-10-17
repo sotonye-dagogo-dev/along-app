@@ -54,6 +54,12 @@ const REQUIRED_KEYS = [
   "post.unarchive",
   "requestRoute.label",
   "requestRoute.shortLabel",
+  // Site notices (maintenance + announcement) — must never render raw keys.
+  "siteNotice.maintenanceTitle",
+  "siteNotice.maintenanceBody",
+  "siteNotice.maintenanceAdminNote",
+  "siteNotice.announcementLabel",
+  "siteNotice.dismiss",
 ];
 
 describe("locale parity (en/pcm)", () => {

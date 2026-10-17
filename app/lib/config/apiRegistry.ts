@@ -47,6 +47,7 @@ export const API_REGISTRY: Record<string, ApiEndpoint> = {
   adminUsers: { path: "/api/admin/users/[id]", methods: ["PATCH", "DELETE"], auth: true },
   adminPosts: { path: "/api/admin/posts/[id]", methods: ["PATCH", "DELETE"], auth: true },
   adminConfig: { path: "/api/admin/config", methods: ["GET", "PATCH"], auth: true },
+  siteConfig: { path: "/api/site-config", methods: ["GET"], auth: false },
   accountDeleteRequest: { path: "/api/account/delete-request", methods: ["POST"], auth: true },
   accountCancelDeletion: { path: "/api/account/cancel-deletion", methods: ["POST"], auth: true },
   accountDeletionStatus: { path: "/api/account/deletion-status", methods: ["GET"], auth: true },

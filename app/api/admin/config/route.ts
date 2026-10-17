@@ -2,13 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { redis } from "@/app/lib/db/redis";
-import { CACHE_KEYS } from "@/app/lib/config/cache";
+import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config/cache";
 import {
   ADMIN_CONFIG_DEFAULTS,
   getAdminConfigDefault,
   mergeAdminConfigsWithDefaults,
   validateAdminConfigValue,
 } from "@/app/lib/config/admin";
+import {
+  SITE_NOTICE_CONFIG,
+  normalizeMaintenanceFlag,
+} from "@/app/lib/config/siteNotice";
+
+const MAINTENANCE_KEY = SITE_NOTICE_CONFIG.siteConfigKeys.maintenance;
+
+/**
+ * Maintenance writes prime the cache (same JSON-string shape getSiteConfig
+ * stores) instead of merely invalidating it, so the middleware enforcement
+ * memo sees the fresh flag within its TTL window even before any banner
+ * poll re-reads the DB.
+ */
+async function syncMaintenanceCache(value: boolean): Promise<void> {
+  try {
+    await redis.set(
+      CACHE_KEYS.siteConfig(MAINTENANCE_KEY),
+      JSON.stringify(value),
+      { ex: CACHE_TTL.siteConfig },
+    );
+  } catch {
+    /* best-effort — the middleware memo TTL still bounds staleness */
+  }
+}
 
 export async function GET() {
   try {
@@ -82,10 +106,16 @@ export async function PUT(request: NextRequest) {
       } catch {
         /* already at default — nothing to remove */
       }
-      try {
-        await redis.del(CACHE_KEYS.siteConfig(restoreKey));
-      } catch {
-        /* best-effort */
+      if (restoreKey === MAINTENANCE_KEY) {
+        await syncMaintenanceCache(
+          normalizeMaintenanceFlag(getAdminConfigDefault(restoreKey)?.defaultValue),
+        );
+      } else {
+        try {
+          await redis.del(CACHE_KEYS.siteConfig(restoreKey));
+        } catch {
+          /* best-effort */
+        }
       }
       try {
         const { logAudit } = await import("@/app/lib/services/auditService");
@@ -123,11 +153,16 @@ export async function PUT(request: NextRequest) {
       create: { key, value },
     });
 
-    // Invalidate the siteConfig read-through cache so admin edits apply now.
-    try {
-      await redis.del(CACHE_KEYS.siteConfig(key));
-    } catch {
-      /* best-effort */
+    // Apply the edit now: maintenance is primed (see syncMaintenanceCache),
+    // every other key is invalidated so the read-through cache re-fetches.
+    if (key === MAINTENANCE_KEY) {
+      await syncMaintenanceCache(normalizeMaintenanceFlag(value));
+    } else {
+      try {
+        await redis.del(CACHE_KEYS.siteConfig(key));
+      } catch {
+        /* best-effort */
+      }
     }
 
     try {
@@ -171,10 +206,14 @@ export async function DELETE(request: NextRequest) {
       /* already absent — still a successful delete */
     }
 
-    try {
-      await redis.del(CACHE_KEYS.siteConfig(key));
-    } catch {
-      /* best-effort */
+    if (key === MAINTENANCE_KEY) {
+      await syncMaintenanceCache(false);
+    } else {
+      try {
+        await redis.del(CACHE_KEYS.siteConfig(key));
+      } catch {
+        /* best-effort */
+      }
     }
 
     return NextResponse.json({ success: true }, { status: 200 });

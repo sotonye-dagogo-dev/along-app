@@ -18,6 +18,7 @@ import {
   encodeRow,
   encodeValue,
   rowToParams,
+  toColumnParam,
   toParam,
   type PgTypeRegistry,
 } from "@/scripts/lib/dbTransfer/codec";
@@ -110,6 +111,12 @@ describe("encodeValue / toParam round trip", () => {
     expect(toParam(decodeValue(encodeValue(undefined)))).toBe(null);
   });
 
+  it("canonicalizes floating-point display noise across PostgreSQL providers", () => {
+    expect(canonicalRowString([6.431321621211683])).toBe(
+      canonicalRowString([6.43132162121168]),
+    );
+  });
+
   it("survives NaN and Infinity, which JSON and pg would silently turn into null", () => {
     const nan = encodeValue(Number.NaN);
     expect(nan).toEqual({ $n: "NaN" });
@@ -169,15 +176,27 @@ describe("encodeValue / toParam round trip", () => {
     expect(toParam(decodeValue(encoded))).toEqual(["x", null, "z"]);
   });
 
+  it("binds empty JSON arrays as JSON text instead of PostgreSQL array literals", () => {
+    expect(toColumnParam([], { jsonArray: true })).toBe("[]");
+    expect(rowToParams([{ $r: [] }], { jsonArray: true })).toEqual(["[]"]);
+    expect(toParam([])).toEqual([]);
+  });
+
   it("round-trips a Json column through JSON text", () => {
     const value = { nested: { a: 1 }, list: [1, 2], flag: false };
     const encoded = encodeValue(value);
-    expect(encoded).toEqual({ $j: JSON.stringify(value) });
+    expect(encoded).toEqual({ $j: '{"flag":false,"list":[1,2],"nested":{"a":1}}' });
 
     // The bind parameter must be JSON TEXT, which Postgres then parses.
     const decoded = toParam(decodeValue(encoded));
     expect(typeof decoded).toBe("string");
     expect(JSON.parse(decoded as string)).toEqual(value);
+  });
+
+  it("canonicalizes nested JSON object key order for cross-provider hashes", () => {
+    expect(encodeValue({ b: { z: 1, a: 2 }, a: 3 })).toEqual({
+      $j: '{"a":3,"b":{"a":2,"z":1}}',
+    });
   });
 
   it("falls back to JSON text for an array containing structured cells", () => {

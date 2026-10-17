@@ -63,6 +63,9 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
   const [failure, setFailure] = useState<PushSubscribeReason | null>(null);
   const [unsupported, setUnsupported] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  // iOS is read from the UA once after mount — never during render, so the
+  // server and client first paint always match (hydration #418, text nodes).
+  const [isIos, setIsIos] = useState(false);
 
   const copy = PUSH_PROMPT_CONFIG.copy;
   // Opaque token surface (light + dark): solid card fill + info border +
@@ -74,6 +77,9 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
     try {
       if (typeof Notification !== "undefined") setPermission(Notification.permission);
     } catch { /* ignore */ }
+    try {
+      setIsIos(typeof navigator !== "undefined" && isLikelyIos(navigator.userAgent));
+    } catch { /* generic help — keep false */ }
     setLocallyEnabled(readLocal(PUSH_PROMPT_CONFIG.storage.enabledKey) === "1");
     const dismissedAt = Number(readLocal(PUSH_PROMPT_CONFIG.storage.dismissedAtKey) ?? "0");
     if (dismissedAt > 0 && Date.now() - dismissedAt < PUSH_PROMPT_CONFIG.storage.dismissTtlMs) {
@@ -169,10 +175,9 @@ export function PushManager({ variant = "inline" }: { variant?: "inline" | "floa
             : failure === null
               ? null
               : copy.failed;
-  const helpLine =
-    typeof navigator !== "undefined" && isLikelyIos(navigator.userAgent)
-      ? copy.iosHelp
-      : copy.deniedHelp;
+  // Derived from the effect-owned flag — the UA is never read in render, so
+  // server HTML and the client's first paint always agree (hydration #418).
+  const helpLine = isIos ? copy.iosHelp : copy.deniedHelp;
 
   // Floating variant: fixed bottom card on the transient lane (above the
   // install/offline lanes), collapsible to a pill so it never blocks

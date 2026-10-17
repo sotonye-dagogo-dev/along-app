@@ -17,8 +17,9 @@ if (dsn) {
         // Performance monitoring — capture 10 % of traces in production
         tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
 
-        // Session replay — 10 % of sessions, 100 % on error
-        replaysSessionSampleRate: 0.1,
+        // Session replay — 2 % of sessions (was 10 %), 100 % on error.
+        // Lowered to cut envelope volume during deploys (ingest 429s).
+        replaysSessionSampleRate: 0.02,
         replaysOnErrorSampleRate: 1.0,
 
         integrations: [Sentry.replayIntegration()],

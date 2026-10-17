@@ -172,7 +172,7 @@ export default async function LandingPage() {
     getPublicBlogPosts().catch(() => []),
   ]);
   const featuredBlogs = pickFeaturedBlogs(blogPosts);
-  const regionLabel = stats.regions.length > 0 ? stats.regions.join(" · ") : "Lagos · Abuja · Port Harcourt";
+  const regionLabel = stats.regions.length > 0 ? stats.regions.join(" · ") : "Nigeria";
   return (
     <>
       <StructuredData data={websiteSchema()} />
