@@ -1,25 +1,24 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: fix-build 2026-10-11 (explore avatarConfig type + leaderboard competition ranking, static-only — no node_modules)
-> - last-verified-against-code: 2026-10-11
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 71: location intent power-ups)
+> - last-verified-against-code: 2026-10-17
 > - staleness-policy: overwritten on every test run — always current
 
-> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 309 tests currently exist across 36 suites (verified by a real `npx jest --ci` run in this session 2026-10-09: 36 passed, 309 passed — Sprint 25).
+> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 838 tests currently exist across 95 suites (verified by a real `npx jest` run in this session 2026-10-17).
 
 ---
 
 ## Last Run (Build)
 
-**Date:** 2026-10-09
-**Run by:** AI agent (opencode — execute-feature Sprint 25)
+**Date:** 2026-10-17
+**Run by:** AI agent (opencode — execute-feature Sprint 71)
 
 **Build Result:**
-- `npx tsc --noEmit` — ✓ zero errors (real run this session, after `npm install`; 2 session errors fixed: reviews.test helper typing, `useState<number>` rating)
-- `npx jest --ci` — 309/309 passing (36 suites, real run this session: +1 reviews suite, +4 pwa cases, +32 locale keys)
-- `npx next build` — ✓ compiled successfully (real run this session; `/api/reviews` GET+POST present, LandingCopy islands, profile reviews tabs)
-- `npx next lint` — zero new issues (1 pre-existing `Medal` unused-var warning in untouched leaderboard import; pre-existing `no-explicit-any` errors in untouched files)
-- `node --check public/sw.js` — OK; python locale parity 235/235, 0 interpolation mismatches
+- `npx tsc --noEmit` — ✓ zero errors (real run this session, after `npm install`)
+- `npx jest` — 838/838 passing (95 suites, real run this session: +1 locationIntent suite with 22 tests covering paren coords, OLC vectors, plus-code pins, numeric-address recall)
+- `npm run build` — ✓ compiled successfully (real run this session)
+- `npm run lint` — exit 1 from pre-existing `no-explicit-any` in untouched `app/api/posts/feed/route.ts` + `app/api/suggestions/route.ts`; 0 errors in touched files (ShareRouteModal only has a pre-existing useMemo warning)
 - Zero test failures
 
 ---
@@ -38,6 +37,7 @@
 | AppUserLabel | 7 | name, handle, linkToProfile, verified badge, sizes, vertical layout |
 | TrustBadge | 6 | all 4 levels, tooltip hover, showTooltip=false, sm/default sizes |
 | mutations API | 20 | posting, liking, commenting, bookmarking, following incl. error handling + undefined/null edge cases (`mutations.test.ts`, Sprint 7, Prisma mocked) |
+| locationIntent | 22 | paren coords, OLC classify/decode/encode/recover vectors, plus-code pins, reverse enrich, numeric-address + overpass-addr recall (Sprint 71) |
 | posts API | 11 | POST persistence (type/description/quotedPostId), fan-out, validation (`posts.test.ts`, Sprint 7, Prisma mocked) |
 | search API | 9 | validation, type/region/postType filters, pagination, 503, 429 (`search.test.ts`, search session, Prisma mocked) |
 | searchService | 8 | normalization, short-query guard, cache read-through, tag aggregation, cursor, P2022 retry (`searchService.test.ts`, search session, Prisma mocked) |

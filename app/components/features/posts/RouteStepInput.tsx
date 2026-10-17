@@ -29,7 +29,7 @@ interface RouteStepInputProps {
 function RouteStepInput({
   value,
   onChange,
-  placeholder = 'Search location...',
+  placeholder = LOCATION_SUGGESTIONS_CONFIG.locationPlaceholder,
   type = 'waypoint',
   disabled = false,
 }: RouteStepInputProps) {

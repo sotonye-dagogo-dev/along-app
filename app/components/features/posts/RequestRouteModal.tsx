@@ -327,7 +327,7 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
                   onChange={(e) => { setFrom(e.target.value); queueLocFetch(e.target.value, "from"); }}
                   onFocus={() => setFromFocused(true)}
                   onBlur={() => setTimeout(() => setFromFocused(false), 160)}
-                  placeholder="Starting point"
+                  placeholder={LOCATION_SUGGESTIONS_CONFIG.locationPlaceholder}
                   maxLength={120}
                   autoComplete="off"
                   aria-label="Starting point (location suggestions appear as you type)"
@@ -372,7 +372,7 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
                   onChange={(e) => { setTo(e.target.value); queueLocFetch(e.target.value, "to"); }}
                   onFocus={() => setToFocused(true)}
                   onBlur={() => setTimeout(() => setToFocused(false), 160)}
-                  placeholder="Destination"
+                  placeholder={LOCATION_SUGGESTIONS_CONFIG.locationPlaceholder}
                   maxLength={120}
                   autoComplete="off"
                   aria-label="Destination (location suggestions appear as you type)"

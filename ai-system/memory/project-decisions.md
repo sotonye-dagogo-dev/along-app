@@ -810,6 +810,22 @@ Sequential awaiting turned provider latency into missing results; parallelism re
 **Supersedes:** None (extends the Sprint 50 merged-geocode decision).
 **Superseded by:** None
 
+## Decision 2026-10-17 (Sprint 71): offline Plus Codes + paren coords + round-2 numeric-address recall
+**Context:** users paste coordinates with parentheses from map apps, share Plus Codes (Open Location Codes) that free keyless providers do not resolve, and type house-numbered addresses that the fast index providers miss.
+**Decision:** (1) `parseCoordinateQuery` accepts optional `()`/`[]` wrappers. (2) Plus Codes are decoded offline via a port of google/open-location-code (Apache-2.0) in `locationSuggestions.ts` — full codes pin without a reference; short codes recover against viewer `near` only (no hemisphere guessing); provider name `plus-codes`. (3) `geocodeForward` optionally reverse-geocodes coordinate/plus-code pins in parallel for a human label (raw pin stays first; failure silent). (4) House-numbered queries get a round-2-only fallback (merge-empty gate): strip leading number → retry fast providers + Overpass `addr:housenumber`/`addr:street` scan. All config-driven (`numericAddressFallback`, placeholder/empty-state copy); client never hits upstreams.
+**Reason:**
+Nominatim/Photon explicitly do not support plus codes (upstream issues closed/out-of-scope) — local decode is the correct keyless approach, not a new provider. Parentheses are common paste artefacts. Reverse enrichment costs nothing on the happy path (parallel race). Numeric-address recall is gated so the hot path latency contract (parallel fan-out + one fallback batch) is unchanged.
+**Alternatives Considered:**
+- **Upstream plus-code lookup**: Rejected — no keyless free provider supports it.
+- **Always reverse-geocode coordinates (sequential)**: Rejected — would add latency to the coordinate fast-path; parallel + silent-failure keeps the pin-first contract.
+- **Round-1 numeric-address strip**: Rejected — would fire extra provider legs on every house-number keystroke; merge-empty gate preserves the Sprint 50 latency budget.
+**Implications:**
+- New exact-intent classes (coords, plus codes) pin via the same `pinned` Set in `geocodeForward` — future intent providers add one name + one pin builder.
+- OLC helpers are pure/config-free and unit-tested against official vectors — safe to reuse for share/encode later.
+- Clients must keep using `LOCATION_SUGGESTIONS_CONFIG.locationPlaceholder` / `locationEmptyStateHint` — no hardcoded "Search location..." strings.
+**Supersedes:** None (extends the Sprint 50/13 merged-geocode + coordinate fast-path decisions).
+**Superseded by:** None
+
 ## Decision 2026-10-13 (Sprint 52): report audit on a new `report` entity; parser contract-first; zero new locale keys
 **Context:** report lifecycle had no audit rows; Studio parsing dropped content in edge cases; featured sections needed copy on three surfaces without breaking the en/pcm parity test.
 **Decision:** (1) audit report actions under a new `report` entity (blog hooks already existed and were kept), retaining the `bug` entity entry for backward compatibility; specific action prefixes ordered before generic ones since `auditActionMeta` is first-prefix-match. (2) `htmlToBlocks` hardening keeps the established plain-text paragraph contract (an existing suite explicitly asserts no raw HTML in paragraphs) — fidelity gains come from structure (bare-text capture, wrapper recursion, more container tags), not inline-HTML retention. (3) featured copy ships as `tf(key, configFallback)` with no dictionary additions, so locale parity suites stay green.

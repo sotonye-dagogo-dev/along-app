@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 68: navigation-guide map parity + tracing tooltips)
-> - last-synced: 2026-10-16 (Sprint 68)
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 71: location input power-ups)
+> - last-synced: 2026-10-17 (Sprint 71)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -963,3 +963,15 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M] | Surface wiring — `RouteMap` overlay shows range with explanatory title; stretch tooltips split from the same totals (`consistentLegTimes`: length-share base split, traffic-weighted adjusted split) + range display per stretch; `NavigationGuide` header + live remaining banner show ranges | [x] |
 | [S] | Docs — FAQ `map-traffic-duration` rewritten (range + stretch-sum guarantee + caching cadence, en+pcm) + `map-traffic-legend` stretch-tap hint (en+pcm); `request-location-filtering` shortened ~60% (en+pcm, same facts); privacy (location/traffic/offline/7-day deletion sections) + terms (traffic-estimate + deletion-grace sections) updated; README Maps & traffic section (range + caching strategy) | [x] |
 | [S] | Tests — NEW `journeyConsistency.test.ts` (10: range, split-sum contract, factors, rebase, client keys, knob sanity) | [x] |
+
+## Sprint 71 — Location input power-ups: paren coords + Plus Codes + numeric-address recall (2026-10-17, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (config-driven helpers + service intent handling only; same MapGeocodeHit shape + proxy contract; no migration, no new deps — Plus Codes decode offline via a ported Apache-2.0 algorithm). QA full in-runner: `npm install` ok, tsc 0 errors, jest 95/95 suites 838/838 tests, full `next build` clean; lint exit 1 is pre-existing `no-explicit-any` in untouched `app/api/posts/feed/route.ts` + `app/api/suggestions/route.ts` (0 errors in touched files).
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Coordinate intents — `parseCoordinateQuery` accepts enclosing `()`/`[]`; `geocodeForward` pins raw coords first, then optional bounded reverse-geocode label (same provider name, parallel with fast providers, silent on failure) | [x] |
+| [M] | Plus Codes — NEW offline OLC helpers in `locationSuggestions.ts` (`classifyPlusCode`/`decodePlusCode`/`encodePlusCode`/`recoverNearestPlusCode`/`parsePlusCodeQuery`, ported from google/open-location-code Apache-2.0, validated against official test_data vectors); full codes pin without a reference; short codes recover against viewer `near`; provider name `plus-codes` | [x] |
+| [S] | Numeric-address recall — round-2 only (merge-empty gate): `stripLeadingHouseNumber` retry of fast providers + NEW `geocodeViaOverpassAddress` (`addr:housenumber` + `addr:street`, address labels without `name`); happy-path cost unchanged | [x] |
+| [S] | Config copy — `LOCATION_SUGGESTIONS_CONFIG` += `numericAddressFallback`/`plusCodeProviderName`/`locationPlaceholder`/`locationEmptyStateHint`; ShareRouteModal/RouteStepInput/RequestRouteModal placeholders + empty-state wired | [x] |
+| [S] | Tests — NEW `locationIntent.test.ts` (22: paren coords, strip house number, OLC classify/decode/encode/recover vectors, parsePlusCodeQuery, service pin/reverse/numeric-address/overpass-addr paths) | [x] |
