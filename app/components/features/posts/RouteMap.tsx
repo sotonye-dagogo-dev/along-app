@@ -39,6 +39,8 @@ import {
 } from '@/app/lib/config/mapSummary'
 import { legTrafficFactor } from '@/app/lib/config/journeyTime'
 import { MAP_PINS_CONFIG } from '@/app/lib/config/mapPins'
+import { MAP_VIEW_CONFIG, shouldDeferFit } from '@/app/lib/config/mapView'
+import { MAP_PICKER_CONFIG, type MapPickOption } from '@/app/lib/config/mapPicker'
 import { MapRoutePin, MapUserDot } from './MapPins'
 import { TrafficLegend } from './TrafficLegend'
 
@@ -103,6 +105,23 @@ interface RouteMapProps {
   detailHref?: string | null
   navigateHref?: string | null
   postTitle?: string | null
+  /**
+   * Sprint 72 — stop-assignment picker (non-breaking additive): when armed
+   * (`pickOptions` + `onPickOption`), a tap on EMPTY map area (no interactive
+   * route/traffic feature hit) opens a card anchored at the tap listing the
+   * options; picking one calls `onPickOption(id, tappedPoint)`. Route-line
+   * taps keep the stretch/mini tooltips. Omit → every other RouteMap's tap
+   * behaviour is unchanged.
+   */
+  pickOptions?: MapPickOption[]
+  onPickOption?: (optionId: string, point: { lat: number; lng: number }) => void
+  /**
+   * Sprint 72 — explicit fly-to request ("Find on map"): bumps `nonce` to
+   * focus the camera on `lat/lng` (falls back to the live user dot). The
+   * fly-to bypasses the baseline-fit deferral (it IS the user request),
+   * clears any open pick card and shows an auto-hiding tap-hint pill.
+   */
+  focusRequest?: { lat?: number; lng?: number; nonce: number } | null
 }
 
 function MapSkeleton() {
@@ -148,11 +167,16 @@ function RouteMap({
   detailHref = null,
   navigateHref = null,
   postTitle = null,
+  pickOptions,
+  onPickOption,
+  focusRequest = null,
 }: RouteMapProps) {
   const [isDark, setIsDark] = useState(false)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [mapError, setMapError] = useState(false)
   const [expanded, setExpanded] = useState(false)
+  const [pickPoint, setPickPoint] = useState<{ lat: number; lng: number } | null>(null)
+  const [focusHintVisible, setFocusHintVisible] = useState(false)
   const mapRef = useRef<MapRef>(null)
   // Stable mapLib promise: `import()` inline creates a fresh promise every
   // render, which react-map-gl can treat as a new library and re-init the
@@ -391,6 +415,10 @@ function RouteMap({
     return ids
   }, [routeCoords.length, trafficSegments])
 
+  // Armed only when the parent passes BOTH pieces — every other RouteMap
+  // (post cards, detail, nav) keeps its exact tap behaviour.
+  const pickArmed = (pickOptions?.length ?? 0) > 0 && typeof onPickOption === "function"
+
   const handleMapClick = useCallback((e: unknown) => {
     try {
       const ev = e as {
@@ -401,8 +429,24 @@ function RouteMap({
       if (!lngLat || !Number.isFinite(lngLat.lat) || !Number.isFinite(lngLat.lng)) {
         setSelectedStretch(null)
         setMiniAnchor(null)
+        setPickPoint(null)
         return
       }
+      // Any tap consumes the "Find on map" hint (auto-hide already handles
+      // the no-tap path; this just ends it early).
+      setFocusHintVisible(false)
+      // Sprint 72: an empty-area tap (NO interactive route/traffic feature
+      // hit) re-anchors the stop-assignment card when the preview armed it.
+      // Line hits fall through to the Sprint 68/69 stretch/mini tooltips.
+      const feats = Array.isArray(ev?.features) ? ev.features : []
+      if (pickArmed && feats.length === 0) {
+        setSelectedStretch(null)
+        setMiniAnchor(null)
+        setPickPoint({ lat: lngLat.lat, lng: lngLat.lng })
+        return
+      }
+      // A route-line tap takes the stretch/mini tooltip over the pick card.
+      if (pickPoint) setPickPoint(null)
       if (routeCoords.length < 2) return
       if (effectiveTooltipMode === "mini") {
         setSelectedStretch(null)
@@ -512,7 +556,7 @@ function RouteMap({
       setSelectedStretch(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeCoords, allSegments, effectiveTooltipMode, baseMinsForStretch, distance, legBorders, totalLegs])
+  }, [routeCoords, allSegments, effectiveTooltipMode, baseMinsForStretch, distance, legBorders, totalLegs, pickArmed, pickPoint])
 
   // Pin-to-polyline snapping (same library, same data): the road-snapped
   // trace is authoritative for where the line runs, so origin/destination
@@ -567,15 +611,133 @@ function RouteMap({
     )
   }, [bounds, routeCoords.length])
 
+  // Interaction-deferred baseline fit (Sprint 72): a recenter queued while
+  // the user is panning/zooming waits for gesture end + the config idle
+  // window instead of yanking the camera mid-pan (GPS userLocation ticks,
+  // bounds refits after pin/trace updates).
+  const containerRef = useRef<HTMLDivElement>(null)
+  const interactionRef = useRef<{ interacting: boolean; lastAt: number | null }>({
+    interacting: false,
+    lastAt: null,
+  })
+  const pendingFitRef = useRef<(() => void) | null>(null)
+  const watcherTokenRef = useRef(0)
+
+  const cancelBaselineFit = useCallback(() => {
+    watcherTokenRef.current++
+    pendingFitRef.current = null
+  }, [])
+
+  const requestBaselineFit = useCallback((fn: () => void) => {
+    pendingFitRef.current = fn
+    const st = interactionRef.current
+    if (!shouldDeferFit({ interacting: st.interacting, lastInteractionAt: st.lastAt, now: Date.now() })) {
+      // Never interacted / already idle → run immediately (pre-72 behaviour).
+      pendingFitRef.current = null
+      fn()
+      return
+    }
+    // Token-guarded idle watcher: each new request supersedes the previous
+    // loop, so exactly the latest pending fit runs, exactly once.
+    const token = ++watcherTokenRef.current
+    const run = () => {
+      if (token !== watcherTokenRef.current) return
+      if (!pendingFitRef.current) return
+      const state = interactionRef.current
+      if (shouldDeferFit({ interacting: state.interacting, lastInteractionAt: state.lastAt, now: Date.now() })) {
+        setTimeout(run, MAP_VIEW_CONFIG.interactionPollMs)
+        return
+      }
+      const pending = pendingFitRef.current
+      pendingFitRef.current = null
+      pending()
+    }
+    setTimeout(run, MAP_VIEW_CONFIG.interactionPollMs)
+  }, [])
+
+  // Kill idle-watcher loops on unmount.
+  useEffect(() => () => { watcherTokenRef.current++ }, [])
+
+  // Pointer/wheel/key activity on the container marks interaction; the
+  // gesture "end" is watched on window so a release outside the map still
+  // counts. Re-attached on `expanded` because the container node changes
+  // (inline card ↔ portalled dialog).
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const st = interactionRef.current
+    const onPointerDown = () => { st.interacting = true; st.lastAt = Date.now() }
+    const onPointerMove = (e: PointerEvent) => { if (e.buttons) st.lastAt = Date.now() }
+    const endGesture = () => {
+      if (st.interacting) st.interacting = false
+      st.lastAt = Date.now()
+    }
+    const onWheel = () => { st.lastAt = Date.now() }
+    const onKeyDown = () => { st.lastAt = Date.now() }
+    el.addEventListener('pointerdown', onPointerDown)
+    el.addEventListener('pointermove', onPointerMove)
+    el.addEventListener('wheel', onWheel, { passive: true })
+    el.addEventListener('keydown', onKeyDown)
+    window.addEventListener('pointerup', endGesture)
+    window.addEventListener('pointercancel', endGesture)
+    return () => {
+      el.removeEventListener('pointerdown', onPointerDown)
+      el.removeEventListener('pointermove', onPointerMove)
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('pointerup', endGesture)
+      window.removeEventListener('pointercancel', endGesture)
+    }
+  }, [expanded])
+
+  // Follow-nav is an EXPLICIT camera owner: compute a boolean so GPS
+  // ticks (userLocation identity changes every fix) never re-run this
+  // effect — previously each tick refit the whole route out from under a
+  // pan on post detail.
+  const followActive = followUser && !!userLocation
+
   useEffect(() => {
     if (mapLoaded && bounds) {
       // Don't auto-fit when following user in live nav — keep user centered
-      if (followUser && userLocation) return
-      fitMapToBounds()
+      if (followActive) return
+      requestBaselineFit(fitMapToBounds)
     } else if (mapLoaded && !bounds && displayPins.length === 1) {
-      mapRef.current?.flyTo({ center: [displayPins[0].lng, displayPins[0].lat], zoom: 14, duration: 400 })
+      requestBaselineFit(() => mapRef.current?.flyTo({ center: [displayPins[0].lng, displayPins[0].lat], zoom: 14, duration: 400 }))
     }
-  }, [mapLoaded, displayPins, encodedPolyline, bounds, fitMapToBounds, followUser, userLocation])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- followActive (not followUser+userLocation) is the guard: per-fix ticks must not re-trigger the fit
+  }, [mapLoaded, displayPins, encodedPolyline, bounds, fitMapToBounds, followActive, requestBaselineFit])
+
+  // Sprint 72 — explicit "Find on map" focus (declared AFTER the baseline
+  // fit effect so a focus always wins any fit queued in the same commit):
+  // cancels the queued refit (it would yank back after the idle window),
+  // closes any stale pick card, flies immediately and shows the tap hint.
+  const focusNonce = focusRequest?.nonce ?? null
+  useEffect(() => {
+    if (!focusRequest) return
+    const focusLat = typeof focusRequest.lat === "number" && Number.isFinite(focusRequest.lat) ? focusRequest.lat : null
+    const focusLng = typeof focusRequest.lng === "number" && Number.isFinite(focusRequest.lng) ? focusRequest.lng : null
+    const target =
+      focusLat !== null && focusLng !== null
+        ? { lat: focusLat, lng: focusLng }
+        : userLocation
+          ? { lat: userLocation.lat, lng: userLocation.lng }
+          : null
+    cancelBaselineFit()
+    setPickPoint(null)
+    // No resolvable target (no coords anywhere yet) → keep the current
+    // framing but still arm the tap hint: the pick card is the point.
+    if (target) {
+      mapRef.current?.flyTo({
+        center: [target.lng, target.lat],
+        zoom: MAP_PICKER_CONFIG.focusZoom,
+        duration: MAP_PICKER_CONFIG.focusDurationMs,
+      })
+    }
+    setFocusHintVisible(true)
+    const timer = setTimeout(() => setFocusHintVisible(false), MAP_PICKER_CONFIG.focusHintMs)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- focusRequest identity is unstable per render; the nonce is the trigger
+  }, [focusNonce])
 
   // Follow user location when in live mode
   useEffect(() => {
@@ -604,8 +766,6 @@ function RouteMap({
     setMapLoaded(true)
   }, [])
 
-  const containerRef = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     if (expanded) {
       document.body.style.overflow = 'hidden'
@@ -620,14 +780,32 @@ function RouteMap({
   const minimizeRef = useRef<HTMLButtonElement>(null)
 
   // Escape closes the contained dialog (config-gated, non-breaking).
+  // With a pick card open, Escape dismisses the CARD first (topmost layer);
+  // the card-only handler below is inert while the dialog is open so a
+  // single Escape never closes both at once.
   useEffect(() => {
     if (!expanded || !MAP_EXPAND_CONFIG.closeOnEscape) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setExpanded(false)
+      if (e.key !== "Escape") return
+      if (pickPoint) {
+        setPickPoint(null)
+        return
+      }
+      setExpanded(false)
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [expanded])
+  }, [expanded, pickPoint])
+
+  // Escape dismisses the pick card when the dialog is NOT open.
+  useEffect(() => {
+    if (!pickPoint || expanded) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPickPoint(null)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [pickPoint, expanded])
 
   // Resizing after the panel mounts keeps the trace fitted instead of
   // half-rendered; focusing Minimize keeps keyboard users oriented.
@@ -945,7 +1123,65 @@ function RouteMap({
             </div>
           </Marker>
         )}
+        {/* Sprint 72: stop-assignment card anchored at the tap (armed only
+            by the route preview — re-taps re-anchor, X/Escape dismiss,
+            picking calls onPickOption with the exact tapped point). */}
+        {pickPoint && pickArmed && (
+          <Marker key="pick-tip" latitude={pickPoint.lat} longitude={pickPoint.lng} anchor="bottom">
+            <div
+              role="dialog"
+              aria-label={MAP_PICKER_CONFIG.cardTitle}
+              className={MAP_PICKER_CONFIG.cardClass}
+              style={{ maxWidth: MAP_PICKER_CONFIG.cardMaxWidth }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-xs font-semibold text-text-primary">
+                  {MAP_PICKER_CONFIG.cardTitle}
+                </span>
+                <button
+                  type="button"
+                  aria-label={MAP_PICKER_CONFIG.dismissLabel}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setPickPoint(null)
+                  }}
+                  className="w-5 h-5 rounded-circle flex items-center justify-center border-none bg-transparent text-text-muted cursor-pointer hover:text-text-primary transition-colors"
+                >
+                  <X size={12} aria-hidden />
+                </button>
+              </div>
+              <p className="text-[11px] text-text-secondary leading-relaxed mt-0 mb-2">
+                {MAP_PICKER_CONFIG.cardBody}
+              </p>
+              <div className="flex flex-col gap-1">
+                {(pickOptions ?? []).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className={MAP_PICKER_CONFIG.optionButtonClass}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onPickOption?.(opt.id, pickPoint)
+                      setPickPoint(null)
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Marker>
+        )}
       </Map>
+
+      {/* Sprint 72: auto-hiding hint after a "Find on map" focus fly-to —
+          first tap on the map consumes it early. */}
+      {focusHintVisible && (
+        <div className={MAP_PICKER_CONFIG.focusHintClass} role="status">
+          {MAP_PICKER_CONFIG.focusHint}
+        </div>
+      )}
 
       {traffic && traffic.segments.length > 0 && (
         <TrafficLegend

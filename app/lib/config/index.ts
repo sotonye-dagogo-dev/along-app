@@ -226,3 +226,30 @@ export {
   auditActionMeta,
 } from "./audit";
 export type { AuditDisplayConfig, AuditEntityMeta, AuditActionMeta, AuditDetailChip, AuditTagVariant } from "./audit";
+export {
+  DB_TRANSFER_CONFIG,
+  DB_STAGES,
+  backupFileName,
+  backupId,
+  fileSafeTimestamp,
+  redactConnectionString,
+  fingerprintConnection,
+  describeConnection,
+  stagesCompleted,
+  nextStage,
+  isPlanComplete,
+  evaluateResume,
+} from "./dbTransfer";
+export type {
+  DbRole,
+  DbRoleConfig,
+  DbEndpoint,
+  DbStage,
+  DbStagePlan,
+  DbStageRecord,
+  DbTransferJournal,
+  DbTransferJournalEntry,
+  DbTransferConfig,
+  ResumeDecision,
+  ConnectionFingerprint,
+} from "./dbTransfer";

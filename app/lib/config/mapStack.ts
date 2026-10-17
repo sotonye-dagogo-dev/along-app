@@ -34,6 +34,18 @@ export type MapVectorStyleName = "liberty" | "bright" | "positron";
 export type MapRoutingProvider = "osrm" | "ors" | "mapbox" | "straight";
 export type MapGeocodeProvider = "nominatim" | "photon" | "openmeteo" | "overpass";
 
+/**
+ * Routing profile segments per provider for a vehicle mode. `null` =
+ * that provider has no profile for the mode (e.g. the keyless OSRM demo
+ * serves driving only) → the mode-aware pass skips it. Absent fields merge
+ * over `defaultRoutingProfiles`, so road vehicles need no entries at all.
+ */
+export interface RoutingProfiles {
+  osrm?: string | null;
+  ors?: string | null;
+  mapbox?: string | null;
+}
+
 export interface MapStackConfig {
   /** Keyless vector tile styles (OpenFreeMap, no registration). */
   vectorStyles: Record<MapVectorStyleName, string>;
@@ -63,6 +75,20 @@ export interface MapStackConfig {
     ors: string;
     mapbox: string;
   };
+  /**
+   * Profile-aware routing bases for the mode-aware trace pass (vehicle-aware
+   * tracings). The legacy `upstreams.{osrm,ors,mapbox}` URLs stay the
+   * default-chain contract (base + default profile, byte-identical).
+   */
+  routingBases: { osrm: string; ors: string; mapbox: string };
+  /** Profiles for `no vehicle` / road vehicles — the legacy driving chain. */
+  defaultRoutingProfiles: RoutingProfiles;
+  /**
+   * Per-vehicle profile overrides keyed by vehicle registry keys (missing
+   * key → default profiles, so road vehicles — taxi/car/bolt/bus/keke —
+   * need no entries). `null` = provider unsupported for that mode.
+   */
+  routingProfiles: Record<string, RoutingProfiles>;
   /** Identity headers the server proxy sends upstream (policy compliance). */
   serverIdentity: { userAgent: string; referer: string };
   /** Redis TTLs (seconds) for proxy read-through caches. */
@@ -106,6 +132,24 @@ export const MAP_STACK_CONFIG: MapStackConfig = {
     ors: "https://api.openrouteservice.org/v2/directions/driving-car",
     mapbox: "https://api.mapbox.com/directions/v5/mapbox/driving",
   },
+  routingBases: {
+    osrm: "https://router.project-osrm.org/route/v1",
+    ors: "https://api.openrouteservice.org/v2/directions",
+    mapbox: "https://api.mapbox.com/directions/v5/mapbox",
+  },
+  defaultRoutingProfiles: { osrm: "driving", ors: "driving-car", mapbox: "driving" },
+  // Non-road modes only — everything else (taxi/car/bolt/bus/keke) inherits
+  // the driving default. The keyless OSRM demo hosts the driving profile
+  // exclusively, so walking/cycling rows set `osrm: null` and rely on the
+  // keyed providers (ORS/Mapbox) when configured, else the legacy chain.
+  routingProfiles: {
+    trekking: { osrm: null, ors: "foot-walking", mapbox: "walking" },
+    bike: { osrm: null, ors: "cycling-regular", mapbox: "cycling" },
+    // No water/rail profiles exist on the stack — legacy driving fallback
+    // keeps a road-shaped trace (never a bare straight line).
+    boat: { osrm: null, ors: null, mapbox: null },
+    train: { osrm: null, ors: null, mapbox: null },
+  },
   serverIdentity: {
     userAgent: "AlongApp/1.0 (https://www.alongng.com)",
     referer: "https://www.alongng.com/",
@@ -139,6 +183,48 @@ export function rasterFallbackTile(isDark: boolean, depth = 0): string {
 /** Depth of the raster fallback chain (for onError step-down bounds). */
 export function rasterFallbackDepth(): number {
   return MAP_STACK_CONFIG.rasterFallbacks.light.length;
+}
+
+/** Normalized routing profiles for a vehicle key (missing/unknown → default driving chain). */
+export function resolveRoutingProfiles(vehicle?: string | null): RoutingProfiles {
+  try {
+    const key = typeof vehicle === "string" ? vehicle.trim().toLowerCase() : "";
+    const overrides = key.length > 0 ? MAP_STACK_CONFIG.routingProfiles[key] : undefined;
+    const base = MAP_STACK_CONFIG.defaultRoutingProfiles;
+    if (!overrides) return { ...base };
+    return { ...base, ...overrides };
+  } catch {
+    return { ...MAP_STACK_CONFIG.defaultRoutingProfiles };
+  }
+}
+
+/** True when the profiles resolve to the legacy driving chain (URL/cache contract). */
+export function isDefaultRoutingProfiles(profiles: RoutingProfiles): boolean {
+  const osrm = profiles.osrm ?? null;
+  const ors = profiles.ors ?? null;
+  const mapbox = profiles.mapbox ?? null;
+  // All-null (boat/train) → no mode-aware provider exists, the legacy chain
+  // runs either way — share its cache key instead of forking a duplicate.
+  if (osrm === null && ors === null && mapbox === null) return true;
+  const d = MAP_STACK_CONFIG.defaultRoutingProfiles;
+  return (
+    osrm === (d.osrm ?? null) &&
+    ors === (d.ors ?? null) &&
+    mapbox === (d.mapbox ?? null)
+  );
+}
+
+/**
+ * Stable cache-slug for non-default profiles (e.g. `p-x_foot-walking_walking`);
+ * null when the profiles ARE the default → callers keep the legacy key, so
+ * existing cached driving traces never invalidate.
+ */
+export function routingProfileSlug(profiles: RoutingProfiles): string | null {
+  if (isDefaultRoutingProfiles(profiles)) return null;
+  const part = (v?: string | null): string =>
+    typeof v === "string" && v.trim().length > 0 ? v.trim().toLowerCase() : "x";
+  const raw = `p-${part(profiles.osrm)}_${part(profiles.ors)}_${part(profiles.mapbox)}`;
+  return raw.replace(/[^a-z0-9_.-]+/g, "-");
 }
 
 export interface MapLibreRasterStyle {

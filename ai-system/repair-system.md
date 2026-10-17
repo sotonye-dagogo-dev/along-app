@@ -1,6 +1,7 @@
 # Repair System — Error Knowledge Base
 
 > **Metadata**
+>
 > - last-updated-by: execute-feature 2026-10-11 (Sprint 35 link-status cast-lie entry)
 > - last-verified-against-code: 2026-10-11
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
@@ -50,23 +51,27 @@
 ### React 19 / Next.js 15
 
 **Hydration Mismatch**
+
 - Symptom: `Hydration failed because the initial UI does not match what was rendered on the server`
 - Cause: Browser-only logic (window, localStorage, Date.now()) running during server render
 - Fix: Wrap in `useEffect` or use `dynamic(() => import(...), { ssr: false })`
 - Prevention: Never access browser APIs outside useEffect in components
 
 **Missing Key Prop**
+
 - Symptom: `Each child in a list should have a unique "key" prop`
 - Cause: `.map()` rendering without a stable unique key
 - Fix: Add `key={item.id}` — use a stable unique ID, not the array index
 
 **Server Component with Client Hook**
+
 - Symptom: `You're importing a component that needs useState/useEffect. It only works in a Client Component.`
 - Cause: Server component using client-side features
 - Fix: Add `"use client"` directive at the top of the file
 - Prevention: Default to server components; add "use client" only when needed
 
 **Async Server Component Error**
+
 - Symptom: `Error: Objects are not valid as a React child`
 - Cause: Returning a raw object/Response from an async server component instead of JSX
 - Fix: Ensure async components return JSX, not plain objects
@@ -74,12 +79,14 @@
 ### Ant Design 5 + React 19
 
 **Ant Design Component SSR Issue**
+
 - Symptom: Style flicker or missing styles on first page load
 - Cause: Ant Design v5 CSS-in-JS not properly extracted during SSR
 - Fix: Use `@ant-design/nextjs-registry` to wrap the app root
 - Prevention: Always use AntdRegistry from `@ant-design/nextjs-registry` in the root layout
 
 **Ant Design Icon Missing**
+
 - Symptom: Blank square or missing icon
 - Cause: Tree-shaking removed the icon during build
 - Fix: Import icon directly from `@ant-design/icons` rather than dynamic import
@@ -87,19 +94,32 @@
 
 ### Prisma 7 + PostgreSQL
 
+**Cross-Database Temporal Values Shift with Local Timezone**
+
+- **Symptom:** Restored `timestamp`/`date` values differ by the runner's timezone.
+- **Cause:** Default `pg-types` parsers convert temporal OIDs to JavaScript `Date` values.
+- **Fix:** Preserve raw server text for OIDs `1114`, `1184`, and `1082` in the db-transfer codec, then restore exact text and verify content hashes.
+- **Prevention:** Never use `Date` as an untagged interchange format for PostgreSQL backups; keep a timestamp regression test.
+- **Files Affected:** `scripts/lib/dbTransfer/codec.ts`, `scripts/lib/dbTransfer/connection.ts`, `app/__tests__/dbTransfer/codec.test.ts`
+- **Date:** 2026-10-17
+- **Status:** Active
+
 **Prisma Client Not Found**
+
 - Symptom: `Cannot find module '@prisma/client'`
 - Cause: Prisma client not generated after schema changes
 - Fix: Run `npx prisma generate`
 - Prevention: Run `prisma generate` after every schema change
 
 **Migration Conflict**
+
 - Symptom: `Migration `xxx` was applied to the database but is not in the migrations directory`
 - Cause: Migrations deleted or reset while database has applied migrations
 - Fix: `npx prisma migrate resolve --applied <migration_name>`
 - Prevention: Never delete migration files without resolving the database state
 
 **Connection Pool Exhaustion**
+
 - Symptom: `Error: Connection pool exhausted` or requests hang
 - Cause: Prisma connection pool too small for request volume
 - Fix: Increase pool size in `DATABASE_URL` query params (`?connection_limit=20`)
@@ -108,18 +128,21 @@
 ### Tailwind CSS 4
 
 **@tailwind Directive Not Working**
+
 - Symptom: `@tailwind base` / `@tailwind utilities` produces no output
 - Cause: Tailwind v4 uses `@import "tailwindcss"` instead of `@tailwind` directives
 - Fix: Replace `@tailwind base; @tailwind components; @tailwind utilities` with `@import "tailwindcss"`
 - Prevention: Use Tailwind v4 syntax with the new `@tailwindcss/postcss` plugin
 
 **Class Not Being Generated**
+
 - Symptom: A utility class like `grid-cols-12` is not working
 - Cause: Tailwind v4 uses CSS-first configuration; custom values need `@theme` directive
 - Fix: Add `grid-cols-12` to the `gridTemplateColumns` theme extension in the plugin
 - Prevention: Register all custom utility values in `tailwind.config.ts`
 
 **Inline Styles Ignore Dark Mode (Sprint 47)**
+
 - Symptom: A notice/card looks correct in light mode but stays light (or unreadable) in dark mode
 - Cause: Inline styles reference bespoke CSS vars (`var(--brand, #00623B)`, `var(--offline-bg, …)`) whose fallbacks never flip — only the canonical `--color-*` tokens are overridden under `.dark`
 - Fix: Reference `--color-*` tokens in every inline style (e.g. `var(--color-bg-card, #FFFFFF)`); for intentionally-dark chrome use the inverted pair (`background: var(--color-text-primary)`, `color: var(--color-bg-base)`) so contrast survives both themes
@@ -128,12 +151,14 @@
 ### Configuration / Environment
 
 **Missing Environment Variable**
+
 - Symptom: `undefined` values in production, features silently broken
 - Cause: Variable defined in `.env` but not in production environment
 - Fix: Add to deployment environment variables and validate on startup
 - Prevention: Add a startup validation check that throws if required env vars are missing
 
 **Public Env Var Not Exposed to Client**
+
 - Symptom: `NEXT_PUBLIC_*` variable is `undefined` in the browser
 - Cause: Variable missing `NEXT_PUBLIC_` prefix, or build not restarted after change
 - Fix: Prefix with `NEXT_PUBLIC_` and rebuild
@@ -142,12 +167,14 @@
 ### Jest / Testing
 
 **Jest Cannot Find Module**
+
 - Symptom: `Cannot find module '@/lib/something'`
 - Cause: Module alias not configured in Jest or tsconfig paths mismatch
 - Fix: Ensure `jest.config.js` has correct `moduleNameMapper` for `@/*` → `src/*`
 - Prevention: Keep Jest module aliases in sync with tsconfig paths
 
 **RTL Ant Design Component Test Fails**
+
 - Symptom: `Error: Could not find `locale` in context` or missing Ant Design styles
 - Cause: Ant Design ConfigProvider not wrapping the test component
 - Fix: Wrap test renders with `ConfigProvider` and `AntdRegistry`
@@ -162,10 +189,12 @@
 
 **Root Cause:**
 The `fetchFeed` method in `feedStream.ts` called `/api/posts/feed` which returns `{error: "Not authenticated"}` for unauthenticated users. The response was cast as `{posts: FeedPost[]; nextCursor: string | null}` but `data.posts` was actually `undefined` because the API returned an error object. Two crash points:
+
 1. `feedStream.ts:72` — `state.posts.length` on undefined in the polling subscription
 2. `feedStream.ts:96` — `data.posts` used directly without fallback in `fetchFeed`
 
 **Fix Applied:**
+
 - `fetchFeed` now defaults `data.posts ?? []` and `data.nextCursor ?? null`
 - Polling subscription uses optional chaining: `(state.posts?.length ?? 0) > 0`
 
@@ -173,6 +202,7 @@ The `fetchFeed` method in `feedStream.ts` called `/api/posts/feed` which returns
 Always default array fields from API responses: `data.field ?? []`. Never assume the API will return the expected shape — it could return `{error: "..."}` or `{message: "..."}`.
 
 **Files Affected:**
+
 - `app/lib/streams/feedStream.ts`
 
 **Date:** 2026-06-09
@@ -195,6 +225,7 @@ Restructured the GET handler to check auth first. If authenticated, use `feedSer
 Public-facing GET endpoints should always have a guest fallback. Auth should gate personalization, not access.
 
 **Files Affected:**
+
 - `app/api/posts/feed/route.ts`
 
 **Date:** 2026-06-09
@@ -217,6 +248,7 @@ Added a `user` local constant (`const user = post.user`) at the top of the compo
 Always use optional chaining on nested data from API responses. Create local constants with fallback at the top of the render function.
 
 **Files Affected:**
+
 - `app/components/features/posts/PostCard.tsx`
 
 **Date:** 2026-06-09
@@ -233,6 +265,7 @@ Always use optional chaining on nested data from API responses. Create local con
 `@tailwindcss/typography` was not installed. Tailwind CSS v4 requires explicitly installing the typography plugin and importing it in `globals.css` via `@plugin "@tailwindcss/typography"`.
 
 **Fix Applied:**
+
 - Installed `@tailwindcss/typography@latest`
 - Added `@plugin "@tailwindcss/typography";` to `app/globals.css`
 
@@ -240,6 +273,7 @@ Always use optional chaining on nested data from API responses. Create local con
 Always install `@tailwindcss/typography` when using `prose` classes in Tailwind v4. Check `@plugin` directive in CSS, not just the Tailwind config.
 
 **Files Affected:**
+
 - `app/globals.css`
 - `package.json`
 
@@ -263,6 +297,7 @@ Removed the second (duplicate) declaration, keeping only the first.
 When extracting helpers to module scope, check for existing declarations before adding new ones. Use IDE "find references" to detect duplicates.
 
 **Files Affected:**
+
 - `app/components/features/explore/ExplorePinCard.tsx`
 
 **Date:** 2026-07-15
@@ -279,6 +314,7 @@ Vercel build logged `sentry reported an error: Invalid token (http status: 401)`
 The `SENTRY_AUTH_TOKEN` in environment was present but expired/invalid, causing the Sentry CLI to fail with 401 on every API call. The `@sentry/nextjs` webpack plugin attempted release creation and source map upload even with a bad token.
 
 **Fix Applied:**
+
 1. Cleared the invalid `SENTRY_AUTH_TOKEN` from `.env`
 2. Updated `next.config.mjs` to set `dryRun: true` when auth token or DSN is missing, preventing Sentry build-time operations
 3. Fixed deprecated Sentry options (`disableLogger` → `webpack.treeshake.removeDebugLogging`, `automaticVercelMonitors` → `webpack.automaticVercelMonitors`)
@@ -287,13 +323,14 @@ The `SENTRY_AUTH_TOKEN` in environment was present but expired/invalid, causing 
 Never commit Sentry auth tokens to `.env`. Set `dryRun` conditionally based on whether Sentry is actually configured. Use Vercel environment variables for production tokens.
 
 **Files Affected:**
+
 - `.env`
 - `next.config.mjs`
 
 **Date:** 2026-07-15
 **Status:** Active
 
-**Follow-up (2026-10-08):** The 2026-07-15 `dryRun` gate only covered *missing* token/DSN, so a *present-but-invalid* token (Vercel env) still attempted release creation + sourcemap upload on all three runtimes (6× 401 errors) and `silent` never applied on CI (`!process.env.CI` guard). Hardened `next.config.mjs`: `sentryConfigured` requires token + org + project + DSN and gates `dryRun`, `release.create/finalize`, and `sourcemaps.disable`; `telemetry: false` removes per-runtime Info noise; `silent: true` unconditionally; `errorHandler` warns once and swallows so Sentry can never fail the build (per Sentry docs, re-throwing is what fails the build — we don't). Same session: dropped obsolete `--no-engine` from `postinstall`/`build`/`vercel-build` (unknown option in Prisma 7, noisy on every install/build) and added `instrumentation-client.ts` (side-effect import of `sentry.client.config.ts`) for the Turbopack deprecation warning. Files: `next.config.mjs`, `package.json`, `instrumentation-client.ts` (new).
+**Follow-up (2026-10-08):** The 2026-07-15 `dryRun` gate only covered _missing_ token/DSN, so a _present-but-invalid_ token (Vercel env) still attempted release creation + sourcemap upload on all three runtimes (6× 401 errors) and `silent` never applied on CI (`!process.env.CI` guard). Hardened `next.config.mjs`: `sentryConfigured` requires token + org + project + DSN and gates `dryRun`, `release.create/finalize`, and `sourcemaps.disable`; `telemetry: false` removes per-runtime Info noise; `silent: true` unconditionally; `errorHandler` warns once and swallows so Sentry can never fail the build (per Sentry docs, re-throwing is what fails the build — we don't). Same session: dropped obsolete `--no-engine` from `postinstall`/`build`/`vercel-build` (unknown option in Prisma 7, noisy on every install/build) and added `instrumentation-client.ts` (side-effect import of `sentry.client.config.ts`) for the Turbopack deprecation warning. Files: `next.config.mjs`, `package.json`, `instrumentation-client.ts` (new).
 
 ---
 
@@ -312,6 +349,7 @@ Removed the `where: { role: { not: "banned" } }` filter entirely, since the sche
 Keep Prisma enum filters in sync with the schema. If banning is needed, add an `isBanned` boolean field to the User model instead of misusing the Role enum.
 
 **Files Affected:**
+
 - `app/api/leaderboard/route.ts`
 
 **Date:** 2026-07-15
@@ -334,6 +372,7 @@ Moved the `mapStyle`, `routeCoords`, `bounds`, `centerLat`, and `centerLng` vari
 Declare all computed variables before any hooks (useCallback, useEffect) that reference them. Keep data declarations at the top of the component.
 
 **Files Affected:**
+
 - `app/components/features/posts/RouteMap.tsx`
 
 **Date:** 2026-07-15
@@ -350,6 +389,7 @@ TypeScript error: `Property 'initialValues' does not exist on type 'ConfigDriven
 `ConfigDrivenFormProps` interface didn't define an `initialValues` prop, but `EditProfileModal` was passing it.
 
 **Fix Applied:**
+
 1. Added `initialValues?: Record<string, unknown>` to `ConfigDrivenFormProps`
 2. Used it to initialize the `formValues` state: `initialValues as Record<string, string> ?? {}`
 
@@ -357,12 +397,13 @@ TypeScript error: `Property 'initialValues' does not exist on type 'ConfigDriven
 When adding a new prop to component usage, update the component's TypeScript interface first. Run type checking after every edit.
 
 **Files Affected:**
+
 - `app/components/ui/ConfigDrivenForm.tsx`
 
 **Date:** 2026-07-15
 **Status:** Active
 
---- 
+---
 
 ### Prisma 7 Accelerate URL Used as datasourceUrl (P2022 / Timeout)
 
@@ -375,6 +416,7 @@ When adding a new prop to component usage, update the component's TypeScript int
 Additionally, `prisma.config.ts` used `LOCAL_DB` (the Accelerate `prisma+postgres://` URL) for CLI operations (migrate, seed), but CLI needs a direct `postgres://` connection — Accelerate URLs don't support DDL operations.
 
 **Fix Applied:**
+
 - `prisma.ts`: Always uses `accelerateUrl`, switches URL based on environment — dev uses `LOCAL_DB` (dev Accelerate), prod uses `DATABASE_URL` (prod Accelerate)
 - `prisma.config.ts`: Development uses `DIRECT_LOCAL_DB` for CLI, production uses `DIRECT_URL`
 - Login route error handling: Added `PrismaClientInitializationError` to the name check, and surfaces `detail` + `code` in dev mode
@@ -383,6 +425,7 @@ Additionally, `prisma.config.ts` used `LOCAL_DB` (the Accelerate `prisma+postgre
 Never pass a `prisma+postgres://` Accelerate URL to `datasourceUrl`. Use `accelerateUrl` for Accelerate and `datasourceUrl` for direct connections. They are mutually exclusive in Prisma 7's `PrismaClientOptions`.
 
 **Files Affected:**
+
 - `app/lib/db/prisma.ts`
 - `prisma.config.ts`
 - `app/api/auth/login/route.ts`
@@ -401,11 +444,13 @@ Never pass a `prisma+postgres://` Accelerate URL to `datasourceUrl`. Use `accele
 
 **Root Cause:**
 Three interlocking issues:
+
 1. `app/lib/db/redis.ts` eagerly instantiated `new Redis({ url: process.env.REDIS_URL ?? "", token: process.env.REDIS_TOKEN ?? "" })` at import time. Production sets `UPSTASH_REDIS_REST_URL/TOKEN`, not `REDIS_URL/TOKEN`, so the client was always created with empty strings, triggering Upstash warnings and `Failed to execute command` on every use.
 2. `app/lib/services/otpStore.ts` created a fresh `new Redis({url, token})` per operation with no timeout. When `UPSTASH_REDIS_REST_URL` pointed at an invalid host, `redis.set()` hung on DNS/fetch for ~5-6s before throwing `fetch failed`, exceeding the 10s Vercel limit when combined with `await sendPasswordResetEmail()` (which also awaits Resend). No `Promise.race` timeout existed.
 3. `app/api/auth/forgot-password/route.ts` awaited both `setResetToken` and `sendPasswordResetEmail` sequentially on the hot path, so any slow Redis or Resend call blocked the response. Identical pattern existed platform-wide in `feedService.ts`, `app/api/posts/route.ts`, `app/api/workers/*` which used `new Redis({ url: UPSTASH_REDIS_REST_URL!, token: ...! })` with non-null assertions and no timeout.
 
 **Fix Applied:**
+
 - `app/lib/db/redis.ts` — Replaced eager instance with lazy singleton `getRedisClient()` that resolves `UPSTASH_REDIS_REST_URL || REDIS_URL` and `UPSTASH_REDIS_REST_TOKEN || REDIS_TOKEN`, guards `replace_me` and non-https URLs, exposes timeout-guarded `redis.get/set/del` wrappers (1.2s `Promise.race` timeout, warn + no-op on failure) via `withTimeout`.
 - `app/lib/services/otpStore.ts` — Singleton cached client, `resolveEnv()` guard, `withTimeout` 1.5s per op, fallback to in-memory `Map` within <1.5s on DNS/timeout, `__resetOtpStoreForTests` for tests.
 - `app/lib/services/feedService.ts` — Switched from direct `new Redis` to shared `await import("@/app/lib/db/redis").redis` for get/set cache paths.
@@ -416,12 +461,14 @@ Three interlocking issues:
 - `vercel.json` — Added `maxDuration` for `forgot-password` and `reset-password`.
 
 **Prevention:**
+
 - Never `new Redis` with `!` assertions or at import time. Always use `app/lib/db/redis.ts` wrapper which handles missing env, invalid host, and timeout.
 - Any Redis operation on a user-facing hot path must be `withTimeout` <2s and fall back to memory/DB; cache failures must be non-critical.
 - Gate-critical auth email (OTP/verification/reset) MUST be awaited inside bounded timeouts with an honest `sent` flag (Oct 2026 register fix: `REGISTER_EMAIL_DISPATCH_CONFIG` 6s per-mail race + `Promise.allSettled`, forgot-password 6s race pattern). Fire-and-forget (`void` / `globalThis.waitUntil`, which does not exist on the Vercel/Next runtime) lets serverless freeze on response and silently drops OTP mail — that was the recurring verify-email/OTP gap. Only non-critical notices may stay background, via Next `after()`.
 - Env var names: `UPSTASH_REDIS_REST_URL/TOKEN` are canonical; `REDIS_URL/TOKEN` kept as fallback alias only.
 
 **Files Affected:**
+
 - app/lib/db/redis.ts
 - app/lib/services/otpStore.ts
 - app/lib/services/feedService.ts
@@ -451,6 +498,7 @@ Check the Resend send result and surface failure honestly instead of a false suc
 Every background email must verify the provider result. A false success is worse than an error — see `memory/lessons-learned.md` "Background Email Must Verify the Provider Result".
 
 **Files Affected:**
+
 - app/lib/services/emailService.ts
 - app/api/auth/forgot-password/route.ts
 
@@ -474,6 +522,7 @@ Durable `PasswordResetToken` Prisma model — reset tokens persist in Postgres w
 Security tokens must be durable, not cache-resident — see `memory/lessons-learned.md` "Security Tokens Must Be Durable, Not Cache-Resident".
 
 **Files Affected:**
+
 - prisma/schema.prisma (`PasswordResetToken` model)
 - prisma/migrations/20250929000000_add_password_reset_token/
 - app/lib/services/resetTokenStore.ts
@@ -485,6 +534,7 @@ Security tokens must be durable, not cache-resident — see `memory/lessons-lear
 ---
 
 ### Build Failure — Removed TS Option `downlevelIteration` in tsconfig.json
+
 **Symptom:**
 `npx tsc --noEmit` fails with `TS5102: Option 'downlevelIteration' has been removed. Please remove it from your configuration.`
 
@@ -498,6 +548,7 @@ Removed the `downlevelIteration` line from `tsconfig.json` (2026-10-08 QA gate, 
 After TypeScript major upgrades, run `tsc --noEmit` immediately and remove deleted options instead of working around them.
 
 **Files Affected:**
+
 - tsconfig.json
 
 **Date:** 2026-10-08
@@ -520,6 +571,7 @@ Renamed the second declaration to `targetBugId` and updated its two uses (`findU
 When narrowing a destructured value to a single-target variable, always use a distinct name (`targetX` / `singleX`). Run `tsc --noEmit` after editing API routes — it catches redeclarations before Vercel does.
 
 **Files Affected:**
+
 - `app/api/admin/bugs/route.ts`
 
 **Date:** 2026-10-08
@@ -542,6 +594,7 @@ Narrowed the type at the write site: `data: { status: status as "APPROVED" | "RE
 When writing a Prisma enum field from a request-body string, always cast after an explicit allow-list guard (or type the destructured field as the enum union up front). Sibling admin routes (`bugs`, `posts`, `users`) already use `as never` casts for this — follow the same pattern.
 
 **Files Affected:**
+
 - `app/api/admin/reviews/route.ts`
 
 **Date:** 2026-10-08
@@ -565,6 +618,7 @@ Single-character-class fix in `next.config.mjs`: alias key `'maplibre-gl'` → `
 Never alias a bare package name without the `$` exact-match suffix when subpath imports (`package/dist/...`) exist. Any future webpack alias must be exact-match unless prefix rewriting is explicitly intended.
 
 **Files Affected:**
+
 - `next.config.mjs`
 
 **Date:** 2026-10-09
@@ -585,6 +639,7 @@ Explicit type-guard helper `hasRenderableMetadata(value: unknown): value is Reco
 Never render `unknown` behind a truthiness check. Always narrow with a `value is` guard before using it in JSX. Same class as the earlier enum-string errors (ReviewStatus, UserRole): runtime checks don't narrow TS types — narrow at the expression the compiler checks.
 
 **Files Affected:**
+
 - `app/admin/audit/page.tsx`
 
 **Date:** 2026-10-09
@@ -599,11 +654,13 @@ Never render `unknown` behind a truthiness check. Always narrow with a `value is
 
 **Root Cause:**
 Three interlocking issues (same class as the 2026-09-15 forgot-password 504, regressed):
+
 1. `app/lib/services/otpStore.ts` `REDIS_OP_TIMEOUT_MS` had drifted back to 2500ms (repair log records 1.5s; `redis.ts` wrapper uses 1.2s). Verify-email POST awaited three Redis ops SEQUENTIALLY (get-cooldown → set-otp → set-cooldown) = 7.5s worst-case on a slow/deprovisioned Upstash host, before Resend (5s provider timeout) even started.
 2. `app/api/auth/verify-email/route.ts` (and `otp/resend`, `otp`, `change-email`, `change-password`) declared no `maxDuration`/`dynamic`, so Vercel applied the default 10s function budget — the sequential Redis worst-case alone nearly filled it.
 3. `bcrypt hashPassword` ran sequentially between the Redis ops instead of concurrently with the cooldown read, adding latency on the hot path.
 
 **Fix Applied:**
+
 - `otpStore.ts`: `REDIS_OP_TIMEOUT_MS` 2500 → 800ms (fail fast to memory; consistent with `redis.ts` 1.2s discipline).
 - `verify-email` + `otp/resend`: cooldown-read + bcrypt-hash via `Promise.all`; `setOtp` + `setSendCooldown` via `Promise.all` — Redis worst-case ~1.6s total. Added `export const maxDuration = 30; export const dynamic = "force-dynamic"`.
 - `register`: `setOtp` + `setSendCooldown` via `Promise.all` (same budget win).
@@ -614,12 +671,14 @@ Three interlocking issues (same class as the 2026-09-15 forgot-password 504, reg
 - Wired-in email audit (all trigger paths verified): register (background `waitUntil`, honest payload), Google callback (fire-and-forget welcome, toggle-respecting), otp/resend + verify-email (awaited with honest `sent`/`reason` — required so the UI timer and throttle agree), forgot-password (awaited with 6s race + honest 503, token cleanup on failure), change-email (awaited, warn on failure), change-password/link-password (fire-and-forget notice), deletion lifecycle (parallel, best-effort), admin resend-verification (per-recipient honest errors), contact/bug (awaited, logged). Email provider timeout (5s `withEmailTimeout` in `emailService`) unchanged — the fix keeps the honest-`sent` contract while moving the budget win to Redis parallelism + function timeouts.
 
 **Prevention:**
+
 - Keep `otpStore` timeout ≤ `redis.ts` timeout (800ms vs 1.2s). Any bump must be justified against the 10s default budget.
 - Every auth route that touches Redis or Resend must declare an explicit `maxDuration` + `vercel.json` entry (no reliance on the Vercel default).
 - Never `await` two independent Redis writes sequentially on a user-facing hot path — use `Promise.all`.
 - Run `tsc --noEmit` after editing auth routes; full `tsc`/`jest`/`build` confirm green in CI/Vercel (this runner has no node_modules — verified to file-presence/syntax level only).
 
 **Files Affected:**
+
 - app/lib/services/otpStore.ts
 - app/api/auth/verify-email/route.ts
 - app/api/auth/otp/resend/route.ts
@@ -644,6 +703,7 @@ Three interlocking issues (same class as the 2026-09-15 forgot-password 504, reg
 (1) Every verify-email link builder (`verify-email` POST, `otp/resend` fallback, admin resend-verification, `resolveVarsForRecipient`, email template) points at `/verify-email`, but no `app/**/verify-email/page.tsx` was ever created, and middleware had no guest entry. (2) Same class as "Reset Link Expired Within Seconds" (fixed via `PasswordResetToken`): OTP hashes live ONLY in Redis with a per-instance memory fallback (`otp:{email}` single key). On serverless, a code issued on instance A is invisible on instance B whenever Upstash is slow/misconfigured — `getOtp` misses and the shared copy blames expiry/replacement. `change-email` confirm (`change-email:{userId}`) had the identical hole, plus no resend cooldown, no attempt cap, and no rate limit on PUT.
 
 **Fix Applied:**
+
 - NEW `app/(public)/verify-email/page.tsx`: guest-accessible code-entry page reading `?email=` (prefill) + `?otp/?code/?token` (box prefill); verifies via PUT (no login, works on any device), resends via POST with the shared server-driven cooldown hook; verified/already-verified success states link to `/login`. Middleware `guestRoutes` += `/verify-email`.
 - NEW durable `EmailOtpToken` model + migration `20261009000002_email_otp_token` + `app/lib/services/emailOtpStore.ts` (store/verify/consume, single-active per email+purpose, bcrypt-bound candidates, P2021/P2022 missing-table swallow → legacy path when the migration is rolling out).
 - Issuance writes the DB mirror best-effort in parallel: register, `otp/resend`, verify-email POST, change-email POST, admin resend-verification.
@@ -653,18 +713,20 @@ Three interlocking issues (same class as the 2026-09-15 forgot-password 504, reg
 - Single-active semantics preserved everywhere, so the "use the newest email" copy stays honest; no previously-valid code becomes invalid (strictly more lenient).
 
 **Prevention:**
+
 - Every emailed link must resolve to a real route: grep link builders against `app/**/page.tsx` before shipping a template.
 - Security tokens must be durable, not cache-resident (extends the existing `PasswordResetToken` precedent to OTPs).
 - Any future code-send flow reusing `otp:{email}` must also write the `EmailOtpToken` mirror or document why not.
 
 **Files Affected:**
+
 - app/(public)/verify-email/page.tsx (new)
 - middleware.ts
 - prisma/schema.prisma (`EmailOtpToken`), prisma/migrations/20261009000002_email_otp_token/
 - app/lib/services/emailOtpStore.ts (new)
 - app/api/auth/register/route.ts, app/api/auth/otp/route.ts, app/api/auth/otp/resend/route.ts, app/api/auth/verify-email/route.ts, app/api/auth/change-email/route.ts, app/api/admin/users/route.ts
 - app/api/email/preview/route.ts, app/admin/email/page.tsx, app/lib/config/emailManagement.ts
-- app/__tests__/services/emailOtpStore.test.ts (new), app/__tests__/config/verifyEmailFlow.test.ts (new)
+- app/**tests**/services/emailOtpStore.test.ts (new), app/**tests**/config/verifyEmailFlow.test.ts (new)
 
 **Date:** 2026-10-09
 **Status:** Active
@@ -683,6 +745,7 @@ console/server trace pointing at the offending input.
 **Root Cause:**
 Three interlocking gaps (same class as the earlier "generic Validation
 failed" posting complaint, now root-caused):
+
 1. `ShareRouteModal.handleSubmit` only checked title≥5 + ≥2 non-empty
    locations; empty intermediate stops were silently filtered out, and fare
    used `parseFloat(value) || 0` — so "400-500" silently coerced to `400`
@@ -697,6 +760,7 @@ failed" posting complaint, now root-caused):
    success when the toast was missed.
 
 **Fix Applied:**
+
 - NEW `app/lib/config/routeValidation.ts` (zero-dep, config-driven):
   `ROUTE_VALIDATION_CONFIG` copy, strict `parseFareInput` (blank = no fare;
   ranges/`to`/free-text rejected with "enter one amount per leg" guidance),
@@ -727,6 +791,7 @@ failed" posting complaint, now root-caused):
   sanitize PII/markup, server-message preference, token classes).
 
 **Prevention:**
+
 - Never `parseFloat`/`Number()` user fare input without a strict whole-string
   check first — coercion hides ranges. Always use `parseFareInput`.
 - Every composer step on screen is validated (no silent `.filter()` before
@@ -740,6 +805,7 @@ failed" posting complaint, now root-caused):
   modules/implicit-any under noResolve, identical on untouched files).
 
 **Files Affected:**
+
 - app/lib/config/routeValidation.ts (new)
 - app/lib/config/index.ts
 - app/lib/schemas/post.ts
@@ -748,7 +814,7 @@ failed" posting complaint, now root-caused):
 - app/(dashboard)/posts/[id]/page.tsx
 - app/api/posts/route.ts
 - app/api/posts/[id]/route.ts
-- app/__tests__/config/routeValidation.test.ts (new)
+- app/**tests**/config/routeValidation.test.ts (new)
 
 **Date:** 2026-10-09
 **Status:** Active
@@ -766,6 +832,7 @@ error is visible.
 **Root Cause:**
 Two interlocking gaps (same vanish class as the earlier validation fix,
 new instance):
+
 1. `DashboardNav.handleShareSubmit` (desktop sidebar Share Route entry point)
    was a no-op `() => setShowShareModal(false)` returning `void` — it never
    called `POST /api/posts`. The home-page composer was correct; only the
@@ -779,6 +846,7 @@ new instance):
    from the same vanish).
 
 **Fix Applied:**
+
 - `DashboardNav`: real async submit mirroring home `submitPost` — strips
   `clientMutationId` into the `POST_SUBMIT_CONFIG.idempotencyHeader` header,
   module-level in-flight dedup, safe text-parse, sanitized first-field toast
@@ -797,6 +865,7 @@ new instance):
   post then visible on feed/Explore/admin).
 
 **Prevention:**
+
 - Submit handlers must return an explicit boolean — `void` never means
   success. Composer success branches must check `!== true`, never
   `=== false`.
@@ -808,6 +877,7 @@ new instance):
   input + draft on any non-true result.
 
 **Files Affected:**
+
 - app/components/ui/DashboardNav.tsx
 - app/components/features/posts/ShareRouteModal.tsx
 - app/components/features/posts/RequestRouteModal.tsx
@@ -834,6 +904,7 @@ the control is functionally hidden. The hit target was also small (`w-6
 h-6`) with a low-contrast `bg-black/60` + `border-none` treatment.
 
 **Fix Applied:**
+
 - `app/lib/config/shareRoute.ts` — additive, non-breaking config:
   `photoRemoveButtonClass` (always `opacity-100`, `w-7 h-7`,
   `bg-black/70`, `border-white/40` ring, `focus-visible` outline, token
@@ -847,7 +918,7 @@ h-6`) with a low-contrast `bg-black/60` + `border-none` treatment.
 - Follow-up hardening (button still reported invisible): class bumped to
   `z-10` (paints above the thumbnail — previously no stacking order, so
   the image could cover it), `bg-black/85` + `border-white/60` + `ring-2
-  ring-white/80` halo for contrast on any photo, `visible` alongside
+ring-white/80` halo for contrast on any photo, `visible` alongside
   `opacity-100`; test extended to assert `z-10` + `ring-`.
 
 **Prevention:**
@@ -857,9 +928,10 @@ must be persistently visible (`opacity-100`) with a focus ring; hover/focus
 may only deepen the treatment, never reveal it.
 
 **Files Affected:**
+
 - app/lib/config/shareRoute.ts
 - app/components/features/posts/ShareRouteModal.tsx
-- app/__tests__/config/uxTightening.test.ts
+- app/**tests**/config/uxTightening.test.ts
 
 **Date:** 2026-10-11
 **Status:** Active
@@ -881,9 +953,10 @@ it also causes horizontal overflow, and with no scrim the map paints over
 (adjacent to) the suggestions rail instead of presenting as a dialog.
 
 **Fix Applied:**
+
 - `app/lib/config/mapStack.ts` — new additive `MAP_EXPAND_CONFIG`
   (exported via the config barrel): centered overlay (`fixed inset-0
-  flex items-center justify-center p-4 sm:p-6`), scrim backdrop,
+flex items-center justify-center p-4 sm:p-6`), scrim backdrop,
   `max-w-4xl` panel cap, `80vh` panel height, backdrop-click + Escape
   dismissal flags, dialog/minimize labels. Token classes only.
 - `RouteMap.tsx` — expanded mode now renders a contained dialog
@@ -903,12 +976,14 @@ Escape/backdrop dismissal. `100vw` includes the scrollbar; prefer
 `inset-0` + flex centering with `w-full max-w-*` panels.
 
 **Files Affected:**
+
 - app/lib/config/mapStack.ts
 - app/lib/config/index.ts (barrel: `MAP_EXPAND_CONFIG` + `MapExpandConfig`)
 - app/components/features/posts/RouteMap.tsx
-- app/__tests__/config/mapStack.test.ts
+- app/**tests**/config/mapStack.test.ts
 
 **Follow-up hardening (same symptom re-reported after the contained-dialog fix):**
+
 - `RouteMap.tsx` — expanded dialog now renders via `createPortal` to
   `document.body` (SSR-safe inline fallback). A `fixed` overlay nested
   inside a transformed/filtered ancestor (cards, `backdrop-blur` panels)
@@ -935,6 +1010,7 @@ lists it.
 
 **Root Cause:**
 Two coupled defects in the edit path:
+
 1. `ShareRouteModal`'s edit-prefill `useEffect` depended on the `editPost`
    object identity, and the post-detail parent builds `editPost` inline on
    every render — so any parent re-render re-ran the effect and reset
@@ -947,6 +1023,7 @@ Two coupled defects in the edit path:
    fix under the NEW label — the map then misses/skips that stop.
 
 **Fix Applied:**
+
 - `ShareRouteModal.tsx` — `EditPost` gains optional per-step `lat`/`lng`
   plus `startLat/startLng/endLat/endLng/waypoints`; prefill re-attaches
   them (index-aligned `[start, ...waypoints, end]` when counts match,
@@ -971,6 +1048,7 @@ submit → PATCH); dropping them at any hop silently desyncs labels from
 pins. Manual text edits must invalidate picked fixes.
 
 **Files Affected:**
+
 - app/components/features/posts/ShareRouteModal.tsx
 - app/(dashboard)/posts/[id]/page.tsx
 
@@ -996,6 +1074,7 @@ and detail/responses/About/ReviewsPanel templates hardcoded
 API `REVIEWER_SELECT` omitted `avatarConfig`.
 
 **Fix Applied:**
+
 - `ExplorePinCard.tsx` — user gains optional `avatar`/`avatarConfig`;
   initials div replaced with `AppAvatar` (size 24, profile-linked).
 - `app/(dashboard)/explore/page.tsx` — pin/API user types carry the
@@ -1018,6 +1097,7 @@ Any surface that renders a user must consume `AppAvatar`/`AppUserLabel`
 renderer; audit with a `firstName[0]` grep.
 
 **Files Affected:**
+
 - app/components/features/explore/ExplorePinCard.tsx
 - app/(dashboard)/explore/page.tsx
 - app/(dashboard)/posts/[id]/page.tsx
@@ -1034,9 +1114,10 @@ renderer; audit with a `firstName[0]` grep.
 ## Explore Build Type Error — `avatarConfig: unknown` vs `ExplorePinCardUser` + Leaderboard Misranking
 
 **Symptom:**
+
 1. Vercel build fails at type-check: `./app/(dashboard)/explore/page.tsx:465:15
-   Type error: Type '{ userName: string; ... avatarConfig?: unknown }' is not
-   assignable to type 'ExplorePinCardUser'` (avatarConfig `unknown` vs
+Type error: Type '{ userName: string; ... avatarConfig?: unknown }' is not
+assignable to type 'ExplorePinCardUser'` (avatarConfig `unknown` vs
    `{ style: string; ... } | null | undefined`). Same latent mismatch at the
    mobile bottom-sheet usage.
 2. Leaderboard "doesn't always accurately place users based on their points":
@@ -1046,6 +1127,7 @@ renderer; audit with a `firstName[0]` grep.
    period filtering the API never implements (fetch doesn't even send it).
 
 **Root Cause:**
+
 1. `PostPin` / `ExploreApiPost` in `explore/page.tsx` typed `avatarConfig`
    as `unknown` (Prisma Json passthrough), while `ExplorePinCardUser`
    requires the concrete AvatarConfig shape. Structural mismatch at both
@@ -1059,9 +1141,10 @@ renderer; audit with a `firstName[0]` grep.
    for anyone below the slice; (d) period selector UI with no API support.
 
 **Fix Applied:**
+
 - `explore/page.tsx`: shared `ExploreCardUser` interface with the exact
   `avatarConfig?: { style: string; seed?: string; flip?: boolean;
-  backgroundColor?: string } | null` shape; `PostPin` + `ExploreApiPost`
+backgroundColor?: string } | null` shape; `PostPin` + `ExploreApiPost`
   consume it (structurally identical to `ExplorePinCardUser`).
 - `app/api/leaderboard/route.ts`: `assignCompetitionRanks` helper
   (standard competition ranking 1,2,2,4 — equal points share rank);
@@ -1078,6 +1161,7 @@ renderer; audit with a `firstName[0]` grep.
   path needs them) + new tie-rank case (100,100,50 → 1,1,3).
 
 **Prevention:**
+
 - Never type a Prisma Json passthrough as `unknown` when the consumer
   needs a concrete shape — declare the shared shape once and reuse it.
 - Leaderboard ranks must be DERIVED (points → rank via helper), never
@@ -1086,11 +1170,12 @@ renderer; audit with a `firstName[0]` grep.
   URL before shipping selector buttons).
 
 **Files Affected:**
+
 - app/(dashboard)/explore/page.tsx
 - app/api/leaderboard/route.ts
 - app/lib/services/rewardsService.ts
 - app/(dashboard)/leaderboard/page.tsx
-- app/__tests__/api/leaderboard.test.ts
+- app/**tests**/api/leaderboard.test.ts
 
 **Date:** 2026-10-11
 **Status:** Active
@@ -1137,6 +1222,7 @@ own interface. Run `npx tsc --noEmit` with node_modules installed before
 pushing — this runner now has them (`npm install` completed 2026-10-13).
 
 **Files Affected:**
+
 - app/lib/services/searchService.ts
 
 **Date:** 2026-10-13
@@ -1145,6 +1231,7 @@ pushing — this runner now has them (`npm install` completed 2026-10-13).
 ---
 
 ## Resolved Errors Archive
+
 > **Section summary:** Errors that have been fully resolved and are unlikely to recur. Kept for reference.
 
 ### PostCard Crash on Missing Tags/Images
@@ -1157,16 +1244,19 @@ API responses may omit `tags` or `images` fields, or return `null` instead of `[
 
 **Fix Applied:**
 Added local constants with `?? []` fallback:
+
 ```tsx
-const tags = post.tags ?? []
-const images = post.images ?? []
+const tags = post.tags ?? [];
+const images = post.images ?? [];
 ```
+
 All `.length` and `.map()` calls now reference the guarded constants.
 
 **Prevention:**
 Always access optional array fields with `?? []` fallback or optional chaining. Consider adding Zod validation to feed API responses.
 
 **Files Affected:**
+
 - `app/components/features/posts/PostCard.tsx`
 
 **Date:** 2026-06-09
@@ -1187,6 +1277,7 @@ Status route re-reads `{googleId, password}` from `prisma.user` per call and ret
 Never derive status from a casted session/helper object — if the query doesn't `select` it, it isn't there. Prefer narrow `{id}` casts + explicit DB re-reads in status routes; treat any `as` widening of `Record<string, unknown>` as a review flag.
 
 **Files Affected:**
+
 - `app/api/auth/link/status/route.ts`
 - `app/api/auth/link/password/route.ts`
 
@@ -1208,6 +1299,7 @@ Share blocked with "fix the highlighted fields" while every visible field looked
 Any input hidden by config must also be skipped by validation — mirror hide rules as skip flags in the validator. Never seed raw values for hidden inputs.
 
 **Files Affected:**
+
 - `app/lib/config/routeValidation.ts`
 - `app/components/features/posts/ShareRouteModal.tsx`
 
@@ -1229,6 +1321,7 @@ Clamp rule is now "finite && >= 1 ? min(parsed, 10) : default" (0/NaN/negative �
 Clamp helpers must distinguish "invalid → default" from "valid → clamp" — never fold garbage into a valid-looking boundary value. When a resolver's doc comment lists a case, the switch must contain it (review docs vs code).
 
 **Files Affected:**
+
 - `app/lib/config/locationSuggestions.ts`
 - `app/lib/config/notificationRoutes.ts`
 
@@ -1250,6 +1343,7 @@ Pure server-helper suites get `/** @jest-environment node */` (same as `location
 New server-side suites: start with the node docblock; if the import chain touches `@/app/lib/db/redis`, copy the emailStudio redis stub. Never touch production code to satisfy the jest transform.
 
 **Files Affected:**
+
 - `app/__tests__/config/locationSuggestions.test.ts`
 - `app/__tests__/services/blogShareVariables.test.ts`
 
@@ -1264,9 +1358,10 @@ New server-side suites: start with the node docblock; if the import chain touche
 Blog post pages and the Blog Studio live preview carried the compliant `BLOG_CONTENT_PROSE_CLASSES` (`prose-p:text-text-primary`, etc.) yet body text rendered in hardcoded grey (`#444`), ignored design tokens, and broke dark mode — while terms/privacy (same class pattern) rendered correctly.
 
 **Root Cause:**
-The visual builder reused the *email* renderer (`blocksToHtml`) for article bodies. It emits hardcoded light-mode inline styles (`color:#444`, `color:#1a1a1a`, `background:#00A862`, `font-size:14px`) that outrank Tailwind typography classes and don't respond to `.dark` token flips. Additionally the Studio preview rendered raw builder output (no sanitize, no variable interpolation) while the public page rendered stored HTML + interpolation — preview != public. Classes were applied but could never win: a styling problem *under* the classes, not in them.
+The visual builder reused the _email_ renderer (`blocksToHtml`) for article bodies. It emits hardcoded light-mode inline styles (`color:#444`, `color:#1a1a1a`, `background:#00A862`, `font-size:14px`) that outrank Tailwind typography classes and don't respond to `.dark` token flips. Additionally the Studio preview rendered raw builder output (no sanitize, no variable interpolation) while the public page rendered stored HTML + interpolation — preview != public. Classes were applied but could never win: a styling problem _under_ the classes, not in them.
 
 **Fix Applied:**
+
 - NEW `blocksToBlogHtml` (semantic h1/p/ul/li/a/img/hr, no color/font-size styles, escaped text, `{{vars}}` verbatim; buttons degrade to prose links) — used by Studio save + preview.
 - Sprint 56 amendment: directive-required CTA buttons keep the no-inline-style rule — button blocks now emit `<div class="blog-cta-wrap"><a class="blog-cta">` styled by token CSS in `globals.css` (dark-safe); sanitizer allowlists exactly those two classes (`BLOG_CTA_CLASS_ALLOWLIST`); `htmlToBlocks` round-trips `blog-cta` markup back to button blocks. The prevention rule stands (no email inline chrome in articles) — CTAs comply because styling lives in CSS on design tokens, not inline styles.
 - NEW `sanitizeBlogHtml` (allowlist + strip every `style=`) — used by `blogStore` on write/read and defensively at public render, so legacy email-styled rows heal without re-save.
@@ -1276,6 +1371,7 @@ The visual builder reused the *email* renderer (`blocksToHtml`) for article bodi
 Never reuse an email-safe renderer for article bodies — email needs inline styles (no stylesheets in inboxes), articles need semantic tags (prose classes + theme tokens do the styling). When a `prose-*` wrapper "doesn't work", inspect the inner HTML for inline `style=` before touching the classes.
 
 **Files Affected:**
+
 - `app/lib/utils/emailBuilder.ts`
 - `app/lib/utils/emailSanitize.ts`
 - `app/lib/utils/blogStore.ts`

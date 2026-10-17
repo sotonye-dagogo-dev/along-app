@@ -5,11 +5,15 @@ import {
   LANDMARK_GEOCODE_CONFIG,
   hasMapboxKey,
   hasOrsKey,
+  resolveRoutingProfiles,
+  routingProfileSlug,
   type MapGeocodeProvider,
   type MapRoutingProvider,
 } from "@/app/lib/config/mapStack";
 import {
   LOCATION_SUGGESTIONS_CONFIG,
+  classifyPlusCode,
+  extractPlusCodeToken,
   parseCoordinateQuery,
   parsePlusCodeQuery,
   reorderQueryTokens,
@@ -146,12 +150,17 @@ export function reverseCacheKey(lat: number, lng: number): string {
   return `maps:reverse:${lat.toFixed(4)},${lng.toFixed(4)}`;
 }
 
-async function traceViaOsrm(pins: MapPin[]): Promise<MapTraceResult | null> {
+async function traceViaOsrm(pins: MapPin[], profile?: string | null): Promise<MapTraceResult | null> {
   try {
     const limited = pins.slice(0, 25);
     const coords = limited.map((p) => `${p.lng},${p.lat}`).join(";");
+    // Profile-aware base for the mode pass; no profile → the legacy
+    // default-chain URL (byte-identical to `upstreams.osrm`).
+    const urlBase = profile
+      ? `${MAP_STACK_CONFIG.routingBases.osrm}/${profile}`
+      : MAP_STACK_CONFIG.upstreams.osrm;
     const url =
-      `${MAP_STACK_CONFIG.upstreams.osrm}/${coords}` +
+      `${urlBase}/${coords}` +
       `?overview=full&geometries=geojson&steps=false`;
     const data = (await fetchJson(url)) as {
       routes?: { geometry?: { coordinates?: number[][] }; distance?: number; duration?: number }[];
@@ -171,11 +180,14 @@ async function traceViaOsrm(pins: MapPin[]): Promise<MapTraceResult | null> {
   }
 }
 
-async function traceViaOrs(pins: MapPin[]): Promise<MapTraceResult | null> {
+async function traceViaOrs(pins: MapPin[], profile?: string | null): Promise<MapTraceResult | null> {
   const key = process.env.OPEN_ROUTE_SERVICE_KEY;
   if (!key) return null;
   try {
-    const data = (await fetchJson(MAP_STACK_CONFIG.upstreams.ors, {
+    const url = profile
+      ? `${MAP_STACK_CONFIG.routingBases.ors}/${profile}`
+      : MAP_STACK_CONFIG.upstreams.ors;
+    const data = (await fetchJson(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: key },
       body: JSON.stringify({ coordinates: pins.map((p) => [p.lng, p.lat]), format: "json" }),
@@ -203,7 +215,7 @@ async function traceViaOrs(pins: MapPin[]): Promise<MapTraceResult | null> {
   }
 }
 
-async function traceViaMapbox(pins: MapPin[]): Promise<MapTraceResult | null> {
+async function traceViaMapbox(pins: MapPin[], profile?: string | null): Promise<MapTraceResult | null> {
   const token =
     process.env.MAPBOX_TOKEN ??
     process.env.NEXT_PUBLIC_MAPBOX_TOKEN ??
@@ -212,7 +224,10 @@ async function traceViaMapbox(pins: MapPin[]): Promise<MapTraceResult | null> {
   try {
     const limited = pins.slice(0, 25);
     const coords = limited.map((p) => `${p.lng},${p.lat}`).join(";");
-    const url = `${MAP_STACK_CONFIG.upstreams.mapbox}/${coords}?alternatives=false&geometries=polyline&overview=full&access_token=${encodeURIComponent(token)}`;
+    const urlBase = profile
+      ? `${MAP_STACK_CONFIG.routingBases.mapbox}/${profile}`
+      : MAP_STACK_CONFIG.upstreams.mapbox;
+    const url = `${urlBase}/${coords}?alternatives=false&geometries=polyline&overview=full&access_token=${encodeURIComponent(token)}`;
     const data = (await fetchJson(url)) as {
       routes?: { geometry?: string; distance?: number; duration?: number }[];
     } | null;
@@ -232,10 +247,21 @@ async function traceViaMapbox(pins: MapPin[]): Promise<MapTraceResult | null> {
  * Keyless-first route trace with Redis read-through. Provider order comes
  * from MAP_STACK_CONFIG.routingOrder; keyed providers are skipped when
  * their env keys are absent. Never throws — falls back to straight-line.
+ *
+ * Vehicle-aware (non-breaking): pass `opts.vehicle` and the trace runs a
+ * MODE-AWARE pass first using `MAP_STACK_CONFIG.routingProfiles` (ORS/Mapbox
+ * walking/cycling profiles when keyed — the keyless OSRM demo is
+ * driving-only, so it is skipped for non-driving modes). Any failure or
+ * unsupported profile falls back to the LEGACY driving chain, so road
+ * vehicles and unknown keys behave exactly as before. Cache keys gain the
+ * profile slug only for non-default profiles; legacy keys stay untouched.
  */
-export async function traceRoute(pins: MapPin[]): Promise<MapTraceResult> {
+export async function traceRoute(pins: MapPin[], opts?: { vehicle?: string | null }): Promise<MapTraceResult> {
   if (!validPins(pins)) return straightLineTrace(Array.isArray(pins) && pins.length >= 2 ? pins : [{ lat: 0, lng: 0 }, { lat: 0, lng: 0 }]);
-  const key = routeCacheKey(pins);
+  const vehicle = typeof opts?.vehicle === "string" ? opts.vehicle.trim().toLowerCase().slice(0, 40) : "";
+  const profiles = resolveRoutingProfiles(vehicle || null);
+  const profileSlug = routingProfileSlug(profiles);
+  const key = routeCacheKey(pins) + (profileSlug ? `:${profileSlug}` : "");
   try {
     const cached = await redis.get<MapTraceResult>(key);
     if (cached && typeof cached.polyline === "string") return cached;
@@ -244,23 +270,47 @@ export async function traceRoute(pins: MapPin[]): Promise<MapTraceResult> {
   }
   let result: MapTraceResult | null = null;
   let provider: MapRoutingProvider | null = null;
-  for (const name of MAP_STACK_CONFIG.routingOrder) {
-    if (name === "osrm") {
+  // Mode-aware pass — only when the vehicle maps to a non-default profile.
+  if (profileSlug) {
+    for (const name of MAP_STACK_CONFIG.routingOrder) {
+      if (name === "straight") continue;
+      const profile = profiles[name];
+      if (!profile) continue;
+      if (name === "ors" && !hasOrsKey()) continue;
+      if (name === "mapbox" && !hasMapboxKey()) continue;
       provider = name;
-      result = await traceViaOsrm(pins);
-    } else if (name === "ors") {
-      if (!hasOrsKey()) continue;
-      provider = name;
-      result = await traceViaOrs(pins);
-    } else if (name === "mapbox") {
-      if (!hasMapboxKey()) continue;
-      provider = name;
-      result = await traceViaMapbox(pins);
-    } else {
-      provider = name;
-      result = straightLineTrace(pins);
+      if (name === "osrm") {
+        result = await traceViaOsrm(pins, profile);
+      } else if (name === "ors") {
+        result = await traceViaOrs(pins, profile);
+      } else if (name === "mapbox") {
+        result = await traceViaMapbox(pins, profile);
+      }
+      if (result) break;
     }
-    if (result) break;
+  }
+  // Legacy default chain (verbatim contract) — also the fallback whenever
+  // the mode-aware pass found no keyed provider or failed mid-flight.
+  if (!result) {
+    provider = null;
+    for (const name of MAP_STACK_CONFIG.routingOrder) {
+      if (name === "osrm") {
+        provider = name;
+        result = await traceViaOsrm(pins);
+      } else if (name === "ors") {
+        if (!hasOrsKey()) continue;
+        provider = name;
+        result = await traceViaOrs(pins);
+      } else if (name === "mapbox") {
+        if (!hasMapboxKey()) continue;
+        provider = name;
+        result = await traceViaMapbox(pins);
+      } else {
+        provider = name;
+        result = straightLineTrace(pins);
+      }
+      if (result) break;
+    }
   }
   const finalResult = result ?? { ...straightLineTrace(pins), provider: provider ?? "straight" };
   try {
@@ -637,16 +687,26 @@ export function rankGeocodeHits(hits: MapGeocodeHit[], near?: MapPin | null): Ma
  * providers fire in PARALLEL (one shared budget each) and hits merge +
  * dedupe into one suggestion list, so a place buried in one source still
  * surfaces from another. Explicit location intents are pinned first:
- * - `lat, lng` (optionally parenthesised) → exact pin, plus an optional
- *   bounded reverse-geocode label for a human-readable place name.
+ * - `lat, lng` (optionally parenthesised) → exact pin carrying a bounded
+ *   reverse-geocode label (friendly place name) as THE displayed hit; the
+ *   raw text pins only when no label resolves — inputs/suggestions show
+ *   names, never raw numbers, while the pin keeps exact coords for the map.
  * - Plus Code (Open Location Code, full or short) → offline local decode;
- *   short codes recover against the viewer bias (`near`).
+ *   short codes recover against a locality reference (the query's own
+ *   remainder — "CGQC+HQ2 Lekki" geocodes "Lekki" first) then the viewer
+ *   bias (`near`); the pinned hit carries the reverse label when available,
+ *   the canonical code otherwise.
  * When the fast merge is empty, ONE fallback batch runs Overpass
  * (landmark scan + house-numbered address recall), a token-reorder retry
  * and a house-number-stripped retry of the fast providers (order- and
  * number-tolerant input like "Nigeria Lagos" / "2 Pockock Street").
  * Optionally re-ranked near the viewer's position when `near` is supplied
  * (nearby first, never filtered). Never throws.
+ *
+ * Latency contract: worst case stays ~2 budgets — stage 1 (round 1 [+ plus
+ * locality reference + coordinate label]) ≤ budget, stage 2 (plus-code
+ * label, only when a code pin resolved) ≤ budget, and the fallback batch
+ * only runs when NO pin resolved (stage 2 then costs nothing).
  */
 export async function geocodeForward(query: string, limit = LOCATION_SUGGESTIONS_CONFIG.limit, near?: MapPin | null): Promise<MapGeocodeHit[]> {
   const q = query.trim().slice(0, LOCATION_SUGGESTIONS_CONFIG.maxQueryLength);
@@ -675,33 +735,13 @@ export async function geocodeForward(query: string, limit = LOCATION_SUGGESTIONS
   const coordName = LOCATION_SUGGESTIONS_CONFIG.coordinateProviderName;
   const plusName = LOCATION_SUGGESTIONS_CONFIG.plusCodeProviderName;
   // Location intents — exact user input, pinned ahead of provider hits.
-  // Coordinate fast-path: raw "lat, lng" (optionally parenthesised) is an
-  // exact pin. Range-gated by parseCoordinateQuery, so postal codes and
-  // house numbers never take this path. Plus codes decode offline (keyless
-  // providers do not resolve them); short codes recover against `near`.
+  // Coordinate fast-path: "lat, lng" (optionally parenthesised) is an exact
+  // pin, range-gated by parseCoordinateQuery so postal codes and house
+  // numbers never take this path. Plus codes decode offline (keyless
+  // providers do not resolve them); short codes recover against a locality
+  // reference (the query's own remainder) or the viewer bias.
   const coords = parseCoordinateQuery(q);
-  const plusPin = parsePlusCodeQuery(q, near && Number.isFinite(near.lat) && Number.isFinite(near.lng) ? near : null);
-  const intentPin: MapGeocodeHit | null = coords
-    ? {
-        display_name: q,
-        lat: String(coords.lat),
-        lon: String(coords.lng),
-        provider: coordName,
-      }
-    : plusPin
-      ? {
-          display_name: plusPin.code,
-          lat: String(plusPin.lat),
-          lon: String(plusPin.lng),
-          provider: plusName,
-        }
-      : null;
-  // Bounded reverse enrich for coordinate/plus-code intents — parallel with
-  // the fast providers so the happy path pays no extra latency. Failure is
-  // silent: the raw pin alone is still a valid suggestion.
-  const reverseEnrich: Promise<string | null> = intentPin
-    ? bounded(() => geocodeReverse(Number(intentPin.lat), Number(intentPin.lon)), budget)
-    : Promise.resolve(null);
+  const plusToken = coords ? null : extractPlusCodeToken(q);
   const runProvider = (name: MapGeocodeProvider, text: string): Promise<MapGeocodeHit[] | null> => {
     if (name === "nominatim") return bounded(() => geocodeViaNominatim(text, safeLimit, near), budget);
     if (name === "photon") return bounded(() => geocodeViaPhoton(text, safeLimit, near), budget);
@@ -709,6 +749,23 @@ export async function geocodeForward(query: string, limit = LOCATION_SUGGESTIONS
     if (name === "overpass") return bounded(() => geocodeViaOverpass(text, safeLimit), budget);
     // Unknown future providers fall through safely (no branch = no crash).
     return bounded(() => geocodeViaOpenMeteo(text, safeLimit), budget);
+  };
+  /** First-hit coordinate lookup for short plus-code recovery (parallel, stage-1 bounded). */
+  const lookupReferencePoint = async (text: string): Promise<MapPin | null> => {
+    try {
+      const [nom, photon] = await Promise.all([
+        geocodeViaNominatim(text, 1, near),
+        geocodeViaPhoton(text, 1, near),
+      ]);
+      const hit = nom?.[0] ?? photon?.[0];
+      if (!hit) return null;
+      const lat = Number(hit.lat);
+      const lng = Number(hit.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { lat, lng };
+    } catch {
+      return null;
+    }
   };
   const fastOrder = MAP_STACK_CONFIG.geocodeOrder.filter((n) => n !== "overpass");
   // Round 1 — fast providers in PARALLEL (previously sequential: every broad
@@ -718,24 +775,63 @@ export async function geocodeForward(query: string, limit = LOCATION_SUGGESTIONS
   const round1Order = LOCATION_SUGGESTIONS_CONFIG.overpassFallbackOnly
     ? fastOrder
     : MAP_STACK_CONFIG.geocodeOrder;
-  const [round1, reverseLabel] = await Promise.all([
-    Promise.all(round1Order.map((name) => runProvider(name, q))),
-    reverseEnrich,
+  const round1Tasks: [MapGeocodeProvider, string][] = round1Order.map((name) => [name, q]);
+  // A plus-code query with locality text ("CGQC+HQ2 Lekki") ALSO queries
+  // the remainder as a plain place, so suggestions surface even when the
+  // code pin cannot be recovered. Config-gated with the rest of the
+  // locality fallback.
+  const remainderText =
+    plusToken && LOCATION_SUGGESTIONS_CONFIG.plusCodeLocalityFallback && plusToken.remainder
+      ? plusToken.remainder
+      : "";
+  if (remainderText) {
+    for (const name of fastOrder) round1Tasks.push([name, remainderText]);
+  }
+  // Stage 1 — everything with no cross-dependency fires together:
+  //   providers on the query (+ plus-code remainder), the short-code
+  //   reference lookup, and the coordinate reverse label (coords are known
+  //   synchronously, so its label rides the same budget as round 1).
+  const shortCodeNeedsRef = Boolean(
+    plusToken && remainderText && classifyPlusCode(plusToken.code) === "short"
+  );
+  const refPromise: Promise<MapPin | null> = shortCodeNeedsRef
+    ? bounded(() => lookupReferencePoint(remainderText), budget)
+    : Promise.resolve(null);
+  const coordLabelPromise: Promise<string | null> = coords
+    ? bounded(() => geocodeReverse(coords.lat, coords.lng), budget)
+    : Promise.resolve(null);
+  const [round1, reference, coordLabel] = await Promise.all([
+    Promise.all(round1Tasks.map(([name, text]) => runProvider(name, text))),
+    refPromise,
+    coordLabelPromise,
   ]);
-  // Intent pins first (raw pin, then optional reverse label), then providers.
-  if (intentPin) {
-    pushAll([intentPin]);
-    if (typeof reverseLabel === "string" && reverseLabel.length > 0) {
-      pushAll([
-        {
-          display_name: reverseLabel,
-          lat: intentPin.lat,
-          lon: intentPin.lon,
-          provider: intentPin.provider,
-        },
-      ]);
+  // Build the pinned intent hit(s) — friendly reverse label preferred, raw
+  // text only when no label resolves.
+  let pinnedHits: MapGeocodeHit[] = [];
+  if (coords) {
+    const base = { lat: String(coords.lat), lon: String(coords.lng), provider: coordName };
+    pinnedHits =
+      typeof coordLabel === "string" && coordLabel.length > 0
+        ? [{ ...base, display_name: coordLabel }]
+        : [{ ...base, display_name: q }];
+  } else if (plusToken) {
+    const viewerRef =
+      near && Number.isFinite(near.lat) && Number.isFinite(near.lng) ? near : null;
+    const parsed = parsePlusCodeQuery(plusToken.code, reference ?? viewerRef);
+    if (parsed) {
+      const base = { lat: String(parsed.lat), lon: String(parsed.lng), provider: plusName };
+      // Stage 2 (only when a code pin resolved): the reverse label races
+      // one more budget; failure falls back to the canonical code.
+      const label = await bounded(() => geocodeReverse(parsed.lat, parsed.lng), budget);
+      pinnedHits = [
+        typeof label === "string" && label.length > 0
+          ? { ...base, display_name: label }
+          : { ...base, display_name: parsed.code },
+      ];
     }
   }
+  // Intent pins first (friendly label, exact coords), then providers.
+  pushAll(pinnedHits);
   round1.forEach(pushAll);
   // Round 2 — only when nothing merged: Overpass fallback + token-reorder
   // retry + house-number-stripped address recall in ONE parallel batch
@@ -803,19 +899,24 @@ export async function geocodeReverse(lat: number, lng: number): Promise<string |
   } catch {
     // Best-effort.
   }
-  // Nominatim reverse (server-side identity headers).
-  const nomUrl =
-    `${MAP_STACK_CONFIG.upstreams.nominatim}/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&accept-language=en`;
-  const nom = (await fetchJson(nomUrl)) as { display_name?: string } | null;
-  let label: string | null = typeof nom?.display_name === "string" ? nom.display_name : null;
-  // Photon reverse fallback.
-  if (!label) {
-    const photon = (await fetchJson(
+  // Nominatim + Photon reverse race in PARALLEL (server-side identity
+  // headers) — either answer wins, so one flaky/slow upstream can no longer
+  // stall or blank the label. Latency = the faster of the two, never the sum.
+  const [nom, photon] = await Promise.all([
+    fetchJson(
+      `${MAP_STACK_CONFIG.upstreams.nominatim}/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&accept-language=en`
+    ) as Promise<{ display_name?: string } | null>,
+    fetchJson(
       `${MAP_STACK_CONFIG.upstreams.photon}/reverse?lat=${lat}&lon=${lng}&lang=en`
-    )) as { features?: PhotonFeature[] } | null;
-    const first = photon?.features?.[0];
-    label = first ? photonLabel(first) : null;
-  }
+    ) as Promise<{ features?: PhotonFeature[] } | null>,
+  ]);
+  const photonFirst = photon?.features?.[0];
+  const label: string | null =
+    typeof nom?.display_name === "string" && nom.display_name.length > 0
+      ? nom.display_name
+      : photonFirst
+        ? photonLabel(photonFirst)
+        : null;
   if (label) {
     try {
       await redis.set(key, label, { ex: MAP_STACK_CONFIG.cacheTtlSec.reverse });

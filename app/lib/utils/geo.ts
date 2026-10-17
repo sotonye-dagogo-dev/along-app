@@ -65,6 +65,68 @@ export function traceSignature(points: GeoPoint[]): string {
   return points.map((p) => `${p.lat.toFixed(3)},${p.lng.toFixed(3)}`).join(">");
 }
 
+/**
+ * Client memory-cache key for a traced route. Vehicle-aware traces can
+ * differ per mode (walking/cycling profiles), so the mode joins the key;
+ * no vehicle keeps the legacy `route-trace:{sig}` shape.
+ */
+export function traceCacheKey(sig: string, vehicle?: string | null): string {
+  const mode = typeof vehicle === "string" ? vehicle.trim().toLowerCase() : "";
+  return mode ? `route-trace:${sig}:${mode}` : `route-trace:${sig}`;
+}
+
+/** Minimal step shape the Find-on-map resolver needs. */
+export interface FindOnMapStep {
+  lat?: number;
+  lng?: number;
+}
+
+export interface FindOnMapTarget {
+  lat: number;
+  lng: number;
+  /** Which rule produced the target (tests + debugging). */
+  source: "coords" | "previous" | "bias";
+}
+
+function findOnMapCoord(
+  steps: readonly FindOnMapStep[],
+  index: number,
+  source: "coords" | "previous",
+): FindOnMapTarget | null {
+  const s = steps[index];
+  if (!s || typeof s.lat !== "number" || typeof s.lng !== "number") return null;
+  if (!Number.isFinite(s.lat) || !Number.isFinite(s.lng)) return null;
+  if (s.lat === 0 && s.lng === 0) return null;
+  return { lat: s.lat, lng: s.lng, source };
+}
+
+/**
+ * Pure focus-target resolver for the "Find on map" CTA (Sprint 72).
+ *
+ * Non-network rules only: this stop's pinned coords → the nearest previous
+ * stop with coords (backwards walk — a typed stop with no pin yet should
+ * open focused near what's already on the route) → the granted viewer bias.
+ * The caller layers the async steps between them (geocoding this stop's
+ * typed text after `coords`, GPS after `bias`) and opens the preview
+ * regardless — a null target just skips the fly-to.
+ */
+export function resolveFindOnMapTarget(
+  steps: readonly FindOnMapStep[],
+  index: number,
+  bias?: { lat: number; lng: number } | null,
+): FindOnMapTarget | null {
+  const direct = findOnMapCoord(steps, index, "coords");
+  if (direct) return direct;
+  for (let i = index - 1; i >= 0; i--) {
+    const prev = findOnMapCoord(steps, i, "previous");
+    if (prev) return prev;
+  }
+  if (bias && Number.isFinite(bias.lat) && Number.isFinite(bias.lng)) {
+    return { lat: bias.lat, lng: bias.lng, source: "bias" };
+  }
+  return null;
+}
+
 /** Resolves the browser geolocation fix. Rejects with a friendly message. */
 export function getCurrentPosition(timeoutMs = 8000): Promise<GeoPoint & { accuracy?: number }> {
   return new Promise((resolve, reject) => {

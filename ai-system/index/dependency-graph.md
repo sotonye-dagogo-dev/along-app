@@ -1,8 +1,9 @@
 # Dependency Graph
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 70: mapSummary range/split → RouteMap overlay/tooltips + NavigationGuide bars; journeyTime legTrafficFactor; traffic rebase/client-key → useRouteTraffic persistent cache)
-P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
+>
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: mapProxyService label-first geocode + reverse ∥ race + vehicle traceRoute opts; mapStack routing profiles; RouteMap → mapView/mapPicker configs; ShareRouteModal → resolveFindOnMapTarget)
+> - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -111,7 +112,7 @@ Service Layer (app/lib/services/*)
 
 Config Registries (app/lib/config/*)
     → (no app dependencies — pure config objects)
-    → 77 files (incl. index.ts, verified 2026-10-15) incl. postFollow.ts (Sprint 59 follow registry → FollowButton variants + useFollowStatus + PostCardFollow) + search.ts (Sprint 55 loose-search registry + tokenize/levenshtein/coverage/relevance → searchService recall+rank) + scrollbar.ts (Sprint 55 SCROLLBAR_CONFIG → globals.css utilities + AdminShell/TrustBadge) + feedAlgorithm FEED_DIVERSITY_CONFIG/applyFeedDiversity + trustDisplay tooltip knobs (Sprint 55) + locationSuggestions.ts (broad suggestions: LOCATION_SUGGESTIONS_CONFIG + parseCoordinateQuery (paren-aware)/reorderQueryTokens/buildGeocodeUrl + OLC plus-code classify/decode/encode/recover/parse + stripLeadingHouseNumber → geocode route, mapProxyService, RouteStepInput/ShareRouteModal/RequestRouteModal) + profileValidation.ts (Sprint 48 display-name normalize/validate → ConfigDrivenForm trim, users PATCH, register collapse; forms.ts phone removed) + leaderboardLinks.ts (Sprint 34 canonical /leaderboard: footer + profileQuickLinks + invite CTA) + profileQuickLinks.ts (Sprint 34 accountTab/scroll/route quick-links → own-profile page) + authLink.ts (Sprint 34 connected-state copy/resolver → AuthLinkPanel + EmailSecurityPanel) + locationFeedback.ts (Sprint 34 denied/timeout/unavailable/tracking copy + code helper → geo.ts, explore Near-me, NavigationGuide) + mediaCleanup.ts (Sprint 33 allowlist/toggles/account-retention/dry-run → mediaCleanupService + upload/cleanup + all delete paths) + routeValidation.ts (fix-build 2026-10-09 composer/fare/sanitize validators → ShareRouteModal, schemas/post, posts POST/PATCH, home/post-detail submits; Sprint 36 destination-skip) + audit.ts (Sprint 37 audit-trail display labels/variants/sanitizers → /admin/audit page) + authVerification.ts (Sprint 27 OTP TTL/cooldown/attempts/keys/copy/maskEmail → otpStore sidecar keys + otp/resend/verify-email/register + useOtpResend + OTP screen/EmailSecurityPanel; fix-build 2026-10-09: durable EmailOtpToken mirror via emailOtpStore.ts + public (public)/verify-email page; Sprint 41: REGISTER_EMAIL_DISPATCH_CONFIG patient budgets 15s/10s + clearCooldownOnFailure + resendUseVerifyTemplate → register/resend/verify-email routes + clearSendCooldown in otpStore + per-send timeoutMs in emailService) + pushPrompt.ts (Sprint 27 storage keys/dismiss TTL/outcome copy/iOS-detect → PushManager/PushProvider/pushClient; Sprint 58 opaque surface tokens → PushManager inline/floating/pill) + reviews.ts (Sprint 25 REVIEWS_CONFIG + insertReviewCtaPanels + reviewAuthorName; SITE_REVIEWS retained) + pwa.ts (Sprint 25 v4: locales precache, /api/{config,reviews} cacheable, banner copy, REVIEW mirror; Sprint 47 PWA_FAQ_LINKS install/push/offline `?q=`+#offline-pwa deep-links → InstallPrompt/PushManager/OfflineBanner help icons; notices on --color-* tokens) + userVisibility.ts (Sprint 47 isDeleted/isArchived[pending-grace]/isVisible predicates + visibleUserWhere + filterVisibleUsers + DELETED_USER_COPY → suggestions/search/follow/followers/following/users-search/users-[id] counts + Panel/Rail/UserList/FollowButton) + faq.ts (Sprint 25 FAQ_PCM; Sprint 59 route-requests category + PCM) + footer.ts (Sprint 25 optional i18nKey) + rateLimits.ts (Sprint 25 reviews bucket) + routeSteps.ts (Sprint 23 destination rule + normalize: composer, PostCard, NavigationGuide, post detail, posts POST/PATCH) + mapPins.ts (Sprint 20 anchor-stable pins/user-dot/labels; Sprint 23 endpoint-snap + tracking timeouts) + mapStack.ts (Sprint 19 keyless tiles/routing/geocode/TTLs/attributions/style-stack builders/env gates; Sprint 20 dark light-parity; Sprint 50 openmeteo provider/upstream/order) + reportAttachments.ts (Sprint 50 caps/folder/sanitize/copy → upload FOLDER_POLICIES + reports/bug-reports sanitize + ReportImageUpload) + paginationUi.ts (Sprint 50 copy → ViewMoreButton/PageNavigator) + floatingUi.ts (Sprint 50 lanes/dock/laneBottom → BackToTop/ThemeToggle/OfflineBanner/InstallPrompt/PushManager/SWUpdatePrompt) + routePins.ts (Sprint 28 canonical origin+intermediates+destination builder + trace input + ROUTE_PINS_CONFIG: PostCard, post detail) + navigation LIVE_NAVIGATION_CONFIG (Sprint 28 live-nav overlay copy/panel width → LiveNavigationModal), earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library + Sprint 20 update-in-place labels/prompt), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
+    → 85 files (incl. index.ts, verified 2026-10-17) incl. postFollow.ts (Sprint 59 follow registry → FollowButton variants + useFollowStatus + PostCardFollow) + search.ts (Sprint 55 loose-search registry + tokenize/levenshtein/coverage/relevance → searchService recall+rank) + scrollbar.ts (Sprint 55 SCROLLBAR_CONFIG → globals.css utilities + AdminShell/TrustBadge) + feedAlgorithm FEED_DIVERSITY_CONFIG/applyFeedDiversity + trustDisplay tooltip knobs (Sprint 55) + locationSuggestions.ts (broad suggestions: LOCATION_SUGGESTIONS_CONFIG + parseCoordinateQuery (paren-aware)/reorderQueryTokens/buildGeocodeUrl + OLC plus-code classify/decode/encode/recover/parse + stripLeadingHouseNumber + extractPlusCodeToken locality split/plusCodeLocalityFallback (Sprint 72) → geocode route, mapProxyService, RouteStepInput/ShareRouteModal/RequestRouteModal) + profileValidation.ts (Sprint 48 display-name normalize/validate → ConfigDrivenForm trim, users PATCH, register collapse; forms.ts phone removed) + leaderboardLinks.ts (Sprint 34 canonical /leaderboard: footer + profileQuickLinks + invite CTA) + profileQuickLinks.ts (Sprint 34 accountTab/scroll/route quick-links → own-profile page) + authLink.ts (Sprint 34 connected-state copy/resolver → AuthLinkPanel + EmailSecurityPanel) + locationFeedback.ts (Sprint 34 denied/timeout/unavailable/tracking copy + code helper → geo.ts, explore Near-me, NavigationGuide) + mediaCleanup.ts (Sprint 33 allowlist/toggles/account-retention/dry-run → mediaCleanupService + upload/cleanup + all delete paths) + routeValidation.ts (fix-build 2026-10-09 composer/fare/sanitize validators → ShareRouteModal, schemas/post, posts POST/PATCH, home/post-detail submits; Sprint 36 destination-skip) + audit.ts (Sprint 37 audit-trail display labels/variants/sanitizers → /admin/audit page) + authVerification.ts (Sprint 27 OTP TTL/cooldown/attempts/keys/copy/maskEmail → otpStore sidecar keys + otp/resend/verify-email/register + useOtpResend + OTP screen/EmailSecurityPanel; fix-build 2026-10-09: durable EmailOtpToken mirror via emailOtpStore.ts + public (public)/verify-email page; Sprint 41: REGISTER_EMAIL_DISPATCH_CONFIG patient budgets 15s/10s + clearCooldownOnFailure + resendUseVerifyTemplate → register/resend/verify-email routes + clearSendCooldown in otpStore + per-send timeoutMs in emailService) + pushPrompt.ts (Sprint 27 storage keys/dismiss TTL/outcome copy/iOS-detect → PushManager/PushProvider/pushClient; Sprint 58 opaque surface tokens → PushManager inline/floating/pill) + reviews.ts (Sprint 25 REVIEWS_CONFIG + insertReviewCtaPanels + reviewAuthorName; SITE_REVIEWS retained) + pwa.ts (Sprint 25 v4: locales precache, /api/{config,reviews} cacheable, banner copy, REVIEW mirror; Sprint 47 PWA_FAQ_LINKS install/push/offline `?q=`+#offline-pwa deep-links → InstallPrompt/PushManager/OfflineBanner help icons; notices on --color-* tokens) + userVisibility.ts (Sprint 47 isDeleted/isArchived[pending-grace]/isVisible predicates + visibleUserWhere + filterVisibleUsers + DELETED_USER_COPY → suggestions/search/follow/followers/following/users-search/users-[id] counts + Panel/Rail/UserList/FollowButton) + faq.ts (Sprint 25 FAQ_PCM; Sprint 59 route-requests category + PCM) + footer.ts (Sprint 25 optional i18nKey) + rateLimits.ts (Sprint 25 reviews bucket) + routeSteps.ts (Sprint 23 destination rule + normalize: composer, PostCard, NavigationGuide, post detail, posts POST/PATCH) + mapPins.ts (Sprint 20 anchor-stable pins/user-dot/labels; Sprint 23 endpoint-snap + tracking timeouts) + mapStack.ts (Sprint 19 keyless tiles/routing/geocode/TTLs/attributions/style-stack builders/env gates; Sprint 20 dark light-parity; Sprint 50 openmeteo provider/upstream/order; Sprint 72 routingBases/routingProfiles + resolveRoutingProfiles/isDefaultRoutingProfiles/routingProfileSlug) + reportAttachments.ts (Sprint 50 caps/folder/sanitize/copy → upload FOLDER_POLICIES + reports/bug-reports sanitize + ReportImageUpload) + paginationUi.ts (Sprint 50 copy → ViewMoreButton/PageNavigator) + floatingUi.ts (Sprint 50 lanes/dock/laneBottom → BackToTop/ThemeToggle/OfflineBanner/InstallPrompt/PushManager/SWUpdatePrompt) + routePins.ts (Sprint 28 canonical origin+intermediates+destination builder + trace input + ROUTE_PINS_CONFIG: PostCard, post detail) + navigation LIVE_NAVIGATION_CONFIG (Sprint 28 live-nav overlay copy/panel width → LiveNavigationModal), earlyAdopter.ts (Sprint 16 badge: key/defaults/limits/label+tooltip builders/validation/admin meta), reviews.ts (SITE_REVIEWS for About page), carousel/shareRoute/routeRequest (Sprint 9 UX tightening), routeDrafts (Sprint 10 drafts library + Sprint 20 update-in-place labels/prompt), toast/postActions (Sprint 11 toast timing + post actions), postSubmit (Sprint 12 idempotency), moderation (Sprint 13 report lifecycle + request display rules + Sprint 14 `immutablePostFields`), notifications (Sprint 14 DISLIKE/NEW_ROUTE), inviteConfig (Sprint 14 points-cap policy docs), navigation `isAdminRole` + errorReporting.ts (Sprint 17: report category/endpoint/caps/copy/sanitize patterns), footer layout slot
 
 Client Utilities (app/lib/utils/*)
     → pushClient → Notification permission (in-gesture) + navigator.serviceWorker + PushManager API, fetch (/api/push/*) [Sprint 27: getPushSupport/ensurePushPermission/subscribeToPushDetailed, boolean wrapper kept; Sprint 46: vapid-public-key VAPID_PUBLIC_KEY ?? NEXT_PUBLIC_VAPID_PUBLIC_KEY parity, PushManager inline+floating via PwaNotices hub in root layout, InstallPrompt deferred-BIP + PWA_INSTALL_CONFIG/isStandaloneDisplay, FOLLOW post-transaction fan-out mirror, registrar dev-guard; Sprint 47: notices on lucide icons (Smartphone/Bell/WifiOff/X/Chevron/HelpCircle→FAQ) + --color-* tokens, FaqClient `?q=`/#hash deep-links, FOLLOW 410 gone-state for deleted/archived + live visible-only counts, suggestions/search visibility filters, Panel/Rail/UserList AppAvatar + admin avatar selects]
@@ -128,6 +129,15 @@ PWA (public/sw.js)
 ```
 
 ### Detailed Service Dependencies
+
+### Database Transfer Boundary
+
+`scripts/db-migrate-supabase.ts`, `scripts/db-backup.ts`,
+`scripts/db-restore.ts`, and `scripts/backup-supabase.ts`
+-> `app/lib/config/dbTransfer.ts` (roles, stage plans, safety and operator copy)
+-> `scripts/lib/dbTransfer/` (URL, connection, introspection, dump/read, state, restore, verification)
+-> PostgreSQL via `pg` (Supabase primary and retained Prisma direct mirror)
+-> local `backups/db-transfer/` artifacts and atomic journal
 
 ```
 AuthService
@@ -198,25 +208,25 @@ EarlyAdopterService (`app/lib/services/earlyAdopterService.ts` — badge rank/st
     → Config: earlyAdopter (key/defaults/normalize/label builders)
 
 RouteTracingService
-    → mapProxyService.traceRoute (thin validating delegate — no direct upstream calls)
+    → mapProxyService.traceRoute (thin validating delegate — no direct upstream calls; Sprint 72 forwards optional {vehicle})
     → Config: mapStack (env-gate helpers only)
 
 MapProxyService (`app/lib/services/mapProxyService.ts` — Sprint 19 keyless stack, owns ALL upstream map calls)
-    → OSRM demo (keyless, GeoJSON → polyline5) → env-gated ORS → env-gated Mapbox → straight-line guarantee (never throws)
-    → Nominatim server-side (identity UA/Referer, addressdetails+dedupe) + Photon (street-level labels) + keyless Open-Meteo + keyless Overpass landmark/building fallback (LANDMARK_GEOCODE_CONFIG-gated, last) merged + deduped, optional near-rank (forward); Nominatim → Photon fallback (reverse) [Sprint 50; landmark power-up this session]
+    → OSRM demo (keyless, GeoJSON → polyline5) → env-gated ORS → env-gated Mapbox → straight-line guarantee (never throws); Sprint 72: traceRoute({vehicle}) runs a mode-aware pass FIRST (ORS foot-walking/cycling-regular + Mapbox walking/cycling when keyed; keyless OSRM demo driving-only → skipped) then falls through the byte-identical legacy chain
+    → Nominatim server-side (identity UA/Referer, addressdetails+dedupe) + Photon (street-level labels) + keyless Open-Meteo + keyless Overpass landmark/building fallback (LANDMARK_GEOCODE_CONFIG-gated, last) merged + deduped, optional near-rank (forward); Sprint 72 label-first intent pins (reverse/canonical label IS the hit, raw text on failure) + plus-code locality split in stage 1; reverse races Nominatim ∥ Photon in Promise.all (latency = faster of two) [Sprint 50; landmark power-up]
     → Redis (route/geocode/reverse read-through caches; never-throw wrapper)
-    → Config: mapStack (orders, upstreams, identity, TTLs), cache (CACHE_TTL maps*), rateLimits (maps bucket via API routes)
+    → Config: mapStack (orders, upstreams, routingBases/profiles + resolveRoutingProfiles/routingProfileSlug, identity, TTLs), cache (CACHE_TTL maps*), rateLimits (maps bucket via API routes)
 
 Map API Routes (`app/api/maps/route|geocode|reverse`)
-    → mapProxyService (traceRoute / geocodeForward / geocodeReverse)
+    → mapProxyService (traceRoute [Sprint 72 += optional vehicle ≤40 → { vehicle } opts] / geocodeForward / geocodeReverse)
     → checkRateLimit(request, "maps") → sanitized JSON errors (never leak upstream details)
     → Consumers (client-only, same-origin): RouteStepInput + ShareRouteModal (debounced, abortable, granted-only geoBias near-rank [Sprint 50]) + geo.ts reverseGeocode
 
 Map Renderers (RouteMap.tsx, explore/page.tsx)
-    → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset; dark light-parity — filter `"none"`, dark raster mirrors light) + mapPins (`MAP_PINS_CONFIG` center anchor/zero offset, `routePinLabel` 1-based, `snapEndpointsToPolyline`, `tracking` timeouts [Sprint 23]) + routePins (`buildRoutePinsFromPost` origin+intermediates+destination, `buildTraceInputFromPins`, `ROUTE_PINS_CONFIG` [Sprint 28])
+    → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset; dark light-parity — filter `"none"`, dark raster mirrors light) + mapPins (`MAP_PINS_CONFIG` center anchor/zero offset, `routePinLabel` 1-based, `snapEndpointsToPolyline`, `tracking` timeouts [Sprint 23]) + routePins (`buildRoutePinsFromPost` origin+intermediates+destination, `buildTraceInputFromPins`, `ROUTE_PINS_CONFIG` [Sprint 28]) + mapView (Sprint 72 deferred baseline recenter: `MAP_VIEW_CONFIG` idle/poll knobs + pure `shouldDeferFit`; fit effect deps on `followActive` + token-guarded idle watcher) + mapPicker (Sprint 72 tap-assign card + focus flyTo/hint copy — armed only via `pickOptions`/`onPickOption`/`focusRequest`)
     → Shared visuals: MapPins.tsx (`MapRoutePin` numbered dot, `MapUserDot` info-blue + glory ring + radar) — token classes only, no hardcoded hex
     → Shared location: `useUserLocation` hook (passive fix + watch; explore override + post-detail fallback [Sprint 23])
-    → Shared trace: `useRouteTrace` hook (estimate + debounced `/api/routes/trace` + memory cache + silent fallback [Sprint 28] — composer preview + post detail; Sprint 67 += optional vehicle → mode-aware durations via `resolveJourneyDuration`)
+    → Shared trace: `useRouteTrace` hook (estimate + debounced `/api/routes/trace` + memory cache + silent fallback [Sprint 28] — composer preview + post detail; Sprint 67 += optional vehicle → mode-aware durations via `resolveJourneyDuration`; Sprint 72 += vehicle POST + shared `traceCacheKey(sig, vehicle?)` + geo.ts `resolveFindOnMapTarget` pure focus resolver)
     → Shared traffic: `useRouteTraffic` hook (debounced `/api/maps/traffic` + memory cache + silent fallback; Sprint 67 += optional vehicle passthrough + last-good-result persistence across geometry swaps — RouteMap remaps via `remapTrafficSegments`; Sprint 68 += single-result sharing — post detail passes its `postTraffic` as `LiveNavigationModal.trafficOverride` → inner `trafficOverride`, zero re-retrieval)
     → Live overlay: `LiveNavigationModal` (map + NavigationGuide together, `LIVE_NAVIGATION_CONFIG` [Sprint 28] — post detail; Sprint 68 += optional `trafficOverride` shared from the detail map + `tooltipMode="detailed"`; expand dialog z-[70] in `MAP_EXPAND_CONFIG` sits above the modal; Sprint 69 += optional `totalFare` forwarded to guide + map overlay) + `mapTooltips.ts` (Sprint 68 tooltip registry + pure tap/segment helpers → `RouteMap` detailed/mini stretch + quick-link Markers; PostCard minis stay fetch-free; Sprint 69 += leg helpers — pin borders → leg resolution, worst-level, length-share time/distance, tap-anchored "Stretch N of M" cards) + `mapSummary.ts` (Sprint 69 guards/formatters/remaining math → `RouteMap` overlay + `NavigationGuide` header/live banner + detail/share totals) + `routeSteps.ts` (Sprint 69 `totalFareForSteps` single fare total)
     → MapLibre GL vector tiles (keyless) — zero `NEXT_PUBLIC_*` map keys read (+ `maplibre-gl.css` import required by every renderer [Sprint 23])
@@ -284,35 +294,35 @@ siteConfig Utility
 
 ## External Dependencies
 
-| Package | Purpose | Used In |
-|---------|---------|---------|
-| next | Framework (App Router) | All pages, API routes |
-| react / react-dom | UI library | All components |
-| antd / @ant-design/icons | UI component library | App* wrappers in `app/components/ui/` |
-| @ant-design/charts | Analytics charts | Admin dashboard |
-| @ant-design/nextjs-registry | Ant Design SSR registry | Root layout |
-| maplibre-gl / react-map-gl | Map rendering (keyless OpenFreeMap vector + keyless raster fallbacks since Sprint 19) | Explore page, route visualization |
-| @mapbox/polyline | Route polyline encoding | mapProxyService (GeoJSON→polyline5), straight-line fallback |
-| supercluster | Map marker clustering | Explore map |
-| @prisma/client | Database ORM | All services, BaseRepository |
-| @prisma/adapter-pg | Postgres adapter | Prisma client initialization |
-| @upstash/redis | Caching, rate limiting, sessions | CacheLayer, AuthService, RateLimiter |
-| @upstash/qstash | Background job queue | NotificationService (push) |
-| jsonwebtoken / jose / bcrypt | Auth (JWT signing, edge JWT verification, password hashing) | AuthService, middleware.ts |
-| zod | Input validation | All API routes |
-| cloudinary / next-cloudinary | Image upload and optimization | Avatar upload, post media |
-| resend | Transactional emails | AuthService (verification), notifications |
-| @sentry/nextjs | Error tracking | instrumentation, API routes, components |
-| web-push | Push notification sending | NotificationService |
-| lucide-react | UI icons | All UI components |
-| axios | HTTP client | Client-side API calls, integrations (transact, tega) |
-| js-cookie | Cookie management | AuthProvider (client-side) |
-| rxjs | Reactive streams | Feed service, real-time updates |
-| react-markdown / remark | Markdown rendering | Post content, about page |
-| qrcode.react | QR code generation | Share route functionality |
-| pg | PostgreSQL driver | Prisma adapter |
-| cors | CORS headers | API routes |
-| dotenv | Environment variable loading | Configuration |
+| Package                      | Purpose                                                                               | Used In                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| next                         | Framework (App Router)                                                                | All pages, API routes                                       |
+| react / react-dom            | UI library                                                                            | All components                                              |
+| antd / @ant-design/icons     | UI component library                                                                  | App\* wrappers in `app/components/ui/`                      |
+| @ant-design/charts           | Analytics charts                                                                      | Admin dashboard                                             |
+| @ant-design/nextjs-registry  | Ant Design SSR registry                                                               | Root layout                                                 |
+| maplibre-gl / react-map-gl   | Map rendering (keyless OpenFreeMap vector + keyless raster fallbacks since Sprint 19) | Explore page, route visualization                           |
+| @mapbox/polyline             | Route polyline encoding                                                               | mapProxyService (GeoJSON→polyline5), straight-line fallback |
+| supercluster                 | Map marker clustering                                                                 | Explore map                                                 |
+| @prisma/client               | Database ORM                                                                          | All services, BaseRepository                                |
+| @prisma/adapter-pg           | Postgres adapter                                                                      | Prisma client initialization                                |
+| @upstash/redis               | Caching, rate limiting, sessions                                                      | CacheLayer, AuthService, RateLimiter                        |
+| @upstash/qstash              | Background job queue                                                                  | NotificationService (push)                                  |
+| jsonwebtoken / jose / bcrypt | Auth (JWT signing, edge JWT verification, password hashing)                           | AuthService, middleware.ts                                  |
+| zod                          | Input validation                                                                      | All API routes                                              |
+| cloudinary / next-cloudinary | Image upload and optimization                                                         | Avatar upload, post media                                   |
+| resend                       | Transactional emails                                                                  | AuthService (verification), notifications                   |
+| @sentry/nextjs               | Error tracking                                                                        | instrumentation, API routes, components                     |
+| web-push                     | Push notification sending                                                             | NotificationService                                         |
+| lucide-react                 | UI icons                                                                              | All UI components                                           |
+| axios                        | HTTP client                                                                           | Client-side API calls, integrations (transact, tega)        |
+| js-cookie                    | Cookie management                                                                     | AuthProvider (client-side)                                  |
+| rxjs                         | Reactive streams                                                                      | Feed service, real-time updates                             |
+| react-markdown / remark      | Markdown rendering                                                                    | Post content, about page                                    |
+| qrcode.react                 | QR code generation                                                                    | Share route functionality                                   |
+| pg                           | PostgreSQL driver                                                                     | Prisma adapter                                              |
+| cors                         | CORS headers                                                                          | API routes                                                  |
+| dotenv                       | Environment variable loading                                                          | Configuration                                               |
 
 ---
 
@@ -321,6 +331,7 @@ siteConfig Utility
 > **Section summary:** Any detected circular dependencies that need to be resolved.
 
 None detected — architecture is layered with unidirectional dependencies:
+
 - Pages → Components → Hooks → Services → BaseRepository → Prisma
 - Services → Config Registries (no reverse dependency)
 - Components → UI Library (no reverse dependency)
@@ -336,4 +347,4 @@ None detected — architecture is layered with unidirectional dependencies:
 - BaseRepository may import only Prisma Client and CacheLayer
 - Config Registries must have zero application dependencies
 - Utility functions must have zero application dependencies
-- Never import Ant Design directly from feature components — always use App* wrappers
+- Never import Ant Design directly from feature components — always use App\* wrappers

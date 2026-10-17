@@ -165,6 +165,30 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         answer:
           "Drag with one finger to move the map. Pinch with two fingers to zoom in and out, or double-tap to zoom in. Tap any numbered dot to preview that route, or use Expand for a full-screen view.",
       },
+      {
+        id: "map-tap-assign",
+        question: "How do I set a stop by tapping the map?",
+        answer:
+          "Open the route preview and tap anywhere on the map that isn't the route line — a small card opens at the tap listing your stops. Pick the stop and the tapped point becomes that stop's location. The card closes with X or Escape, or re-anchors when you tap somewhere else. Tapping the route line itself still shows traffic for that stretch.",
+      },
+      {
+        id: "map-find-on-map",
+        question: 'What does "Find on map" do?',
+        answer:
+          'Every location field has "Find on map" under it. It opens the route preview, flies the camera to that stop (or the closest thing known — your typed text, an earlier stop, or your area) and shows a short hint that you can tap anywhere to set the point. "Use my current location" fills the field with your live position instead.',
+      },
+      {
+        id: "map-plus-code",
+        question: "Can I search with a Plus Code, like CGQC+HQ2 Lekki?",
+        answer:
+          'Yes — paste the code with or without the area name ("CGQC+HQ2" or "CGQC+HQ2 Lekki"). With a locality, the map resolves the code against that area and pins the nearest matching spot. The friendly place name is what shows in the field, not the raw code, unless we can\'t resolve it to a place.',
+      },
+      {
+        id: "map-friendly-labels",
+        question: "Why do location fields show place names instead of coordinates?",
+        answer:
+          "Whenever a pin can be reversed into a real place name — area, street, landmark — that's what the field shows, so routes stay readable and the label always matches the pin. Coordinates or plus codes only remain when we can't resolve them to a place.",
+      },
     ],
   },
   {
@@ -364,6 +388,26 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     question: "How I go take zoom and move map for mobile?",
     answer:
       "Drag with one finger make di map move. Pinch with two fingers make you zoom in and out, or double-tap make you zoom in. Tap any number dot make you preview dat route, or use Expand for full-screen view.",
+  },
+  "map-tap-assign": {
+    question: "How I go take set stop by tapping di map?",
+    answer:
+      "Open di route preview come tap anywhere for map wey no be di route line — small card go open for dat spot with your stops. Pick di stop and di place wey you tap na im go become dat stop location. Press X or Escape close am, or if you tap another place e go move re-anchor. If you tap di route line hinself, traffic for dat stretch still dey show.",
+  },
+  "map-find-on-map": {
+    question: 'Wetin "Find on map" dey do?',
+    answer:
+      'Every location field get "Find on map" for under am. E open di route preview, move camera go dat stop (or di closest thing wey we know — your typing, one earlier stop, or your area), then e show small hint say you fit tap anywhere make you set di point. "Use my current location" na to fill di field with your current position instead.',
+  },
+  "map-plus-code": {
+    question: "I fit use Plus Code search, like CGQC+HQ2 Lekki?",
+    answer:
+      'Yes — paste di code with or without di area name ("CGQC+HQ2" or "CGQC+HQ2 Lekki"). With area, map go resolve di code against dat place and pin di nearest correct spot. Na di friendly place name dey show for di field, no be di raw code — except we no fit resolve am go place.',
+  },
+  "map-friendly-labels": {
+    question: "Why location field dey show place name instead of coordinates?",
+    answer:
+      "Any time we fit turn pin go real place name — area, street, landmark — na im dey show for di field, so routes go easy to read and di label go always match di pin. Coordinates or plus code remain only when we no fit find place for am.",
   },
   "how-offline-works": {
     question: "Along dey work offline?",

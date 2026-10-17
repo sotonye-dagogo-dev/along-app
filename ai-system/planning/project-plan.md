@@ -1,10 +1,18 @@
 # Project Plan
 
 > **Metadata**
+>
 > - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 73 — Supabase Database Transfer and Recovery
+
+- [x] Resumable, checksummed Prisma Postgres to Supabase migration with transactional restore and rollback
+- [x] Config-driven local backup, verified restore, and Supabase-to-Prisma offsite mirror scripts
+- [x] Raw-text PostgreSQL temporal codec and cyclic-FK load planning
+- [x] Environment template, README runbook, connection review, focused tests, live read-only probes, and QA gate
 
 ---
 
@@ -31,7 +39,7 @@
 
 - [x] Config registry files created (25 files in `app/lib/config/`)
 - [x] BaseRepository class implemented
-- [x] Universal App* component library built (34 components, including AppLogo, GuestBanner, OfflineIndicator)
+- [x] Universal App\* component library built (34 components, including AppLogo, GuestBanner, OfflineIndicator)
 - [x] Context providers wired (Auth, OnlineStatus, Push, GlobalModal, GlobalToast, CookieConsent)
 - [x] Root layout with 6 providers, SEO metadata, Inter font, PWA meta tags
 - [x] Global styles (globals.css) with Tailwind v4 theme tokens
@@ -129,7 +137,7 @@
 
 - [x] Unit tests for services and utilities (149 tests across 15 suites incl. mutation E2E + posts API + search API/service + uxTightening config + routeDrafts config/service, per 2026-10-08 Sprint 11; full gate green in-runner: tsc 0, jest 149/149, build clean)
 - [x] Mutation E2E tests (post/like/comment/bookmark/follow) + error handling and undefined edge cases (`app/__tests__/api/mutations.test.ts`, `posts.test.ts`)
-- [ ] Component tests for App* components
+- [ ] Component tests for App\* components
 - [ ] Integration tests for API routes
 - [ ] Performance audit (Lighthouse, bundle analysis)
 - [ ] Accessibility audit (WCAG AA)
@@ -196,3 +204,5 @@
 - [x] Sprint 68 (2026-10-16) — Navigation-guide map parity + tracing tooltips (shared trafficOverride zero re-retrieval; expand z-[70]; mapTooltips registry + detailed/mini tap tooltips) (mapTooltips 15 assertions; FULL gate green in-runner: tsc 0, jest 91/91 790/790, lint clean, build clean)
 - [x] Sprint 69 (2026-10-16) — Leg-aware stretch tooltips + summary-bar tightening (leg helpers + tap-at-anchor; mapSummary guards; totalFareForSteps; guarded/dynamic bars) (mapSummary 10 + routeLegs 8 assertions; FULL gate green in-runner: tsc 0, jest 93/93 806/806, lint clean, build clean)
 - [x] Sprint 70 (2026-10-16) — Consistent journey totals + resilient traffic cache + docs (range totals + largest-remainder stretch splits; persistent geometry-scoped cache + stale-while-revalidate + 120s refresh + local rebase; FAQ/privacy/terms/README refresh en+pcm) (journeyConsistency 10 assertions; FULL gate green in-runner: tsc 0, jest 94/94 816/816, lint clean, build clean)
+- [x] Sprint 71 (2026-10-17) — Location input power-ups (paren/bracket coords, offline Plus Code decode + short-code recovery vs viewer `near`, numeric-address recall round-2; placeholders/empty-state from config) (locationIntent 22; FULL gate green in-runner: tsc 0, jest 95/95 838/838, lint pre-existing only, build clean)
+- [x] Sprint 72 (2026-10-17) — Map tightening: friendly intent labels + plus-code locality, tap-to-assign pick card + Find on map CTA, vehicle-aware traces (mode pass + legacy fallback), deferred baseline recenter (followActive + idle watcher), 4 FAQ items en+pcm (mapVehicleProfiles + mapView + mapPicker suites; locationIntent →28; FULL gate green in-runner: tsc 0, jest 98/98 865/865, lint clean on touched files, build clean)

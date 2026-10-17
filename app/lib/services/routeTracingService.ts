@@ -15,11 +15,15 @@ interface TraceResult {
  * Mapbox → straight-line fallback. Keyed providers are never attempted
  * without their env keys, so tracing works with ALL map keys unset.
  *
+ * Non-breaking vehicle-aware extension: `trace(pins, { vehicle })` runs the
+ * mode-aware profile pass (walking/cycling on keyed providers) first and
+ * falls back to the same legacy driving chain on any failure.
+ *
  * Kept as a thin class wrapper so existing server imports
  * (`routeTracingService.trace(pins)`) keep working unchanged.
  */
 class RouteTracingService {
-  async trace(pins: MapPin[]): Promise<TraceResult> {
+  async trace(pins: MapPin[], opts?: { vehicle?: string | null }): Promise<TraceResult> {
     if (pins.length < 2) {
       throw new Error("At least 2 pins required");
     }
@@ -34,7 +38,7 @@ class RouteTracingService {
       }
     }
 
-    return mapProxyService.traceRoute(pins);
+    return mapProxyService.traceRoute(pins, opts);
   }
 }
 
