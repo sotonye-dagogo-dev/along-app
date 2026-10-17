@@ -52,6 +52,13 @@ export interface LocationSuggestionsConfig {
   numericAddressFallback: boolean;
   /** Redis TTL (sec) for EMPTY merges (short — OSM data changes daily). */
   emptyTtlSec: number;
+  /**
+   * When true, a Plus Code query with trailing locality text ("CGQC+HQ2
+   * Lekki") extracts the code + remainder: the remainder is geocoded as a
+   * short-code reference (bounded, parallel with round 1) AND queried as a
+   * plain locality so suggestions surface even when the pin fails.
+   */
+  plusCodeLocalityFallback: boolean;
   /** `provider` tag for coordinate-query hits (`lat, lng` fast-path). */
   coordinateProviderName: string;
   /** `provider` tag for Plus Code (Open Location Code) hits. */
@@ -60,6 +67,14 @@ export interface LocationSuggestionsConfig {
   locationPlaceholder: string;
   /** Empty-suggestion dropdown copy (config-driven). */
   locationEmptyStateHint: string;
+  /**
+   * Sprint 72 — persistent action row under EVERY location input: the
+   * locate action moved out of the focused dropdown into this row, next to
+   * "Find on map" (opens the route preview focused on this stop so a tap
+   * assigns its point).
+   */
+  currentLocationLabel: string;
+  findOnMapLabel: string;
 }
 
 export const LOCATION_SUGGESTIONS_CONFIG: LocationSuggestionsConfig = {
@@ -72,10 +87,13 @@ export const LOCATION_SUGGESTIONS_CONFIG: LocationSuggestionsConfig = {
   tokenReorderFallback: true,
   numericAddressFallback: true,
   emptyTtlSec: 3600,
+  plusCodeLocalityFallback: true,
   coordinateProviderName: "coordinates",
   plusCodeProviderName: "plus-codes",
   locationPlaceholder: "Place, address, coords, or plus code…",
   locationEmptyStateHint: "Type a place, address, coordinates, or plus code",
+  currentLocationLabel: "Use my current location",
+  findOnMapLabel: "Find on map",
 };
 
 export interface ParsedCoordinates {
@@ -231,6 +249,59 @@ export function classifyPlusCode(raw: string): PlusCodeKind | null {
     }
     // Short code: separator before position 8 (missing leading digits).
     return "short";
+  } catch {
+    return null;
+  }
+}
+
+export interface ExtractedPlusCode {
+  /** The code token as it classifies (original casing — parse/decode uppercase internally). */
+  code: string;
+  /** Leftover locality text ("CGQC+HQ2 Lekki" → "Lekki"); "" when the query is a bare code. */
+  remainder: string;
+}
+
+/**
+ * Splits a mixed query into its Plus Code token and leftover locality text —
+ * the "CGQC+HQ2 Lekki" class Sprint 71 missed (the whole-string classifier
+ * rejects any space/L so the pin never fired). First preserves the legacy
+ * whole-query contract when whitespace-stripping the ENTIRE string still
+ * classifies (bare codes, internally-spaced codes like "8FWC 2345+G6");
+ * otherwise tokenizes on `[,;\s]+`, strips non-code punctuation from token
+ * edges, and classifies per token. Multi-token queries additionally REQUIRE
+ * an explicit `+`, so an 8/10-char alphabet word sitting next to a place
+ * name can never be mistaken for a bare full code. Null when no token
+ * classifies as a code — callers fall through to providers.
+ */
+export function extractPlusCodeToken(raw: string): ExtractedPlusCode | null {
+  try {
+    const text = (raw ?? "").trim();
+    if (!text) return null;
+    const tokens = text.split(/[,;\s]+/).filter((t) => t.length > 0);
+    if (tokens.length === 0) return null;
+    // Legacy parity: a single code split only by whitespace still classifies
+    // as one code when the whitespace-stripped string does.
+    const joined = text.replace(/\s+/g, "");
+    const joinedKind = classifyPlusCode(joined);
+    if (joinedKind === "full") return { code: joined, remainder: "" };
+    if (
+      joinedKind === "short" &&
+      tokens.every((t) => /^[23456789CFGHJMPQRVWX0+]+$/.test(t.replace(/^[^0-9A-Za-z+]+|[^0-9A-Za-z+]+$/g, "")))
+    ) {
+      return { code: joined, remainder: "" };
+    }
+    for (const token of tokens) {
+      const candidate = token
+        .replace(/^[^0-9A-Za-z+]+/, "")
+        .replace(/[^0-9A-Za-z+]+$/, "")
+        .trim();
+      if (!candidate) continue;
+      if (!classifyPlusCode(candidate)) continue;
+      if (tokens.length > 1 && !candidate.includes("+")) continue;
+      const remainder = tokens.filter((t) => t !== token).join(" ");
+      return { code: candidate, remainder };
+    }
+    return null;
   } catch {
     return null;
   }

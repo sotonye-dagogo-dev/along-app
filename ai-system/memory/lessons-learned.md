@@ -1,8 +1,8 @@
 # Lessons Learned
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: card-link exits, dismissible response mode, grade-class contract tests)
-P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: camera-effect intent deps + interaction-deferred baseline moves)
+> - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -903,3 +903,12 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 **Apply When:** Caching any derived overlay whose inputs settle in stages (estimate → trace) or whose fetch can fail while the base layer succeeds.
 **Supersedes:** None
 **Superseded by:** None
+
+## Camera effects must depend on intent, not volatile position identities — and defer behind interaction
+
+**Context:** Post detail passed a `userLocation` that changes identity on every GPS watch fix into `RouteMap`'s fit-effect deps (while `followUser=false`), so each tick refit the whole route out from under an in-progress pan; separately, bounds/pins can change mid-pan (trace arrival, stop edits) and yanked the camera even when the deps were stable.
+**What We Learned:** Derive a stable boolean (`followActive = followUser && !!userLocation`) and depend on THAT instead of volatile identities — the semantic guard is the dep. Then gate every *baseline* camera move through an interaction-deferred queue: container pointer/wheel/key listeners + a window-level gesture-end, an idle window (`MAP_VIEW_CONFIG.recenterIdleDelayMs`), and a token-guarded watcher that runs exactly the latest pending move once. Explicit user requests (expand-refit, focus fly-to) bypass the queue by design — deferral is for background recentering, never for what the user just asked for. A pure `shouldDeferFit(...)` helper keeps the gate unit-testable without rendering the map.
+**Apply When:** Any effect drives a camera/scroll/focus from external position data, or user interaction can overlap data arrival (maps, carousels, live dashboards, sticky headers).
+**Supersedes:** None (extends the "fresh object identities re-init maps / re-fit the camera" mapLib lesson with the interaction dimension).
+**Superseded by:** None
+

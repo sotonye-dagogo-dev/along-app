@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-17 (Sprint 71: location input power-ups)
-> P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening — friendly labels, tap-to-assign, Find on map, vehicle traces, deferred recenter)
+> - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,25 @@
 ---
 
 ## History
+
+## 2026-10-17 — Execute-Feature: Map Tightening (Sprint 72)
+
+**Summary:**
+Location fields and suggestions now show friendly reverse-geocoded place names as the pinned intent hit (raw coords/plus codes only as fallback), and `CGQC+HQ2 Lekki`-style plus-code queries resolve against their locality (reference point + plain-locality suggestions) — closing Sprint 71's queued follow-up. The route preview gained a tap-to-assign flow: empty-area map taps open a dismissible stop-assignment card, every location input gained a persistent `[Use my current location] … [Find on map]` row (locate moved out of the focused dropdown), and "Find on map" flies the camera to the best-known target with an auto-hiding tap hint. Route traces became vehicle-aware — walking/bike posts trace on keyed walking/cycling profiles with the legacy driving chain as guaranteed fallback — and baseline map recentering is deferred until after user interaction (fixing the post-detail GPS-tick refit). All additive and config-driven.
+
+**Completed:**
+- Friendly intent labels: `geocodeForward` label-first coordinate/plus-code pins (Sprint 71 raw-pin-first superseded), parallel Nominatim ∥ Photon `geocodeReverse` for resilient `locateMe` labels; full addresses never shortened
+- Plus-code locality: `extractPlusCodeToken` + `plusCodeLocalityFallback` — code remainder geocoded as bounded short-code reference (parallel, viewer-near fallback) AND as a plain locality query
+- Tap-to-assign: `mapPicker.ts` + `RouteMap` `pickOptions`/`onPickOption`/`focusRequest` (anchored dismissible card, Escape/X/re-tap, line taps keep stretch/mini tooltips, focus flyTo bypasses fit deferral + tap-hint pill); ShareRouteModal CTA row, `findOnMap` (coords → text geocode → `resolveFindOnMapTarget` previous-stops/bias → GPS), `handlePickOption` with reverse-label supersede guard; 4 new FAQ items (en + pidgin)
+- Vehicle traces: `mapStack.ts` profile registry (`routingBases`/`routingProfiles`/`resolveRoutingProfiles`/`routingProfileSlug`) + `traceRoute(pins,{vehicle})` mode-aware pass (ORS/Mapbox walking-cycling, keyless OSRM driving-only skipped) → byte-identical legacy chain → straight-line; slug-suffixed cache keys only for non-default profiles; both trace APIs + clients + `traceCacheKey(sig, vehicle?)` threaded
+- Deferred recenter: `mapView.ts` (`shouldDeferFit` + idle/poll knobs), RouteMap `followActive` dep fix + interaction-deferred token-guarded fit watcher (post card/post detail pan no longer yanked by GPS ticks)
+- Tests: +3 NEW suites (`mapVehicleProfiles`, `mapView`, `mapPicker`), `locationIntent` 22→28
+
+**QA:** tsc 0 errors; jest 98/98 suites 865/865; lint clean on touched files (11 pre-existing errors in untouched files); full `next build` clean.
+
+**Files:**
+- Edited: `lib/config/{locationSuggestions,mapStack,faq}`, `lib/services/{mapProxyService,routeTracingService}`, `lib/hooks/useRouteTrace`, `lib/utils/geo`, `api/routes/trace`, `api/maps/route`, `components/features/posts/{RouteMap,ShareRouteModal}`, `__tests__/config/locationIntent`
+- Created: `lib/config/{mapView,mapPicker}`, `__tests__/config/{mapVehicleProfiles,mapView,mapPicker}.test.ts`
 
 ## 2026-10-17 — Execute-Feature: Location Input Power-Ups (Sprint 71)
 

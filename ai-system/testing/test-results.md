@@ -1,24 +1,24 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-17 (Sprint 71: location intent power-ups)
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening)
 > - last-verified-against-code: 2026-10-17
 > - staleness-policy: overwritten on every test run — always current
 
-> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 838 tests currently exist across 95 suites (verified by a real `npx jest` run in this session 2026-10-17).
+> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 865 tests currently exist across 98 suites (verified by a real `npx jest --ci` run in this session 2026-10-17).
 
 ---
 
 ## Last Run (Build)
 
 **Date:** 2026-10-17
-**Run by:** AI agent (opencode — execute-feature Sprint 71)
+**Run by:** AI agent (opencode — execute-feature Sprint 72)
 
 **Build Result:**
 - `npx tsc --noEmit` — ✓ zero errors (real run this session, after `npm install`)
-- `npx jest` — 838/838 passing (95 suites, real run this session: +1 locationIntent suite with 22 tests covering paren coords, OLC vectors, plus-code pins, numeric-address recall)
+- `npx jest --ci` — 865/865 passing (98 suites, real run this session: +3 NEW suites mapVehicleProfiles/mapView/mapPicker; locationIntent 22 → 28 with label-first + plus-code locality cases)
 - `npm run build` — ✓ compiled successfully (real run this session)
-- `npm run lint` — exit 1 from pre-existing `no-explicit-any` in untouched `app/api/posts/feed/route.ts` + `app/api/suggestions/route.ts`; 0 errors in touched files (ShareRouteModal only has a pre-existing useMemo warning)
+- `npm run lint` — exit 1 from 11 pre-existing errors in untouched files (`app/api/posts/feed/route.ts` ×5, `app/api/suggestions/route.ts` ×5, `app/admin/bugs/page.tsx` ×1); 0 findings introduced by touched files (ShareRouteModal only carries its pre-existing useMemo warning)
 - Zero test failures
 
 ---
@@ -37,7 +37,10 @@
 | AppUserLabel | 7 | name, handle, linkToProfile, verified badge, sizes, vertical layout |
 | TrustBadge | 6 | all 4 levels, tooltip hover, showTooltip=false, sm/default sizes |
 | mutations API | 20 | posting, liking, commenting, bookmarking, following incl. error handling + undefined/null edge cases (`mutations.test.ts`, Sprint 7, Prisma mocked) |
-| locationIntent | 22 | paren coords, OLC classify/decode/encode/recover vectors, plus-code pins, reverse enrich, numeric-address + overpass-addr recall (Sprint 71) |
+| locationIntent | 28 | paren coords, OLC classify/decode/encode/recover vectors, plus-code pins, reverse enrich, numeric-address + overpass-addr recall (Sprint 71); friendly-label-first pins, `CGQC+HQ2 Lekki` locality reference pin, no-reference fallthrough, `extractPlusCodeToken` split (Sprint 72) |
+| mapVehicleProfiles | 9 | profile resolution (road/default/all-null boat-train), keyed walking/cycling profiles, legacy URL byte-parity, cache slugs, `traceCacheKey`, mode-aware `traceRoute` pass with legacy fallback (Sprint 72, redis+fetch mocked) |
+| mapView | 5 | `shouldDeferFit` gate: never-interacted/active-gesture/idle-window/custom-delay + config sanity (Sprint 72) |
+| mapPicker | 6 | `MAP_PICKER_CONFIG` copy/chroma sanity, CTA labels, pure `resolveFindOnMapTarget` chain, FAQ en+pidgin parity for 4 new maps items (Sprint 72) |
 | posts API | 11 | POST persistence (type/description/quotedPostId), fan-out, validation (`posts.test.ts`, Sprint 7, Prisma mocked) |
 | search API | 9 | validation, type/region/postType filters, pagination, 503, 429 (`search.test.ts`, search session, Prisma mocked) |
 | searchService | 8 | normalization, short-query guard, cache read-through, tag aggregation, cursor, P2022 retry (`searchService.test.ts`, search session, Prisma mocked) |

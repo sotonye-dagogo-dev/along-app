@@ -1,8 +1,8 @@
 # Development Task Queue
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-17 (Sprint 71: location input power-ups)
-> - last-synced: 2026-10-17 (Sprint 71)
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening — friendly labels, tap-to-assign, Find on map, vehicle traces, deferred recenter)
+> - last-synced: 2026-10-17 (Sprint 72)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -975,3 +975,16 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [S] | Numeric-address recall — round-2 only (merge-empty gate): `stripLeadingHouseNumber` retry of fast providers + NEW `geocodeViaOverpassAddress` (`addr:housenumber` + `addr:street`, address labels without `name`); happy-path cost unchanged | [x] |
 | [S] | Config copy — `LOCATION_SUGGESTIONS_CONFIG` += `numericAddressFallback`/`plusCodeProviderName`/`locationPlaceholder`/`locationEmptyStateHint`; ShareRouteModal/RouteStepInput/RequestRouteModal placeholders + empty-state wired | [x] |
 | [S] | Tests — NEW `locationIntent.test.ts` (22: paren coords, strip house number, OLC classify/decode/encode/recover vectors, parsePlusCodeQuery, service pin/reverse/numeric-address/overpass-addr paths) | [x] |
+
+## Sprint 72 — Map tightening: friendly labels, tap-to-assign, Find on map, vehicle traces, deferred recenter (2026-10-17, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (additive config modules/fields, additive optional props/opts, byte-identical legacy URLs + cache keys; same API envelopes; no migration, no new deps). QA full in-runner: tsc 0 errors, jest 98/98 suites 865/865 tests, lint clean on touched files (11 pre-existing errors in untouched files), full `next build` clean.
+
+| Size | Task | Done |
+|------|------|------|
+| [M] | Friendly intent labels — `geocodeForward` pins the reverse-geocode label as THE coordinate hit (raw text only on label failure, exact coords kept; plus-code canonical label likewise); `geocodeReverse` races Nominatim ∥ Photon; `extractPlusCodeToken` + `plusCodeLocalityFallback` resolve `CGQC+HQ2 Lekki` (bounded reference lookup in stage 1 + plain-locality round-1 query; legacy whole-query classification preserved) | [x] |
+| [M] | Tap-to-assign + Find on map — NEW `mapPicker.ts`; `RouteMap` += `pickOptions`/`onPickOption`/`focusRequest` (empty-area tap card: anchored, X/Escape/re-tap dismiss, line taps keep stretch/mini tooltips; focus flyTo bypasses deferral + auto-hiding hint pill); ShareRouteModal CTA row (locate moved from `_focused` dropdown) + `findOnMap` resolution chain + `handlePickOption` reverse-label supersede guard; NEW `resolveFindOnMapTarget` pure helper | [x] |
+| [M] | Vehicle-aware traces — `mapStack.ts` += `RoutingProfiles`/`routingBases`/`defaultRoutingProfiles`/`routingProfiles` + `resolveRoutingProfiles`/`isDefaultRoutingProfiles`/`routingProfileSlug`; `traceRoute(pins,{vehicle})` mode-aware pass → legacy driving chain → straight-line (URLs byte-identical on default chain; slug cache suffix only for non-default); `routeTracingService` + both trace APIs accept `vehicle` (≤40); `useRouteTrace` + ShareRouteModal POST vehicle + shared `traceCacheKey(sig,vehicle?)` | [x] |
+| [M] | Deferred recenter — NEW `mapView.ts` (`MAP_VIEW_CONFIG` + pure `shouldDeferFit`); RouteMap fit effect deps on `followActive` boolean (GPS ticks no longer refit) + interaction-deferred `requestBaselineFit` (container pointer/wheel/key listeners, window gesture-end, token-guarded idle watcher, re-attach on `expanded`; focus/expand bypass) | [x] |
+| [S] | FAQ — 4 new `maps` items en + `FAQ_PCM` (`map-tap-assign`, `map-find-on-map`, `map-plus-code`, `map-friendly-labels`) | [x] |
+| [M] | Tests — NEW `mapVehicleProfiles.test.ts` + `mapView.test.ts` + `mapPicker.test.ts`; `locationIntent.test.ts` 22→28 (label-first contract, locality reference pin, no-reference fallthrough, token split) | [x] |
