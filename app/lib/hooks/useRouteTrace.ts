@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { memoryCache } from "@/app/lib/cache/memoryCache";
-import { estimateRoute, traceSignature } from "@/app/lib/utils/geo";
+import { estimateRoute, traceSignature, traceCacheKey } from "@/app/lib/utils/geo";
 import { resolveJourneyDuration } from "@/app/lib/config/journeyTime";
 
 export interface TracePin {
@@ -61,7 +61,7 @@ export function useRouteTrace(pins: TracePin[] | null | undefined, vehicle?: str
       setTracing(false);
       return;
     }
-    const cached = memoryCache.get<RouteTrace>(`route-trace:${sig}`);
+    const cached = memoryCache.get<RouteTrace>(traceCacheKey(sig, mode));
     if (cached) {
       setTrace({ ...cached, sig });
       setTracing(false);
@@ -75,7 +75,7 @@ export function useRouteTrace(pins: TracePin[] | null | undefined, vehicle?: str
         const res = await fetch("/api/routes/trace", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pins: validPins }),
+          body: JSON.stringify({ pins: validPins, ...(mode ? { vehicle: mode } : {}) }),
         });
         if (res.status === 429) {
           disabledRef.current = true;
@@ -89,7 +89,7 @@ export function useRouteTrace(pins: TracePin[] | null | undefined, vehicle?: str
           distance: typeof data.distance === "number" ? data.distance : estimate.distanceKm,
           duration: typeof data.duration === "number" ? data.duration : estimate.durationMins,
         };
-        memoryCache.set(`route-trace:${sig}`, entry, TRACE_CACHE_TTL);
+        memoryCache.set(traceCacheKey(sig, mode), entry, TRACE_CACHE_TTL);
         setTrace({ ...entry, sig });
       } catch {
         // silent — estimate stays on screen
@@ -99,7 +99,7 @@ export function useRouteTrace(pins: TracePin[] | null | undefined, vehicle?: str
     }, TRACE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sig]);
+  }, [sig, mode]);
 
   const liveTrace = trace && trace.sig === sig ? trace : null;
   // Vehicle-aware duration: car-trace durations mislead for slow/rail/water

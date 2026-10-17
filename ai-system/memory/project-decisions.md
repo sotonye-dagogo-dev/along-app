@@ -1,8 +1,8 @@
 # Project Decisions
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
-P26-10-12 (node --check sw.js + JSON/parity green; tsc shows only missing-module noise, jest/build deferred to CI — no node_modules in runner)
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening — friendly labels, tap-to-assign, vehicle traces, deferred recenter)
+> - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -824,7 +824,7 @@ Nominatim/Photon explicitly do not support plus codes (upstream issues closed/ou
 - OLC helpers are pure/config-free and unit-tested against official vectors — safe to reuse for share/encode later.
 - Clients must keep using `LOCATION_SUGGESTIONS_CONFIG.locationPlaceholder` / `locationEmptyStateHint` — no hardcoded "Search location..." strings.
 **Supersedes:** None (extends the Sprint 50/13 merged-geocode + coordinate fast-path decisions).
-**Superseded by:** None
+**Superseded by:** Sprint 72 (2026-10-17) — PARTIAL: decision (3)'s "raw pin stays first" ordering is superseded by label-first pinning (same exact coords, friendly label becomes THE hit, raw text only when the label fails); items (1), (2), (4) and the OLC/pin-set machinery stand unchanged.
 
 ## Decision 2026-10-13 (Sprint 52): report audit on a new `report` entity; parser contract-first; zero new locale keys
 **Context:** report lifecycle had no audit rows; Studio parsing dropped content in edge cases; featured sections needed copy on three surfaces without breaking the en/pcm parity test.
@@ -952,3 +952,16 @@ Chunk shares are equal by construction (≤12 even slices), so chunk tooltips co
 
 **Decision:** Journey totals render as a range (free-flow base – with-traffic adjusted) and per-stretch times split from those same bounds via largest-remainder apportionment, so stretches sum to the header by construction. Geometry-scoped traffic cache keys (pins+vehicle, never base) with `rebaseTrafficResult` rescaling minutes locally — a base change (pins estimate → road-snapped trace) never triggers a redundant rate-limited lookup.
 **Decision:** Traffic client freshness = 300s fresh + 600s stale-while-revalidate + 120s background refresh while mounted, over the hourly server bucket. "Somewhat live" without hammering the maps rate-limit bucket; revisits within seconds render the last good overlay instantly.
+
+## Sprint 72 decisions (2026-10-17)
+
+**Decision:** (1) Friendly label-first pinning: `geocodeForward` keeps the EXACT coordinate/plus-code pin but promotes the reverse-geocode (or canonical plus-code) label to THE hit — raw query text survives only when the label fails; addresses keep full `display_name` (never shortened). (2) Plus-code locality queries split into `{code, remainder}` (`extractPlusCodeToken`, legacy whole-query classification first) — the remainder geocodes as a bounded short-code reference in the SAME stage-1 batch AND as a plain locality in round 1 (`plusCodeLocalityFallback`), so suggestions surface even when the pin fails. (3) Tap-to-assign is armed only by explicit `pickOptions`+`onPickOption`: empty-area taps open the card, route-line taps keep the Sprint 68/69 stretch/mini tooltips, and `focusRequest` (nonce-gated) is the ONE camera owner that bypasses the baseline-fit deferral; picked points get a reverse label under a supersede guard so text and pin can never disagree. (4) Vehicle traces: non-default profiles run a mode-aware pass (keyed ORS/Mapbox walking/cycling; keyless OSRM demo driving-only → skipped) then fall through the BYTE-IDENTICAL legacy driving chain; `routingProfileSlug` suffixes cache keys only for non-default profiles (all-null boat/train profiles count as default — same chain, same key), so existing driving traces never invalidate. (5) Baseline recentering defers behind interaction: the fit effect depends on `followActive` boolean (never per-fix `userLocation` identity) and queues through a token-guarded idle watcher keyed off container pointer/wheel/key activity (`MAP_VIEW_CONFIG.recenterIdleDelayMs` 3000 / `interactionPollMs` 250); expand-resize and Find-on-map focus flyTos bypass by design.
+**Reason:**
+Users paste coords/plus codes but think in place names — a readable label that matches the pin is the product, and Sprint 71's raw-first ordering was a sequencing safety net, not a UX goal (failure still falls back to raw text, so nothing is lost). Splitting the remainder into reference + locality queries covers both failure modes upstreams actually have (short codes need a reference; localities need a normal geocode). Arming the picker only when the preview passes options keeps every other RouteMap's tap contract byte-for-byte intact while still delivering the directive's flow. Driving-only demos would otherwise turn walking/bike routes into driving-shaped or straight lines; the mode pass only ever adds attempts and the legacy chain is the guaranteed floor. GPS-tick refits were the confirmed post-detail pan-yank; a boolean dep fixes the trigger and the idle watcher fixes the collateral bounds-change case, while explicit user requests (expand, focus) must never wait.
+**Alternatives Considered:**
+- **Appending the friendly label after the raw pin (Sprint 71 order)**: Rejected — the directive wants the friendly name as THE displayed intent; coords remain the machine pin either way.
+- **Always-on pick mode on every map**: Rejected — feed-card/detail tap contracts (stretch/mini tooltips) would regress; explicit arming is additive.
+- **Mode pass falling straight to straight-line on failure**: Rejected — the directive explicitly contrasts "legacy driving fallback" against an outright straight line; the driving chain stays the floor.
+- **Dep-guarding only (no idle watcher)**: Rejected — bounds/pins can change mid-pan (trace arrival, edits); without deferral those refits still yank the camera.
+**Supersedes:** PARTIAL — Sprint 71 decision (3) "raw pin stays first" (see its Superseded-by link); extends the Sprint 68/69 tooltip decisions (line taps unchanged) and the Sprint 58/67 traffic/vehicle registry decisions (profiles live beside speeds, not inside them).
+**Superseded by:** None

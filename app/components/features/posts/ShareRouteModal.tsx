@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair, History, Loader2 } from "lucide-react"
+import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair, History, Loader2, MapPinned } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
 import { SHARE_ROUTE_MODAL_CONFIG } from "@/app/lib/config"
@@ -23,7 +23,7 @@ import { routeDraftsService, type RouteDraft } from "@/app/lib/services/routeDra
 import { toastService } from "@/app/lib/services/toastService"
 import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config/mediaCleanup"
 import { cleanupComposerPhotos, decideComposerPhotoCleanup } from "@/app/lib/utils/composerMedia"
-import { estimateRoute, traceSignature, getCurrentPosition, reverseGeocode } from "@/app/lib/utils/geo"
+import { estimateRoute, traceSignature, traceCacheKey, getCurrentPosition, reverseGeocode, resolveFindOnMapTarget } from "@/app/lib/utils/geo"
 import { dominantVehicleForSteps, resolveJourneyDuration } from "@/app/lib/config/journeyTime"
 import { memoryCache } from "@/app/lib/cache/memoryCache"
 import type { VehicleType } from "@/app/lib/types"
@@ -197,6 +197,13 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
   const [previewOpen, setPreviewOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.previewDefaultOpen)
+  // Sprint 72 — "Find on map": an explicit RouteMap fly-to request; the
+  // nonce bumps so repeat requests (same stop) still refocus + re-hint.
+  const [focusRequest, setFocusRequest] = useState<{ lat?: number; lng?: number; nonce: number } | null>(null)
+  const focusNonceRef = useRef(0)
+  // Always-mounted preview anchor (contains the toggle + conditional panel)
+  // so scrolling does not race the previewOpen render.
+  const previewAnchorRef = useRef<HTMLDivElement>(null)
   const [formOpen, setFormOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.formDefaultOpen)
   // Double-submit guard: while a post is in flight the Share/Save buttons are
   // disabled with spinner feedback, and re-entry is ignored. `mutationKey`
@@ -384,6 +391,105 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
     }
   }
 
+  // Sprint 72 — "Find on map": open the preview and fly the camera to the
+  // best-known target for this stop: its pinned coords → its typed text
+  // (bounded geocode) → the nearest earlier pinned stop → granted viewer
+  // bias → GPS. Any resolution arms the tap-hint pill inside RouteMap; a
+  // total miss still opens the preview (hint only — nothing to fly to).
+  const findOnMap = (index: number) => {
+    setPreviewOpen(true)
+    setStepExtra(index, { _focused: false })
+    requestAnimationFrame(() =>
+      previewAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    )
+    void (async () => {
+      const nonce = ++focusNonceRef.current
+      let target: { lat?: number; lng?: number } | null = null
+      try {
+        const { peekBiasCoords, getBiasCoordsQuick, biasQuerySuffix } = await import("@/app/lib/utils/geoBias")
+        const bias = peekBiasCoords() ?? (await getBiasCoordsQuick())
+        const here = steps[index]
+        if (
+          here &&
+          typeof here.lat === "number" &&
+          typeof here.lng === "number" &&
+          Number.isFinite(here.lat) &&
+          Number.isFinite(here.lng)
+        ) {
+          target = { lat: here.lat, lng: here.lng }
+        } else {
+          const text = here?.location?.trim()
+          if (text) {
+            try {
+              const res = await fetch(`${buildGeocodeUrl(text)}${biasQuerySuffix(bias)}`)
+              if (res.ok) {
+                const data = (await res.json()) as { results?: GeoResult[] }
+                const first = Array.isArray(data.results) ? data.results[0] : undefined
+                const lat = first ? parseFloat(first.lat) : NaN
+                const lng = first ? parseFloat(first.lon) : NaN
+                if (Number.isFinite(lat) && Number.isFinite(lng)) target = { lat, lng }
+              }
+            } catch {
+              // Fall through to earlier stops / bias / GPS.
+            }
+          }
+          if (!target) target = resolveFindOnMapTarget(steps, index, bias)
+          if (!target) {
+            try {
+              const pos = await getCurrentPosition()
+              target = { lat: pos.lat, lng: pos.lng }
+            } catch {
+              // Denied/unavailable → hint-only focus below.
+            }
+          }
+        }
+      } catch {
+        // geoBias unavailable (edge case) → hint-only focus below.
+      }
+      // RouteMap reads lat/lng from the CURRENT focusRequest only (nonce
+      // triggers the effect), so a target-less request still shows the hint.
+      setFocusRequest({ lat: target?.lat, lng: target?.lng, nonce })
+    })()
+  }
+
+  // Sprint 72 — tap-to-assign: the picked preview point becomes this stop's
+  // coords. Text is set immediately (existing label, else the coords
+  // themselves) and refined to a friendly reverse label when it lands —
+  // guarded so a later re-pick or keystroke can never be overwritten
+  // (label and pin must always agree, same invariant as selectGeoResult).
+  const handlePickOption = (optionId: string, point: { lat: number; lng: number }) => {
+    const index = Number(optionId)
+    if (!Number.isInteger(index) || index < 0 || index >= steps.length) return
+    const locationAtPick =
+      steps[index].location?.trim() !== ""
+        ? steps[index].location
+        : `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}`
+    setSteps((prev) => {
+      const next = [...prev]
+      const s = { ...next[index] }
+      s.lat = point.lat
+      s.lng = point.lng
+      s.location = locationAtPick
+      s._geoResults = []
+      s._geoLoading = false
+      s._focused = false
+      next[index] = s
+      return next
+    })
+    clearStepError(index, "location")
+    void (async () => {
+      const label = await reverseGeocode(point.lat, point.lng).catch(() => null)
+      if (!label) return
+      setSteps((prev) => {
+        const s = prev[index]
+        if (!s || s.lat !== point.lat || s.lng !== point.lng || s.location !== locationAtPick) return prev
+        const next = [...prev]
+        next[index] = { ...s, location: label }
+        return next
+      })
+    })()
+  }
+
   const pins: RoutePin[] = useMemo(() => {
     const validSteps = steps.filter((s) => s.location && s.lat && s.lng)
     if (validSteps.length === 0) {
@@ -401,6 +507,19 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
       type: i === 0 ? "origin" as const : i === validSteps.length - 1 ? "destination" as const : "waypoint" as const,
     }))
   }, [steps])
+
+  // Sprint 72 — stop-assignment options for the preview's tap card: every
+  // step is assignable (role + current text so the right stop is obvious).
+  const pickOptions = useMemo(
+    () =>
+      steps.map((s, i) => ({
+        id: String(i),
+        label: `${i === 0 ? "Origin" : i === steps.length - 1 ? "Destination" : `Stop ${i}`} · ${
+          s.location?.trim() || `Step ${i + 1}`
+        }`,
+      })),
+    [steps]
+  )
 
   const draftInput = {
     title,
@@ -453,7 +572,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
       setTracing(false)
       return
     }
-    const cached = memoryCache.get<{ polyline: string; distance: number; duration: number }>(`route-trace:${traceSig}`)
+    const cacheKey = traceCacheKey(traceSig, previewVehicle)
+    const cached = memoryCache.get<{ polyline: string; distance: number; duration: number }>(cacheKey)
     if (cached) {
       setTrace({ ...cached, sig: traceSig })
       setTracing(false)
@@ -468,7 +588,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
         const res = await fetch("/api/routes/trace", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pins: realPins }),
+          body: JSON.stringify({ pins: realPins, ...(previewVehicle ? { vehicle: previewVehicle } : {}) }),
         })
         if (res.status === 429) {
           traceDisabledRef.current = true // stop tracing for this session
@@ -482,7 +602,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
           distance: typeof data.distance === "number" ? data.distance : estimate.distanceKm,
           duration: typeof data.duration === "number" ? data.duration : estimate.durationMins,
         }
-        memoryCache.set(`route-trace:${traceSig}`, entry, TRACE_CACHE_TTL)
+        memoryCache.set(cacheKey, entry, TRACE_CACHE_TTL)
         setTrace({ ...entry, sig: traceSig })
       } catch {
         // silent — straight-line estimate stays on screen
@@ -492,7 +612,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
     }, TRACE_DEBOUNCE_MS)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [traceSig, isOpen])
+  }, [traceSig, isOpen, previewVehicle])
 
   const evaluation = draftingCoachService.evaluate(draftInput)
 
@@ -1287,15 +1407,6 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                         )}
                         {step._focused && (
                           <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-bg-card border border-border radius-md shadow-lg max-h-[220px] overflow-y-auto">
-                            <button
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => locateMe(index)}
-                              disabled={step._locating}
-                              className="w-full text-left px-3 py-2 text-xs font-medium text-primary border-none bg-transparent cursor-pointer hover:bg-primary-muted font-sans inline-flex items-center gap-2"
-                            >
-                              <Crosshair size={12} className="shrink-0" />
-                              {step._locating ? "Getting your location..." : "Use my current location"}
-                            </button>
                             {(step._geoResults ?? []).map((r, ri) => (
                               <button
                                 key={ri}
@@ -1316,6 +1427,31 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                             )}
                           </div>
                         )}
+                      </div>
+                      {/* Sprint 72: persistent action row under every location
+                          input — locate moved here from the focused dropdown;
+                          "Find on map" opens the preview focused on this stop
+                          (tap assigns the point via the route's pick card). */}
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => locateMe(index)}
+                          disabled={step._locating}
+                          className="inline-flex items-center gap-1.5 px-0 py-0.5 border-none bg-transparent cursor-pointer text-xs font-medium text-primary font-sans disabled:opacity-60 hover:text-primary-light transition-colors"
+                        >
+                          <Crosshair size={12} className="shrink-0" />
+                          {step._locating ? "Getting your location..." : LOCATION_SUGGESTIONS_CONFIG.currentLocationLabel}
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => findOnMap(index)}
+                          className="inline-flex items-center gap-1.5 px-0 py-0.5 border-none bg-transparent cursor-pointer text-xs font-medium text-text-secondary font-sans hover:text-text-primary transition-colors"
+                        >
+                          <MapPinned size={12} className="shrink-0" />
+                          {LOCATION_SUGGESTIONS_CONFIG.findOnMapLabel}
+                        </button>
                       </div>
                       <textarea
                         value={step.description}
@@ -1468,7 +1604,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
           </div>
 
           <div className="w-full lg:w-[280px] shrink-0 p-4 sm:py-5 sm:pr-6 sm:pl-0 flex flex-col gap-4 border-t lg:border-t-0 lg:border-l border-border">
-            <div>
+            <div ref={previewAnchorRef}>
               <button
                 type="button"
                 onClick={() => setPreviewOpen((open) => !open)}
@@ -1504,6 +1640,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                     duration={displayDuration > 0 ? displayDuration : undefined}
                     fare={totalFare > 0 ? `₦${totalFare.toLocaleString()}` : undefined}
                     vehicle={previewVehicle}
+                    pickOptions={pickOptions}
+                    onPickOption={handlePickOption}
+                    focusRequest={focusRequest}
                   />
                   <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted">
                     <span>{liveTrace ? "Live route" : "Estimated route — updates as you edit"}</span>

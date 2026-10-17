@@ -35,6 +35,12 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { pins } = body;
+    // Optional vehicle (non-breaking): drives the mode-aware profile pass
+    // server-side; invalid/absent values keep the legacy driving chain.
+    const vehicle =
+      typeof body.vehicle === "string" && body.vehicle.trim().length > 0 && body.vehicle.trim().length <= 40
+        ? body.vehicle.trim()
+        : undefined;
 
     if (!pins || !Array.isArray(pins) || pins.length < 2) {
       return NextResponse.json(
@@ -55,7 +61,7 @@ export async function POST(request: NextRequest) {
     // Sprint 19: delegate to the keyless-first map proxy (OSRM → env-gated
     // ORS/Mapbox → straight-line). Contract unchanged: { polyline,
     // distance, duration, provider }.
-    const result = await mapProxyService.traceRoute(pins);
+    const result = await mapProxyService.traceRoute(pins, { vehicle });
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {

@@ -14,8 +14,14 @@ export async function POST(request: NextRequest) {
   if (!limited.allowed) return limited.response;
 
   try {
-    const body = await request.json();
+    const body = (await request.json()) as { pins?: unknown; vehicle?: unknown } | null;
     const { pins } = body ?? {};
+    // Optional vehicle (non-breaking): drives the mode-aware profile pass
+    // server-side; invalid/absent values keep the legacy driving chain.
+    const vehicle =
+      typeof body?.vehicle === "string" && body.vehicle.trim().length > 0 && body.vehicle.trim().length <= 40
+        ? body.vehicle.trim()
+        : undefined;
 
     if (!pins || !Array.isArray(pins) || pins.length < 2) {
       return NextResponse.json(
@@ -38,7 +44,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await mapProxyService.traceRoute(pins);
+    const result = await mapProxyService.traceRoute(pins, { vehicle });
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     console.warn("[maps/route] request failed", (error as Error)?.message);

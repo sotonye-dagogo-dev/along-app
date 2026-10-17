@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-17 (Sprint 71: location input power-ups — paren coords + Plus Codes + numeric-address recall)
-> - last-verified-against-code: 2026-10-17 (tsc 0 errors, jest 95/95 suites 838/838, lint pre-existing anys only, next build clean; node_modules installed in-runner)
+> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening — friendly labels, tap-to-assign, Find on map, vehicle traces, deferred recenter)
+> - last-verified-against-code: 2026-10-17 (tsc 0 errors, jest 98/98 suites 865/865, lint clean on touched files (11 pre-existing errors in untouched files), next build clean; node_modules installed in-runner)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,38 @@
 ---
 
 ## Sessions
+
+---
+
+## Session — 2026-10-17 (Sprint 72: map tightening — friendly labels, tap-to-assign, Find on map, vehicle traces, deferred recenter)
+
+**Completed:**
+- Friendly intent labels (supersedes Sprint 71 raw-pin-first): `geocodeForward` now pins the friendly reverse-geocode label as THE coordinate hit (exact coords kept as the pin, raw text only when the label fails) and the plus-code canonical label likewise; `geocodeReverse` races Nominatim ∥ Photon in `Promise.all` (latency = faster of the two, same cache write) so `locateMe` labels survive a single-provider failure. Full `display_name` addresses kept intact (never shortened).
+- Plus-code locality: NEW `extractPlusCodeToken(raw)` in `locationSuggestions.ts` (legacy whole-query parity: whitespace-stripped `classifyPlusCode` first; multi-token requires an explicit `+` in the code token) + `plusCodeLocalityFallback` config flag — `CGQC+HQ2 Lekki` geocodes its remainder as a short-code reference (bounded stage-1, parallel with round 1, viewer-`near` fallback) AND queries it as a plain locality, so suggestions surface even when the pin fails; two-stage latency contract preserved (stage 1 ≤ budget, stage 2 ≤ budget only when a pin resolved, round 2 only when no pin — worst ~2 budgets like before).
+- Tap-to-assign + Find on map: NEW `mapPicker.ts` config; `RouteMap` gains additive `pickOptions`/`onPickOption`/`focusRequest{lat?,lng?,nonce}` — empty-area taps (no interactive route/traffic feature hit) open an anchored dismissible stop-assignment card (X / Escape / re-tap re-anchors; card-over-dialog Escape dismisses the card first), route-line taps keep Sprint 68/69 stretch/mini tooltips; focus flyTo bypasses fit deferral (explicit user request), clears stale cards and shows an auto-hiding tap-hint pill (consumed early by the first tap). ShareRouteModal: persistent `justify-between` CTA row under EVERY location input (`Use my current location` moved out of the `_focused` dropdown + `Find on map` from config), `findOnMap` resolves focus via coords → typed-text geocode → pure `resolveFindOnMapTarget` (previous stops backwards → granted bias) → GPS (last resort) with preview auto-open + scroll; `handlePickOption` sets the tapped coords, immediately keeps/labels text, then refines to a reverse label under a supersede guard (label and pin can never disagree). Preview RouteMap wired with `pickOptions`/`onPickOption`/`focusRequest`.
+- Vehicle-aware tracing: `mapStack.ts` += `RoutingProfiles` + `routingBases` + `defaultRoutingProfiles` + `routingProfiles` (trekking/bike keyed walking-cycling; boat/train all-null → legacy) + `resolveRoutingProfiles`/`isDefaultRoutingProfiles`/`routingProfileSlug`; `traceRoute(pins, {vehicle})` runs a mode-aware pass (ORS `foot-walking`/`cycling-regular`, Mapbox `walking`/`cycling` when keyed; keyless OSRM demo is driving-only → skipped) then falls through the byte-identical legacy driving chain → straight-line; cache key gains `:p-{profiles}` slug ONLY for non-default profiles (legacy keys untouched); `routeTracingService.trace` forwards opts; both `POST /api/routes/trace` + `POST /api/maps/route` accept `vehicle` (string ≤40, invalid → legacy); `useRouteTrace` + ShareRouteModal POST `vehicle` and share vehicle-aware `traceCacheKey(sig, vehicle?)` in `geo.ts`.
+- Deferred recenter: NEW `mapView.ts` (`MAP_VIEW_CONFIG.recenterIdleDelayMs` 3000 / `interactionPollMs` 250 + pure `shouldDeferFit`); RouteMap fit effect now depends on `followActive = followUser && !!userLocation` (per-GPS-fix ticks no longer refit the whole route on post detail) and every baseline fit/flyTo queues through `requestBaselineFit` — container pointer/wheel/key listeners (window pointerup/pointercancel ends the gesture, re-attached on `expanded`) + token-guarded idle watcher run exactly the latest pending fit once after the idle window; expand-resize and focus flyTos bypass by design; `cancelBaselineFit` wired into focus.
+- FAQ: four new `maps` items en + `FAQ_PCM` pidgin parity (`map-tap-assign`, `map-find-on-map`, `map-plus-code`, `map-friendly-labels`).
+- QA full in-runner: `npx tsc --noEmit` 0 errors; `npx jest --ci` 98/98 suites 865/865 tests (was 95/95 + 838/838; +3 NEW suites `mapVehicleProfiles`/`mapView`/`mapPicker`, `locationIntent` 22→28); `npm run lint` — 0 findings on touched files (11 pre-existing errors in untouched `app/api/posts/feed/route.ts`, `app/api/suggestions/route.ts`, `app/admin/bugs/page.tsx`); `npm run build` clean.
+
+**Files Modified:**
+- Edited: `app/lib/config/{locationSuggestions,mapStack,faq}.ts`, `app/lib/services/{mapProxyService,routeTracingService}.ts`, `app/lib/hooks/useRouteTrace.ts`, `app/lib/utils/geo.ts`, `app/api/routes/trace/route.ts`, `app/api/maps/route/route.ts`, `app/components/features/posts/{RouteMap,ShareRouteModal}.tsx`, `app/__tests__/config/locationIntent.test.ts`
+- New: `app/lib/config/{mapView,mapPicker}.ts`, `app/__tests__/config/{mapVehicleProfiles,mapView,mapPicker}.test.ts`
+- Docs: task-queue (Sprint 72), dev-history (Sprint 72), this log, test-results, project-decisions, project-plan, system-architecture (Maps + FAQ rows), index (repo-map/dependency-graph), lessons-learned, in-progress cleared
+
+**Next Task:**
+None queued — optional follow-ups: server-side plus-code label could reuse the reference hit's display name (currently canonical code + reverse label), and the pick card could offer "drop current stop coords only" (label-free assign) if users ask.
+
+**Assumptions Made:**
+- Friendly-label-first SUPERSEDES Sprint 71's "raw pin stays first" ordering: same exact coords pinned, only the display text changes, and the raw query text remains the failure fallback — logged in project-decisions with a supersedes link.
+- Mode-aware pass only where keyed providers exist (ORS/Mapbox): the keyless OSRM demo hosts driving exclusively, so walking/cycling traces need keys and otherwise degrade to the legacy driving chain — a road-shaped fallback beats the directive's "outright straight line".
+- Taps are "interactive feature hits" exactly when `ev.features` is non-empty (`interactiveLayerIds` = route/traffic layers); marker taps never reach the map click at all (DOM above canvas), so cards/stretch tooltips can never double-open.
+- `Find on map` may prompt GPS only as the last resort after an explicit user click (bias path stays prompt-free per the granted-only contract).
+
+**Notes / Blockers:**
+- Non-breaking throughout: additive props/config fields/optional service opts only; legacy `upstreams` URLs byte-identical (asserted by test); legacy trace cache keys untouched; all other RouteMaps (post cards, detail, nav) keep their exact tap behaviour when un-armed.
+- Chain: execute-feature §5 — architecture impact (new config modules + new RouteMap contract + service/API surface) → `update-ai-system.md` deep sync executed, then final `sync-context.md`, in-progress cleared.
+- Final `sync-context.md` result: synced — repo-map config count 82→85 (re-verified `ls app/lib/config/*.ts | wc -l` = 85); dependency-graph config node 77→85 + Sprint 72 additions to mapProxyService/RouteTracingService/Map API Routes/RouteMap/config nodes; system-architecture Maps + FAQ + Config rows + test-count bullet; test-results 865/98 + locationIntent 28 + 3 new suite rows; lessons-learned new camera-intent-defer lesson; 6 files' corrupt `P26-10-12` metadata line normalized to a proper `last-verified-against-code: 2026-10-17` field (pre-existing corruption, unrelated files included). Flagged: none (no code-vs-doc conflicts; no live repair-system entries). Intentionally out of sync: historical session-log/test-results rows keep their original run numbers (append-only).
 
 ---
 

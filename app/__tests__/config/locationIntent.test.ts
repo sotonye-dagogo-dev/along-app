@@ -15,6 +15,7 @@ import {
   recoverNearestPlusCode,
   parsePlusCodeQuery,
   stripLeadingHouseNumber,
+  extractPlusCodeToken,
 } from "@/app/lib/config/locationSuggestions";
 
 jest.mock("@/app/lib/db/redis", () => ({
@@ -163,6 +164,29 @@ describe("recoverNearestPlusCode (shortCodeTests.csv vectors)", () => {
   });
 });
 
+describe("extractPlusCodeToken (code + locality split)", () => {
+  it("splits a plus code from trailing locality text", () => {
+    expect(extractPlusCodeToken("CGQC+HQ2 Lekki")).toEqual({ code: "CGQC+HQ2", remainder: "Lekki" });
+    expect(extractPlusCodeToken("Lekki, CGQC+HQ2")).toEqual({ code: "CGQC+HQ2", remainder: "Lekki" });
+    expect(extractPlusCodeToken("CGQC+HQ2  Lekki Phase1")).toEqual({
+      code: "CGQC+HQ2",
+      remainder: "Lekki Phase1",
+    });
+    expect(extractPlusCodeToken("(CGQC+HQ2), Ikeja")).toEqual({ code: "CGQC+HQ2", remainder: "Ikeja" });
+  });
+  it("keeps legacy whole-query classification for bare and spaced codes", () => {
+    expect(extractPlusCodeToken("849VCWC8+R6")).toEqual({ code: "849VCWC8+R6", remainder: "" });
+    expect(extractPlusCodeToken("8FWC 2345+G6")).toEqual({ code: "8FWC2345+G6", remainder: "" });
+    expect(extractPlusCodeToken("CJ+ 2VX")).toEqual({ code: "CJ+2VX", remainder: "" });
+  });
+  it("never mistakes place names or coords for codes", () => {
+    expect(extractPlusCodeToken("Lekki")).toBeNull();
+    expect(extractPlusCodeToken("CGPQRVWX Lekki")).toBeNull(); // bare alphabet word + locality
+    expect(extractPlusCodeToken("6.5244, 3.3792")).toBeNull();
+    expect(extractPlusCodeToken("")).toBeNull();
+  });
+});
+
 describe("parsePlusCodeQuery", () => {
   it("resolves full codes without a reference", () => {
     const pin = parsePlusCodeQuery("849VCWC8+R6");
@@ -227,7 +251,54 @@ describe("geocodeForward intent pinning + numeric-address recall", () => {
     }
   });
 
-  it("appends a reverse-geocode label after the raw coordinate pin", async () => {
+  it("resolves 'CGQC+HQ2 Lekki' via its locality reference with a friendly label", async () => {
+    const spy = mockFetch((u) => {
+      if (u.includes("/reverse")) {
+        return { ok: true, json: async () => ({ display_name: "Admiralty Way, Lekki, Nigeria" }) };
+      }
+      if (u.includes("nominatim.openstreetmap.org/search") && u.includes(encodeURIComponent("Lekki"))) {
+        // Reference lookup for the short code (+ the remainder's own round-1 hit).
+        return {
+          ok: true,
+          json: async () => [{ display_name: "Lekki, Lagos, Nigeria", lat: "6.4478", lon: "3.4723" }],
+        };
+      }
+      if (u.includes("nominatim.openstreetmap.org/search")) return { ok: true, json: async () => [] };
+      return { ok: false, json: async () => null };
+    });
+    try {
+      const hits = await geocodeForward("CGQC+HQ2 Lekki", 6);
+      expect(hits.length).toBeGreaterThan(0);
+      expect(hits[0].provider).toBe(LOCATION_SUGGESTIONS_CONFIG.plusCodeProviderName);
+      expect(hits[0].display_name).toBe("Admiralty Way, Lekki, Nigeria");
+      const expected = parsePlusCodeQuery("CGQC+HQ2", { lat: 6.4478, lng: 3.4723 });
+      if (!expected) throw new Error("expected the short code to parse against the reference");
+      expect(Math.abs(Number(hits[0].lat) - expected.lat)).toBeLessThan(1e-6);
+      expect(Math.abs(Number(hits[0].lon) - expected.lng)).toBeLessThan(1e-6);
+      // The locality remainder surfaces as its own suggestion too.
+      expect(hits.some((h) => h.display_name === "Lekki, Lagos, Nigeria")).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("falls through (no pin) when a short code has no reference at all", async () => {
+    const spy = mockFetch((u) => {
+      if (u.includes("nominatim.openstreetmap.org/search")) return { ok: true, json: async () => [] };
+      if (u.includes("photon.komoot.io")) return { ok: true, json: async () => ({ features: [] }) };
+      if (u.includes("open-meteo")) return { ok: true, json: async () => ({ results: [] }) };
+      if (u.includes("overpass")) return { ok: true, json: async () => ({ elements: [] }) };
+      return { ok: false, json: async () => null };
+    });
+    try {
+      const hits = await geocodeForward("CGQC+HQ2 Lekki", 6);
+      expect(hits.every((h) => h.provider !== LOCATION_SUGGESTIONS_CONFIG.plusCodeProviderName)).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("pins the friendly reverse label (not the raw coords) as THE coordinate hit", async () => {
     const spy = mockFetch((u) => {
       if (u.includes("/reverse")) {
         return { ok: true, json: async () => ({ display_name: "Ikeja, Lagos, Nigeria" }) };
@@ -237,11 +308,24 @@ describe("geocodeForward intent pinning + numeric-address recall", () => {
     try {
       const hits = await geocodeForward("6.6018, 3.3515", 6);
       expect(hits[0].provider).toBe(LOCATION_SUGGESTIONS_CONFIG.coordinateProviderName);
+      // Exact coords kept behind the hood; display shows the place name only.
+      expect(hits[0].display_name).toBe("Ikeja, Lagos, Nigeria");
       expect(hits[0].lat).toBe("6.6018");
       expect(hits[0].lon).toBe("3.3515");
-      expect(hits.length).toBeGreaterThan(1);
-      expect(hits[1].display_name).toBe("Ikeja, Lagos, Nigeria");
-      expect(hits[1].provider).toBe(LOCATION_SUGGESTIONS_CONFIG.coordinateProviderName);
+      // Single pinned hit — no duplicate raw-coordinate row when a label exists.
+      expect(hits.filter((h) => h.provider === LOCATION_SUGGESTIONS_CONFIG.coordinateProviderName)).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("falls back to the raw query text only when the reverse label fails", async () => {
+    const spy = mockFetch(() => ({ ok: false, json: async () => null }));
+    try {
+      const hits = await geocodeForward("6.6018, 3.3515", 6);
+      expect(hits[0].display_name).toBe("6.6018, 3.3515");
+      expect(hits[0].lat).toBe("6.6018");
+      expect(hits[0].lon).toBe("3.3515");
     } finally {
       spy.mockRestore();
     }
