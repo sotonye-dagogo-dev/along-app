@@ -122,7 +122,7 @@ export function diffSchema(
   if (state === "partial") {
     fatal.push(
       `target schema is partially applied (present: ${present.length}/${required.length}; ` +
-        `missing: ${missing.join(", ")})`,
+      `missing: ${missing.join(", ")})`,
     );
   }
 
@@ -248,8 +248,7 @@ export async function ensureSchema(params: EnsureSchemaParams): Promise<EnsureSc
     ({ diff, names } = await inspect());
     if (diff.state !== "complete") {
       throw new Error(
-        `Migrations ran but the target schema is still incomplete (missing: ${
-          diff.missing.join(", ") || "none reported"
+        `Migrations ran but the target schema is still incomplete (missing: ${diff.missing.join(", ") || "none reported"
         }). Check the migrate output above.`,
       );
     }
@@ -257,9 +256,9 @@ export async function ensureSchema(params: EnsureSchemaParams): Promise<EnsureSc
     if (!allowDrop) {
       throw new TransferSafetyError(
         `Target schema is only partially applied (${diff.present.length}/${diff.required.length} tables present). ` +
-          "Loading into it could not be verified.",
+        "Loading into it could not be verified.",
         `Inspect the target, or re-run with --${DB_TRANSFER_CONFIG.destructive.replaceFlag} to drop and rebuild ` +
-          "its schema (a safety backup of the target is taken first).",
+        "its schema (a safety backup of the target is taken first).",
       );
     }
     await dropAllPublicRelations(pool, log);
@@ -285,7 +284,7 @@ export async function ensureSchema(params: EnsureSchemaParams): Promise<EnsureSc
   if (diff.state === "complete" && bookkeepingMissing) {
     log.warn(
       `${bookkeeping} is absent — the target has tables but no migration history. ` +
-        "A future \`npm run db:migrate\` would try to re-create them; run `npx prisma migrate resolve --applied <name>` if needed.",
+      "A future \`npm run db:migrate\` would try to re-create them; run `npx prisma migrate resolve --applied <name>` if needed.",
     );
   }
   if (diff.extra.length > 0) {
@@ -294,13 +293,13 @@ export async function ensureSchema(params: EnsureSchemaParams): Promise<EnsureSc
   if (diff.nullableColumnDrops.length > 0) {
     log.warn(
       `Backup carries ${diff.nullableColumnDrops.length} column(s) the target lacks — loaded as NULL: ` +
-        diff.nullableColumnDrops.map((d) => `${d.table}.${d.column}`).join(", "),
+      diff.nullableColumnDrops.map((d) => `${d.table}.${d.column}`).join(", "),
     );
   }
   if (diff.columnGains.length > 0) {
     log.info(
       `Target has ${diff.columnGains.length} newer column(s) filled from defaults: ` +
-        diff.columnGains.map((d) => `${d.table}.${d.column}`).join(", "),
+      diff.columnGains.map((d) => `${d.table}.${d.column}`).join(", "),
     );
   }
 
@@ -398,6 +397,11 @@ function bindLimit(columnCount: number): number {
   return Math.max(1, Math.min(rowsPerBatch, byParams));
 }
 
+function isJsonColumn(header: BackupHeader, table: string, index: number): boolean {
+  const column = header.tables.find((candidate) => candidate.name === table)?.columns[index];
+  return column?.dataType === "json" || column?.dataType === "jsonb";
+}
+
 /** Plan for pass 2 — resolves file column indices for each deferred column. */
 interface DeferredPlan {
   table: string;
@@ -418,7 +422,7 @@ function buildDeferredPlan(header: BackupHeader, projections: Map<string, Projec
     if (!pkColumn) {
       throw new TransferSafetyError(
         `Table "${spec.table}" participates in a foreign-key cycle (${spec.columns.join(", ")}) ` +
-          "but has no primary key, so deferred values cannot be re-linked to individual rows.",
+        "but has no primary key, so deferred values cannot be re-linked to individual rows.",
         "Add a primary key to the table, or break the cycle in the schema.",
       );
     }
@@ -502,7 +506,11 @@ export async function loadBackupIntoTarget(params: LoadParams): Promise<LoadOutc
         };
 
         for (const row of rows) {
-          batch.push(projection.insertIndices.map((index) => rowToParams([row[index]])[0]));
+          batch.push(
+            projection.insertIndices.map((index) =>
+              rowToParams([row[index]], { jsonArray: isJsonColumn(header, table, index) })[0],
+            ),
+          );
           if (batch.length >= limit) await flush(batch.length);
         }
         if (batch.length > 0) await flush(batch.length);
@@ -536,7 +544,11 @@ export async function loadBackupIntoTarget(params: LoadParams): Promise<LoadOutc
               `UPDATE ${quoteIdent(plan.table)} SET ${assignments.join(", ")} ` +
               `WHERE ${quoteIdent(plan.pkColumn)} = $${pkSlot}`;
             const values = [
-              ...live.map((i) => rowToParams([row[plan.columnIndices[i]]])[0]),
+              ...live.map((i) =>
+                rowToParams([row[plan.columnIndices[i]]], {
+                  jsonArray: isJsonColumn(header, table, plan.columnIndices[i]),
+                })[0],
+              ),
               rowToParams([row[plan.pkIndex]])[0],
             ];
 

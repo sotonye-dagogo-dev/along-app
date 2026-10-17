@@ -90,7 +90,7 @@ Required zones in order (DESIGN.md §7.1):
 1. TopNav: Along logo + wordmark left, "Sign In" ghost + "Get Started" primary right. Glass on scroll.
 2. Hero: Full-viewport green gradient (linear-gradient(135deg, #004A2C 0%, #00623B 50%, #00A862 100%)). Along logo white centred. Tagline "Navigate Together." display-xl white. Subheadline + CTA row (Get Started primary, Sign In secondary — inverted on dark bg). Decorative SVG: abstract map pins connected by route lines in lighter green tones.
 3. Feature grid: 3 AppCard flat (desktop row / mobile stack). "Share Routes" Route icon, "Trust Scores" ShieldCheck icon, "Community" Users icon. Icon on primary-muted bg, title, 2-line description.
-4. Social proof strip: glass surface — "10,000+ Routes · 50,000+ Commuters · Lagos · Abuja · Port Harcourt"
+4. Social proof strip: glass surface — "10,000+ Routes · 50,000+ Commuters · Nigeria"
 5. Sample feed preview: 2 PostCard previews (actual component spec, not placeholder box). One standard, one Along Suggestion variant. TrustBadge visible on each.
 6. CTA section: "Start navigating smarter" heading + "Create Free Account" AppButton primary.
 7. AppFooter: brand, link columns, social Lucide icons, dev credit "Built by S.D".

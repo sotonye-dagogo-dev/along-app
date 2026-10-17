@@ -82,7 +82,7 @@ export async function dumpDatabase(options: DumpOptions): Promise<DumpResult> {
   if (filtered.length === 0) {
     throw new Error(
       "Refusing to write an empty backup: no public tables were found on the source. " +
-        "Check the connection URL — an empty file would silently 'succeed'.",
+      "Check the connection URL — an empty file would silently 'succeed'.",
     );
   }
 
@@ -129,7 +129,10 @@ export async function dumpDatabase(options: DumpOptions): Promise<DumpResult> {
 
     await emit(header);
 
-    for (const table of filtered) {
+    const tablesByName = new Map(filtered.map((table) => [table.name, table]));
+    for (const tableName of plan.loadOrder) {
+      const table = tablesByName.get(tableName);
+      if (!table) continue;
       const expected = await tableRowCount(options.client, table.name);
       let written = 0;
       let collected = 0;
@@ -181,7 +184,7 @@ export async function dumpDatabase(options: DumpOptions): Promise<DumpResult> {
       if (written !== expected) {
         throw new Error(
           `Row count drifted mid-dump on ${table.name}: counted ${expected}, read ${written}. ` +
-            "The source is being written to concurrently — rerun when writes have quiesced.",
+          "The source is being written to concurrently — rerun when writes have quiesced.",
         );
       }
       if (hashOverflow) {

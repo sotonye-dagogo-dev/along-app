@@ -82,6 +82,17 @@ function tag(key: string, payload: unknown): EncodedValue {
   return { [key]: payload };
 }
 
+function stableJsonStringify(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJsonStringify).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    return `{${Object.keys(value as Record<string, unknown>)
+      .sort()
+      .map((key) => `${JSON.stringify(key)}:${stableJsonStringify((value as Record<string, unknown>)[key])}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 /**
  * Turn a value returned by `pg` into something `JSON.stringify` can carry
  * without losing information.
@@ -96,7 +107,10 @@ export function encodeValue(value: unknown): EncodedValue {
     if (!Number.isFinite(value as number)) {
       return tag("$n", String(value));
     }
-    return value;
+    if (Number.isInteger(value)) return value;
+    // PostgreSQL float output can differ by a final display digit after a
+    // cross-provider round trip even when the stored binary value is equivalent.
+    return Number((value as number).toPrecision(15));
   }
   if (t === "bigint") return tag("$i", (value as bigint).toString());
   if (value instanceof Date) {
@@ -112,7 +126,7 @@ export function encodeValue(value: unknown): EncodedValue {
     return tag("$b", Buffer.from(value).toString("base64"));
   }
   if (Array.isArray(value)) return tag("$r", value.map(encodeValue));
-  if (t === "object") return tag("$j", JSON.stringify(value));
+  if (t === "object") return tag("$j", stableJsonStringify(value));
   // function/symbol/unknown — not reachable from `pg`, but never crash.
   return tag("$j", JSON.stringify(String(value)));
 }
@@ -215,9 +229,18 @@ export function toParam(value: unknown): unknown {
   return JSON.stringify(value);
 }
 
+export interface ParamOptions {
+  jsonArray?: boolean;
+}
+
+export function toColumnParam(value: unknown, options: ParamOptions = {}): unknown {
+  if (options.jsonArray && Array.isArray(value)) return JSON.stringify(value);
+  return toParam(value);
+}
+
 /** Decode an encoded row straight into bind parameters. */
-export function rowToParams(row: EncodedValue[]): unknown[] {
-  return row.map((v) => toParam(decodeValue(v)));
+export function rowToParams(row: EncodedValue[], options: ParamOptions = {}): unknown[] {
+  return row.map((v) => toColumnParam(decodeValue(v), options));
 }
 
 /* ------------------------------------------------------------------ *

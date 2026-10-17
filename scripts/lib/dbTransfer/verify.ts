@@ -132,6 +132,7 @@ export async function verifyTargetAgainstBackup(
   // not actually replaced/emptied — that is a problem, not a bonus.
   const expectedNames = new Set(restorableTables(header).map((t) => t.name));
   for (const [name, count] of Object.entries(footer.rowCounts)) {
+    if ((DB_TRANSFER_CONFIG.bookkeepingTables as readonly string[]).includes(name)) continue;
     if (!expectedNames.has(name) && count > 0) {
       problems.push(`${name}: footer row count refers to a table absent from the header`);
     }
