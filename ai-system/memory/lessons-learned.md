@@ -1,6 +1,7 @@
 # Lessons Learned
 
 > **Metadata**
+>
 > - last-updated-by: execute-feature 2026-10-17 (Sprint 72: camera-effect intent deps + interaction-deferred baseline moves)
 > - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
 > - staleness-policy: each entry has its own staleness — check supersedes links
@@ -30,6 +31,36 @@
 ---
 
 ## Lessons
+
+## Preserve PostgreSQL Temporal Text During Cross-Database Transfers
+
+**Context:** JavaScript PostgreSQL parsers can interpret `timestamp`, `date`, and
+related values in the runner's local timezone, silently shifting data during a
+JSON round trip.
+
+**What We Learned:** Install raw-text parsers for temporal OIDs and encode typed
+values before writing checksummed JSONL. Verify per-table canonical content
+hashes after restore, not only row counts.
+
+**Apply When:** Moving PostgreSQL data between providers or running a backup
+tool outside the database's timezone.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Windows npm Scripts Must Use Portable Command Chaining
+
+**Context:** `prisma generate; next build` passed `generate;` as part of the
+Prisma command under the Windows npm shell, so the build never started.
+
+**What We Learned:** Use `&&` for sequential npm scripts and validate the exact
+command on the target operating system.
+
+**Apply When:** Editing package scripts that chain generators, migrations, or
+build commands.
+
+**Supersedes:** None
+**Superseded by:** None
 
 ## Inline `import()` Promises and Fresh Object Identities Re-init Maps and Yank Cameras
 
@@ -142,6 +173,7 @@ During Sprint C remediation, 17 UI component files were changed from `export def
 Named exports prevent ambiguity between barrel re-exports and direct file imports. When all components use named exports, the barrel (`index.ts`) can consistently use `export { X }` and consumers consistently use `import { X }`. However, this migration requires updating every import site simultaneously — a breaking change.
 
 **Apply When:**
+
 - Setting up new component libraries: use named exports from the start
 - Refactoring existing libraries: batch all import fixes together (or use codemods)
 - Barrel files: always re-export named exports for consistency
@@ -158,25 +190,26 @@ During Sprint B remediation, AbortController was added to 4+ useEffects across t
 
 **What We Learned:**
 Every async `useEffect` that performs data fetching should follow this pattern:
+
 ```typescript
 useEffect(() => {
-  const ac = new AbortController()
+  const ac = new AbortController();
   async function load() {
-    setLoading(true)
+    setLoading(true);
     try {
-      const res = await fetch(url, { signal: ac.signal })
-      if (!res.ok) throw new Error("Fetch failed")
-      setData(await res.json())
+      const res = await fetch(url, { signal: ac.signal });
+      if (!res.ok) throw new Error("Fetch failed");
+      setData(await res.json());
     } catch (err) {
-      if ((err as Error)?.name === "AbortError") return
-      console.error(err)
+      if ((err as Error)?.name === "AbortError") return;
+      console.error(err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
-  load()
-  return () => ac.abort()
-}, [url])
+  load();
+  return () => ac.abort();
+}, [url]);
 ```
 
 **Apply When:**
@@ -194,6 +227,7 @@ Transact Marketplace and Tega Events were implemented with full infrastructure (
 
 **What We Learned:**
 When an external dependency isn't ready but the integration code is correct:
+
 1. **Remove user-facing access points only** (nav, sidebar, routing links)
 2. **Keep all infrastructure** (API routes, webhooks, components, pages)
 3. **Document the frozen state** in system-architecture.md with `[FROZEN]` tag
@@ -264,6 +298,7 @@ Building any file/media upload — verify end-to-end (input → FormData → API
 `POST /api/auth/forgot-password` hung for 10s and returned 504 because `otpStore.setResetToken` awaited `redis.set()` to a deprovisioned Upstash host (`willing-gazelle-101748.upstash.io` DNS ENOTFOUND, 6s fetch timeout) and then awaited `sendPasswordResetEmail` sequentially. The same blocking pattern existed in `feedService`, `posts/route`, and QStash workers which used `new Redis({ url: process.env.UPSTASH_REDIS_REST_URL!, token: ...! })` with no timeout.
 
 **What We Learned:**
+
 1. Wrap every Redis operation in `Promise.race` with <1.5s timeout and fallback to in-memory or DB — cache must be non-critical.
 2. Use a lazy singleton (`app/lib/db/redis.ts`) that resolves `UPSTASH_REDIS_REST_URL || REDIS_URL` and never `new Redis` at import time; guard `replace_me` and non-https values.
 3. Gate-critical email (OTP/verification) must be AWAITED inside bounded timeouts with an honest `sent` flag — fire-and-forget (`void` / `globalThis.waitUntil`, which does not exist on the Vercel/Next runtime) lets serverless freeze the function on response and silently drops the mail (Oct 2026 register fix: `REGISTER_EMAIL_DISPATCH_CONFIG` 6s per-mail race + `Promise.allSettled`, same pattern as forgot-password). Non-critical notices (change-password notice, Google welcome before the fix) may stay background, but never OTP gates.
@@ -453,7 +488,7 @@ Any create-vs-edit schema split (`CREATE_X_SCHEMA` / `UPDATE_X_SCHEMA = CREATE.p
 ## Semantic Tokens Pair Up — Never Use a Token Halved
 
 **Context:**
-Sprint 14 (2026-10-08) — `text-warning` (pale yellow #FEF3C7, a *background* token) used as text was invisible on light surfaces; the readable pairing is `bg-warning text-warning-text border-warning-border`, which the dark-mode overrides also honor.
+Sprint 14 (2026-10-08) — `text-warning` (pale yellow #FEF3C7, a _background_ token) used as text was invisible on light surfaces; the readable pairing is `bg-warning text-warning-text border-warning-border`, which the dark-mode overrides also honor.
 
 **What We Learned:**
 Design-system semantic colors come as bg/text/border triples. Using one leg alone (especially `text-<semantic>` for warning/error/info) breaks contrast in one mode or both. When touching badge/pill/icon tint classes, always use the full triple and check both `.dark` overrides in `globals.css`.
@@ -587,11 +622,13 @@ Any destructive user-data operation with retention grace, anonymization requirem
 **Superseded by:** None
 
 ## Sprint 22: literal-{{var}} sends + PROJECT_ENV split-brain
+
 - **Symptom:** admin-composed mails arrived with raw `{{identifier}}` text (variable values never supplied or keys mismatched); `PROJECT_ENV=production` left insecure cookies + dev logs because only 2 prisma files honored it.
 - **Root causes:** (1) interpolation only replaced supplied keys, leaving the rest verbatim, and preview deliberately filled gaps with the identifier; (2) env reads were scattered `process.env.NODE_ENV` with no central resolver.
 - **Fix pattern (reuse):** interpolate against `{{(\w+)}}` globally with merged defaults and empty-string fallback + HTML-escape values; keep `{{...}}` intact through the sanitizer via placeholder-token protection; resolve env once in `lib/config/env.ts` (PROJECT_ENV wins) and consume `isProduction()/getEffectiveEnv()` everywhere. Verified: builder round-trips + sanitizer + env precedence executed under node strip-types.
 
 ## Sprint 25: fetch-or-empty providers leak raw keys — seed from bundle + cache
+
 - **Symptom:** offline UI showed `guest.signIn`-style identifiers; locale fetch failure reset translations to `{}`.
 - **Root causes:** (1) provider initialized empty and only filled on network success; (2) SW had no `/locales/` handling so the fetch failed offline with nothing to fall back to.
 - **Fix pattern (reuse):** seed client providers from a bundled import, overlay last-good localStorage synchronously, then revalidate over network; add the fetched asset to SW precache + runtime handling in the same sprint. Applies to any fetch-driven provider (locales, site-config, feature flags).
@@ -599,6 +636,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 25: reuse tables/types via marker rows instead of migrating
+
 - **Symptom:** three "new" needs (platform reviews storage, thank-you notification type, FAQ pidgin) each suggested a migration or schema/config expansion.
 - **Root causes:** defaulting to new-model thinking before checking whether an existing unique constraint or type already expresses the need.
 - **Fix pattern (reuse):** self-pair `UserReview` (+@@unique = one-per-user + upsert), REWARD+allowSelf thank-you, FAQ_PCM beside source copy — zero migrations, zero new tables, admin surfaces keep working. Migrate only when the need genuinely exceeds the existing shape.
@@ -606,11 +644,13 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 24: PWA offline without session invalidation
+
 - **Symptom:** offline/network blips cleared auth state (AuthProvider set null on any fetch failure); SW precached auth-gated routes (login-redirect caching); push only auto-subscribed with no user control or server fan-out.
 - **Root causes:** (1) auth fetch treated network/5xx/non-JSON as unauthenticated; (2) SW had no never-cache list for /api/auth|push|admin; (3) notificationService wrote in-app rows but never fanned out to Web Push.
 - **Fix pattern (reuse):** only double-401 clears session (transients keep last-known user); centralize PWA policy in `lib/config/pwa.ts` with predicate helpers and mirror in sw.js; fan out push from the single notification write-point (fire-and-forget, never throws, unknown-type fallback).
 
 ## Sprint 27: silent booleans + timer/throttle split-brain behind "nothing happens"
+
 - **Symptom:** push Enable clicked with zero feedback and no subscription; OTP "invalid/expired immediately" plus re-sends that never arrived with no explanation.
 - **Root causes:** (1) `subscribeToPush(): Promise<boolean>` collapsed denied/unsupported/offline/no-VAPID into one `false` with no permission request ever issued; (2) client resend timer (45s) disagreed with the server throttle (shared auth bucket 10/15min) and send failures returned success, so the UI promised mail the server never delivered; single shared OTP key meant resends invalidated the code the user was holding.
 - **Fix pattern (reuse):** never return a bare success/failure for user-initiated device or delivery flows — return `{sent|ok, reason, retryAfter, expiresIn}` and let the UI adopt the SERVER timer; request permissions inside the click gesture; persist device state locally (flags + dismissal timestamps) so prompts behave offline; keep compat wrappers when widening return shapes. Applies to any future device-permission or email/SMS-code flow.
@@ -618,6 +658,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 28: server-dropped fields + dual readers behind "preview right, post wrong"
+
 - **Symptom:** share-preview traced start → stop → destination perfectly, but the posted view rendered start → destination, skipping the stop.
 - **Root causes:** (1) the API destructured a validated field (`waypoints`) out of the payload and never persisted it — schema acceptance is not storage; (2) TWO readers each wrong in a different state — post detail treated intermediates-only `waypoints` as the full route (origin/destination loss when present), and the start/end fallback skipped stops when absent. Preview-vs-read divergence always means: check what the write path actually stores first, then check every reader's shape assumption.
 - **Fix pattern (reuse):** one canonical builder owned by config (`buildRoutePinsFromPost`) consumed by ALL readers + one shared trace hook (`useRouteTrace`) — preview and post views become structurally incapable of diverging. Writes must round-trip every schema-accepted field (or explicitly reject it); silent destructuring-drops are a defect class to grep for after any schema widening.
@@ -625,6 +666,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Fix-build 2026-10-09: silent coercion + silent filtering behind "shared but never posted"
+
 - **Symptom:** composer accepted an empty stop and a fare range, showed a saved-draft toast, closed as though published, but no post existed; only a bare "Validation failed" with no field highlight.
 - **Root causes:** (1) `parseFloat`/`Number()` on free-text fares silently coerces ranges ("400-500" → 400) while the server rejects raw strings — client and server disagreed with no inline signal; (2) the composer `.filter()`ed empty-location steps before submit, so the payload no longer represented what the user saw; (3) submit failure paths returned silent `false` with no form banner, so a missed toast read as success.
 - **Fix pattern (reuse):** strict whole-string fare parsing (`parseFareInput`) shared by composer + schema preprocess; validate every visible step (filtering is for previews, never for submit payloads); every submit path surfaces a sanitized first-field message inline + via toast and never clears drafts/closes on failure. Applies to any future free-text-numeric composer field.
@@ -632,6 +674,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 31: local-only handlers + write-once scores behind "works here, dead there" and "stuck at 10"
+
 - **Symptom:** share icon worked on profile posts but did nothing on feed/search/detail/bookmarks; trust stayed 10 despite new followers and interactions.
 - **Root causes:** (1) share logic lived in one leaf component while the shared card only delegated to an optional callback with no fallback — every new surface had to re-implement sharing and none did; detail's buttons were placeholder stubs; (2) the scorer's input shape excluded author/community growth AND the only recompute trigger was post-create, so stored scores could never move; create-time and worker-time scorers disagreed, masking the freeze behind a flash; (3) the breakdown tooltip rendered synthetic offsets, so no one could see the freeze from the UI.
 - **Fix pattern (reuse):** lift leaf-only behaviour into a zero-dep service + hook the moment a second surface needs it, with a fallback inside the shared component (override prop kept for callers/tests); make scores a function of everything the product claims matters, recompute on every signal that feeds them (fire-and-forget, bounded fan-out), compute honestly at write time (no optimistic-then-overwrite), and render the REAL components in every breakdown UI so staleness is visible instead of hidden. Additive optional inputs preserve legacy scores exactly — prove with arithmetic before changing weights.
@@ -639,6 +682,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 33: derived public_ids + post-commit destroys behind "deleted but still billed"
+
 - **Symptom:** post/draft/account deletes removed DB rows but Cloudinary bytes in `along/posts/*` lived forever — Post.images stores only secure_urls and no delete path ever called destroy.
 - **Root causes:** (1) upload returns secure_url only with no public_id column, so cleanup felt "impossible without a migration" and was never built; (2) external side-effects were assumed to belong inside the DB transaction, so the ACID-safe ordering (commit first, best-effort destroy after, never throw) was never stated as policy.
 - **Fix pattern (reuse):** derive public_id by parsing secure_url (`/upload/(vN/)?<id>.<ext>`) + enforce an `along/*` allowlist, and codify commit-first/best-effort-after as config (`MEDIA_CLEANUP_CONFIG`) with per-flow toggles + a live-post reference guard on the client-discard endpoint (publish-then-discard reuses URLs). Account finalize keeps anonymized post images per retention policy and purges only legacy avatar URLs. Applies to any future external-asset lifecycle (e.g. video, attachments).
@@ -646,6 +690,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 34: dead config weights + raw-API error pages behind "sound but static" and "landed on an api route"
+
 - **Symptom:** feed ranking ignored location despite a tuned `locationBonus`, ignored admin tuning despite a seeded SiteConfig key, and ignored trust despite computing it live; denied location toasted on two surfaces but only inlined on navigation; a minority of invitees saw an api route in the address bar.
 - **Root causes:** (1) config values with zero code references (locationBonus) and documented-but-unread store keys (feedAlgorithm) look tunable but change nothing — audit must grep refs, not just read values; (2) error paths on browser-navigated OAuth routes returned JSON, so any refresh/copy during the transient /api window stranded users on a non-page; (3) leaf-duplicated copy strings drifted, hiding which surfaces had feedback and which didn't.
 - **Fix pattern (reuse):** centralize user-facing copy in zero-dep configs consumed by every surface; make ranking additive-bonus-only for new signals (absent = exact-zero, ordering provably unchanged); resolve admin config with hardcoded fallback at call time; redirect (never JSON) on any GET route a browser can display, preserving referral context; add catch-all page redirects for legacy/hand-typed URL shapes. Applies to any future ranking signal or shareable-link flow.
@@ -653,6 +698,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Fix-build 2026-10-11: hover-only controls + full-bleed dialogs behind "works but invisible" and "map ate the sidebar"
+
 - **Symptom:** a working remove button nobody could see (especially on touch); an expanded map that painted over the adjacent suggestions rail.
 - **Root causes:** (1) `opacity-0` + `group-hover:opacity-100` gates discovery on hover, which touch devices never fire — the control is hidden for a whole input modality; (2) `fixed inset-0` + `100vw/100vh` with no max-width cap or scrim is a layer, not a dialog — and `100vw` includes the scrollbar, so it also scrolls sideways.
 - **Fix pattern (reuse):** removal/destructive actions are persistently visible (`opacity-100`); hover/focus only deepen, never reveal; touch-size targets (≥28px) with focus rings. Expansions render as centered dialogs (`inset-0` flex center + `w-full max-w-*` panel + scrim + Escape/backdrop close + resize/refit on open); never `100vw` — prefer `inset-0` wrappers with capped panels. Both behind zero-dep config so copy/classes stay tunable. Applies to any future thumbnail-grid action or fullscreen-capable viewer.
@@ -660,6 +706,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 35: session-helper selects are not status sources behind "linked but the UI forgot"
+
 - **Symptom:** password-linking succeeded at the API (DB updated, success toast shown) but after reload the panel showed "Add a password" again and Email & Security never offered Change-password — linking looked non-persistent.
 - **Root causes:** (1) `getUserFromRequest()` deliberately selects a safe subset (no `password` hash), but `GET /api/auth/link/status` cast the result to include `password` and derived `hasPassword` from a field that was always `undefined` — a type-cast lie the compiler could not catch because the helper returns `Record<string, unknown>`; (2) redirect result flags (`?success=`/`?error=`) had no renderer on the landing page, so link outcomes were silent.
 - **Fix pattern (reuse):** status routes re-read the authoritative columns from the DB per call and return booleans only (hash never leaves the server); never derive status from a casted session object — if the helper doesn't select it, it isn't there. Any redirect-flag handoff (`?success=`/`?error=`) ships with a one-shot renderer (toast + `history.replaceState` cleanup) on the landing page in the same change. Applies to any future connected-state or verification-status surface.
@@ -667,6 +714,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 36: hidden inputs under validation + linkage-blind edit payloads behind "filled but flagged" and "edit cleared the tag"
+
 - **Symptom:** Share stayed disabled with "fix the highlighted fields" while every visible field looked filled (after an edit→draft→repost-as-response flow); editing a ROUTE_RESPONSE dropped its "Responding to" tag in the UI even though the DB row kept it.
 - **Root causes:** (1) destination fare/vehicle inputs are hidden by `ROUTE_STEPS_CONFIG`, but `validateRouteComposer` still validated them — legacy values carried by edit prefills/restored drafts flagged invisible errors; (2) `EditPost` had no linkage fields and `GET /api/posts` never included `quotedPost`, so the composer literally could not display the tag and drafts saved mid-edit were unlinkable (drafts UI was edit-gated); (3) prefill seeded `_fareRaw` even for the hidden destination step, manufacturing a raw value the user could never see or fix.
 - **Fix pattern (reuse):** any input hidden by config must also be skipped by validation (mirror the hide rule as skip flags in the validator, zero-dep); edit payloads carry display-only linkage (`type/quotedPostId/quotedPost`) that the server continues to treat as immutable; prefill/restore never seed raw values for hidden inputs (submit still strips via normalize). Applies to any future conditionally-hidden composer field.
@@ -674,6 +722,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 37: service return types that lie + stash-verified pre-existing failures
+
 - **Symptom:** `tsc` failed in `trustBreakdownConsistency.test.ts` (`validityBreakdown`/`validityScore`/`validityTier` "do not exist") even though the runtime attaches all three; plus 3 jest failures in `searchService`/`registerEmailDispatch` and lint errors in untouched files.
 - **Root causes:** (1) `attachLiveBreakdownsToPosts` declared `Promise<T[]>` while spreading attached fields onto each row — the generic erased what the function guarantees; (2) unrelated suites assert on auth/search file contents untouched by this sprint.
 - **Fix pattern (reuse):** widen the service return to `T & Partial<Attachment>` (additive, all call sites keep compiling, failures stay expressible via Partial); verify pre-existing status with `git stash -u` + re-run rather than assuming — stash must include untracked files or new-file errors pollute the baseline. Leave unrelated red suites to their owners; record as residual risk in the session log instead of scope-creeping into auth/search code.
@@ -681,6 +730,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 38: degraded-but-rendering UI hides data bugs + pure-scorer trust changes
+
 - **Symptom:** profile posts "looked fine" but missed the response marker and showed legacy trust numbers — no error anywhere, because `PostCard`/`TrustBadge` degrade gracefully on absent props.
 - **Root causes:** (1) page-level minimal projections stripped fields the shared card needs; graceful fallbacks made the loss invisible except by side-by-side comparison with feed; (2) corroboration's exact-tag ±7d count was near-degenerate on real data (case, tagless posts, short window).
 - **Fix pattern (reuse):** when a shared component degrades gracefully, audit prop-forwarding at every call site (not the component); keep trust math in pure, unit-tested engine functions with config weights, and DB evidence in one best-effort service with per-leg fallbacks — scores stay explainable and reads never fail because of trust.
@@ -688,6 +738,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 39: transparent-overlay carets, initials-div avatars, and tests that assert on prose
+
 - **Symptom:** comment box caret invisible (only textbox platform-wide); comment avatars differed from every other surface; feed comment icon reloaded the page while profile opened a modal; 3 red suites nobody owned.
 - **Root causes:** (1) `caret-current` inside a `text-transparent` overlay inherits transparency — caret-color must be explicit whenever text is intentionally transparent; (2) comments hand-rolled initials divs instead of the shared `AppAvatar`, and one caller passed a display name as `userName`, breaking both avatar and profile link; (3) feed wired `onComment` to `window.location.href` while profile built an inline modal — no shared modal existed; (4) file-content tests matched history comments (`sendInBackground`/`globalThis`/`void send…` in prose) and asserted reference equality on a service that re-enriches cached rows (new object by design).
 - **Fix pattern (reuse):** any transparent-text overlay sets `caretColor` explicitly from config; every user face renders through `AppAvatar` (fallback is its job, not callers'); one shared modal component per interaction, reused at every call site; file-content assertions must target code-only markers (or keep history prose free of asserted substrings), and cache tests assert deep equality when enrichment is intended. Pre-existing red suites get fixed when the directive owns them — recorded, not scope-crept.
@@ -695,6 +746,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 40: leg-only detail scorer behind "every post is 42%" + CTA-less boundaries + unreachable search
+
 - **Symptom:** posts with 5 photos, 4 tags, long descriptions and full fares all showed detail 42%; error pages auto-logged but offered no report path; /search existed but had no nav/footer/profile entry.
 - **Root causes:** (1) the detail scorer read only per-leg distance/steps/location/description while the composer never produces distance/steps — every leg collapsed to 15+15=30 → ×1.4 = 42, and the service/create paths never passed post-level richness at all; (2) boundaries filed reports but exposed no toast CTA, no prefill builder, and the report form read no query params — each half existed without the other; (3) search links were assumed present because explore has a search input, but the input filters the map while /search is a separate page nobody linked.
 - **Fix pattern (reuse):** score what the product claims matters (photos/tags/description/vehicles/fares/stops) as additive capped bonuses over an untouched legacy base — no-context callers prove parity arithmetically; pair every auto-filed report with a sanitized prefill + URL builder + toast/inline CTAs that reuse existing slots (toast action, form initialValues) instead of new component APIs; verify page reachability by grepping registries (nav/footer/quick-links), not by assuming adjacent features link it.
@@ -702,6 +754,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 41: patient trigger vs racy signup — same template, different budgets
+
 - **Symptom:** signup verify mails never arrived while the profile "resend" flow delivered every time; users blamed unverified-status blocking.
 - **Root causes:** (1) register raced each mail against 6s outer / 5s inner timeouts while the profile trigger awaited one send with no outer race — cold starts timed out on signup, delivered on profile, same template both sides; (2) every failed send left the 60s issuance cooldown in place, so the retry for a mail that never left read as "wasn't sent any" (429); (3) the OTP-screen resend used the otp-only template while register/profile used verifyEmail (OTP + link) — three shapes for one purpose.
 - **Fix pattern (reuse):** give every gate-critical send the same patient, config-driven budget on BOTH timeout layers (outer race + inner provider timeout must agree); on delivery failure lift the throttle but keep the code (retry-immediate, abuse still capped by the shared rate bucket, response cooldown 0 so client timers agree); one template per purpose across all entry points (flag-driven with fallback). Audit "X blocks its own delivery" hypotheses with a test, not an assumption.
@@ -709,13 +762,15 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 42: single-row votes need both flags on every read path
+
 - **Symptom:** feed card correct, detail view wrong — dislike button dead, count stale, active fill missing; comment composer avatar differed from every other surface.
-- **Root causes:** (1) one `Like` row encodes LIKE|DISLIKE but readers only derived `_isLiked` — the second state was unrepresentable downstream, so clients hardcoded `false`; (2) the detail engagement bar was built without wiring the second vote action at all (no `onClick`); (3) toggle endpoints punish wrong payloads silently — sending DISLIKE on unlike *adds* a dislike instead of removing the like; (4) auth context type dropped a field the API already returned, starving all downstream avatar renders.
+- **Root causes:** (1) one `Like` row encodes LIKE|DISLIKE but readers only derived `_isLiked` — the second state was unrepresentable downstream, so clients hardcoded `false`; (2) the detail engagement bar was built without wiring the second vote action at all (no `onClick`); (3) toggle endpoints punish wrong payloads silently — sending DISLIKE on unlike _adds_ a dislike instead of removing the like; (4) auth context type dropped a field the API already returned, starving all downstream avatar renders.
 - **Fix pattern (reuse):** when one row encodes N states, every read path must derive all N viewer flags (batch, never-throw); every writer must honor toggle-off values and send the repeat-same-type payload; shared caches must mirror the reducer's mutual exclusion; context types must carry every field its API selects (audit type-vs-select drift when adding viewer-derived UI).
 - **Supersedes:** None
 - **Superseded by:** None
 
 ## Sprint 43: a request queue without per-item actions is a dead end + period deltas need equal windows
+
 - **Symptom:** admins could see deletion requests but do nothing with them (only bulk "finalize due"); dashboard KPIs compared mismatched windows (today-vs-yesterday, total-vs-7-days-ago) so a quiet period could still render a trend.
 - **Root causes:** (1) the finalize route exposed one bulk action while the queue UI exposed zero per-row actions — the pipeline existed but had no handles; (2) dashboard deltas were hardcoded to 7-day anchors with no period parameter, so any toggle would have compared apples to oranges.
 - **Fix pattern (reuse):** expose one service function per user intent (request / cancel / finalize-one / delete-now), one API action each, one UI affordance each — all through the same transaction; never offer undo without a real reversal path (say what recovery actually is instead); compare every KPI window against its previous equal-length window and let zero-vs-zero read flat via the existing `pctChange`/`formatDelta` null/zero contract.
@@ -723,6 +778,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 44: view-only is a server rule, not a UI hide + one dropdown component beats N inline action rows
+
 - **Symptom:** deleted (anonymized) accounts still offered verify / resend-code / make-admin actions that could never meaningfully succeed (recovery is off-platform from backups); tables with 5–8 inline row buttons elongated rows and invited mis-taps.
 - **Root causes:** (1) the row-action allow-list lived implicitly in JSX conditionals with no server counterpart — the UI hid nothing for deleted rows and the API applied verify/role changes to any id; (2) every admin table hand-rolled its own inline button row, so colors, order, and gating diverged per page.
 - **Fix pattern (reuse):** encode lifecycle visibility as config + pure predicates (`ADMIN_USER_FILTERS`, `allowedUserRowActions`/`canShowUserRowAction`) consumed by BOTH the UI (dropdown builder) and the API (target partition + honest skip counts); build one metadata-driven dropdown (`AppTableRowActions` over `AppDropdown` with `className` passthrough) so colors survive the move and every table shares the compact trigger. Filters that are complements of others (Active = NOT pending AND NOT deleted) combine with search via AND, never by replacing the search clause.
@@ -730,6 +786,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 45: tooltips need one shared host, and Number(null) is 0
+
 - **Symptom:** charts had no hover detail (only native `<title>` on string-built SVG dots, nothing on bars); a live check showed `formatChartCount(null)` rendering `"0"` — a fake zero in a tooltip.
 - **Root causes:** (1) every chart hand-rolled its own SVG strings, so there was no shared hover layer — tooltips were impossible without per-page rewrites; (2) `Number(null) === 0` / `Number("") === 0`, so naive `Number()` coercion turns missing data into a confident zero.
 - **Fix pattern (reuse):** build one mouse-follow tooltip host (`SvgChartContainer` maps pointer-x → nearest column; `ChartTooltipWrapper` for HTML rows) fed by one colour/format registry, and keep native `<title>` as the no-JS fallback; in every formatter, reject `null`/`undefined`/`""` BEFORE numeric coercion and let genuine `0` pass through. Live-verify pure helpers with `node --experimental-strip-types` when jest can't run in the runner.
@@ -737,6 +794,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 46: prompts nobody can see + env-name split-brain behind silent push
+
 - **Symptom:** offline worked, but push never fired and neither a push prompt nor an install notice was ever observed.
 - **Root causes:** (1) opt-in UI mounted only on a rarely-visited page (PushManager solely on /notifications) and no install component existed — discovery was structurally impossible; (2) server/client read different env names (sender accepted VAPID_PUBLIC_KEY ?? NEXT_PUBLIC_VAPID_PUBLIC_KEY, client route only the former) so Enable collapsed to silent no-vapid in prod; (3) lifecycle-coupled writes that bypass the central service (FOLLOW transaction) silently dropped its side-effects (invalidation + fan-out); (4) conditional-hook call (usePathname only on one variant) would have tripped lint/rules-of-hooks.
 - **Fix pattern (reuse):** mount discovery UI globally but non-interferingly (fixed, capped, collapsible-to-pill, z-ordered below the offline banner, page-aware suppression where the inline variant already covers it); keep env-name parity between every producer and consumer of the same secret; when a write must bypass the central service for transactional reasons, mirror its side-effects explicitly post-commit (fire-and-forget, never-throw); always call hooks unconditionally and branch on the result.
@@ -744,13 +802,15 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 47: inline-style CSS vars don't theme + visibility is a data rule, not a UI filter
+
 - **Symptom:** PWA notices looked identical in dark mode (static light styling); deleted/archived accounts appeared in suggestions/carousels and could be followed; avatars rendered 4 different ways (raw img, initials spans, partial AppAvatar) across suggestions/admin/lists.
-- **Root causes:** (1) PWA components styled via bespoke `var(--brand/--bg-base/--info-soft/--offline-bg…)` vars with light-only fallbacks — those vars never flip under `.dark`, unlike the canonical `--color-*` tokens; literal emoji/↓/✕/? glyphs instead of the lucide icon library; help affordances with no route to the FAQ they document. (2) visibility lived nowhere centrally — suggestions/search/follow/lists each had their own (absent) filtering, counts used raw `_count`, and the follow API had no gone-state. (3) avatar rendering was per-page hand-rolled because two admin APIs omitted `avatarConfig`/`verified`, so pages *couldn't* use the canonical component.
+- **Root causes:** (1) PWA components styled via bespoke `var(--brand/--bg-base/--info-soft/--offline-bg…)` vars with light-only fallbacks — those vars never flip under `.dark`, unlike the canonical `--color-*` tokens; literal emoji/↓/✕/? glyphs instead of the lucide icon library; help affordances with no route to the FAQ they document. (2) visibility lived nowhere centrally — suggestions/search/follow/lists each had their own (absent) filtering, counts used raw `_count`, and the follow API had no gone-state. (3) avatar rendering was per-page hand-rolled because two admin APIs omitted `avatarConfig`/`verified`, so pages _couldn't_ use the canonical component.
 - **Fix pattern (reuse):** style every inline-style surface on `--color-*` tokens (fallbacks = light values; `.dark` overrides do the flipping — for intentionally-dark chrome use the inverted text-primary/bg-base pair); encode account lifecycle once as config + pure predicates (`isDeletedUser`/`isArchivedUser`/`isVisibleUser`/`visibleUserWhere`/`filterVisibleUsers`) consumed by APIs (Prisma filters + 410 gone-state + live counts with `_count` fallback) AND clients (stale-cache defense + disabled affordances); make APIs select everything the canonical component needs (`avatarConfig`, `verified`) so no page has an excuse to hand-roll. Verify with token-var/emoji sweeps + `tsc --strict` on zero-dep configs + node execution of the pure helpers when jest can't run.
 - **Supersedes:** None
 - **Superseded by:** None
 
 ## Sprint 49: auto-skipWaiting is a silent-stale trap — updates need a prompt, not a yank
+
 - **Symptom:** PWA worked offline and push fired, but installed clients ran stale shells indefinitely: `sw.js` install called `skipWaiting()` unconditionally, the registrar never called `registration.update()`, and no UI ever told the user a new version existed — the project-plan even claimed "service worker update flow" done when only the silent path existed.
 - **Root causes:** (1) auto-`skipWaiting()` + `clients.claim()` takes control without reloading, so the loaded page keeps running OLD hashed JS until the next navigation — the update is "applied" but invisible; (2) browsers only revalidate `/sw.js` on navigation, so day-long installed sessions never discover updates without explicit `registration.update()` polling (interval + visible/focus/online); (3) `controllerchange` reloads must be guarded (first install none→worker must NOT reload; one reload per episode via sessionStorage) or they loop.
 - **Fix pattern (reuse):** SW installs WITHOUT skipWaiting and broadcasts readiness; the client detects `updatefound`→waiting (only when already controlled) and shows a collapsible, snoozable Update prompt; the user's tap posts SKIP_WAITING and `controllerchange` reloads exactly once; bump the mirrored CACHE_VERSION in both `pwa.ts` and `sw.js` on every SW change so old caches purge. Keep the whole vocabulary (`PWA_UPDATE_CONFIG` + `PWA_SW_MESSAGES`) in config so copy/timing/TTLs stay metadata-driven.
@@ -758,6 +818,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 50: metadata-JSON beats a migration for optional attachments; merge beats replace for recall
+
 - **Symptom:** reports needed screenshots; suggestions buried in one geo source never surfaced; per-step stop names invisible to search; floating cards covered the mobile Profile tab.
 - **Root causes:** (1) first instinct was a new `images` column — but every reader would need a P2022 window for zero query benefit (images are render-inline, never filtered); the existing `metadata` JSON was already the absent-tolerant channel. (2) first-provider-wins geocoding made recall = coverage of ONE source; each free source has different gaps, so any single pick (even a "better" one) keeps a miss class — only merging removes it. (3) floating surfaces each picked their own `bottom:` in isolation, so lanes collided by construction; the tab bar they had to clear lived in a different component with no shared contract.
 - **Fix pattern (reuse):** optional, render-only attachments ride in existing JSON columns with a sanitizer (no migration when nothing is ever queried by the field); recall problems get merge+dedupe across all free sources with rank-only bias (never filter, never prompt); floating surfaces share one lane registry (`FLOATING_UI_CONFIG`) where every bottom offset is declared once with the navbar height it must clear. Verify with node --check + strip-types execution of pure helpers when jest can't run.
@@ -765,6 +826,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Sprint 51: one resolver for every notification click; append-only beats page numbers for bulk state
+
 - **Symptom:** notifications mostly landed on profiles; push and in-app disagreed; admin "view more" was deferred over bulk-selection loss; bug duplicates appeared despite a single admin mail.
 - **Root causes:** (1) routing lived inline in the click handler with a profile fallback, while push had a second independent table — two truths diverged; commentId was stored but never consumed. (2) page-number pagination replaces the row array, discarding the selection Set's context; cursor-append preserves it by construction. (3) at-most-once submit needs both a client key AND a server content-window — a boolean `sending` flag covers neither retries-after-timeout nor multi-tab.
 - **Fix pattern (reuse):** single `resolveXRoute(input)` in config consumed by every surface (in-app + push + future); admin lists paginate cursor-append with id-dedupe and keep selection outside the list; mutating submits take `Idempotency-Key` (header or body) plus a short same-actor+content dedup window, stored in existing JSON columns when no migration is warranted.
@@ -772,6 +834,7 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Session 2026-10-13: dock side as one value; slots beat reordering; last-resort providers stay gated
+
 - **Symptom:** round buttons on the wrong side with no per-surface control; upload-after-submit baked by form ownership of its submit; landmark queries only as good as one index's coverage.
 - **Root causes:** (1) dock side lived in one shared value consumed only by the buttons it should move — the fix was that value, not per-component classes. (2) the form owned its submit so page-level ordering was impossible without a slot between fields and submit. (3) label shaping dropped address parts before display, and the one cities-only provider could never answer landmarks — recall needed a last-resort OSM named-feature source, gated so short queries never trigger global scans.
 - **Fix pattern (reuse):** shared placement = one config value consumed only by its surfaces; form-level ordering = optional `beforeSubmit` slot (absent = legacy); provider gaps = append a gated last-resort source with safe fallthrough for unknown future providers, and render every address part the upstream already returns.
@@ -779,15 +842,18 @@ Any destructive user-data operation with retention grace, anonymization requirem
 - **Superseded by:** None
 
 ## Session 2026-10-13: sequential fan-out is a correctness bug under a serverless budget, not just slowness
+
 - **Symptom:** location suggestions fired only for near-exact address starts; every broad query (roads, towns, landmarks) returned blank despite healthy upstreams.
 - **Root causes:** (1) four providers awaited sequentially at 8s each inside a 10s budget — the merge could never complete for uncached queries, so latency became emptiness; cached address queries masked it. (2) suggestion gates (min chars, debounce, limit) were hardcoded in four places, so "loosen the lookup" meant hunting call sites. (3) bias applied only after fetch, leaving upstream result windows full of far matches before the slice.
 - **Fix pattern (reuse):** parallel bounded fan-out (`Promise.all` + per-leg timeout race) with slow legs as empty-only fallbacks in ONE extra batch; suggestion tuning (min/max/debounce/limit/timeout/fallbacks) in one config consumed by route + every client; bias at BOTH layers (upstream params rank-only + server re-rank, never filter); exact-intent inputs (coordinates) pinned ahead of ranking.
 
 Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider" problem; every free keyless geocoder either rejects them or says "handle client-side". The cheap correct fix is a ~150-line pure port of Google's Apache-2.0 OLC algorithm (classify → decode → recoverNearest against viewer bias) unit-tested against the official `test_data/*.csv` vectors — zero new upstreams, zero keys, works offline. Same lesson as traffic estimation: audit whether a keyless API actually exists before inventing a provider slot. When pasting-friendly input classes grow (parens, plus codes, house numbers), put each new parser next to the existing `parseCoordinateQuery` in one config module so the service only ever does intent-class → pin-build, and gate expensive rescues (address strip, Overpass addr scan) behind the existing "merge was empty" round-2 so the happy-path latency contract stays bit-identical.
+
 - **Supersedes:** None
 - **Superseded by:** None
 
 ## Sprint 52: unaudited lifecycles hide in plain sight; tests are the parser contract; one section serves three surfaces
+
 - **Symptom:** admin audit trail showed user/email/blog/post rows but zero report rows despite a full report lifecycle; Studio reopened stored posts with missing intros and flattened headings; blog had no discovery surface outside /blog.
 - **Root causes:** (1) audit hooks were added per-feature (users/email/blog/posts) with no checklist, so the newer report routes never got them — the trail looked complete but wasn't. (2) the block parser only matched its known tag set and consumed wrappers whole, so anything outside the set (bare text, section/figure/h4/br, nested blocks) silently vanished, including via the >300-char wrapper skip. (3) each public surface owned its own layout, so a new content section meant three implementations unless deliberately shared.
 - **Fix pattern (reuse):** audit every mutating lifecycle at creation time (`void logAudit`, new entity/action vocabulary + display entries); grow parsers by capturing gaps (inter-tag text), widening accepted tags, and recursing into wrappers — while keeping the byte-level contract existing suites assert; build one client section with an optional `initialPosts` prop so server and client pages share it (server feeds, clients fetch the same paginated API).
@@ -795,6 +861,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## 2026-10-13: same-name state + derived value in one component scope breaks the build; score-ordered feeds need exclusion-based pagination
+
 - **Symptom:** Vercel build failed with `Identifier 'tabQuery' has already been declared` in both profile pages; feed showed the same post twice across pages/poll cycles.
 - **Root causes:** (1) a search-box `useState` and a derived query-string `const` were given the same name in the same function scope — legal while only one existed, fatal once the second was added. (2) the feed ranks by score but paginates on a createdAt cursor, so consecutive pages inherently overlap; client appends without dedup turned overlap into visible duplicates, and poll merges rewound the cursor.
 - **Fix pattern (reuse):** name state and derived values in disjoint namespaces (`tabFilter` vs `tabPostsQuery`) with a collision note at the declaration; make id-dedup a single exported invariant every merge path funnels through; pass rendered ids as `exclude` for score-ordered pagination; never overwrite a pagination cursor with a page-one poll result.
@@ -802,6 +869,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## Sprint 54: preview parity by shared component, not duplicated markup; swap-now/purge-after-commit for managed uploads
+
 - **Symptom:** Studio preview (title + reading-time + body) drifted from the published post (which later gained a cover) because two markups described the same view; blog had no upload path, so covers were unvalidated text.
 - **Root causes:** (1) preview and public page were written as separate JSX with a comment asking them to stay in sync — comments don't enforce. (2) image lifecycle (upload → reference → replace → purge) had no owner: the upload endpoint, the Studio, and the cleanup route each knew part of it.
 - **Fix pattern (reuse):** extract the reading view into one server-compatible component both surfaces render (parity by construction); centralize URL logic in pure never-throw helpers + one config registry; uploads swap the preview immediately but destruction only ever runs post-commit best-effort (client after 2xx, server in background), with the cleanup route re-guarding live references so shared URLs survive.
@@ -809,6 +877,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## Sprint 55: fixed overlays must portal out of transformed ancestors; recall broad then rank strict; mocks must honor exclusion filters
+
 - **Symptom:** trust breakdown invisible on desktop cards (but fine on mobile/detail); search missed order-swapped and typo'd queries; two search suites failed after the recall rewrite despite correct production logic.
 - **Root causes:** (1) `hover:-translate-y-0.5` on the card re-anchors every `fixed` descendant to the card — viewport math then lands off-screen; the failure only manifests on hover-capable devices, so mobile testing never catches it. (2) single-phrase DB recall conflates recall with ranking — anything the one clause misses is unrecoverable downstream. (3) mocks that echo fixture rows for every call silently break multi-phase recall (phase-2 `notIn` ignored → duplicates), making green tests lie about pagination.
 - **Fix pattern (reuse):** portal every viewport-positioned overlay to document.body (with a hover-bridge delay when the trigger and panel are no longer DOM kin); separate recall (broad ORs + typo head-prefixes, capped) from ranking (deterministic in-memory relevance, exact-first) — DB order then only bounds truncation, never quality; test mocks must simulate the DB contract they stand in for (`notIn` filtering, staggered timestamps, matching content), and rankers must coerce invalid dates (NaN comparators silently scramble order).
@@ -816,10 +885,12 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## Sprint 56: CTA classes need an allowlist, sticky needs self-start
+
 - **Root causes:** (1) the sanitizer allowed no `class` attribute, so any CTA-class markup would be silently stripped — fixed with an exact-token allowlist (`blog-cta-wrap`/`blog-cta` only) rather than opening `class` broadly; (2) `position: sticky` never engages inside stretching grid rows — the pane needs `self-start` on itself plus `items-start` on the grid parent; (3) a prior degrade-to-link test assertion encoded a decision the directive intentionally overrode — updated the test with the directive cited in-code rather than leaving a red suite.
 - **Fix pattern (reuse):** sanitizer changes always pair markup emission + allowlist + round-trip parsing + a test asserting both preservation and evil-class stripping; sticky panes always ship as config-owned class + style pairs; overridden decisions get re-recorded in project-decisions the same session.
 
 ## Sprint 57: guards at the choke-point, keys not components, one settled paint
+
 - **Symptom:** past post's Cloudinary images vanished after a new post / edit; share buttons all showed the same generic icon; feed visibly reorganized ~twice on first scroll.
 - **Root causes:** (1) the live-reference guard existed only on the draft/composer endpoint while edit/delete/admin/moderation paths destroyed unconditionally — and eager uploads share verbatim URLs across posts, so per-post cleanup is inherently cross-post-unsafe without a just-before-destroy re-check. (2) icon choice was hardcoded in JSX with no config field, so platforms could never differentiate. (3) first paint committed every intermediate snapshot (stale cache, then fresh, then geo re-rank) and each fetch re-rolled `Math.random()` jitter, so identical data still reshuffled.
 - **Fix pattern (reuse):** put safety invariants at the lowest choke-point (adjacent to the irreversible operation), express UI variance as serializable config keys mapped by one component (never component refs in config), and gate first paint on one settled snapshot while letting live updates flow after readiness. Tests assert the guard's fail-open behaviour (shared-URL kept, DB-down kept) — not just the happy path.
@@ -827,12 +898,14 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## Sprint 58 (2026-10-14): keyless-traffic honesty, opaque notice surfaces, hook-order hygiene, jest ESM stub reuse
+
 - **No keyless live-traffic API exists — model it honestly:** OSRM/ORS/Mapbox-routing/geocoders were audited; only keyed Mapbox congestion and keyed TomTom flow give real probes. The keyless path is a deterministic rush-pattern heuristic ALWAYS flagged `estimated` (API field + legend note + FAQ), so the UI can never imply live probes. Pattern: provider-order with the always-works fallback LAST + explicit estimated branding.
 - **Notice banners must be opaque in both themes:** translucent semantic fills (dark `--color-info` at 15% alpha) wash out on dark/Android WebViews. Fix at the config layer (`surface` tokens: solid card + semantic border/text) so all variants inherit it.
 - **Hooks after an early return are a latent lint break:** RouteMap's `mapError` return sat above 4 hooks since its introduction and only surfaced when the file was linted. Fix = move the return below the hooks (pure reorder, no behaviour change). When touching legacy components, lint the file even if you didn't add hooks.
 - **Jest ESM stub for redis-importing services:** `@upstash/redis → uncrypto` breaks the jest transform; the hoisted `jest.mock("@/app/lib/db/redis")` stub (get → null, set → no-op) used by emailStudio/mapStack suites works for any service-level pure-helper test. Reuse verbatim.
 
 ## Sprint 59 (2026-10-15): ranking-vs-filter gaps, hide-when-following, env trim, index-free sampling
+
 - **Symptom:** "my posts / strangers' posts never appear in my feed" — but no query filtered them out; request trigger had no visible label (only aria); TomTom key set on Vercel yet traffic stayed heuristic; legacy-route maps feared excluded.
 - **Root causes:** (1) exclusion-by-ranking: own posts scored 0.15 vs followed 0.7, so they were present but buried — verified by reading all four feed pools before changing anything. (2) follow state lived only in component local-state with no read endpoint, so cards could never know to hide. (3) pasted env values carry whitespace that passes truthiness checks and then fails upstream. (4) `array.indexOf(ref)` on derived chunk arrays is fragile indirection for an index the loop already owns.
 - **Fix pattern (reuse):** when users report missing rows, audit RANKING before FILTERING (log pool contributions); follow/status affordances need a cached GET + hook, not just POST/DELETE; trim every server-read env key at the check site (both the gate and the consumer); sample by explicit index, never by re-finding references; null-island (0,0) is a data smell — strip placeholders, keep real geometry. Tests assert the graceful shape (empty heuristic, no throw), not just the happy path.
@@ -840,6 +913,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## Sprint 61 (2026-10-15): white-on-pastel pills, near-white flag washes, studio parity shape
+
 - **Symptom:** "badges aren't visible in light theme" — vehicle flags washed into the white card; Linked/Enabled/tier shields unreadable; admin config board empty on a fresh DB with JSON-only editing.
 - **Root causes:** (1) light washes (`-50`) with no border on white cards; `bg-success/error` (pastel bg token) paired with `text-white` instead of its `*-text` mate — the token names make the pairing self-evident (`bg-success` ↔ `text-success-text` ↔ `border-success-border`); raw metallic data hues reused as text. (2) config API returned DB rows only, so shipped defaults were invisible until saved.
 - **Fix pattern (reuse):** flags/badges = saturated wash (`-100`) + dark-grade text + matching border, all with dark variants; NEVER `bg-<pastel> text-white`; NEVER raw data hues as text — add a display registry with darkened in-family shades + neutral fallback. Studios = shipped-defaults catalog + stored-wins read-time merge + central validator + explicit restore-by-delete + source badges, so fresh DBs render fully and hardcoded updates never clobber saved rows.
@@ -847,6 +921,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## Sprint 62 (2026-10-15): follower-only fan-out reads as "no notification"; length-gated restore drops short drafts
+
 - **Symptom:** "route-request notifications don't reach non-followers" — plus "my location-only draft lost its location on restore while fuller drafts kept theirs".
 - **Root causes:** (1) fan-out read `getFollowerIds` only, and `createNotification` no-ops on `[]` — an empty follow graph meant silence by construction, not by failure. (2) `applyDraft` gated `setSteps` on `length >= 2` while the saver legitimately persists 1-step drafts — restore and save disagreed on the minimum, so the shortest (most common partial) input was the one that never came back; `if (draft.title)` additionally leaked stale titles into empty-title restores.
 - **Fix pattern (reuse):** fan-out = followers-first union with the community to a capped audience (one notification row, never-throw, legacy mode flag); restore must accept every shape the saver can persist (pad, never skip) and reset every field unconditionally. When save and restore disagree on minimums, fix restore to match save — never tighten save to match restore (partial progress is the feature).
@@ -856,6 +931,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 **Sprint 63:** ephemeral request fixes (cached-only client attach, server-validated, never persisted) give location-aware fan-out with zero new tracking — pair with a minNearby gate so sparse data fails open to the legacy audience; per-user Json prefs with config-driven normalize (NULL/partial → all-on) keep existing users untouched without backfills; legacy SiteConfig rows need normalize defaults for every added knob or old stored values break the new path.
 
 ## Sprint 64 (2026-10-15): offline reload reads as guest; trailing-slash prefix silently skips query-form URLs
+
 - **Symptom:** "guest banner shows though I never signed out" — plus profile tabs never worked offline even though "/api/posts/" looked cached.
 - **Root causes:** (1) auth state booted empty and learned the session over the network, so any offline reload was indistinguishable from signed-out — UI identity had no memory. (2) startsWith prefix "/api/posts/" never matches "/api/posts?…" — the slash that makes path-form URLs tidy is exactly what excludes query-form URLs, and the mismatch is silent (no error, just no cache).
 - **Fix pattern (reuse):** persist the last server-confirmed session as a TTL-bounded display-only snapshot (hydrated synchronously, cleared only on genuine 401/logout, never used for authorization); for prefix registries always register the BARE path ("/api/posts" covers both "/api/posts?…" and "/api/posts/…") and add a regression test hitting the query form directly. Protected pages stay out of install precache (redirect poisoning) and are advertised as runtime-cached with honest copy.
@@ -863,6 +939,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## Sprint 67 (2026-10-16): traffic indices belong to a geometry generation; car-trace durations lie for non-car modes
+
 - **Symptom:** "traffic colors vanish after the map re-traces" — plus "my trek is timed like a taxi".
 - **Root causes:** (1) traffic chunks are index ranges into the coord list the lookup ran on; when the tracer swaps a 2-point pins line for a 200-point road trace, stale indices collapse onto a head sliver and the overlay reads as gone. (2) OSRM/Mapbox durations assume cars, and the estimate helper had one speed for every mode — so slow/rail/water legs inherited driving times and road-traffic delays they never experience.
 - **Fix pattern (reuse):** index-based overlays must REMAP fractionally onto new geometry lengths (share-of-route, not absolute indices) and the fetching hook must KEEP the last good result during refetch — persistence is a renderer contract, not a fetch-speed race. Mode-aware timing = one zero-dep registry (speed + traffic-sensitivity per vehicle, immune modes at 0) with pure helpers, destination legs excluded from the dominant-mode vote, unknown modes falling back to full road behaviour; slow/rail/water recompute from traced DISTANCE while road modes trust trace duration.
@@ -875,6 +952,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## Sprint 68 (2026-10-16): a shared viewport must share the object, not re-derive it; modal stacking needs a z-contract
+
 - **Symptom:** "nav map loses traffic/tracings the detail map has" — plus "expanded map vanishes from the guide", plus "no per-stretch info on taps".
 - **Root causes:** (1) the nav map received the DERIVED duration (`trafficAdjustedMins`) but not the SOURCE result — with `trafficOverride` undefined it self-fetched, doubling cost and diverging mid-refetch. (2) the expand dialog (z-50) rendered behind the live modal (z-[60]) — invisible, not broken. (3) tracings had no hit interaction; the visible line (~3.5px) is untappable on mobile regardless.
 - **Fix pattern (reuse):** when two surfaces show one route, pass the fetched OBJECT down (optional-override prop, legacy self-fetch when omitted) — never pass only its derivatives and let each surface refetch. Keep a documented z-contract for floating layers (page < expand dialog < live modal < expand dialog needs top: z-[70] here — record the ordering where the values live). Tap interaction on thin geometry = invisible wide hit line + interactive layer ids, resolving click → layer/nearest-chunk → anchored marker; tooltips grade by rate cost (full where data exists, link-out where fetching is banned) with pure never-throw helpers and stale-tip clearing on geometry swap.
@@ -882,6 +960,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 - **Superseded by:** None
 
 ## Sprint 69 (2026-10-16): chunk tooltips converge — resolve legs; zero is loading, not data
+
 - **Symptom:** "same tooltip on every stretch of a 4-stretch post + have to hunt for the card" — plus "0 min with traffic (was 1h 6m)", plus detail bar missing fare.
 - **Root causes:** (1) tooltips sliced the GEOMETRY (≤12 even traffic chunks), not the ROUTE (legs between stops) — equal slices yield equal shares, so every tap agreed. (2) cards anchored at chunk midpoints, potentially screens away from the finger. (3) traffic-adjusted rendered on naive `!==` — the loading state (`adjusted 0` vs base 66) passes it; the detail map never received a fare prop at all, and the share preview formatted `0` as `₦0`.
 - **Fix pattern (reuse):** domain units over geometry units — resolve taps to legs via pin borders on the snapped trace (monotonic, ends pinned), worst-level for the leg, length-share (haversine, not point-count) for time/distance; anchor markers at `lngLat`. Treat `0`/`null`/`NaN` in summary bars as "not yet known" — centralise in one guard module (`shouldShowTrafficAdjusted` + per-chip `isValid*`) so every bar (detail, nav, preview, guide) hides the same way; single `totalFareForSteps` (destination excluded) for every total.
@@ -907,8 +986,7 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 ## Camera effects must depend on intent, not volatile position identities — and defer behind interaction
 
 **Context:** Post detail passed a `userLocation` that changes identity on every GPS watch fix into `RouteMap`'s fit-effect deps (while `followUser=false`), so each tick refit the whole route out from under an in-progress pan; separately, bounds/pins can change mid-pan (trace arrival, stop edits) and yanked the camera even when the deps were stable.
-**What We Learned:** Derive a stable boolean (`followActive = followUser && !!userLocation`) and depend on THAT instead of volatile identities — the semantic guard is the dep. Then gate every *baseline* camera move through an interaction-deferred queue: container pointer/wheel/key listeners + a window-level gesture-end, an idle window (`MAP_VIEW_CONFIG.recenterIdleDelayMs`), and a token-guarded watcher that runs exactly the latest pending move once. Explicit user requests (expand-refit, focus fly-to) bypass the queue by design — deferral is for background recentering, never for what the user just asked for. A pure `shouldDeferFit(...)` helper keeps the gate unit-testable without rendering the map.
+**What We Learned:** Derive a stable boolean (`followActive = followUser && !!userLocation`) and depend on THAT instead of volatile identities — the semantic guard is the dep. Then gate every _baseline_ camera move through an interaction-deferred queue: container pointer/wheel/key listeners + a window-level gesture-end, an idle window (`MAP_VIEW_CONFIG.recenterIdleDelayMs`), and a token-guarded watcher that runs exactly the latest pending move once. Explicit user requests (expand-refit, focus fly-to) bypass the queue by design — deferral is for background recentering, never for what the user just asked for. A pure `shouldDeferFit(...)` helper keeps the gate unit-testable without rendering the map.
 **Apply When:** Any effect drives a camera/scroll/focus from external position data, or user interaction can overlap data arrival (maps, carousels, live dashboards, sticky headers).
 **Supersedes:** None (extends the "fresh object identities re-init maps / re-fit the camera" mapLib lesson with the interaction dimension).
 **Superseded by:** None
-

@@ -133,23 +133,30 @@ along-app/
 
 ## Directory Descriptions
 
-| Directory       | Purpose                                                                        | Key Files                                                                          |
-| --------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| `ai-system/`    | AI development orchestration — agent instructions, plans, protocols, designs   | `protocols/entry-protocol.md`, `planning/task-queue.md`, `designs/*.html`          |
-| `.github/`      | GitHub CI and project documentation                                            | `workflows/ci.yml`, `plan.md`, `project-context.md`                                |
-| `prisma/`       | Database schema, migrations, and seed data                                     | `schema.prisma` (17 models, 9 enums incl. PostType + extended NotificationType), `seed.ts` (idempotent), `migrations/` (8) |
-| `scripts/`      | Seed backup/clear/restore tooling (manual-only, seed-markers only) + full prod reset script (manual-only, unhooked from builds) | `backup-seed-data.ts`, `clear-seed-data.ts`, `restore-seed-backup.ts`, `reset-prod-db.ts`          |
-| `public/`       | Static assets served at root path                                              | `sw.js` (service worker), `manifest.json`, `offline.html`                          |
-| `app/lib/config/pwa.ts` | PWA policy registry (caches, precache, push mirror, heartbeat, install registry) | versioned cache names, predicates, PWA_PUSH_MIRROR, toast copy, PWA_INSTALL_CONFIG, isStandaloneDisplay |
-| `app/components/pwa/` | Offline/push/install/update UI (banner, cached notice, push opt-in inline+floating, install prompt, SW update prompt, notices hub, SW registrar) | OfflineBanner, CachedDataNotice, PushManager, InstallPrompt, ServiceWorkerUpdatePrompt, PwaNotices, ServiceWorkerRegistrar |
-| `app/lib/services/pushSender.ts` | Web Push fan-out mirrored from in-app notifications | fanOutPush (VAPID direct, 410 prune, never throws) |
-| `app/lib/utils/offlineGuard.ts` | Offline gating + sanitized network-error copy | requireOnline, isOfflineError, offlineFriendlyError |
-| `app/`          | Next.js App Router pages, API routes, components, providers, config registries | `layout.tsx`, `globals.css`, `providers/`, `api/`, `components/ui/`, `lib/config/` |
-| `node_modules/` | NPM dependencies                                                               | —                                                                                  |
+| Directory                        | Purpose                                                                                                                                          | Key Files                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `ai-system/`                     | AI development orchestration — agent instructions, plans, protocols, designs                                                                     | `protocols/entry-protocol.md`, `planning/task-queue.md`, `designs/*.html`                                                  |
+| `.github/`                       | GitHub CI and project documentation                                                                                                              | `workflows/ci.yml`, `plan.md`, `project-context.md`                                                                        |
+| `prisma/`                        | Database schema, migrations, and seed data                                                                                                       | `schema.prisma` (17 models, 9 enums incl. PostType + extended NotificationType), `seed.ts` (idempotent), `migrations/` (8) |
+| `scripts/`                       | Seed backup/clear/restore tooling (manual-only, seed-markers only) + full prod reset script (manual-only, unhooked from builds)                  | `backup-seed-data.ts`, `clear-seed-data.ts`, `restore-seed-backup.ts`, `reset-prod-db.ts`                                  |
+| `public/`                        | Static assets served at root path                                                                                                                | `sw.js` (service worker), `manifest.json`, `offline.html`                                                                  |
+| `app/lib/config/pwa.ts`          | PWA policy registry (caches, precache, push mirror, heartbeat, install registry)                                                                 | versioned cache names, predicates, PWA_PUSH_MIRROR, toast copy, PWA_INSTALL_CONFIG, isStandaloneDisplay                    |
+| `app/components/pwa/`            | Offline/push/install/update UI (banner, cached notice, push opt-in inline+floating, install prompt, SW update prompt, notices hub, SW registrar) | OfflineBanner, CachedDataNotice, PushManager, InstallPrompt, ServiceWorkerUpdatePrompt, PwaNotices, ServiceWorkerRegistrar |
+| `app/lib/services/pushSender.ts` | Web Push fan-out mirrored from in-app notifications                                                                                              | fanOutPush (VAPID direct, 410 prune, never throws)                                                                         |
+| `app/lib/utils/offlineGuard.ts`  | Offline gating + sanitized network-error copy                                                                                                    | requireOnline, isOfflineError, offlineFriendlyError                                                                        |
+| `app/`                           | Next.js App Router pages, API routes, components, providers, config registries                                                                   | `layout.tsx`, `globals.css`, `providers/`, `api/`, `components/ui/`, `lib/config/`                                         |
+| `node_modules/`                  | NPM dependencies                                                                                                                                 | —                                                                                                                          |
 
 ---
 
 ## Entry Points
+
+### Database Transfer Tooling
+
+The `scripts/` tree now also contains `db-migrate-supabase.ts`,
+`db-backup.ts`, `db-restore.ts`, `backup-supabase.ts`, and the shared
+`scripts/lib/dbTransfer/` library for checksummed dumps, journaled resume,
+schema/load planning, transactional restore, and verification.
 
 | Purpose                | File                                    |
 | ---------------------- | --------------------------------------- |

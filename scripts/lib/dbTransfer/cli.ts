@@ -155,7 +155,7 @@ export async function confirmDestructiveAction(params: {
   if (!isTty) {
     throw new TransferSafetyError(
       `${params.summary}\nRefusing to overwrite a non-empty database without explicit consent ` +
-        `(non-interactive session).`,
+      `(non-interactive session).`,
       `Re-run with --${DB_TRANSFER_CONFIG.destructive.replaceFlag} if that is really what you want.`,
     );
   }
@@ -186,12 +186,10 @@ export function usage(title: string, lines: readonly string[]): string {
     "Environment:",
     "  DB_BACKUP_DIR              dump directory (default backups/db-transfer)",
     "  DB_BACKUP_JOURNAL          journal path  (default backups/db-transfer/state.json)",
-    // Description column is 29 (2-space indent + a 27-wide key field with no
-    // extra space), matching the hand-written lines above. padEnd(26) plus a
-    // space falls one short for DB_BACKUP_FRESHNESS_MINUTES (27 chars).
-    `  ${DB_TRANSFER_CONFIG.resume.envKey.padEnd(27)}resume freshness window in minutes (default ${DB_TRANSFER_CONFIG.resume.freshnessMinutes})`,
-    `  ${DB_TRANSFER_CONFIG.verify.envKey.padEnd(27)}full | counts`,
-    `  ${DB_TRANSFER_CONFIG.safetyBackup.envKey.padEnd(27)}set to "false" to skip target safety backups (NOT recommended)`,
+    // Keep one visible separator even for the longest environment key.
+    `  ${DB_TRANSFER_CONFIG.resume.envKey.padEnd(29)}resume freshness window in minutes (default ${DB_TRANSFER_CONFIG.resume.freshnessMinutes})`,
+    `  ${DB_TRANSFER_CONFIG.verify.envKey.padEnd(29)}full | counts`,
+    `  ${DB_TRANSFER_CONFIG.safetyBackup.envKey.padEnd(29)}set to "false" to skip target safety backups (NOT recommended)`,
     "",
   ].join("\n");
 }

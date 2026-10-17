@@ -1,6 +1,7 @@
 # Dependency Graph
 
 > **Metadata**
+>
 > - last-updated-by: execute-feature 2026-10-17 (Sprint 72: mapProxyService label-first geocode + reverse ∥ race + vehicle traceRoute opts; mapStack routing profiles; RouteMap → mapView/mapPicker configs; ShareRouteModal → resolveFindOnMapTarget)
 > - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
@@ -128,6 +129,15 @@ PWA (public/sw.js)
 ```
 
 ### Detailed Service Dependencies
+
+### Database Transfer Boundary
+
+`scripts/db-migrate-supabase.ts`, `scripts/db-backup.ts`,
+`scripts/db-restore.ts`, and `scripts/backup-supabase.ts`
+-> `app/lib/config/dbTransfer.ts` (roles, stage plans, safety and operator copy)
+-> `scripts/lib/dbTransfer/` (URL, connection, introspection, dump/read, state, restore, verification)
+-> PostgreSQL via `pg` (Supabase primary and retained Prisma direct mirror)
+-> local `backups/db-transfer/` artifacts and atomic journal
 
 ```
 AuthService
@@ -284,35 +294,35 @@ siteConfig Utility
 
 ## External Dependencies
 
-| Package | Purpose | Used In |
-|---------|---------|---------|
-| next | Framework (App Router) | All pages, API routes |
-| react / react-dom | UI library | All components |
-| antd / @ant-design/icons | UI component library | App* wrappers in `app/components/ui/` |
-| @ant-design/charts | Analytics charts | Admin dashboard |
-| @ant-design/nextjs-registry | Ant Design SSR registry | Root layout |
-| maplibre-gl / react-map-gl | Map rendering (keyless OpenFreeMap vector + keyless raster fallbacks since Sprint 19) | Explore page, route visualization |
-| @mapbox/polyline | Route polyline encoding | mapProxyService (GeoJSON→polyline5), straight-line fallback |
-| supercluster | Map marker clustering | Explore map |
-| @prisma/client | Database ORM | All services, BaseRepository |
-| @prisma/adapter-pg | Postgres adapter | Prisma client initialization |
-| @upstash/redis | Caching, rate limiting, sessions | CacheLayer, AuthService, RateLimiter |
-| @upstash/qstash | Background job queue | NotificationService (push) |
-| jsonwebtoken / jose / bcrypt | Auth (JWT signing, edge JWT verification, password hashing) | AuthService, middleware.ts |
-| zod | Input validation | All API routes |
-| cloudinary / next-cloudinary | Image upload and optimization | Avatar upload, post media |
-| resend | Transactional emails | AuthService (verification), notifications |
-| @sentry/nextjs | Error tracking | instrumentation, API routes, components |
-| web-push | Push notification sending | NotificationService |
-| lucide-react | UI icons | All UI components |
-| axios | HTTP client | Client-side API calls, integrations (transact, tega) |
-| js-cookie | Cookie management | AuthProvider (client-side) |
-| rxjs | Reactive streams | Feed service, real-time updates |
-| react-markdown / remark | Markdown rendering | Post content, about page |
-| qrcode.react | QR code generation | Share route functionality |
-| pg | PostgreSQL driver | Prisma adapter |
-| cors | CORS headers | API routes |
-| dotenv | Environment variable loading | Configuration |
+| Package                      | Purpose                                                                               | Used In                                                     |
+| ---------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| next                         | Framework (App Router)                                                                | All pages, API routes                                       |
+| react / react-dom            | UI library                                                                            | All components                                              |
+| antd / @ant-design/icons     | UI component library                                                                  | App\* wrappers in `app/components/ui/`                      |
+| @ant-design/charts           | Analytics charts                                                                      | Admin dashboard                                             |
+| @ant-design/nextjs-registry  | Ant Design SSR registry                                                               | Root layout                                                 |
+| maplibre-gl / react-map-gl   | Map rendering (keyless OpenFreeMap vector + keyless raster fallbacks since Sprint 19) | Explore page, route visualization                           |
+| @mapbox/polyline             | Route polyline encoding                                                               | mapProxyService (GeoJSON→polyline5), straight-line fallback |
+| supercluster                 | Map marker clustering                                                                 | Explore map                                                 |
+| @prisma/client               | Database ORM                                                                          | All services, BaseRepository                                |
+| @prisma/adapter-pg           | Postgres adapter                                                                      | Prisma client initialization                                |
+| @upstash/redis               | Caching, rate limiting, sessions                                                      | CacheLayer, AuthService, RateLimiter                        |
+| @upstash/qstash              | Background job queue                                                                  | NotificationService (push)                                  |
+| jsonwebtoken / jose / bcrypt | Auth (JWT signing, edge JWT verification, password hashing)                           | AuthService, middleware.ts                                  |
+| zod                          | Input validation                                                                      | All API routes                                              |
+| cloudinary / next-cloudinary | Image upload and optimization                                                         | Avatar upload, post media                                   |
+| resend                       | Transactional emails                                                                  | AuthService (verification), notifications                   |
+| @sentry/nextjs               | Error tracking                                                                        | instrumentation, API routes, components                     |
+| web-push                     | Push notification sending                                                             | NotificationService                                         |
+| lucide-react                 | UI icons                                                                              | All UI components                                           |
+| axios                        | HTTP client                                                                           | Client-side API calls, integrations (transact, tega)        |
+| js-cookie                    | Cookie management                                                                     | AuthProvider (client-side)                                  |
+| rxjs                         | Reactive streams                                                                      | Feed service, real-time updates                             |
+| react-markdown / remark      | Markdown rendering                                                                    | Post content, about page                                    |
+| qrcode.react                 | QR code generation                                                                    | Share route functionality                                   |
+| pg                           | PostgreSQL driver                                                                     | Prisma adapter                                              |
+| cors                         | CORS headers                                                                          | API routes                                                  |
+| dotenv                       | Environment variable loading                                                          | Configuration                                               |
 
 ---
 
@@ -321,6 +331,7 @@ siteConfig Utility
 > **Section summary:** Any detected circular dependencies that need to be resolved.
 
 None detected — architecture is layered with unidirectional dependencies:
+
 - Pages → Components → Hooks → Services → BaseRepository → Prisma
 - Services → Config Registries (no reverse dependency)
 - Components → UI Library (no reverse dependency)
@@ -336,4 +347,4 @@ None detected — architecture is layered with unidirectional dependencies:
 - BaseRepository may import only Prisma Client and CacheLayer
 - Config Registries must have zero application dependencies
 - Utility functions must have zero application dependencies
-- Never import Ant Design directly from feature components — always use App* wrappers
+- Never import Ant Design directly from feature components — always use App\* wrappers

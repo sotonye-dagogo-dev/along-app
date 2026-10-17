@@ -140,10 +140,10 @@ UPSTASH_REDIS_REST_TOKEN=replace_me
 
 `app/lib/config/env.ts` is the single source of truth:
 
-| Variable | Purpose | Values |
-|----------|---------|--------|
+| Variable      | Purpose                              | Values                                   |
+| ------------- | ------------------------------------ | ---------------------------------------- |
 | `PROJECT_ENV` | Deployment stage — **wins when set** | `development` / `staging` / `production` |
-| `NODE_ENV` | Node runtime env (set by Next.js) | `development` / `production` / `test` |
+| `NODE_ENV`    | Node runtime env (set by Next.js)    | `development` / `production` / `test`    |
 
 Effective env = `PROJECT_ENV` when set, else `NODE_ENV`. `isProduction()`
 is true only for effective `production`, so `PROJECT_ENV=production` with
@@ -244,6 +244,26 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - Write tests for new features
 - Update documentation as needed
 - Ensure all tests pass before submitting PR
+
+### Database Backup and Migration
+
+The app uses Supabase PostgreSQL through Prisma. Keep the previous Prisma
+direct URL in `PREVIOUS_DIRECT_URL` as an offsite mirror; the Accelerate URL
+in `PREVIOUS_DATABASE_URL` is not a SQL connection for transfer scripts.
+
+```powershell
+npx tsx scripts/db-migrate-supabase.ts --dry-run
+npm run db:migrate-supabase
+npm run db:backup-local -- --source=supabase
+npm run db:restore-local -- --latest --target=supabase
+npm run db:backup-supabase -- --replace
+```
+
+Backups live under `backups/db-transfer/` and use checksummed JSONL, atomic
+writes, per-table hashes, a resumable journal, and transactional restore
+verification. A non-empty target requires `--replace` and a verified safety
+backup first. Review `.env.example` for transfer settings and keep
+`DIRECT_LOCAL_DB`/`LOCAL_DB` aligned with Supabase in local development.
 
 ## ðŸ“Š Project Status
 
