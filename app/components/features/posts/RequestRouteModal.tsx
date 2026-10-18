@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { ClipboardList, MapPin, Loader2 } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { LOCATION_SUGGESTIONS_CONFIG, buildGeocodeUrl } from "@/app/lib/config/locationSuggestions"
+import { ROUTE_TAG_CONFIG, parseTagInput } from "@/app/lib/config/routeTags"
+import { toastService } from "@/app/lib/services/toastService"
 
 export interface RouteRequestBody {
   title: string
@@ -186,8 +188,34 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
   }, [reset, onClose])
 
   const addTag = () => {
-    const t = tagInput.trim().replace(/^#/, "").toLowerCase()
-    if (t && !tags.includes(t) && tags.length < 5) setTags([...tags, t])
+    const { maxTags, maxTagLength, toasts } = ROUTE_TAG_CONFIG
+    const candidates = parseTagInput(tagInput)
+    if (candidates.length === 0) {
+      setTagInput("")
+      return
+    }
+    let rejected = false
+    let next = tags
+    for (const candidate of candidates) {
+      const tag = candidate.slice(0, maxTagLength)
+      if (candidate.length > maxTagLength) {
+        rejected = true
+      }
+      if (!tag || next.includes(tag)) continue
+      if (next.length >= maxTags) {
+        rejected = true
+        break
+      }
+      next = [...next, tag]
+    }
+    if (rejected) {
+      toastService.error(
+        candidates.some((c) => c.length > maxTagLength)
+          ? toasts.tagTooLong
+          : toasts.maxTagsReached,
+      )
+    }
+    if (next !== tags) setTags(next)
     setTagInput("")
   }
 
@@ -407,21 +435,21 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1 text-text-primary">Tags</label>
+            <label className="block text-sm font-medium mb-1 text-text-primary">{ROUTE_TAG_CONFIG.label}</label>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+                  if (e.key === "Enter" || e.key === ",") {
                     e.preventDefault()
                     addTag()
                   }
                 }}
                 onBlur={addTag}
-                placeholder="Add a tag and press Enter"
-                maxLength={30}
+                placeholder={ROUTE_TAG_CONFIG.placeholder}
+                maxLength={120}
                 className={inputClass}
               />
             </div>

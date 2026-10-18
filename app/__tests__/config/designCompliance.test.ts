@@ -32,7 +32,9 @@ describe("admin config defaults registry (DB-aware, rollback-capable)", () => {
       "feedStream",
       "emailConfig",
       "maintenanceMode",
+      "refreshNotice",
       "announcementBanner",
+      "announcements",
       "inviteRewardPoints",
     ]) {
       expect(keys).toContain(expected);
@@ -49,6 +51,8 @@ describe("admin config defaults registry (DB-aware, rollback-capable)", () => {
       ...ADMIN_SIMPLE_CONFIG_CARDS.map((c) => c.key),
       "earlyAdopterConfig",
       "feedDiversity",
+      // Bespoke Announcements list editor on the Config page (no JSON).
+      "announcements",
       ...ADMIN_STUDIO_LINKS.flatMap((s) => [...s.keys]),
     ]);
     for (const def of ADMIN_CONFIG_DEFAULTS) {
@@ -144,8 +148,24 @@ describe("admin config defaults registry (DB-aware, rollback-capable)", () => {
     // New gates.
     expect(validateAdminConfigValue("maintenanceMode", true)).toBeNull();
     expect(validateAdminConfigValue("maintenanceMode", "yes")).not.toBeNull();
+    expect(validateAdminConfigValue("refreshNotice", false)).toBeNull();
+    expect(validateAdminConfigValue("refreshNotice", "no")).not.toBeNull();
     expect(validateAdminConfigValue("announcementBanner", "hi")).toBeNull();
     expect(validateAdminConfigValue("announcementBanner", 42)).not.toBeNull();
+    expect(
+      validateAdminConfigValue("announcements", [
+        { body: "New routes live!", ctaLabel: "Explore", ctaHref: "/explore" },
+      ])
+    ).toBeNull();
+    expect(validateAdminConfigValue("announcements", "not-a-list")).not.toBeNull();
+    expect(
+      validateAdminConfigValue("announcements", [{ body: "" }])
+    ).not.toBeNull();
+    expect(
+      validateAdminConfigValue("announcements", [
+        { body: "x", ctaLabel: "Go", ctaHref: "javascript:alert(1)" },
+      ])
+    ).not.toBeNull();
     expect(validateAdminConfigValue("inviteRewardPoints", 100)).toBeNull();
     expect(validateAdminConfigValue("inviteRewardPoints", -1)).not.toBeNull();
     expect(

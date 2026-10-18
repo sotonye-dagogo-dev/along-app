@@ -23,6 +23,13 @@ export const MAP_PICKER_CONFIG = {
   /** Card chrome (token classes only, mirrors the stretch/mini tooltip cards). */
   cardClass: "rounded-md bg-bg-card border border-border shadow-lg p-3 text-left",
   cardMaxWidth: "16rem",
+  /**
+   * Generous ceiling so a long stop list (many steps + long location names)
+   * never overflows the small preview map — the option list scrolls instead.
+   */
+  cardMaxHeight: "42vh",
+  /** Scrollable options list — same pattern as the geocode dropdown. */
+  optionListClass: "flex flex-col gap-1 max-h-[220px] overflow-y-auto pr-0.5",
   cardTitle: "Assign this point",
   /** Body line under the title. */
   cardBody: "Choose the stop this tapped point should become.",

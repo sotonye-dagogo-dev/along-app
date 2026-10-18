@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: camera-effect intent deps + interaction-deferred baseline moves)
-> - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 75: protected-key storage clearing + opaque warning surfaces + centralised tag limits)
+> - last-verified-against-code: 2026-10-18 (Sprint 75 in-runner QA: tsc 0, jest 105/105 suites 1042/1042, build clean; config count 89 re-verified)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -989,4 +989,28 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 **What We Learned:** Derive a stable boolean (`followActive = followUser && !!userLocation`) and depend on THAT instead of volatile identities — the semantic guard is the dep. Then gate every _baseline_ camera move through an interaction-deferred queue: container pointer/wheel/key listeners + a window-level gesture-end, an idle window (`MAP_VIEW_CONFIG.recenterIdleDelayMs`), and a token-guarded watcher that runs exactly the latest pending move once. Explicit user requests (expand-refit, focus fly-to) bypass the queue by design — deferral is for background recentering, never for what the user just asked for. A pure `shouldDeferFit(...)` helper keeps the gate unit-testable without rendering the map.
 **Apply When:** Any effect drives a camera/scroll/focus from external position data, or user interaction can overlap data arrival (maps, carousels, live dashboards, sticky headers).
 **Supersedes:** None (extends the "fresh object identities re-init maps / re-fit the camera" mapLib lesson with the interaction dimension).
+**Superseded by:** None
+
+## Safe client clearing needs a protected-key whitelist, not a blocklist
+
+**Context:** A post-maintenance "kindly refresh" notice had to reboot the client (stale caches + service worker) without destroying drafts, the offline auth session, or user preferences — and without ever touching cookies.
+**What We Learned:** A blocklist ("don't clear these known keys") rots the moment new state is added and fails-open on the dangerous side; a WHITELIST of protected keys/prefixes (drafts, `along-auth-snapshot`, theme/locale, push/PWA/consent prefs, `along-locale-cache`) treats everything else as disposable cache, so future cache-y keys are covered automatically while positively protected state survives. Wrap every step (storage clear, Cache Storage wipe, SW unregister) in fail-open try/catch, never touch cookies, and cache-bust the reload (`?_fresh=<ts>`) or the stale worker still wins.
+**Apply When:** Any admin-triggered or update-triggered client "reset" must keep user state alive.
+**Supersedes:** None
+**Superseded by:** None
+
+## Opaque theme tokens beat translucent rgba washes for warning surfaces
+
+**Context:** Dark-theme maintenance/offline strips used a translucent `--color-warning` (`rgba(…, 0.15)`) and blended into the page — the same wash-out class fixed earlier for push banners.
+**What We Learned:** Define an OPAQUE `--color-warning-surface` token (light `#FEF3C7`, dark solid `#3B2F14`) and switch consumers to it — identical readable result across themes with zero per-theme alpha math; keep the hue token for borders/text accents only.
+**Apply When:** Any notice/banner/alert background needs light+dark parity.
+**Supersedes:** Extends the Sprint 18/58 opaque surface-token lesson (warning family now included).
+**Superseded by:** None
+
+## Divergent client limits for the same input = lift into one config module
+
+**Context:** Share form capped 10 tags silently (`slice`, no feedback); request form capped 5 with Enter-only input; the server schema had a count cap but no per-tag length; placeholders said nothing about comma/Enter/limits.
+**What We Learned:** When two surfaces police the same input, centralise limits + placeholder copy + toast copy + parse helper in one config module (`ROUTE_TAG_CONFIG`) consumed by both modals, the drafts sanitizer, and the Zod schema — then the server REJECTS over-limit (after trim/`#`-strip/empty-drop) rather than silently slicing, because client toasts already explained the rule and silent truncation desyncs user intent.
+**Apply When:** Adding a limit that more than one form or layer enforces; splitting client vs server cap semantics (explain+reject client-side, reject server-side — never slice either side).
+**Supersedes:** None
 **Superseded by:** None

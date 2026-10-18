@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening — friendly labels, tap-to-assign, Find on map, vehicle traces, deferred recenter)
-> - last-synced: 2026-10-17 (Sprint 72)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 75: notice tightening — safe refresh + rich announcements + tag limits + map picker scroll)
+> - last-synced: 2026-10-18 (Sprint 75)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
@@ -998,3 +998,17 @@ The entire `app/` directory has been generated from Phase 0-6. The architecture 
 | [M]  | Deferred recenter — NEW `mapView.ts` (`MAP_VIEW_CONFIG` + pure `shouldDeferFit`); RouteMap fit effect deps on `followActive` boolean (GPS ticks no longer refit) + interaction-deferred `requestBaselineFit` (container pointer/wheel/key listeners, window gesture-end, token-guarded idle watcher, re-attach on `expanded`; focus/expand bypass)                                                                                                                                                                        | [x]  |
 | [S]  | FAQ — 4 new `maps` items en + `FAQ_PCM` (`map-tap-assign`, `map-find-on-map`, `map-plus-code`, `map-friendly-labels`)                                                                                                                                                                                                                                                                                                                                                                                                     | [x]  |
 | [M]  | Tests — NEW `mapVehicleProfiles.test.ts` + `mapView.test.ts` + `mapPicker.test.ts`; `locationIntent.test.ts` 22→28 (label-first contract, locality reference pin, no-reference fallthrough, token split)                                                                                                                                                                                                                                                                                                                  | [x]  |
+
+## Sprint 75 — Notice tightening: safe refresh + rich announcements + tag limits + map picker scroll (2026-10-18, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (legacy `announcementBanner` still renders; new SiteConfig keys backfill via shipped defaults — no migration; request-form tag cap loosened 5→10; protected-key whitelist + fail-open storage clear; cookies never touched). QA full in-runner: `npm install` ok, tsc 0 errors, jest 105/105 suites 1042/1042 tests, lint 0 new issues (pre-existing `no-explicit-any` in untouched feed/suggestions routes), full `next build` clean.
+
+| Size | Task | Done |
+| ---- | ---- | ---- |
+| [S]  | Dark-theme maintenance surface — opaque `--color-warning-surface` token (light `#FEF3C7`, dark `#3B2F14`) in `globals.css` + `siteNotice.ts` tokens; maintenance + offline strips use it (translucent dark wash-out fixed) | [x]  |
+| [M]  | Refresh notice — `refreshNotice` SiteConfig key (boolean, default OFF) + admin simple card directly under Maintenance Mode + `/api/site-config` serves it; `app/lib/pwa/safeClientRefresh.ts` (`SAFE_REFRESH_CONFIG` protected-key whitelist: drafts/`along-auth-snapshot`/theme/locale/push prefs survive; clears remaining web storage + all Cache Storage + unregisters SWs + cache-busted `location.replace`; cookies untouched; every step fail-open); `SiteNotices` refresh strip with user-triggered "Refresh now" button | [x]  |
+| [M]  | Rich announcements — `announcements` SiteConfig key (JSON list, default `[]`; max 5, body ≤500, label ≤40) + `normalizeAnnouncements` edge-safe normalizer + `isSafeAnnouncementHref` (`/…` never `//…`, or `https://…`) + `SiteNotices` rich strips (CTA renders only when BOTH label+href; external new tab noopener; per-id dismiss) + legacy `announcementBanner` still own strip | [x]  |
+| [M]  | Admin announcements editor — bespoke no-JSON list editor card on Config page (add/remove rows, body/ctaLabel/ctaHref, client validation mirroring central validator) + `SITE_CONFIG_EDITORS`/`ADMIN_CONFIG_DEFAULTS`/`validateAdminConfigValue`/`ADMIN_DEDICATED_CONFIG_KEYS` registration | [x]  |
+| [M]  | Tag limits — NEW `routeTags.ts` (`ROUTE_TAG_CONFIG` maxTags 10, maxTagLength 30, placeholder, toast copy; `parseTagInput` comma parsing) wired into ShareRouteModal (was silent slice) + RequestRouteModal (was 5, Enter-only); limit/length toasts via `toastService.error`; Zod `CREATE_POST_SCHEMA` trims/strips `#`/drops empties + rejects over-limit (count + per-tag); drafts `sanitizeTags` aligned to config | [x]  |
+| [S]  | Map picker scroll — `MAP_PICKER_CONFIG` += `cardMaxHeight` 42vh + scrollable `optionListClass` (max-h-220px overflow-y-auto); `RouteMap` applies both in flex column card | [x]  |
+| [S]  | i18n + tests — en + pcm `siteNotice.refresh*` keys; NEW `siteNotice.test.ts` (12: tokens, normalizer edges, href safety, refresh defaults); `designCompliance.test.ts` extended (expected keys, card order, validator gates); `locales.test.ts` + `mapPicker.test.ts` extended | [x]  |

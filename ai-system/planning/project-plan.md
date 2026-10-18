@@ -2,10 +2,20 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-16 (Sprint 65: post-card detail links + response-banner dismiss + vehicle contrast)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 75: safe refresh notice + rich announcements + tag limits + picker scroll)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 75 — Notice tightening (2026-10-18, execute-feature)
+
+- [x] Opaque `--color-warning-surface` token fixes translucent dark maintenance/offline strips
+- [x] Admin-configurable (default OFF) post-maintenance refresh notice with safe client reboot (protected-key storage clear + Cache Storage wipe + SW unregister + cache-busted reload; drafts/session/prefs survive; cookies untouched)
+- [x] Multiple announcements with optional CTA (central validator + href safety gate + per-id dismiss + bespoke admin list editor; legacy banner preserved)
+- [x] Unified config-driven tag limits (10×30) with comma parsing, limit/length toasts, honest placeholders, and server-side rejection
+- [x] Scrollable 42vh stop-assignment picker card
+
+---
 
 ## Sprint 73 — Supabase Database Transfer and Recovery
 

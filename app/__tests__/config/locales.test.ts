@@ -54,10 +54,14 @@ const REQUIRED_KEYS = [
   "post.unarchive",
   "requestRoute.label",
   "requestRoute.shortLabel",
-  // Site notices (maintenance + announcement) — must never render raw keys.
+  // Site notices (maintenance + refresh + announcement) — must never render raw keys.
   "siteNotice.maintenanceTitle",
   "siteNotice.maintenanceBody",
   "siteNotice.maintenanceAdminNote",
+  "siteNotice.refreshTitle",
+  "siteNotice.refreshBody",
+  "siteNotice.refreshAction",
+  "siteNotice.refreshPending",
   "siteNotice.announcementLabel",
   "siteNotice.dismiss",
 ];
