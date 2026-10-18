@@ -2,11 +2,27 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance)
-> - last-synced: 2026-10-18 (Sprint 78)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: announcement deprecation + bug-report tightening)
+> - last-synced: 2026-10-19 (Sprint 79)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 79 — Legacy Announcement-Banner Deprecation + Bug-Report Pipeline Tightening (2026-10-18, execute-feature)
+
+> **Section summary:** Issue #25 directive close-out, non-breaking (no migration, no removed API fields, config-driven). (1) Deprecated the legacy single-string `announcementBanner` admin UI (card + editor + SiteNotices strip removed; `ADMIN_DEPRECATED_CONFIG_KEYS` hides it everywhere; defaults/validator/API field kept for back-compat), (2) ChunkLoadError auto-recovery (one session-guarded `location.reload()` from both error boundaries via `ERROR_REPORTING_CONFIG.chunkLoad`), (3) bug-report dedup (stable timestamp-free idempotency key from `reportClientError` + tightened server pre-read matching key/identity/content under reporter scoping), (4) admin bug modal full-context panel + reporter email + assignee display, (5) status-note prefill with default copy + whitespace-empty server fallback. QA full in-runner: tsc 0 errors, jest 110 suites / 1134 tests pass (+2 suites, +19 tests), lint clean on touched files, next build clean.
+
+| Size | Task                                                                                                                                                                                                       | Status |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| [S]  | Deprecate `announcementBanner`: remove `SITE_CONFIG_EDITORS` entry + `ADMIN_SIMPLE_CONFIG_CARDS` card; defaults entry marked deprecated; new `ADMIN_DEPRECATED_CONFIG_KEYS` folded into `ADMIN_DEDICATED_CONFIG_KEYS` + barrel export; SiteNotices legacy strip/fetch removed; `siteNotice.ts` `@deprecated` annotation; config-page comment | [x]    |
+| [S]  | Design-compliance test: card-coverage check skips deprecated keys; deprecated keys asserted cardless + dedicated-hidden                                                                                     | [x]    |
+| [S]  | Chunk recovery: `ERROR_REPORTING_CONFIG.chunkLoad` (patterns, once-flag key, copy); `isChunkLoadError` + `attemptChunkLoadRecovery` (injectable reload) in `errorReportService`; `error.tsx` + `global-error.tsx` short-circuit to recovering copy + info toast | [x]    |
+| [M]  | Dedup: `buildStableErrorIdempotencyKey` (double FNV-1a, `eb:` prefix, maxKeyLength-capped); `reportClientError` sends `x-idempotency-key` + `clientToken`; `/api/bug-reports` pre-read matches key OR (title + metadata.path + digest identity) OR exact description, scoped `reporterId ?? null` | [x]    |
+| [S]  | Admin modal: GET reporter select += email; `AdminBug` metadata typing (source/digest/path); identification block (Reported-by email, Assigned-to); collapsible full-context panel (description pre + meta rows + category); assignee on list card | [x]    |
+| [S]  | Note prefill: `openActionModal` prefills `BUG_REPORT_STATUS_COPY[status]`; `handleModalStatusChange` re-prefills only when empty/untouched-default; reset-to-default button; updated `BUG_REPORT_ACTION_MODAL` copy; server whitespace fallback verified unchanged | [x]    |
+| [M]  | Tests — new `chunkLoadRecovery.test.ts` (patterns/guard/key matrix, 10), new `bugReports.test.ts` (copy/prefill contract, 8); idempotency stability test in `errorReportService.test.ts`; 110/110 suites green | [x]    |
+
+---
 
 ## Sprint 78 — SEO Title Suffix + Feed Page Size + Pagination Compliance Sweep (2026-10-18, execute-feature)
 

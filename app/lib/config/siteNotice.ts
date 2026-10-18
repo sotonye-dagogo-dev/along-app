@@ -2,7 +2,8 @@
  * Site notice registry — maintenance mode, refresh notice, announcements.
  *
  * Single source of truth for the platform-wide notice configs
- * (`maintenanceMode`, `refreshNotice`, `announcementBanner`, `announcements`)
+ * (`maintenanceMode`, `refreshNotice`, `announcements`, plus the deprecated
+ * `announcementBanner` kept for stored-value/API back-compat only)
  * that live in SiteConfig and are edited via the admin Site-config board.
  * Everything downstream reads from here: the public `/api/site-config`
  * endpoint, the `<SiteNotices />` banner island, and the middleware
@@ -16,6 +17,7 @@ export const SITE_NOTICE_CONFIG = {
   /** SiteConfig keys (must match the admin-site-config editor registrations). */
   siteConfigKeys: {
     maintenance: "maintenanceMode",
+    /** @deprecated Legacy single-string banner — superseded by `announcements`. Kept for API back-compat; no UI. */
     announcement: "announcementBanner",
     /** Post-maintenance/deploy "kindly refresh" toggle (default off). */
     refresh: "refreshNotice",

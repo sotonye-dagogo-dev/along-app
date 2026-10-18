@@ -68,9 +68,12 @@ export function reportMaxSizeLabel(): string {
 
 /**
  * ACID / idempotency config for bug-report submission (config-driven).
- * - `dedupWindowSec`: same reporter + same title/description within this
- *   window returns the existing row instead of creating a duplicate
- *   (covers double-click, retry-after-timeout, multi-tab submits).
+ * - `dedupWindowSec`: same reporter + same title within this window
+ *   returns the existing row instead of creating a duplicate when the
+ *   idempotency key, the error identity (title + metadata.path/digest),
+ *   or the exact description matches (covers double-click, retry-after-
+ *   timeout, multi-tab submits, and error-boundary double-fires whose
+ *   description differs only by a fresh `When:` timestamp).
  * - `idempotencyHeader`: clients may send Idempotency-Key; the key is stored
  *   in metadata.idempotencyKey and re-presenting it returns the original row.
  */

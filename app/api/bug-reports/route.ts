@@ -92,29 +92,54 @@ export async function POST(request: NextRequest) {
     };
     const metadataPayload = buildMetadata();
 
-    // ACID dedup gate (before write): idempotency-key hit OR same reporter +
-    // same title/description within the window → return existing row.
+    // ACID dedup gate (before write): collapses double-fires of the SAME
+    // report — error boundaries fire once per segment (page + root) and each
+    // capture embeds a fresh `When:` timestamp, so exact-description match
+    // alone never catches them. Match order:
+    //   1. idempotency key (clientToken / header) — strongest signal;
+    //   2. same error identity (title + metadata.path + metadata.digest) —
+    //      catches timestamp-diverged captures of one error;
+    //   3. exact title + description (legacy content match).
+    // Scoped to the same reporter (or both-anonymous) so two different users
+    // filing similar reports never collapse into one row.
     try {
       const windowStart = new Date(Date.now() - BUG_REPORT_DEDUP_CONFIG.dedupWindowSec * 1000);
+      const clientMeta =
+        metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : {};
+      const clientPath = typeof clientMeta.path === "string" ? clientMeta.path : null;
+      const clientDigest = typeof clientMeta.digest === "string" ? clientMeta.digest : null;
       const recent = await prisma.bugReport.findMany({
         where: {
           createdAt: { gte: windowStart },
-          ...(reporterId ? { reporterId } : {}),
+          reporterId: reporterId ?? null,
           title,
-          description,
         },
-        select: { id: true, metadata: true, reporterId: true, createdAt: true },
+        select: { id: true, description: true, metadata: true },
         orderBy: { createdAt: "desc" },
         take: 10,
       });
       const dup = recent.find((r) => {
-        if (idempotencyKey) {
-          try {
-            const m = r.metadata as unknown as Record<string, unknown> | null;
-            if (m && typeof m === "object" && m.idempotencyKey === idempotencyKey) return true;
-          } catch { /* fall through to content match */ }
+        let meta: Record<string, unknown> = {};
+        try {
+          const m = r.metadata as unknown;
+          if (m && typeof m === "object" && !Array.isArray(m)) meta = m as Record<string, unknown>;
+        } catch { /* unparseable metadata — fall through to content match */ }
+        // 1. Idempotency key hit.
+        if (idempotencyKey && meta.idempotencyKey === idempotencyKey) return true;
+        // 2. Same error identity: path + digest agree (digest may be null on
+        //    both sides for pure client errors — path then carries the match).
+        if (
+          clientPath !== null &&
+          typeof meta.path === "string" &&
+          meta.path === clientPath &&
+          (clientDigest === null
+            ? meta.digest === null || meta.digest === undefined
+            : meta.digest === clientDigest)
+        ) {
+          return true;
         }
-        return true;
+        // 3. Legacy exact-content match.
+        return r.description === description;
       });
       if (dup) {
         return NextResponse.json({ success: true, id: dup.id, deduped: true }, { status: 200 });

@@ -9,6 +9,7 @@
 import {
   ADMIN_CONFIG_DEFAULTS,
   ADMIN_SIMPLE_CONFIG_CARDS,
+  ADMIN_DEPRECATED_CONFIG_KEYS,
   ADMIN_DEDICATED_CONFIG_KEYS,
   ADMIN_STUDIO_LINKS,
   ADMIN_STUDIO_MANAGED_KEYS,
@@ -56,12 +57,23 @@ describe("admin config defaults registry (DB-aware, rollback-capable)", () => {
       ...ADMIN_STUDIO_LINKS.flatMap((s) => [...s.keys]),
     ]);
     for (const def of ADMIN_CONFIG_DEFAULTS) {
+      // Deprecated keys intentionally have NO editor — they stay registered
+      // for stored-value back-compat only (hidden from every admin surface).
+      if ((ADMIN_DEPRECATED_CONFIG_KEYS as readonly string[]).includes(def.key))
+        continue;
       expect(cardKeys.has(def.key)).toBe(true);
     }
     // Dedicated keys stay out of the raw JSON list (one editor per key).
     for (const def of ADMIN_CONFIG_DEFAULTS) {
       expect(
         (ADMIN_DEDICATED_CONFIG_KEYS as readonly string[]).includes(def.key)
+      ).toBe(true);
+    }
+    // Deprecated keys: registered for back-compat, but zero editors/cards.
+    for (const key of ADMIN_DEPRECATED_CONFIG_KEYS) {
+      expect(ADMIN_SIMPLE_CONFIG_CARDS.map((c) => c.key)).not.toContain(key);
+      expect(
+        (ADMIN_DEDICATED_CONFIG_KEYS as readonly string[]).includes(key)
       ).toBe(true);
     }
   });

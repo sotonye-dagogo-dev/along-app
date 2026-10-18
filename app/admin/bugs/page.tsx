@@ -22,9 +22,13 @@ interface AdminBug {
   category: string
   status: string
   createdAt: string
-  metadata?: { kind?: string; reason?: string; commentId?: string; images?: string[] } | null
+  metadata?: {
+    kind?: string; reason?: string; commentId?: string; images?: string[]
+    /** Error-boundary captures carry structured context. */
+    source?: string; digest?: string | null; path?: string; idempotencyKey?: string
+  } | null
   post?: { id: string; title: string; userId: string } | null
-  reporter: { id: string; firstName: string; lastName: string; userName: string } | null
+  reporter: { id: string; firstName: string; lastName: string; userName: string; email?: string | null } | null
   reviewer: { id: string; firstName: string; lastName: string; userName: string } | null
 }
 
@@ -44,6 +48,10 @@ const ACTION_CONFIRM: Record<string, { title: string; description: string }> = {
   REMOVE_POST: { title: MODERATION_CONFIG.adminConfirmRemoveTitle, description: MODERATION_CONFIG.adminConfirmRemoveDescription },
 }
 
+/** Status default note (config-driven; falls back to the DEFAULT copy). */
+const defaultNoteFor = (status: string): string =>
+  (BUG_REPORT_STATUS_COPY as Record<string, string>)[status] ?? BUG_REPORT_STATUS_COPY.DEFAULT
+
 export default function AdminBugsPage() {
   const [statusFilter, setStatusFilter] = useState("")
   const [kindFilter, setKindFilter] = useState<"all" | "reports" | "bugs">("all")
@@ -59,6 +67,8 @@ export default function AdminBugsPage() {
   } | null>(null)
   const [modalNote, setModalNote] = useState("")
   const [modalBusy, setModalBusy] = useState(false)
+  // Collapsible "full context" panel in the action modal (single reports).
+  const [showContext, setShowContext] = useState(false)
 
   const sortOption = ADMIN_TABLE_SORT_META.bugs.options.find((o) => o.id === sortId)
     ?? ADMIN_TABLE_SORT_META.bugs.options[0]
@@ -98,7 +108,12 @@ export default function AdminBugsPage() {
     moderation?: "DISMISS" | "ARCHIVE_POST" | "REMOVE_POST",
   ) => {
     if (bugs.length === 0) return
-    setModalNote("")
+    // Prefill the note with the status default copy so the admin sees
+    // exactly what the reporter will receive; editing replaces it, and
+    // clearing it (even whitespace-only) falls back to the default
+    // server-side — legacy behaviour preserved.
+    setModalNote(defaultNoteFor(status))
+    setShowContext(false)
     setActionModal({ bugs, status, moderation })
   }
 
@@ -106,7 +121,25 @@ export default function AdminBugsPage() {
     if (!modalBusy) {
       setActionModal(null)
       setModalNote("")
+      setShowContext(false)
     }
+  }
+
+  /**
+   * Status switched inside the modal: re-prefill the note with the new
+   * default ONLY when the box is empty/whitespace or still holds the
+   * previous default verbatim — a custom admin note survives the switch.
+   */
+  const handleModalStatusChange = (nextStatus: string) => {
+    setActionModal((m) => {
+      if (!m) return m
+      const prevDefault = defaultNoteFor(m.status).trim()
+      const current = modalNote.trim()
+      if (current === "" || current === prevDefault) {
+        setModalNote(defaultNoteFor(nextStatus))
+      }
+      return { ...m, status: nextStatus }
+    })
   }
 
   /** Confirm the action modal — single PATCH per bug (moderation is single-flow). */
@@ -297,8 +330,11 @@ export default function AdminBugsPage() {
               </Link>
             )}
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="text-[10px] text-text-muted">
+              <div className="text-[10px] text-text-muted min-w-0">
                 Reported by {bug.reporter ? <Link href={`/profile/${bug.reporter.userName}`} className="no-underline hover:underline text-text-secondary">{bug.reporter.firstName} {bug.reporter.lastName}</Link> : "Anonymous"} &middot; {new Date(bug.createdAt).toLocaleDateString()}
+                {bug.reviewer && (
+                  <> &middot; Assigned to <span className="text-text-secondary">@{bug.reviewer.userName}</span></>
+                )}
               </div>
               <div className="flex gap-1 flex-wrap">
                 {isReport && bug.post && bug.status !== "RESOLVED" && bug.status !== "CLOSED" ? (
@@ -380,7 +416,7 @@ export default function AdminBugsPage() {
               <span className="text-text-muted font-medium">{BUG_REPORT_ACTION_MODAL.statusLabel}</span>
               <select
                 value={actionModal.status}
-                onChange={(e) => setActionModal((m) => (m ? { ...m, status: e.target.value } : m))}
+                onChange={(e) => handleModalStatusChange(e.target.value)}
                 disabled={modalBusy}
                 className="rounded-md border border-border bg-bg-base px-3 py-2 text-sm"
               >
@@ -401,11 +437,90 @@ export default function AdminBugsPage() {
                 className="rounded-md border border-border bg-bg-base p-2.5 text-sm w-full"
               />
               <span className="text-[11px] text-text-muted">
-                {modalNote.trim()
-                  ? `${modalNote.trim().length}/${BUG_REPORT_ACTION_MODAL.noteMaxLength} — this note will be sent.`
-                  : `${defaultNoteLabelFor(actionModal.status)}: “${(BUG_REPORT_STATUS_COPY as Record<string, string>)[actionModal.status] ?? BUG_REPORT_STATUS_COPY.DEFAULT}”`}
+                {modalNote.trim() === defaultNoteFor(actionModal.status).trim()
+                  ? `${defaultNoteLabelFor(actionModal.status)}: “${defaultNoteFor(actionModal.status)}”`
+                  : modalNote.trim()
+                    ? `${modalNote.trim().length}/${BUG_REPORT_ACTION_MODAL.noteMaxLength} — this note will be sent.`
+                    : `${defaultNoteLabelFor(actionModal.status)}: “${defaultNoteFor(actionModal.status)}”`}
               </span>
+              {modalNote.trim() !== defaultNoteFor(actionModal.status).trim() && (
+                <button
+                  type="button"
+                  onClick={() => setModalNote(defaultNoteFor(actionModal.status))}
+                  disabled={modalBusy}
+                  className="self-start px-2 py-1 radius-sm border border-border bg-bg-elevated text-[11px] font-medium text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-50"
+                >
+                  {BUG_REPORT_ACTION_MODAL.resetDefaultLabel}
+                </button>
+              )}
             </label>
+
+            {actionModal.bugs.length === 1 && (() => {
+              const bug = actionModal.bugs[0];
+              const meta = bug.metadata ?? {};
+              const hasMeta =
+                typeof meta.source === "string" ||
+                typeof meta.path === "string" ||
+                typeof meta.digest === "string";
+              return (
+                <>
+                  {/* Identification: reporter (email as collected) + assignee. */}
+                  <div className="text-xs flex flex-col gap-1 bg-bg-base border border-border radius-md p-2.5">
+                    <span className="text-text-muted font-medium">{BUG_REPORT_ACTION_MODAL.reportedByLabel}</span>
+                    <span className="text-text-secondary">
+                      {bug.reporter
+                        ? `${bug.reporter.firstName} ${bug.reporter.lastName}`.trim() +
+                          (bug.reporter.email ? ` (${bug.reporter.email})` : "")
+                        : BUG_REPORT_ACTION_MODAL.reportedAnonymous}
+                    </span>
+                    <span className="text-text-muted font-medium mt-1">{BUG_REPORT_ACTION_MODAL.assignedToLabel}</span>
+                    <span className="text-text-secondary">
+                      {bug.reviewer ? `@${bug.reviewer.userName}` : BUG_REPORT_ACTION_MODAL.assignedToNobody}
+                    </span>
+                  </div>
+
+                  {/* Full attached context: complete description + metadata. */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-text-muted">
+                        {BUG_REPORT_ACTION_MODAL.contextLabel}
+                        {hasMeta ? ` · ${bug.category}` : ""}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowContext((v) => !v)}
+                        disabled={modalBusy}
+                        className="px-2 py-1 radius-sm border border-border bg-bg-elevated text-[11px] font-medium text-text-secondary hover:text-text-primary cursor-pointer disabled:opacity-50"
+                      >
+                        {showContext
+                          ? BUG_REPORT_ACTION_MODAL.contextHideLabel
+                          : BUG_REPORT_ACTION_MODAL.contextShowLabel}
+                      </button>
+                    </div>
+                    {hasMeta && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-text-muted">
+                        {typeof meta.source === "string" && (
+                          <span>{BUG_REPORT_ACTION_MODAL.metaSourceLabel}: {meta.source}</span>
+                        )}
+                        {typeof meta.path === "string" && (
+                          <span>{BUG_REPORT_ACTION_MODAL.metaPathLabel}: {meta.path}</span>
+                        )}
+                        {typeof meta.digest === "string" && (
+                          <span className="truncate max-w-[180px]" title={meta.digest}>
+                            {BUG_REPORT_ACTION_MODAL.metaDigestLabel}: {meta.digest}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {showContext && (
+                      <pre className="text-[11px] leading-relaxed text-text-secondary bg-bg-base border border-border radius-md p-2.5 max-h-56 overflow-auto whitespace-pre-wrap break-words font-sans m-0">
+                        {bug.description}
+                      </pre>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
 
             {actionModal.bugs.length === 1 && (() => {
               const imgs = actionModal.bugs[0].metadata?.images;

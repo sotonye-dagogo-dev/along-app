@@ -70,4 +70,29 @@ describe("reportClientError", () => {
     const body = JSON.parse((opts as { body: string }).body);
     expect(JSON.stringify(body)).not.toContain("jane@example.com");
   });
+
+  it("sends a stable timestamp-free idempotency key (header + body)", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true }) as never;
+    await reportClientError(new Error("Loading chunk 72 failed."), {
+      digest: "d1",
+      path: "/login",
+    });
+    await reportClientError(new Error("Loading chunk 72 failed."), {
+      digest: "d1",
+      path: "/login",
+    });
+    const optsAt = (i: number) =>
+      (global.fetch as jest.Mock).mock.calls[i][1] as {
+        headers: Record<string, string>;
+        body: string;
+      };
+    const key0 = optsAt(0).headers["x-idempotency-key"];
+    const key1 = optsAt(1).headers["x-idempotency-key"];
+    expect(key0).toBeTruthy();
+    expect(key0).toBe(key1);
+    expect(JSON.parse(optsAt(0).body).clientToken).toBe(key0);
+    // Different error → different key (never collapses distinct reports).
+    await reportClientError(new Error("Something else"), { path: "/feed" });
+    expect(optsAt(2).headers["x-idempotency-key"]).not.toBe(key0);
+  });
 });

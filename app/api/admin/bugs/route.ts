@@ -28,7 +28,9 @@ export async function GET(request: NextRequest) {
     const bugs = await prisma.bugReport.findMany({
       where: where as never,
       include: {
-        reporter: { select: { id: true, firstName: true, lastName: true, userName: true, avatar: true } },
+        // Email rides along for the admin modal's reporter-identification
+        // block (admin-only surface — never serialized to end users).
+        reporter: { select: { id: true, firstName: true, lastName: true, userName: true, avatar: true, email: true } },
         reviewer: { select: { id: true, firstName: true, lastName: true, userName: true } },
         post: { select: { id: true, title: true, userId: true } },
       },

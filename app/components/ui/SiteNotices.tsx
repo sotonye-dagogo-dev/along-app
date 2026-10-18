@@ -7,7 +7,6 @@ import { useTranslation } from "@/app/providers/I18nProvider";
 import {
   SITE_NOTICE_CONFIG,
   normalizeMaintenanceFlag,
-  normalizeAnnouncementText,
   normalizeAnnouncements,
   isSafeRefreshCompleted,
   type NormalizedAnnouncement,
@@ -17,14 +16,12 @@ import { safeClientRefresh } from "@/app/lib/pwa/safeClientRefresh";
 type NoticeState = {
   maintenanceMode: boolean;
   refreshNotice: boolean;
-  announcementBanner: string;
   announcements: NormalizedAnnouncement[];
 };
 
 const EMPTY_NOTICES: NoticeState = {
   maintenanceMode: false,
   refreshNotice: false,
-  announcementBanner: "",
   announcements: [],
 };
 
@@ -52,8 +49,7 @@ function readSessionFlags(keys: readonly string[]): Record<string, boolean> {
 
 /**
  * Platform notice strips — the runtime consumer of the admin
- * `maintenanceMode`, `refreshNotice`, `announcementBanner`, and
- * `announcements` configs.
+ * `maintenanceMode`, `refreshNotice`, and `announcements` configs.
  *
  * Fetches `/api/site-config` on mount, on an interval, and on
  * online/focus, so a toggle from the admin board lands without a reload.
@@ -63,8 +59,9 @@ function readSessionFlags(keys: readonly string[]): Record<string, boolean> {
  * refresh (keeps session + drafts, reboots the SW) — once tapped, a
  * locally stored once-flag (7-day TTL) hides the strip so a still-enabled
  * admin toggle never re-nags, and a catch-all note covers manual-refresh
- * edge cases; announcements — legacy text + rich entries with optional
- * CTA — are session-dismissible per item.
+ * edge cases; announcements — rich entries with optional CTA — are
+ * session-dismissible per item. (The legacy single-string
+ * `announcementBanner` is deprecated and no longer rendered.)
  */
 export function SiteNotices() {
   const auth = useContext(AuthContext);
@@ -87,7 +84,6 @@ export function SiteNotices() {
       setNotices({
         maintenanceMode: normalizeMaintenanceFlag(record.maintenanceMode),
         refreshNotice: normalizeMaintenanceFlag(record.refreshNotice),
-        announcementBanner: normalizeAnnouncementText(record.announcementBanner),
         announcements: normalizeAnnouncements(record.announcements),
       });
     } catch {
@@ -97,14 +93,11 @@ export function SiteNotices() {
     }
   }, []);
 
-  // Every dismissible item key (legacy banner + per-id rich entries).
+  // Every dismissible item key (per-id rich announcement entries).
   const dismissKeys = useMemo(() => {
-    const keys = [
-      SITE_NOTICE_CONFIG.announcement.dismissStorageKey,
-      ...notices.announcements.map((a) =>
-        `${SITE_NOTICE_CONFIG.announcement.dismissIdPrefix}${a.id}`,
-      ),
-    ];
+    const keys = notices.announcements.map((a) =>
+      `${SITE_NOTICE_CONFIG.announcement.dismissIdPrefix}${a.id}`,
+    );
     return keys;
   }, [notices.announcements]);
 
@@ -190,9 +183,6 @@ export function SiteNotices() {
   }, [refreshing]);
 
   const isAdmin = auth?.user?.role === "ADMIN";
-  const legacyDismissKey = SITE_NOTICE_CONFIG.announcement.dismissStorageKey;
-  const legacyVisible =
-    !dismissed[legacyDismissKey] && notices.announcementBanner.length > 0;
   const richVisible = notices.announcements.filter(
     (a) => !dismissed[`${SITE_NOTICE_CONFIG.announcement.dismissIdPrefix}${a.id}`],
   );
@@ -223,7 +213,6 @@ export function SiteNotices() {
   const hasAnyVisible =
     maintenanceVisible ||
     refreshVisible ||
-    legacyVisible ||
     richVisible.length > 0;
   if (!hasAnyVisible) return null;
 
@@ -411,34 +400,6 @@ export function SiteNotices() {
           </div>
         );
       })}
-      {legacyVisible && (
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            ...stripBase,
-            padding: "8px 16px",
-            background: tokens.announcement.background,
-            border: tokens.announcement.border,
-            borderTop:
-              maintenanceVisible || refreshVisible || richVisible.length > 0
-                ? "none"
-                : tokens.announcement.border,
-            color: tokens.announcement.color,
-          }}
-        >
-          <Info size={16} aria-hidden style={{ flexShrink: 0, marginTop: 2, opacity: 0.8 }} />
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "block", fontWeight: 600, fontSize: 12, opacity: 0.75 }}>
-              {copy.announcementLabel}
-            </span>
-            <span style={{ display: "block", marginTop: 2 }}>
-              {notices.announcementBanner}
-            </span>
-          </span>
-          {dismissButton(legacyDismissKey)}
-        </div>
-      )}
     </div>
   );
 }
