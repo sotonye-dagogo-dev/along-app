@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: once-flag written inside the action + preserve-listed through its cleaner)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: runtime DB pooler precedence — transaction mode for serverless, session mode CLI-only)
 > - last-verified-against-code: 2026-10-18 (Sprint 76 in-runner QA: tsc 0, jest 105/105 suites 1047/1047, build clean; config count 89 re-verified)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -1022,3 +1022,12 @@ Sprint 76's refresh-notice once-flag. `safeClientRefresh` wipes non-protected lo
 **Lesson:** When an action cleans up state, its own completion signal must be written before the cleanup and positively preserved through it — and the consumer should only ever read the flag, never own the write.
 
 ---
+
+## Serverless runtimes must resolve the TRANSACTION-mode database pooler, never the session-mode one
+
+**Context:**
+Sprint 77's EMAXCONNSESSION outage: every DB-backed route 500'd (`DriverAdapterError: max clients reached in session mode - max clients are limited to pool_size: 15`) because `resolveDatabaseUrl()` preferred `DIRECT_URL` (session-mode pooler, port 5432, hard-capped ~15 clients) for the RUNTIME PrismaClient while `new PrismaPg({ connectionString })` used pg defaults (`max: 10` per warm lambda, no connect timeout). N instances × 10 ≫ 15. Supabase dashboards look healthy — the cap is pooler policy, not DB load. Two extra traps rode along: the `?pgbouncer=true` URL param is a classic-engine switch IGNORED by the pg driver (transaction mode needs an explicit `prepare: false`), and a PrismaClient NOT cached on `globalThis` in production opens a second pool per module copy (route-split chunks) — same failure class at smaller scale.
+**Lesson:** Encode the two-pooler contract PER CONSUMER: runtime = DATABASE_URL-first (transaction mode, `prepare: false` detected from the URL, small per-instance pool via config), CLI/migrations = DIRECT-first (session continuity for DDL). Never let one global precedence serve both. Detect pooler mode from the URL (port 6543 / `pgbouncer=` flag), keep prepared statements for direct/session URLs, and log a one-time warn when production still resolves a session-mode URL so a mis-set env var is obvious in logs.
+**Apply When:** Wiring any new DB client/worker/CLI path against Supabase (or any session/transaction-split pooler); debugging "max clients reached" or connection-exhaustion 500s; adding a new serverless data path that opens its own pool.
+**Supersedes:** Extends the Sprint 73 Supabase two-pooler contract decision (the code had disagreed with the documented contract — docs won only after the outage).
+**Superseded by:** None

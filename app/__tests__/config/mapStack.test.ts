@@ -8,6 +8,7 @@ import {
   MAP_STACK_CONFIG,
   MAP_EXPAND_CONFIG,
   vectorStyleUrl,
+  vectorStyleUpstreamUrl,
   rasterFallbackTile,
   rasterFallbackDepth,
   buildRasterMapStyle,
@@ -37,8 +38,21 @@ describe("execute-feature Sprint 19: keyless map stack config", () => {
       expect(url).not.toMatch("apiKey");
       expect(url).not.toMatch("key=");
     }
-    expect(vectorStyleUrl(false)).toBe(MAP_STACK_CONFIG.vectorStyles.liberty);
-    expect(vectorStyleUrl(true)).toBe(MAP_STACK_CONFIG.vectorStyles.liberty);
+    // Renderers load through the same-origin sanitized proxy (Sprint 77) —
+    // the browser never fetches the OpenFreeMap style document directly.
+    expect(vectorStyleUrl(false)).toBe(`${MAP_STACK_CONFIG.styleProxyPath}?name=liberty`);
+    expect(vectorStyleUrl(true)).toBe(`${MAP_STACK_CONFIG.styleProxyPath}?name=liberty`);
+    expect(vectorStyleUpstreamUrl("liberty")).toMatch("tiles.openfreemap.org");
+    expect(vectorStyleUpstreamUrl("nope")).toBeNull();
+  });
+
+  it("style proxy + numeric fallbacks are configured (Sprint 77 null hardening)", () => {
+    expect(MAP_STACK_CONFIG.styleProxyPath).toBe("/api/maps/style");
+    expect(MAP_STACK_CONFIG.cacheTtlSec.style).toBeGreaterThan(0);
+    const fb = MAP_STACK_CONFIG.numericExpressionFallbacks;
+    expect(typeof fb["text-size"]).toBe("number");
+    expect(typeof fb["icon-size"]).toBe("number");
+    expect(typeof fb["circle-radius"]).toBe("number");
   });
 
   it("raster fallback chain is keyless (plain Carto, no ?apiKey=) then OSM then Esri", () => {
@@ -178,6 +192,108 @@ describe("execute-feature Sprint 19: proxy cache keys + straight-line fallback",
       expect(hits[0].display_name).toMatch("Lagos");
       expect(hits[0].lat).toBe("6.5244");
       expect(hits[0].lon).toBe("3.3792");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("Sprint 77: sanitized style document proxy", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("getMapStyleDocument rejects unknown names without touching upstream", async () => {
+    const spy = jest.spyOn(global, "fetch");
+    await expect(mapProxyService.getMapStyleDocument("evil")).resolves.toBeNull();
+    await expect(mapProxyService.getMapStyleDocument("")).resolves.toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it("getMapStyleDocument fetches, sanitizes data-driven numeric props, and caches", async () => {
+    const { redis } = jest.requireMock("@/app/lib/db/redis");
+    const rawStyle = {
+      version: 8,
+      layers: [
+        {
+          id: "road",
+          type: "line",
+          layout: { "line-width": ["interpolate", ["linear"], ["zoom"], 5, 1, 18, 4] },
+          paint: { "line-color": "#fff" },
+        },
+        {
+          id: "poi",
+          type: "symbol",
+          layout: { "text-size": ["interpolate", ["linear"], ["get", "siz"], 12] },
+          paint: { "circle-radius": 5 },
+        },
+      ],
+    };
+    const spy = jest.spyOn(global, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => rawStyle,
+    } as Response);
+    try {
+      const doc = (await mapProxyService.getMapStyleDocument("liberty")) as {
+        layers: { id: string; layout: Record<string, unknown>; paint: Record<string, unknown> }[];
+      };
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(doc).toBeTruthy();
+      const road = doc.layers[0];
+      const poi = doc.layers[1];
+      // Data-driven (reads feature data) props get coalesce-wrapped with the
+      // config fallback — silences the MapLibre null-type warning class.
+      const textSize = poi.layout["text-size"] as unknown[];
+      expect(textSize[0]).toBe("coalesce");
+      expect(textSize[2]).toBe(MAP_STACK_CONFIG.numericExpressionFallbacks["text-size"]);
+      // Zoom-only expressions and static values stay untouched.
+      expect(road.layout["line-width"]).toEqual([
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        5,
+        1,
+        18,
+        4,
+      ]);
+      expect(poi.paint["circle-radius"]).toBe(5);
+      expect(road.paint["line-color"]).toBe("#fff");
+      // Sanitized doc (not raw upstream) is what lands in Redis.
+      expect(redis.set).toHaveBeenCalledWith(
+        mapProxyService.styleCacheKey("liberty"),
+        expect.objectContaining({ version: 8 }),
+        { ex: MAP_STACK_CONFIG.cacheTtlSec.style }
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("getMapStyleDocument serves the Redis cache without refetching", async () => {
+    const { redis } = jest.requireMock("@/app/lib/db/redis");
+    const cached = { version: 8, layers: [] };
+    redis.get.mockResolvedValueOnce(cached);
+    const spy = jest.spyOn(global, "fetch");
+    try {
+      const doc = await mapProxyService.getMapStyleDocument("liberty");
+      expect(doc).toBe(cached);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("getMapStyleDocument degrades to null when upstream fails with no stale copy", async () => {
+    const spy = jest.spyOn(global, "fetch").mockRejectedValue(new Error("offline"));
+    try {
+      // Whitelisted name `bright` was never fetched earlier in this file, so
+      // there is no in-memory stale copy — upstream failure must resolve null
+      // (the route then answers 404/502 cleanly; never an open proxy).
+      await expect(mapProxyService.getMapStyleDocument("bright")).resolves.toBeNull();
+      expect(spy).toHaveBeenCalledWith(
+        MAP_STACK_CONFIG.vectorStyles.bright,
+        expect.objectContaining({ headers: expect.objectContaining({ Accept: "application/json" }) })
+      );
     } finally {
       spy.mockRestore();
     }

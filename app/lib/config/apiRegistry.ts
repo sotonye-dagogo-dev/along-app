@@ -31,6 +31,7 @@ export const API_REGISTRY: Record<string, ApiEndpoint> = {
   mapsTraffic: { path: "/api/maps/traffic", methods: ["POST"], auth: false, rateLimit: "maps" },
   mapsGeocode: { path: "/api/maps/geocode", methods: ["GET"], auth: false, rateLimit: "maps" },
   mapsReverse: { path: "/api/maps/reverse", methods: ["GET"], auth: false, rateLimit: "maps" },
+  mapsStyle: { path: "/api/maps/style", methods: ["GET"], auth: false, rateLimit: "maps" },
   usersDetail: { path: "/api/users/[id]", methods: ["GET", "PATCH"], auth: false },
   usersEarlyAdopter: { path: "/api/users/[id]/early-adopter", methods: ["GET"], auth: false },
   usersEarlyAdopters: { path: "/api/users/early-adopters", methods: ["GET"], auth: false },

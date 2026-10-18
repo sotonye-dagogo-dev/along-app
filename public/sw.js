@@ -70,6 +70,8 @@ const CACHEABLE_API = [
   "/api/faq",
   "/api/blog",
   "/api/reviews",
+  // Sanitized vector styles (same-origin proxy, long-lived cache headers).
+  "/api/maps/style",
 ];
 const MAP_HOSTS = [
   "tiles.openfreemap.org",
