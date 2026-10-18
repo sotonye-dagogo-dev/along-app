@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { Shield, Check, X } from "lucide-react"
-import { ADMIN_BULK_SELECT_META, ADMIN_TABLE_SORT_META } from "@/app/lib/config/admin"
+import { ADMIN_BULK_SELECT_META, ADMIN_PAGINATION_META, ADMIN_TABLE_SORT_META } from "@/app/lib/config/admin"
 import { reviewAuthorName } from "@/app/lib/config/reviews"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 import { toastService } from "@/app/lib/services/toastService"
@@ -54,7 +54,7 @@ export default function AdminReviewsPage() {
       if (s) params.set("status", s)
       params.set("sort", sortOpt.sort)
       params.set("dir", sortOpt.dir)
-      params.set("limit", "20")
+      params.set("limit", String(ADMIN_PAGINATION_META.defaultLimit))
       if (cursor) params.set("cursor", cursor)
       const url = `/api/admin/reviews?${params.toString()}`
       const res = await fetch(url)

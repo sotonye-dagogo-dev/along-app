@@ -5,6 +5,7 @@ import { CREATE_POST_SCHEMA } from "@/app/lib/schemas/post";
 import { validityEngine, computeRouteDetailScore, computePostDetailScore, detailContextFromPost } from "@/app/lib/services/ValidityEngine";
 import { qstashService } from "@/app/lib/services/qstashService";
 import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit";
+import { clampPageLimit } from "@/app/lib/config";
 import { normalizeRouteSteps } from "@/app/lib/config/routeSteps";
 import { idempotencyService } from "@/app/lib/services/idempotencyService";
 
@@ -292,7 +293,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor");
-    const limit = Math.min(Number(searchParams.get("limit")) || 10, 50);
+    // Config-driven default (20) + max clamp — PAGINATION_CONFIG.posts.
+    const limit = clampPageLimit(searchParams.get("limit"), "posts");
     const userId = searchParams.get("userId");
     const typeParam = searchParams.get("type");
     const likedBy = searchParams.get("likedBy");
@@ -371,7 +373,8 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: { createdAt: "desc" as const },
+      // Id tiebreak keeps cursor pagination deterministic on createdAt ties.
+      orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
     };
 
     let posts: unknown[];

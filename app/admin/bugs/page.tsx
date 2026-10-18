@@ -7,6 +7,9 @@ import { modalService } from "@/app/lib/services/modalService"
 import { toastService } from "@/app/lib/services/toastService"
 import { MODERATION_CONFIG } from "@/app/lib/config"
 import { BUG_REPORT_ACTION_MODAL, BUG_REPORT_STATUS_COPY } from "@/app/lib/config/bugReports"
+// Module-scope alias: the member call `BUG_REPORT_ACTION_MODAL.useDefaultLabel(...)`
+// trips react-hooks/rules-of-hooks (use-prefixed member). Behavior identical.
+const defaultNoteLabelFor = BUG_REPORT_ACTION_MODAL.useDefaultLabel;
 import { ADMIN_BULK_SELECT_META, ADMIN_TABLE_SORT_META } from "@/app/lib/config/admin"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 import { useAdminCursorList } from "@/app/lib/hooks/useAdminCursorList"
@@ -69,7 +72,7 @@ export default function AdminBugsPage() {
       if (statusFilter) params.set("status", statusFilter)
       params.set("sort", sortOption.sort)
       params.set("dir", sortOption.dir)
-      params.set("limit", "20")
+      params.set("limit", String(list.pageSize))
       if (cursor) params.set("cursor", cursor)
       return `/api/admin/bugs?${params.toString()}`
     },
@@ -400,7 +403,7 @@ export default function AdminBugsPage() {
               <span className="text-[11px] text-text-muted">
                 {modalNote.trim()
                   ? `${modalNote.trim().length}/${BUG_REPORT_ACTION_MODAL.noteMaxLength} — this note will be sent.`
-                  : `${BUG_REPORT_ACTION_MODAL.useDefaultLabel(actionModal.status)}: “${(BUG_REPORT_STATUS_COPY as Record<string, string>)[actionModal.status] ?? BUG_REPORT_STATUS_COPY.DEFAULT}”`}
+                  : `${defaultNoteLabelFor(actionModal.status)}: “${(BUG_REPORT_STATUS_COPY as Record<string, string>)[actionModal.status] ?? BUG_REPORT_STATUS_COPY.DEFAULT}”`}
               </span>
             </label>
 

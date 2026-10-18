@@ -5,8 +5,8 @@ import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Heart, ThumbsDown, MessageCircle, Bookmark, Share2, BadgeDollarSign, Maximize2, MapPin, Navigation, ClipboardList, Reply, Archive } from "lucide-react"
-import { AppCard, TrustBadge, VehicleChip, AppEmptyState, ImageLightbox, AppAvatar } from "@/app/components/ui"
-import { VEHICLE_REGISTRY, EMPTY_STATES, MODERATION_CONFIG, POST_ACTIONS_CONFIG } from "@/app/lib/config"
+import { AppCard, TrustBadge, VehicleChip, AppEmptyState, ImageLightbox, AppAvatar, ViewMoreButton } from "@/app/components/ui"
+import { VEHICLE_REGISTRY, EMPTY_STATES, MODERATION_CONFIG, POST_ACTIONS_CONFIG, PAGINATION_CONFIG } from "@/app/lib/config"
 import { showStepFare, showStepVehicle } from "@/app/lib/config/routeSteps"
 import { CommentInput, CommentList } from "@/app/components/features/comments"
 import { LiveNavigationModal } from "@/app/components/features/posts"
@@ -177,14 +177,31 @@ export default function PostDetailPage() {
     `/api/posts/${postId}`,
     { ttlSec: 60, enabled: ready }
   )
-  const { data: commentData, loading: commentsLoading, mutate: mutateComments } = useCachedFetch<{ comments: Comment[] }>(
+  const { data: commentData, loading: commentsLoading, mutate: mutateComments } = useCachedFetch<{
+    comments: Comment[]
+    nextCursor?: string | null
+  }>(
     ready ? `post-comments:${viewerId}:${postId}` : null,
     `/api/posts/${postId}/comments`,
     { ttlSec: 60, enabled: ready }
   )
 
+  // Cursor "View more" — appended windows live outside the cached first page
+  // (cache stays first-page-only per the API contract); a post switch resets.
+  const [moreComments, setMoreComments] = useState<Comment[]>([])
+  const [moreCursor, setMoreCursor] = useState<string | null | undefined>(undefined)
+  const [loadingMoreComments, setLoadingMoreComments] = useState(false)
+  useEffect(() => {
+    setMoreComments([])
+    setMoreCursor(undefined)
+    setLoadingMoreComments(false)
+  }, [postId])
+
   const post = postData?.post ?? null
-  const comments = commentData?.comments ?? []
+  const comments = [...(commentData?.comments ?? []), ...moreComments]
+  // Absent nextCursor on a legacy/cached payload → pagination stops silently.
+  const commentsNextCursor: string | null =
+    moreCursor !== undefined ? moreCursor : (commentData?.nextCursor ?? null)
 
   useEffect(() => {
     if (!highlightCommentId || commentsLoading || comments.length === 0) return
@@ -335,6 +352,8 @@ export default function PostDetailPage() {
   }
 
   const handleDeleteComment = (commentId: string) => {
+    // Appended windows hold older pages — keep them in sync too.
+    setMoreComments((prev) => prev.filter((c) => c.id !== commentId))
     mutateComments((prev) => ({ comments: (prev?.comments ?? []).filter((c) => c.id !== commentId) }))
     if (postData) {
       mutatePost({ ...postData, post: { ...postData.post, comments: Math.max(0, postData.post.comments - 1) } })
@@ -342,6 +361,7 @@ export default function PostDetailPage() {
   }
 
   const handleUpdateComment = (comment: { id: string; text: string }) => {
+    setMoreComments((prev) => prev.map((c) => (c.id === comment.id ? { ...c, text: comment.text } : c)))
     mutateComments((prev) => ({
       comments: (prev?.comments ?? []).map((c) => (c.id === comment.id ? { ...c, text: comment.text } : c)),
     }))
@@ -351,10 +371,37 @@ export default function PostDetailPage() {
     try {
       const res = await fetch(`/api/posts/${postId}/comments`)
       if (res.ok) {
-        const data = await res.json()
-        mutateComments({ comments: data.comments ?? [] })
+        const data = (await res.json()) as { comments?: Comment[]; nextCursor?: string | null }
+        // Keep the window cursor so an in-progress "View more" chain survives a restore refresh.
+        mutateComments({ comments: data.comments ?? [], nextCursor: data.nextCursor ?? null })
       }
     } catch { /* keep cached list */ }
+  }
+
+  /** Cursor "View more" — appends the next (older) comment window, deduped with existing items first. */
+  const handleViewMoreComments = async () => {
+    if (!commentsNextCursor || loadingMoreComments) return
+    setLoadingMoreComments(true)
+    try {
+      const params = new URLSearchParams()
+      params.set("cursor", commentsNextCursor)
+      params.set("limit", String(PAGINATION_CONFIG.comments.defaultLimit))
+      const res = await fetch(`/api/posts/${postId}/comments?${params.toString()}`)
+      const payload = (await res.json().catch(() => null)) as
+        | { comments?: Comment[]; nextCursor?: string | null }
+        | null
+      if (!res.ok || !payload) throw new Error("view more failed")
+      const incoming: Comment[] = Array.isArray(payload.comments) ? payload.comments : []
+      setMoreComments((prev) => {
+        const seen = new Set([...(commentData?.comments ?? []), ...prev].map((c) => c.id))
+        return [...prev, ...incoming.filter((c) => !seen.has(c.id))]
+      })
+      setMoreCursor(payload.nextCursor ?? null)
+    } catch {
+      // Silent — the button stays so the user can retry.
+    } finally {
+      setLoadingMoreComments(false)
+    }
   }
 
   const refreshPost = async () => {
@@ -999,6 +1046,13 @@ export default function PostDetailPage() {
           onUpdated={handleUpdateComment}
           onRestored={() => void refreshComments()}
           highlightId={highlightCommentId}
+        />
+        <ViewMoreButton
+          onViewMore={() => void handleViewMoreComments()}
+          loading={loadingMoreComments}
+          shown={comments.length}
+          total={null}
+          hasMore={commentsNextCursor !== null}
         />
       </div>
 

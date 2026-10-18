@@ -18,6 +18,7 @@ import {
 import { validateFeedDiversityConfigValue } from "./feedAlgorithm";
 import { DEFAULT_EMAIL_CONFIG } from "./email";
 import { INVITE_CONFIG } from "./inviteConfig";
+import { PAGINATION_CONFIG } from "./pagination";
 import {
   normalizeAnnouncements,
   isSafeAnnouncementHref,
@@ -59,11 +60,12 @@ export const ADMIN_BULK_SELECT_META = {
  * Admin cursor-pagination meta (config-driven, bulk-safe).
  * Cursor "View more" APPENDS windows so bulk selection (a Set of ids held
  * outside the list) is never lost — page-number replacement is what caused
- * the deferred bulk-select state risk. `pageSize` matches the API default.
+ * the deferred bulk-select state risk. `defaultLimit`/`maxLimit` mirror the
+ * admin API's clamp (`PAGINATION_CONFIG.admin`) so UI and API can never drift.
  */
 export const ADMIN_PAGINATION_META = {
-  defaultLimit: 20,
-  maxLimit: 50,
+  defaultLimit: PAGINATION_CONFIG.admin.defaultLimit,
+  maxLimit: PAGINATION_CONFIG.admin.maxLimit,
   viewMoreLabel: "View more",
 } as const;
 

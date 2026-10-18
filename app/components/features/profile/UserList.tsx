@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import { AppAvatar, AppEmptyState } from "@/app/components/ui"
-import { EMPTY_STATES } from "@/app/lib/config"
+import { AppAvatar, AppEmptyState, ViewMoreButton } from "@/app/components/ui"
+import { PAGINATION_CONFIG } from "@/app/lib/config"
 import { filterVisibleUsers } from "@/app/lib/config/userVisibility"
 
 interface UserSummary {
@@ -21,6 +21,12 @@ interface UserSummary {
   deletionScheduledFor?: string | Date | null
 }
 
+interface UserListResponse {
+  users?: UserSummary[] | null
+  /** Cursor for the next window; absent on legacy/cached payloads (→ no more). */
+  nextCursor?: string | null
+}
+
 interface UserListProps {
   userId: string
   username: string
@@ -30,21 +36,58 @@ interface UserListProps {
 export function UserList({ userId, username, type }: UserListProps) {
   const [users, setUsers] = useState<UserSummary[]>([])
   const [loading, setLoading] = useState(true)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     if (!userId) return
+    let cancelled = false
+    setLoading(true)
+    setNextCursor(null)
+    setHasMore(false)
     const load = async () => {
       try {
         const res = await fetch(`/api/users/${userId}/${type}`)
-        if (res.ok) {
-          const data = await res.json()
+        if (res.ok && !cancelled) {
+          const data = (await res.json()) as UserListResponse
           // Server already excludes; stale caches get the same rule client-side.
           setUsers(filterVisibleUsers(data.users ?? []))
+          // Legacy/cached payloads without nextCursor → hasMore stays false.
+          setNextCursor(data.nextCursor ?? null)
+          setHasMore(Boolean(data.nextCursor))
         }
-      } catch { /* ignore */ } finally { setLoading(false) }
+      } catch { /* ignore */ } finally { if (!cancelled) setLoading(false) }
     }
     load()
+    return () => { cancelled = true }
   }, [userId, type])
+
+  /** Cursor "View more" — appends the next window, deduped by user id. */
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const params = new URLSearchParams()
+      params.set("cursor", nextCursor)
+      params.set("limit", String(PAGINATION_CONFIG.userLists.defaultLimit))
+      const res = await fetch(`/api/users/${userId}/${type}?${params.toString()}`)
+      if (!res.ok) throw new Error("view more failed")
+      const data = (await res.json()) as UserListResponse
+      const incoming = filterVisibleUsers(data.users ?? [])
+      setUsers((prev) => {
+        const seen = new Set(prev.map((u) => u.id))
+        return [...prev, ...incoming.filter((u) => !seen.has(u.id))]
+      })
+      // Missing nextCursor (legacy payload) ends pagination silently.
+      setNextCursor(data.nextCursor ?? null)
+      setHasMore(Boolean(data.nextCursor))
+    } catch {
+      // Silent — the button stays so the user can retry.
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const heading = type === "followers" ? "Followers" : "Following"
   const emptyPreset = type === "followers" ? "followers" : "following"
@@ -99,6 +142,13 @@ export function UserList({ userId, username, type }: UserListProps) {
               </div>
             </Link>
           ))}
+          <ViewMoreButton
+            onViewMore={() => void loadMore()}
+            loading={loadingMore}
+            shown={users.length}
+            total={null}
+            hasMore={hasMore}
+          />
         </div>
       )}
     </div>

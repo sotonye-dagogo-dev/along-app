@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { clampPageLimit } from "@/app/lib/config";
 import { queryAudit } from "@/app/lib/services/auditService";
 
 /** Admin audit trail — GET ?action=&entity=&actorId=&cursor=&limit= */
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
       entity: searchParams.get("entity") ?? undefined,
       actorId: searchParams.get("actorId") ?? undefined,
       cursor: searchParams.get("cursor") ?? undefined,
-      limit: Number(searchParams.get("limit")) || 20,
+      limit: clampPageLimit(searchParams.get("limit"), "admin"),
     });
     return NextResponse.json(data, { status: 200 });
   } catch (e) {

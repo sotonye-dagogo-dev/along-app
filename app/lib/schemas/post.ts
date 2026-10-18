@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ROUTE_VALIDATION_CONFIG } from "@/app/lib/config/routeValidation";
 import { ROUTE_TAG_CONFIG } from "@/app/lib/config/routeTags";
+import { PAGINATION_CONFIG } from "@/app/lib/config/pagination";
 
 /** Empty-string-tolerant optional text: "" (e.g. untouched optional inputs) parses as undefined. */
 const optionalText = (min: number) =>
@@ -116,5 +117,9 @@ export const COMMENT_SCHEMA = z.object({
 
 export const FEED_QUERY_SCHEMA = z.object({
   cursor: z.string().optional(),
-  limit: z.coerce.number().min(1).max(50).default(10),
+  limit: z.coerce
+    .number()
+    .min(1)
+    .max(PAGINATION_CONFIG.feed.maxLimit)
+    .default(PAGINATION_CONFIG.feed.defaultLimit),
 });

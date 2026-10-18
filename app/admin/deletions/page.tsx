@@ -7,7 +7,7 @@ import { toastService } from "@/app/lib/services/toastService";
 import { modalService } from "@/app/lib/services/modalService";
 import { undoService } from "@/app/lib/services/undoService";
 import { AppTableRowActions, type TableRowAction } from "@/app/components/ui";
-import { ADMIN_USER_DELETION_META } from "@/app/lib/config/admin";
+import { ADMIN_PAGINATION_META, ADMIN_USER_DELETION_META } from "@/app/lib/config/admin";
 
 interface DeletionRequest {
   id: string;
@@ -45,8 +45,12 @@ export default function AdminDeletionsPage() {
   const load = useCallback(async (status?: string) => {
     setLoading(true);
     try {
-      const qs = status ? `?status=${status}` : "";
-      const res = await fetch(`/api/admin/deletions${qs}`);
+      const params = new URLSearchParams();
+      if (status) params.set("status", status);
+      // Simple unpaginated backlog view (no cursor/load-more UI) — request the
+      // admin max window so pending + history rows are not silently truncated.
+      params.set("limit", String(ADMIN_PAGINATION_META.maxLimit));
+      const res = await fetch(`/api/admin/deletions?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setRequests(data.requests ?? []);

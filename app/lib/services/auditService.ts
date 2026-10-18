@@ -5,6 +5,7 @@
  * during migration rollout) by returning empty results.
  */
 import { prisma } from "@/app/lib/db/prisma";
+import { clampPageLimit } from "@/app/lib/config";
 
 export interface AuditInput {
   actorId?: string | null;
@@ -51,7 +52,7 @@ export async function queryAudit(q: AuditQuery): Promise<{
   }>;
   nextCursor: string | null;
 }> {
-  const limit = Math.min(100, Math.max(1, q.limit ?? 20));
+  const limit = clampPageLimit(q.limit, "admin");
   try {
     const where: Record<string, unknown> = {};
     if (q.action) where.action = { contains: q.action, mode: "insensitive" };
@@ -61,7 +62,9 @@ export async function queryAudit(q: AuditQuery): Promise<{
       take: limit + 1,
       ...(q.cursor ? { skip: 1, cursor: { id: q.cursor } } : {}),
       where: where as never,
-      orderBy: { createdAt: "desc" },
+      // id tiebreaker: createdAt alone is nondeterministic on same-second
+      // writes, which can drop/duplicate rows across cursor pages.
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;

@@ -2,10 +2,20 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: DB pooler strategy + sanitized style proxy)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 78 — SEO title suffix + feed page size + pagination compliance (2026-10-18, execute-feature)
+
+- [x] Single-source the ` | Along` SEO title suffix (`DEFAULT_META.titleSuffix` + root `title.template`; OG/Twitter composed once in builders — no more double suffix on any page)
+- [x] Feed default page size 10 → 20 across server fallback, `DEFAULT_FEED_CONFIG`, `FEED_STREAM_CONFIG`, and the zod query schema
+- [x] Platform-wide pagination compliance: central `PAGINATION_CONFIG` + `clampPageLimit` on every cursor route, id sort-key determinism, limit-scoped notifications cache keys (badge `limit=1` can no longer poison the page cache)
+- [x] `feedStream` transient-fetch hardening: failures keep cursor/`hasMore` intact with config-driven exponential backoff + chained retry (one 500 no longer permanently strands infinite scroll)
+- [x] Cursor load-more everywhere it was missing: followers/following (was unbounded), post-detail comments, and all six profile tabs on both profile pages (reusable `useCursorList` hook + `ViewMoreButton`)
+
+---
 
 ## Sprint 77 — DB pooler strategy + sanitized style proxy (2026-10-18, execute-feature)
 

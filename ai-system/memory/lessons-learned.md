@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: runtime DB pooler precedence — transaction mode for serverless, session mode CLI-only)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: central pagination config + failed-fetch ≠ end-of-list + single-source SEO suffix)
 > - last-verified-against-code: 2026-10-18 (Sprint 76 in-runner QA: tsc 0, jest 105/105 suites 1047/1047, build clean; config count 89 re-verified)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -31,6 +31,17 @@
 ---
 
 ## Lessons
+
+## Centralize Cross-Cutting Query Defaults in Config; Never Trust a Failed Fetch as End-of-List
+
+**Context:** Sprint 78 (issue #25): every list route carried its own `Math.min(Number(limit) || 10, 50)`-style default (feed drifted to 10 while the client wanted 20), the badge poller (`/api/notifications?limit=1`) shared a first-page Redis key with the page's 20-row cache, and `feedStream.fetchFeed` mapped any transient 500 onto `hasMore: false` — one blip permanently stranded infinite scroll until reload. SEO titles had the same class of bug: the root layout `title.template` AND every page manually appended ` | Along`, producing ` | Along | Along`.
+
+**What We Learned:** (1) Cross-cutting request defaults (page sizes, limits) belong in one config module (`app/lib/config/pagination.ts` `PAGINATION_CONFIG` + `clampPageLimit`) consumed by both server routes and client callers — grep-able, testable via source scans, and drift-proof. (2) Cache keys must include every axis that changes the payload shape (limit is part of the shape). (3) A failed fetch is *unknown*, not *empty*: map it to a sentinel (e.g. `null`), keep the cursor/`hasMore`, and retry with config-driven exponential backoff. (4) When a framework already owns a suffix/template (Next `title.template`), sub-systems must NOT re-apply it manually — compose once where the framework does not template (OG/Twitter) and nowhere else.
+
+**Apply When:** Adding any paginated list surface, any shared cache key, any streaming/infinite-scroll fetch, or any metadata title composition — start from the central config/helper, never inline a literal.
+
+**Supersedes:** None
+**Superseded by:** None
 
 ## Preserve PostgreSQL Temporal Text During Cross-Database Transfers
 

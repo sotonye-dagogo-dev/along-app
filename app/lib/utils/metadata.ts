@@ -31,7 +31,7 @@ export function buildMetadata({
   // shared builder stays callable for every page type without casts at
   // call sites.
   const openGraph = {
-    title: `${title} | Along`,
+    title: `${title}${DEFAULT_META.titleSuffix}`,
     description,
     url,
     siteName: DEFAULT_META.siteName,
@@ -43,13 +43,14 @@ export function buildMetadata({
 
   return {
     metadataBase: new URL(DEFAULT_META.url),
-    title: `${title} | Along`,
+    // Bare title: the root layout title.template appends ` | Along` once.
+    title,
     description,
     alternates: { canonical: url },
     openGraph,
     twitter: {
       card: "summary_large_image",
-      title: `${title} | Along`,
+      title: `${title}${DEFAULT_META.titleSuffix}`,
       description,
       images: [image],
     },
@@ -127,11 +128,12 @@ export async function buildPostMetadata(
   const ogImage = resolveOgImage(firstImage);
 
   return {
-    title: `${title} | Along`,
+    // Bare title — the root layout title.template appends ` | Along` once.
+    title,
     description,
     alternates: { canonical: `${DEFAULT_META.url}${path}` },
     openGraph: {
-      title: `${title} | Along`,
+      title: `${title}${DEFAULT_META.titleSuffix}`,
       description,
       url: `${DEFAULT_META.url}${path}`,
       siteName: DEFAULT_META.siteName,
@@ -141,7 +143,7 @@ export async function buildPostMetadata(
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} | Along`,
+      title: `${title}${DEFAULT_META.titleSuffix}`,
       description,
       images: [ogImage],
     },
@@ -179,11 +181,12 @@ export async function buildProfileMetadata(
   const ogImage = resolveOgImage(profile.avatar);
 
   return {
-    title: `${displayName} (@${profile.userName}) | Along`,
+    // Bare title — the root layout title.template appends ` | Along` once.
+    title: `${displayName} (@${profile.userName})`,
     description,
     alternates: { canonical: `${DEFAULT_META.url}${path}` },
     openGraph: {
-      title: `${displayName} (@${profile.userName}) | Along`,
+      title: `${displayName} (@${profile.userName})${DEFAULT_META.titleSuffix}`,
       description,
       url: `${DEFAULT_META.url}${path}`,
       siteName: DEFAULT_META.siteName,
@@ -193,7 +196,7 @@ export async function buildProfileMetadata(
     },
     twitter: {
       card: "summary_large_image",
-      title: `${displayName} (@${profile.userName}) | Along`,
+      title: `${displayName} (@${profile.userName})${DEFAULT_META.titleSuffix}`,
       description,
       images: [ogImage],
     },

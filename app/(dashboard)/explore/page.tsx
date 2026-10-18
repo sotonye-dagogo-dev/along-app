@@ -11,6 +11,7 @@ import { ExplorePinCard, FilterChipsBar, ExploreSearchInput } from "@/app/compon
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
 import { useUserLocation } from "@/app/lib/hooks/useUserLocation"
 import { EXPLORE_PIN_POPUP_CONFIG } from "@/app/lib/config/explore"
+import { PAGINATION_CONFIG } from "@/app/lib/config"
 import { getMapStyleStack, rasterFallbackDepth } from "@/app/lib/config/mapStack"
 import { MAP_PINS_CONFIG } from "@/app/lib/config/mapPins"
 import { MapRoutePin, MapUserDot } from "@/app/components/features/posts/MapPins"
@@ -153,7 +154,7 @@ export default function ExplorePage() {
   // Public route list — shared cache across viewers, SWR so the map pins paint instantly
   const { data: exploreData } = useCachedFetch<{ posts: ExploreApiPost[] }>(
     "posts:explore",
-    "/api/posts?limit=100",
+    `/api/posts?limit=${PAGINATION_CONFIG.explore.defaultLimit}`,
     { ttlSec: 120 }
   )
 
