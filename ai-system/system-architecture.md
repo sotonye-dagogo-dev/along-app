@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: refresh-notice once-flag + catch-all note)
-> - last-verified-against-code: 2026-10-18 (Sprint 76 in-runner QA: tsc 0, jest 105/105 suites 1047/1047, build clean)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: runtime DB pooler strategy + map style proxy)
+> - last-verified-against-code: 2026-10-18 (Sprint 77 in-runner QA: tsc 0, jest 107/107 suites 1071/1071, build clean)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App\* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
@@ -166,7 +166,11 @@ Write operation → API route
 
 | Config Key                                                    | Purpose                                                                                                                                                                 | Location                    | Default       |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------- |
-| DATABASE_URL                                                  | PostgreSQL connection                                                                                                                                                   | .env                        | —             |
+| DATABASE_URL                                                  | RUNTIME PostgreSQL connection (transaction-mode pooler, port 6543 — `resolveDatabaseUrl()` prefers this name in production; Sprint 77 fixed the old DIRECT-first precedence that caused EMAXCONNSESSION 500s) | .env                        | —             |
+| DIRECT_URL                                                    | CLI-only session-mode connection (port 5432 — `prisma migrate`/seeds via `prisma.config.ts`; NEVER the runtime URL; caps at dashboard Pool Size)                          | .env                        | —             |
+| DB_POOL_MAX                                                   | Per-instance Prisma pg pool size (clamped 1–20; `lib/config/dbPool.ts buildPgAdapterOptions`)                                                                          | .env (optional)            | 5             |
+| DB_CONNECT_TIMEOUT_MS                                         | New-connection wait before fail (clamped 500–15000ms)                                                                                                                   | .env (optional)            | 5000          |
+| DB_IDLE_TIMEOUT_MS                                            | Idle-connection close delay (clamped 1000–120000ms)                                                                                                                     | .env (optional)            | 10000         |
 | JWT_SECRET                                                    | JWT signing key                                                                                                                                                         | .env                        | —             |
 | JWT_EXPIRES_IN                                                | Token expiration                                                                                                                                                        | .env                        | 7d            |
 | PROJECT_ENV                                                   | Deployment stage — **wins when set** (`lib/config/env.ts` `getEffectiveEnv`)                                                                                            | `app/lib/config/env.ts`     | `development` |

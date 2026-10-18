@@ -2,11 +2,26 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: refresh-notice once-flag + catch-all note)
-> - last-synced: 2026-10-18 (Sprint 76)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: DB pooler fix + style proxy)
+> - last-synced: 2026-10-18 (Sprint 77)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 77 — Post-Migration DB Pool Exhaustion + MapLibre Null Warnings (2026-10-18, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, runtime connection-strategy fix + style proxy). Root cause: `resolveDatabaseUrl()` production branch preferred DIRECT_URL (session-mode pooler, 15-client cap) over DATABASE_URL (transaction mode) while pg opened max:10 per warm instance — EMAXCONNSESSION 500s across every DB-backed route. QA full in-runner: tsc 0 errors, jest 107 suites / 1071 tests pass (+2 suites, +24 tests), lint clean on touched files, next build clean.
+
+| Size | Task                                                                                                                                                                                                       | Status |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| [M]  | `dbPool.ts` (new) — `DB_POOL_CONFIG`, `isTransactionModePoolerUrl` (6543 / pgbouncer flag), `isSessionModePoolerUrl` (warn signal), `buildPgAdapterOptions` (max 5 via DB_POOL_MAX, connect 5s, idle 10s, allowExitOnIdle, prepare:false iff tx-mode); barrel exports | [x]    |
+| [S]  | `resolveDatabaseUrl()` precedence — prod DATABASE_URL-first, dev LOCAL_DB-first; CLI (prisma.config.ts) stays DIRECT-first (unchanged); `.env.example` two-pooler contract + DB_POOL_MAX/DB_CONNECT_TIMEOUT_MS/DB_IDLE_TIMEOUT_MS docs | [x]    |
+| [S]  | `prisma.ts` — globalThis singleton in every env (second module copy = second pool); `buildPgAdapterOptions` consumed; one-time production warn when runtime resolves a session-mode URL                    | [x]    |
+| [M]  | Style proxy — `GET /api/maps/style?name=` (whitelisted, Redis read-through 86400s, 8s upstream budget, server identity headers, stale-on-error); `mapProxyService.getMapStyleDocument`; `vectorStyleUrl` → proxy path; apiRegistry + sw.js cacheable entries | [x]    |
+| [S]  | `mapStyleSanitize.ts` (new) — coalesce-wraps data-driven numeric props (get/has/feature-state/id in tree) with `numericExpressionFallbacks`; idempotent, non-mutating, static/zoom-only untouched           | [x]    |
+| [M]  | Tests — `dbPool.test.ts` (new, 15: detection/options/clamping/precedence matrix); `mapStyleSanitize.test.ts` (new, 7: detection/wrap/idempotency/mutation/invalid/NaN-fallback); mapStack proxy tests (+4); 107/107 suites green                    | [x]    |
+
+---
 
 ## Sprint 76 — Refresh-Notice Once-Flag + Catch-All Note (2026-10-18, execute-feature)
 

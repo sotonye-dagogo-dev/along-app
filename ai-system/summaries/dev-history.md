@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening — friendly labels, tap-to-assign, Find on map, vehicle traces, deferred recenter)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: DB pooler strategy + sanitized style proxy)
 > - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
 > - staleness-policy: historical entries do not go stale
 
@@ -1719,3 +1719,23 @@ The "maintenance over — kindly refresh" strip no longer re-nags users who alre
 **Files:**
 
 - Edited: `lib/config/{siteNotice,safeRefresh,index}`, `lib/pwa/safeClientRefresh`, `components/ui/SiteNotices`, locales `{en,pcm}`, `__tests__/config/{siteNotice,locales}.test.ts`
+
+## 2026-10-18 — Sprint 77: post-migration DB pool exhaustion + MapLibre null warnings
+
+**Summary:**
+Fixed the production 500s that hit every DB-backed route after the Supabase migration (feed cursor pages, reviews, blogs, site config/stats, intermittent auth/me) — the runtime PrismaClient was resolving the SESSION-mode pooler (DIRECT_URL, port 5432, hard-capped at the dashboard Pool Size, commonly 15) while pg opened `max: 10` per warm Vercel instance, so any real concurrency hit `EMAXCONNSESSION`. Runtime URL precedence now prefers the TRANSACTION-mode pooler (prod `DATABASE_URL → …`, dev `LOCAL_DB → …`; CLI stays DIRECT-first), backed by a new config-driven `dbPool.ts` (small per-instance pool via `DB_POOL_MAX` default 5, connect timeout 5s, idle release, `prepare: false` iff transaction-mode — Supavisor rejects prepared statements there), a globalThis Prisma singleton in every env, and a one-time production warn on a session-mode resolution. Also shipped a same-origin sanitized map-style proxy (`GET /api/maps/style?name=`) that coalesce-wraps data-driven numeric style expressions with config fallbacks, silencing the MapLibre "Expected value to be of type number, but found null instead" console warning class (maplibre-gl-js#7856) for every renderer. Non-breaking: no migration, no removed APIs, same response shapes.
+
+**Completed:**
+
+- `app/lib/config/dbPool.ts` (new): `DB_POOL_CONFIG`, `isTransactionModePoolerUrl` (6543/pgbouncer flag), `isSessionModePoolerUrl` (warn signal), `buildPgAdapterOptions` (max 5 via `DB_POOL_MAX`, connect 5s, idle 10s, allowExitOnIdle, prepare:false iff tx-mode); barrel exports
+- `resolveDatabaseUrl()` precedence fix + `.env.example` two-pooler contract docs + optional `DB_POOL_MAX` / `DB_CONNECT_TIMEOUT_MS` / `DB_IDLE_TIMEOUT_MS` knobs
+- `prisma.ts`: globalThis singleton in every env; pooler-aware adapter; one-time production session-mode warn
+- Style proxy: `mapStyleSanitize.ts` (new pure sanitizer), `mapProxyService.getMapStyleDocument` (Redis read-through + stale-on-error), `app/api/maps/style/route.ts` (new), `vectorStyleUrl` → proxy path, apiRegistry + sw.js cacheable entries
+- Tests: `dbPool.test.ts` (new, 15), `mapStyleSanitize.test.ts` (new, 7), mapStack proxy tests (+4)
+
+**QA:** tsc 0 errors; jest 107/107 suites 1071/1071 (+2 suites, +24 tests); lint clean on touched files; build clean (`/api/maps/style` live in route manifest).
+
+**Files:**
+
+- Created: `lib/config/dbPool.ts`, `lib/utils/mapStyleSanitize.ts`, `api/maps/style/route.ts`, `__tests__/config/dbPool.test.ts`, `__tests__/utils/mapStyleSanitize.test.ts`
+- Edited: `lib/config/{env,mapStack,apiRegistry,index}.ts`, `lib/db/prisma.ts`, `lib/services/mapProxyService.ts`, `public/sw.js`, `.env.example`, `__tests__/config/mapStack.test.ts`, ai-system docs

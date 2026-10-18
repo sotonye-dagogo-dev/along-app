@@ -92,7 +92,21 @@ export interface MapStackConfig {
   /** Identity headers the server proxy sends upstream (policy compliance). */
   serverIdentity: { userAgent: string; referer: string };
   /** Redis TTLs (seconds) for proxy read-through caches. */
-  cacheTtlSec: { route: number; geocode: number; reverse: number };
+  cacheTtlSec: { route: number; geocode: number; reverse: number; style: number };
+  /**
+   * Relative path of the sanitized style proxy. Renderers load vector styles
+   * through it (Redis read-through + data-driven null hardening) instead of
+   * hitting OpenFreeMap browser-direct — same origin, same MapLibre contract.
+   */
+  styleProxyPath: string;
+  /**
+   * Numeric fallbacks for data-driven style expressions that evaluate to
+   * `null` on features missing the property (MapLibre warns
+   * "Expected value to be of type number, but found null instead" —
+   * maplibre-gl-js#7856). The sanitizer coalesce-wraps only expressions that
+   * read feature data; static values are untouched.
+   */
+  numericExpressionFallbacks: Record<string, number>;
   /** Attributions per tile source (rendered by the map footer). */
   attributions: { openfreemap: string; carto: string; osm: string; esri: string };
   /** Hosts worth preconnecting (keyless only — no mapbox/api-key hosts). */
@@ -154,7 +168,22 @@ export const MAP_STACK_CONFIG: MapStackConfig = {
     userAgent: "AlongApp/1.0 (https://www.alongng.com)",
     referer: "https://www.alongng.com/",
   },
-  cacheTtlSec: { route: 86400, geocode: 2592000, reverse: 2592000 },
+  cacheTtlSec: { route: 86400, geocode: 2592000, reverse: 2592000, style: 86400 },
+  // Same-origin proxy path — renderers load vector styles through the server
+  // (Redis read-through + data-driven null hardening), never browser-direct.
+  styleProxyPath: "/api/maps/style",
+  // Data-driven numeric props whose `["get", …]` expressions can evaluate to
+  // null on features missing the property. Fallbacks mirror typical OpenFreeMap
+  // defaults; coalesce-wrapping silences the MapLibre null-type console warning
+  // (maplibre-gl-js#7856) without changing how valid features render.
+  numericExpressionFallbacks: {
+    "text-size": 12,
+    "icon-size": 1,
+    "line-width": 1,
+    "line-gap-width": 0,
+    "circle-radius": 4,
+    "circle-stroke-width": 1,
+  },
   attributions: {
     openfreemap: "&copy; <a href=\"https://openfreemap.org/\">OpenFreeMap</a> &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>",
     carto: "&copy; <a href=\"https://carto.com/\">CARTO</a> &copy; OpenStreetMap",
@@ -164,12 +193,24 @@ export const MAP_STACK_CONFIG: MapStackConfig = {
   preconnectHosts: ["https://tiles.openfreemap.org", "https://tile.openstreetmap.org"],
 };
 
-/** Primary keyless vector style URL for a theme. */
+/**
+ * Primary keyless vector style URL for a theme — the SAME-ORIGIN sanitized
+ * proxy (`/api/maps/style?name=…`). The proxy fetches the OpenFreeMap style
+ * server-side (Redis-cached, data-driven null hardening) so the browser
+ * never depends on OpenFreeMap availability for the style document and the
+ * MapLibre null-type warning is suppressed at the source.
+ */
 export function vectorStyleUrl(isDark: boolean): string {
   const name = isDark
     ? MAP_STACK_CONFIG.defaultVectorStyle.dark
     : MAP_STACK_CONFIG.defaultVectorStyle.light;
-  return MAP_STACK_CONFIG.vectorStyles[name];
+  const path = MAP_STACK_CONFIG.styleProxyPath || "/api/maps/style";
+  return `${path}?name=${encodeURIComponent(name)}`;
+}
+
+/** Upstream OpenFreeMap style URL for a whitelisted style name (server proxy only). */
+export function vectorStyleUpstreamUrl(name: string): string | null {
+  return MAP_STACK_CONFIG.vectorStyles[name as MapVectorStyleName] ?? null;
 }
 
 /** Keyless raster tile URL at a fallback depth (0 = first fallback). */

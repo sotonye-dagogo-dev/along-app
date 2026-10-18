@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: SiteNotices + safeClientRefresh consume siteNotice isSafeRefreshCompleted/completedAtKey — refresh once-flag edge; no new modules)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: env/dbPool buildPgAdapterOptions → prisma PrismaPg; mapStyleSanitize + mapProxyService.getMapStyleDocument → /api/maps/style; no new modules)
 > - last-verified-against-code: 2026-10-18 (Sprint 75 in-runner QA: tsc 0, jest 105/105 suites 1042/1042, build clean; config count 89 re-verified)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
@@ -137,7 +137,7 @@ PWA (public/sw.js)
 `scripts/db-restore.ts`, and `scripts/backup-supabase.ts`
 -> `app/lib/config/dbTransfer.ts` (roles, stage plans, safety and operator copy)
 -> `scripts/lib/dbTransfer/` (URL, connection, introspection, dump/read, state, restore, verification)
--> PostgreSQL via `pg` (Supabase primary and retained Prisma direct mirror)
+-> PostgreSQL via `pg` (Supabase primary and retained Prisma direct mirror; Sprint 77: runtime pooler-first via dbPool.buildPgAdapterOptions — transaction mode, prepare:false)
 -> local `backups/db-transfer/` artifacts and atomic journal
 
 ```
