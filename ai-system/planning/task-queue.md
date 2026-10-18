@@ -2,11 +2,26 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 75: notice tightening — safe refresh + rich announcements + tag limits + map picker scroll)
-> - last-synced: 2026-10-18 (Sprint 75)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: refresh-notice once-flag + catch-all note)
+> - last-synced: 2026-10-18 (Sprint 76)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 76 — Refresh-Notice Once-Flag + Catch-All Note (2026-10-18, execute-feature)
+
+> **Section summary:** Directive close-out, non-breaking (no migration, no new deps, client-only flag + config copy). QA full in-runner: tsc 0 errors, jest 105 suites / 1047 tests pass (+5 new), lint clean on touched files, next build clean.
+
+| Size | Task                                                                                                                                                                                                       | Status |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| [S]  | Once-flag config — `SITE_NOTICE_CONFIG.refresh.completedAtKey` + `completedTtlMs` (7-day, mirrors push-dismiss), `copy.refresh.note` catch-all, `i18nKeys.refreshNote`, pure `isSafeRefreshCompleted` helper | [x]    |
+| [S]  | Flag preservation — `along-safe-refresh-done-at` on `SAFE_REFRESH_CONFIG.preserveLocalStorageKeys` so the flag survives the refresh storage clear                                                            | [x]    |
+| [S]  | Flag recording — `safeClientRefresh` writes the timestamp at sequence start (before the clear), self-recording for every caller                                                                              | [x]    |
+| [S]  | Strip suppression + note — `SiteNotices` reads the flag on mount (SSR-safe effect), hides the strip within TTL, renders the "already refreshed? ignore" italic note                                          | [x]    |
+| [S]  | i18n — `siteNotice.refreshNote` in en ("Already refreshed or updated? You can ignore this notice.") + pcm ("You don refresh or update already? You fit just ignore this notice."); locales REQUIRED_KEYS parity | [x]    |
+| [S]  | Tests — `siteNotice.test.ts` (+5: once-flag config/copy/i18n, helper fresh/expired/garbage, preserve-list contract); `locales.test.ts` refreshNote key                                                       | [x]    |
+
+---
 
 ## Sprint 73 — Supabase Database Transfer and Recovery (Complete)
 

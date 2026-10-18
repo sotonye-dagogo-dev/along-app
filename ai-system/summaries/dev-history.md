@@ -1700,3 +1700,22 @@ The platform now has an admin-configurable post-maintenance "kindly refresh" str
 
 - Created: `lib/config/{routeTags,safeRefresh}.ts`, `lib/pwa/safeClientRefresh.ts`, `__tests__/config/siteNotice.test.ts`
 - Edited: `lib/config/{siteNotice,admin,mapPicker,index}`, `lib/schemas/post`, `lib/services/routeDraftsService`, `api/site-config/route`, `components/ui/SiteNotices`, `components/pwa/OfflineBanner`, `components/features/posts/{ShareRouteModal,RequestRouteModal,RouteMap}`, `admin/config/page`, `globals.css`, locales, tests
+
+## 2026-10-18 — Sprint 76: refresh-notice once-flag + catch-all note
+
+**Summary:**
+The "maintenance over — kindly refresh" strip no longer re-nags users who already tapped Refresh now. A locally persisted once-flag (`along-safe-refresh-done-at`, written by `safeClientRefresh` itself, preserve-whitelisted through its storage clear, 7-day TTL) suppresses the strip for already-refreshed browsers, and a config-driven catch-all note ("Already refreshed or updated? You can ignore this notice.") covers manual-refresh / lost-flag edge cases. Non-breaking: first-time viewers of an enabled toggle still see the strip exactly as before.
+
+**Completed:**
+
+- Once-flag config: `SITE_NOTICE_CONFIG.refresh` += `completedAtKey` + `completedTtlMs` (7d, mirrors push-dismiss window) + `copy.refresh.note` + `i18nKeys.refreshNote` + pure `isSafeRefreshCompleted` helper (garbage/missing/expired → not completed, fail-open visible)
+- Flag preservation: `along-safe-refresh-done-at` on `SAFE_REFRESH_CONFIG.preserveLocalStorageKeys` (survives the refresh's own storage sweep)
+- Flag recording: `safeClientRefresh` writes the timestamp at sequence start (before the clear) — self-recording for every caller
+- Strip behavior: `SiteNotices` reads the flag in a mount-only SSR-safe effect; `refreshVisible = refreshNotice && !refreshDone`; catch-all note rendered as a smaller italic muted line
+- i18n: `siteNotice.refreshNote` in en + pcm; locales REQUIRED_KEYS parity
+
+**QA:** tsc 0 errors; jest 105/105 suites 1047/1047 (+5 new); lint clean on all six touched files; build clean.
+
+**Files:**
+
+- Edited: `lib/config/{siteNotice,safeRefresh,index}`, `lib/pwa/safeClientRefresh`, `components/ui/SiteNotices`, locales `{en,pcm}`, `__tests__/config/{siteNotice,locales}.test.ts`

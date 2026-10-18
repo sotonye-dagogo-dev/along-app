@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 75: notice tightening — safe refresh + rich announcements + tag limits + map picker scroll)
-> - last-verified-against-code: 2026-10-18 (tsc 0 errors, jest 105/105 suites 1042/1042, lint 0 new issues (pre-existing errors in untouched files), next build clean; node_modules installed in-runner)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: refresh-notice once-flag + catch-all note)
+> - last-verified-against-code: 2026-10-18 (tsc 0 errors, jest 105/105 suites 1047/1047, lint clean on touched files, next build clean; node_modules installed in-runner)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -3118,3 +3118,18 @@ Nothing pending — feature complete.
   **Notes / Blockers:**
 - None. Non-breaking: legacy announcement string still renders; new keys backfill via shipped defaults (no migration); safeClientRefresh never touches cookies; middleware/enforcement untouched.
 - Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 75 + this log + dev-history + project-decisions + system-architecture + index + repo-map + dependency-graph + in-progress reconciled).
+
+**Session 2026-10-18 — Refresh-notice once-flag + catch-all note (execute-feature, Sprint 76).**
+**Directive:** Quick inclusion on the maintenance-over refreshing feature — if the user already clicked the Refresh button, a locally stored flag must prevent the notice from repeatedly showing up; the notice text also gets an "ignore if you've already refreshed/updated" catch-all line. Install node modules + proper QA; config/metadata-driven, non-breaking + update-ai-system chain.
+**Found:** The Sprint 75 `refreshNotice` strip reappeared on every page load after a successful safe refresh because the only controlling signal was the admin SiteConfig boolean — no client-side "already refreshed" memory existed, so a still-enabled toggle kept nagging users who were already up to date. There was also no catch-all copy for users who refreshed manually (browser reload / another tab) and would otherwise see no way to dismiss the nag.
+**Implemented:** `SITE_NOTICE_CONFIG.refresh` gains `completedAtKey` (`along-safe-refresh-done-at`) + `completedTtlMs` (7 days, mirrors the push-prompt dismiss window), `copy.refresh.note` catch-all ("Already refreshed or updated? You can ignore this notice."), `i18nKeys.refreshNote`, and a pure `isSafeRefreshCompleted(storedValue, now)` helper (garbage/missing/expired values read as not-completed, so the strip fail-opens visible); the once-flag key joins `SAFE_REFRESH_CONFIG.preserveLocalStorageKeys` so it survives the refresh's own storage sweep; `safeClientRefresh` self-records the timestamp at sequence start (before the clear) so every caller records completion; `SiteNotices` reads the flag in a mount-only effect (SSR-safe, no hydration mismatch — the strip itself only appears after the async `/api/site-config` fetch anyway), hides the strip within TTL via `refreshVisible = refreshNotice && !refreshDone`, and renders the catch-all as a smaller italic muted third line; en + pcm locale keys (`siteNotice.refreshNote`) with locales REQUIRED_KEYS parity.
+**QA:** FULL gate green in-runner (`npm install` completed): `npx tsc --noEmit` 0 errors; `npx jest` 105/105 suites 1047/1047 tests (+5 new: once-flag config/copy/i18n, helper fresh/expired/garbage matrix, preserve-list contract); `next lint` clean on all six touched files; full `next build` clean (prisma client generated with a stub `DIRECT_LOCAL_DB` for the no-datasource runner; Vercel runs real `prisma generate`).
+**Files Modified:**
+- Edited: `app/lib/config/{siteNotice,safeRefresh,index}.ts`, `app/lib/pwa/safeClientRefresh.ts`, `app/components/ui/SiteNotices.tsx`, `public/locales/{en,pcm}.json`, `app/__tests__/config/{siteNotice,locales}.test.ts`, ai-system docs
+**Assumptions Made:**
+- 7-day suppression TTL (not indefinite) balances "never re-nag during an active toggle" against "a future admin cycle can re-prompt" — matches the push-prompt dismiss window; the catch-all note covers every in-between case (manual refreshes, private-mode storage loss, TTL expiry while the toggle is still on).
+- The flag is written inside `safeClientRefresh` itself (not the strip's onClick) so the completion record is part of the refresh contract and any future caller gets it for free.
+- No dismiss (X) button was added to the refresh strip — the directive asked specifically for the flag + text catch-all, and the strip stays admin-controlled urgency; the once-flag already removes the repeat-nag for everyone who acts.
+**Notes / Blockers:**
+- None. Non-breaking: no migration, no API change, no removed behavior — the strip still shows for first-time viewers of an enabled toggle; only already-refreshed browsers suppress it.
+- Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 76 + this log + dev-history + system-architecture + in-progress closed).

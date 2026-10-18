@@ -2,10 +2,17 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 75: safe refresh notice + rich announcements + tag limits + picker scroll)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: refresh-notice once-flag + catch-all note)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 76 — Refresh-notice once-flag (2026-10-18, execute-feature)
+
+- [x] Locally persisted once-flag (`along-safe-refresh-done-at`, 7-day TTL, preserve-whitelisted) stops the "kindly refresh" strip from re-nagging users who already tapped Refresh now
+- [x] Catch-all note ("Already refreshed or updated? You can ignore this notice.") covers manual-refresh / lost-flag edge cases (en + pcm)
+
+---
 
 ## Sprint 75 — Notice tightening (2026-10-18, execute-feature)
 
