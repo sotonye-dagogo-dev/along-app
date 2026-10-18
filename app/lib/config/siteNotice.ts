@@ -29,6 +29,18 @@ export const SITE_NOTICE_CONFIG = {
     intervalMs: 60_000,
     onFocus: true,
     onOnline: true,
+    /**
+     * localStorage key: timestamp of the last safe-refresh click. Written
+     * by `safeClientRefresh` (preserved through its storage clear) so a
+     * user who already refreshed never sees the strip again within the TTL.
+     */
+    completedAtKey: "along-safe-refresh-done-at",
+    /**
+     * How long a completed refresh suppresses the strip (7 days — mirrors
+     * the push-prompt dismiss window). After the TTL the admin toggle can
+     * re-prompt; the catch-all note covers every in-between case.
+     */
+    completedTtlMs: 7 * 24 * 60 * 60 * 1000,
   },
   announcement: {
     maxChars: 500,
@@ -50,6 +62,8 @@ export const SITE_NOTICE_CONFIG = {
     refresh: {
       title: "Update ready",
       body: "We've made updates — kindly refresh to get the latest version. You stay signed in and keep your drafts.",
+      /** Catch-all line — covers manual refreshes / lost-flag edge cases. */
+      note: "Already refreshed or updated? You can ignore this notice.",
       action: "Refresh now",
       pending: "Refreshing…",
     },
@@ -62,6 +76,7 @@ export const SITE_NOTICE_CONFIG = {
     maintenanceAdminNote: "siteNotice.maintenanceAdminNote",
     refreshTitle: "siteNotice.refreshTitle",
     refreshBody: "siteNotice.refreshBody",
+    refreshNote: "siteNotice.refreshNote",
     refreshAction: "siteNotice.refreshAction",
     refreshPending: "siteNotice.refreshPending",
     announcementLabel: "siteNotice.announcementLabel",
@@ -133,6 +148,22 @@ export function normalizeMaintenanceFlag(value: unknown): boolean {
   if (value === true) return true;
   if (typeof value === "string") return value.trim().toLowerCase() === "true";
   return false;
+}
+
+/**
+ * True when the safe-refresh once-flag is present and still within its
+ * suppression TTL. The flag stores the epoch-ms timestamp of the last
+ * safe-refresh click (`SITE_NOTICE_CONFIG.refresh.completedAtKey`); while
+ * fresh, the "kindly refresh" strip stays hidden so a completed refresh
+ * never nags. Never throws — garbage/missing values read as "not done".
+ */
+export function isSafeRefreshCompleted(
+  storedValue: string | null | undefined,
+  now: number,
+): boolean {
+  const at = Number(storedValue ?? "");
+  if (!Number.isFinite(at) || at <= 0) return false;
+  return now - at < SITE_NOTICE_CONFIG.refresh.completedTtlMs;
 }
 
 /**

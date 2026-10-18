@@ -1,7 +1,8 @@
 /**
- * Site notices (Sprint 75) — maintenance/refresh/announcement normalizers,
+ * Site notices (Sprint 75/76) — maintenance/refresh/announcement normalizers,
  * opaque dark-theme surface, CTA href safety, safe-refresh preservation
- * contract, and config-driven route tag limits.
+ * contract (incl. the refresh once-flag), refresh once-flag helper, and
+ * config-driven route tag limits.
  */
 import {
   SITE_NOTICE_CONFIG,
@@ -9,6 +10,7 @@ import {
   normalizeAnnouncementText,
   normalizeAnnouncements,
   isSafeAnnouncementHref,
+  isSafeRefreshCompleted,
 } from "@/app/lib/config/siteNotice";
 import { SAFE_REFRESH_CONFIG } from "@/app/lib/config/safeRefresh";
 import { ROUTE_TAG_CONFIG, parseTagInput } from "@/app/lib/config/routeTags";
@@ -139,6 +141,43 @@ describe("refresh notice config", () => {
     expect(SITE_NOTICE_CONFIG.copy.refresh.body).toMatch(/signed in/i);
     expect(SITE_NOTICE_CONFIG.i18nKeys.refreshAction).toContain("siteNotice.");
   });
+
+  it("ships the once-flag key, TTL, catch-all note copy, and i18n key", () => {
+    expect(SITE_NOTICE_CONFIG.refresh.completedAtKey).toBe(
+      "along-safe-refresh-done-at",
+    );
+    expect(SITE_NOTICE_CONFIG.refresh.completedTtlMs).toBeGreaterThan(0);
+    expect(SITE_NOTICE_CONFIG.copy.refresh.note).toMatch(/ignore/i);
+    expect(SITE_NOTICE_CONFIG.i18nKeys.refreshNote).toBe(
+      "siteNotice.refreshNote",
+    );
+  });
+});
+
+describe("isSafeRefreshCompleted (once-flag helper)", () => {
+  const now = 1_700_000_000_000;
+  const ttl = SITE_NOTICE_CONFIG.refresh.completedTtlMs;
+
+  it("suppresses only while the flag is present and within the TTL", () => {
+    expect(isSafeRefreshCompleted(String(now - 1_000), now)).toBe(true);
+    expect(isSafeRefreshCompleted(String(now - ttl + 1), now)).toBe(true);
+  });
+
+  it("expires at/after the TTL so a fresh admin cycle can re-prompt", () => {
+    expect(isSafeRefreshCompleted(String(now - ttl), now)).toBe(false);
+    expect(isSafeRefreshCompleted(String(now - ttl - 1), now)).toBe(false);
+    expect(isSafeRefreshCompleted(String(now - 30 * ttl), now)).toBe(false);
+  });
+
+  it("treats missing/garbage/future-flag values as not completed", () => {
+    expect(isSafeRefreshCompleted(null, now)).toBe(false);
+    expect(isSafeRefreshCompleted(undefined, now)).toBe(false);
+    expect(isSafeRefreshCompleted("", now)).toBe(false);
+    expect(isSafeRefreshCompleted("not-a-number", now)).toBe(false);
+    expect(isSafeRefreshCompleted("0", now)).toBe(false);
+    expect(isSafeRefreshCompleted("-5", now)).toBe(false);
+    expect(isSafeRefreshCompleted("NaN", now)).toBe(false);
+  });
 });
 
 describe("safe refresh preservation contract", () => {
@@ -158,6 +197,12 @@ describe("safe refresh preservation contract", () => {
         "along-locale-cache:pcm".startsWith(p),
       ),
     ).toBe(true);
+  });
+
+  it("preserves the refresh once-flag so a completed refresh stays recorded", () => {
+    expect(SAFE_REFRESH_CONFIG.preserveLocalStorageKeys).toContain(
+      SITE_NOTICE_CONFIG.refresh.completedAtKey,
+    );
   });
 });
 

@@ -259,6 +259,7 @@ export {
   normalizeAnnouncementText,
   normalizeAnnouncements,
   isSafeAnnouncementHref,
+  isSafeRefreshCompleted,
   isBlockedMutationMethod,
   isMaintenanceExemptPath,
   maintenancePayload,

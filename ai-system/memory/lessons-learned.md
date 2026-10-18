@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 75: protected-key storage clearing + opaque warning surfaces + centralised tag limits)
-> - last-verified-against-code: 2026-10-18 (Sprint 75 in-runner QA: tsc 0, jest 105/105 suites 1042/1042, build clean; config count 89 re-verified)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: once-flag written inside the action + preserve-listed through its cleaner)
+> - last-verified-against-code: 2026-10-18 (Sprint 76 in-runner QA: tsc 0, jest 105/105 suites 1047/1047, build clean; config count 89 re-verified)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -1014,3 +1014,11 @@ Sprint 71: Plus Codes (Open Location Code) looked like a "call another provider"
 **Apply When:** Adding a limit that more than one form or layer enforces; splitting client vs server cap semantics (explain+reject client-side, reject server-side — never slice either side).
 **Supersedes:** None
 **Superseded by:** None
+
+## A notice's "already acted" memory belongs inside the action, and must survive the action's own cleanup
+
+**Context:**
+Sprint 76's refresh-notice once-flag. `safeClientRefresh` wipes non-protected localStorage as part of its job; a flag written by the strip's onClick BEFORE calling it would be destroyed by the very action it records (and any flag a consumer writes must be checked against the cleaner's preserve whitelist). Moving the write INTO `safeClientRefresh` (at sequence start) makes completion part of the action's contract — any caller records it — and adding the key to `SAFE_REFRESH_CONFIG.preserveLocalStorageKeys` guarantees it survives the sweep. The same pairing rule applies to any future "do this once per browser" flag: (a) write it at the start of the operation that would clear it, (b) whitelist it through that operation's cleaner, (c) read it in a mount-only effect (never during SSR render), (d) fail-open visible on missing/garbage/expired values.
+**Lesson:** When an action cleans up state, its own completion signal must be written before the cleanup and positively preserved through it — and the consumer should only ever read the flag, never own the write.
+
+---

@@ -274,6 +274,7 @@
   "siteNotice.maintenanceAdminNote": "Admin tools stay available to you during maintenance.",
   "siteNotice.refreshTitle": "Update ready",
   "siteNotice.refreshBody": "We've made updates — kindly refresh to get the latest version. You stay signed in and keep your drafts.",
+  "siteNotice.refreshNote": "Already refreshed or updated? You can ignore this notice.",
   "siteNotice.refreshAction": "Refresh now",
   "siteNotice.refreshPending": "Refreshing…",
   "siteNotice.announcementLabel": "Announcement",

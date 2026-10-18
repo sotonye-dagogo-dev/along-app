@@ -9,6 +9,7 @@ import {
   normalizeMaintenanceFlag,
   normalizeAnnouncementText,
   normalizeAnnouncements,
+  isSafeRefreshCompleted,
   type NormalizedAnnouncement,
 } from "@/app/lib/config/siteNotice";
 import { safeClientRefresh } from "@/app/lib/pwa/safeClientRefresh";
@@ -59,9 +60,11 @@ function readSessionFlags(keys: readonly string[]): Record<string, boolean> {
  * Never throws; offline keeps the last-known strips (SW may serve the
  * cached response). Maintenance is non-dismissible (only the admin can
  * end it); the refresh strip is admin-controlled with a one-tap safe
- * refresh (keeps session + drafts, reboots the SW); announcements —
- * legacy text + rich entries with optional CTA — are session-dismissible
- * per item.
+ * refresh (keeps session + drafts, reboots the SW) — once tapped, a
+ * locally stored once-flag (7-day TTL) hides the strip so a still-enabled
+ * admin toggle never re-nags, and a catch-all note covers manual-refresh
+ * edge cases; announcements — legacy text + rich entries with optional
+ * CTA — are session-dismissible per item.
  */
 export function SiteNotices() {
   const auth = useContext(AuthContext);
@@ -69,6 +72,7 @@ export function SiteNotices() {
   const [notices, setNotices] = useState<NoticeState>(EMPTY_NOTICES);
   const [dismissed, setDismissed] = useState<Record<string, boolean>>({});
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshDone, setRefreshDone] = useState(false);
   const loadingRef = useRef(false);
 
   const load = useCallback(async () => {
@@ -159,6 +163,23 @@ export function SiteNotices() {
     writeSessionFlag(key);
   }, []);
 
+  // Once-flag: read on mount only (never during render — localStorage is
+  // unavailable on the server and would risk a hydration mismatch). When a
+  // safe refresh completed within the TTL, the strip stays hidden; the
+  // catch-all note covers manual-refresh / lost-flag edge cases meanwhile.
+  useEffect(() => {
+    try {
+      setRefreshDone(
+        isSafeRefreshCompleted(
+          localStorage.getItem(SITE_NOTICE_CONFIG.refresh.completedAtKey),
+          Date.now(),
+        ),
+      );
+    } catch {
+      /* private-mode / blocked storage — keep the strip visible */
+    }
+  }, []);
+
   const handleRefresh = useCallback(async () => {
     if (refreshing) return;
     setRefreshing(true);
@@ -176,7 +197,9 @@ export function SiteNotices() {
     (a) => !dismissed[`${SITE_NOTICE_CONFIG.announcement.dismissIdPrefix}${a.id}`],
   );
   const maintenanceVisible = notices.maintenanceMode;
-  const refreshVisible = notices.refreshNotice;
+  // Hidden once the user has refreshed within the TTL (once-flag), so a
+  // still-enabled admin toggle never re-nags someone already up to date.
+  const refreshVisible = notices.refreshNotice && !refreshDone;
 
   const copy = useMemo(() => {
     const { i18nKeys, copy: fallback } = SITE_NOTICE_CONFIG;
@@ -189,6 +212,7 @@ export function SiteNotices() {
       ),
       refreshTitle: tf(i18nKeys.refreshTitle, fallback.refresh.title),
       refreshBody: tf(i18nKeys.refreshBody, fallback.refresh.body),
+      refreshNote: tf(i18nKeys.refreshNote, fallback.refresh.note),
       refreshAction: tf(i18nKeys.refreshAction, fallback.refresh.action),
       refreshPending: tf(i18nKeys.refreshPending, fallback.refresh.pending),
       announcementLabel: tf(i18nKeys.announcementLabel, fallback.announcementLabel),
@@ -296,6 +320,18 @@ export function SiteNotices() {
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "block", fontWeight: 700 }}>{copy.refreshTitle}</span>
             <span style={{ display: "block", marginTop: 2 }}>{copy.refreshBody}</span>
+            {/* Catch-all — manual refreshes / lost-flag cases can ignore. */}
+            <span
+              style={{
+                display: "block",
+                marginTop: 3,
+                fontSize: 12,
+                fontStyle: "italic",
+                opacity: 0.75,
+              }}
+            >
+              {copy.refreshNote}
+            </span>
           </span>
           <button
             type="button"

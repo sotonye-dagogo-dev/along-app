@@ -44,6 +44,9 @@ export const SAFE_REFRESH_CONFIG: SafeRefreshConfig = {
     "along-pwa-dismissed-at",
     "along-sw-update-dismissed-at",
     "along-sw-update-reloaded",
+    // Safe-refresh once-flag — written by safeClientRefresh so the
+    // "kindly refresh" strip never nags a user who already refreshed.
+    "along-safe-refresh-done-at",
     "along-offline-banner-collapsed",
     "along:admin-sidebar-collapsed",
   ],

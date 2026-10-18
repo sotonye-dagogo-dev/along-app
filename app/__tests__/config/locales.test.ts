@@ -60,6 +60,7 @@ const REQUIRED_KEYS = [
   "siteNotice.maintenanceAdminNote",
   "siteNotice.refreshTitle",
   "siteNotice.refreshBody",
+  "siteNotice.refreshNote",
   "siteNotice.refreshAction",
   "siteNotice.refreshPending",
   "siteNotice.announcementLabel",

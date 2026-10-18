@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening — friendly labels, tap-to-assign, vehicle traces, deferred recenter)
-> - last-verified-against-code: 2026-10-18 (Sprint 75 in-runner QA: tsc 0, jest 105/105 suites 1042/1042, build clean)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: refresh-notice once-flag + catch-all note)
+> - last-verified-against-code: 2026-10-18 (Sprint 76 in-runner QA: tsc 0, jest 105/105 suites 1047/1047, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -1100,4 +1100,18 @@ A "maintenance over" notice that strands users on stale cached code is worse tha
 - **Silent server-side tag slicing**: Rejected — user sees a tag they typed; silent drop looks like a bug.
 - **Leave request-form cap at 5**: Rejected — directive requires unified 10/30; loosening is non-breaking.
   **Supersedes:** None — extends the Sprint 52 admin config registry decisions (validators + shipped defaults backfill) and Sprint 18 maintenance-strip decisions (opaque surfaces over translucent washes).
+  **Superseded by:** None
+
+## Sprint 76 decisions (2026-10-18)
+
+**Decision:** (1) The refresh-notice once-flag is a preserve-whitelisted localStorage timestamp (`along-safe-refresh-done-at`, written by `safeClientRefresh` itself at sequence start, 7-day TTL via `isSafeRefreshCompleted`) — suppressed strip while fresh, fail-open visible on missing/garbage/expired values. (2) The 7-day TTL (not indefinite) mirrors the push-prompt dismiss window and bounds staleness so a future admin cycle can re-prompt; the always-rendered catch-all note ("Already refreshed or updated? You can ignore this notice.") covers every in-between case (manual browser refreshes, private-mode storage loss, TTL expiry while the toggle is still on). (3) The flag is recorded inside `safeClientRefresh` (not the strip's onClick) so completion is part of the refresh contract and any future caller records it for free. (4) No dismiss (X) button was added to the refresh strip — the directive asked specifically for the flag + text catch-all, and the strip remains admin-controlled urgency; the once-flag alone removes the repeat-nag for everyone who acts.
+**Reason:**
+The Sprint 75 strip reappeared on every page load after a successful refresh because the only controlling signal was the admin SiteConfig boolean — a still-enabled toggle kept nagging already-up-to-date users. A local flag is the only mechanism that works offline/for guests without server state; the TTL + catch-all copy together cover the full edge matrix without any migration or admin-surface change.
+**Alternatives Considered:**
+
+- **Indefinite suppression (no TTL)**: Rejected — a forgotten admin toggle could never re-prompt after major future deploys; 7 days bounds staleness while still killing the repeat-nag.
+- **Server-side "refreshed at" field per user**: Rejected — heavier (schema + API), doesn't cover guests, and adds nothing the local flag doesn't (the strip is per-browser, not per-account).
+- **Detecting admin toggle off→on transitions to re-prompt**: Rejected — requires preserving a second state key through the storage clear and adds cycle-tracking complexity; the TTL achieves the same re-prompt capability far more simply.
+- **Dismiss (X) button as the catch-all**: Rejected — directive explicitly asked for text; a dismiss would let users hide the strip without refreshing, undermining the admin's intent.
+  **Supersedes:** None — extends the Sprint 75 safe-refresh/protected-key decisions and the Sprint 27/46/49 local dismiss-flag + TTL pattern (push/PWA/install prompts).
   **Superseded by:** None

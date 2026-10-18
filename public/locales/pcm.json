@@ -274,6 +274,7 @@
   "siteNotice.maintenanceAdminNote": "Admin tools still dey work for you while maintenance dey go on.",
   "siteNotice.refreshTitle": "New update don ready",
   "siteNotice.refreshBody": "We don make some changes — abeg refresh so you go get the newest version. You go still dey signed in and your drafts dey safe.",
+  "siteNotice.refreshNote": "You don refresh or update already? You fit just ignore this notice.",
   "siteNotice.refreshAction": "Refresh now",
   "siteNotice.refreshPending": "E dey refresh…",
   "siteNotice.announcementLabel": "Important notice",
