@@ -1,10 +1,10 @@
-# In Progress — (none)
+# In Progress — Idle
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 78 closed)
+> - last-updated-by: execute-feature 2026-10-18
 > - status: idle
 
 ## Active Work
 
-No in-progress work. Sprint 78 (SEO title suffix + feed page size + pagination compliance) was closed out on 2026-10-18 — see `session-log.md` for the full record and `../planning/task-queue.md` for the completed task table.
+None. Last closed: Sprint 79 (announcement-banner deprecation + bug-report tightening — chunk-load recovery, stable idempotency dedup, admin modal context/identification, status-note prefill). See `checkpoints/session-log.md` (Sprint 79 entry) and `planning/task-queue.md` for the closed state.

@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance)
-> - last-verified-against-code: 2026-10-18 (Sprint 78 in-runner QA: tsc 0, jest 108/108 suites 1119/1119, build clean; config count 91 re-verified)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: announcement deprecation + bug-report tightening)
+> - last-verified-against-code: 2026-10-18 (Sprint 79 in-runner QA: tsc 0, jest 110/110 suites 1134/1134, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1761,3 +1761,23 @@ Eliminated the ` | Along | Along` double title-suffix on every page by making th
 
 - Created: `lib/config/pagination.ts`, `lib/hooks/useCursorList.ts`, `__tests__/config/paginationCompliance.test.ts`
 - Edited: `lib/config/{seo,feedAlgorithm,index,cache,admin,navigation}.ts`, `app/layout.tsx`, `app/admin/layout.tsx`, `lib/utils/metadata.ts`, `api/posts/{feed,route}.ts`, `api/{search,users/search,notifications,bookmarks,reviews}/route.ts`, `api/posts/[id]/comments/route.ts`, `api/admin/{posts,users,reviews,bugs,deletions,audit}/route.ts`, `api/users/[id]/{followers,following}/route.ts`, `lib/services/auditService.ts`, `lib/schemas/post.ts`, `lib/streams/feedStream.ts`, `admin/{audit,bugs,deletions,posts,reviews,users}/page.tsx`, `(dashboard)/{explore,search,posts/[id],profile,profile/[username]}/page.tsx`, `components/features/{explore/ExploreSearchInput,profile/UserList}.tsx`, `__tests__/utils/metadata.test.ts`, ai-system docs
+
+## 2026-10-18 — Sprint 79: Legacy announcement-banner deprecation + bug-report pipeline tightening (Issue #25)
+
+**Summary:**
+Five-workstream close-out of the issue #25 directive, non-breaking (no migration, no removed API fields, config-driven throughout). (1) The legacy single-string `announcementBanner` SiteConfig key — superseded by the rich `announcements` list — is now actually deprecated: its admin SimpleConfigCard and editor registration are removed, a new `ADMIN_DEPRECATED_CONFIG_KEYS` list (folded into `ADMIN_DEDICATED_CONFIG_KEYS`) hides it from every admin surface including the raw JSON list, and the `SiteNotices` legacy strip no longer renders; the shipped default, validator, and `/api/site-config` field remain for stored-value back-compat. (2) The reported `ChunkLoadError: Loading chunk 72 failed` on `/login` (stale tab after a deploy rotates hashed chunks) gets one automatic `location.reload()` per browser session from both `error.tsx` and `global-error.tsx` (`isChunkLoadError` + `attemptChunkLoadRecovery`, with patterns/copy/session-guard key in `ERROR_REPORTING_CONFIG.chunkLoad`); a second match falls through to the normal report flow so a persistently broken deploy can never reload-loop. (3) Duplicate bug-report rows from one error report are eliminated: `reportClientError` derives a stable timestamp-free idempotency key (`eb:` + double FNV-1a of title|path|digest) and sends it as `x-idempotency-key` + body `clientToken`, and the server dedup pre-read now matches idempotency key OR the same error identity (title + `metadata.path` + `metadata.digest`) OR the exact description — scoped to the same reporter or both-anonymous. (4) The admin bug action modal gains a "Full context" collapsible (complete description + source/route/digest metadata + category), Reported-by with the reporter's email (added to the admin GET reporter select), and Assigned-to reviewer (also on the list card). (5) The status-change note textarea is prefilled with `BUG_REPORT_STATUS_COPY[status]`; switching status re-prefills only when the box is empty or still holds the previous default verbatim; a "Reset to default note" button appears when customized; the server's whitespace-empty → default fallback remains authoritative.
+
+**Completed:**
+
+- Deprecation: `admin.ts` (editor entry removed, defaults entry marked deprecated, `ADMIN_DEPRECATED_CONFIG_KEYS`), `SiteNotices.tsx` (legacy strip + fetch field removed), `siteNotice.ts` (`@deprecated` key annotation), config page comment
+- Chunk recovery: `errorReporting.ts` `chunkLoad` config block; `errorReportService.ts` `isChunkLoadError` / `attemptChunkLoadRecovery` (injectable reload for tests); both error boundaries short-circuit to recovering copy + info toast
+- Dedup: stable key builder (`buildStableErrorIdempotencyKey`); `reportClientError` sends header + `clientToken`; `/api/bug-reports` pre-read rewritten (identity match, reporter scoping)
+- Admin modal: full-context panel + metadata rows, reporter email in GET, reviewer on card + modal, note prefill + re-prefill + reset button, updated `BUG_REPORT_ACTION_MODAL` copy
+- Tests: new `chunkLoadRecovery.test.ts` (10), new `bugReports.test.ts` (8), idempotency test in `errorReportService.test.ts`, deprecated-key coverage in `designCompliance.test.ts`
+
+**QA:** tsc 0 errors; jest 110/110 suites 1134/1134; lint clean on touched files; build clean.
+
+**Files:**
+
+- Created: `__tests__/services/chunkLoadRecovery.test.ts`, `__tests__/config/bugReports.test.ts`
+- Edited: `lib/config/{admin,index,siteNotice,errorReporting,bugReports,reportAttachments}.ts`, `lib/services/errorReportService.ts`, `app/error.tsx`, `app/global-error.tsx`, `api/bug-reports/route.ts`, `api/admin/bugs/route.ts`, `admin/bugs/page.tsx`, `admin/config/page.tsx`, `components/ui/SiteNotices.tsx`, `__tests__/config/designCompliance.test.ts`, `__tests__/services/errorReportService.test.ts`, ai-system docs

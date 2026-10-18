@@ -3,12 +3,21 @@
 import * as Sentry from "@sentry/nextjs"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ERROR_REPORTING_CONFIG } from "@/app/lib/config/errorReporting"
-import { reportClientError, buildErrorReportPrefill, buildBugReportUrl } from "@/app/lib/services/errorReportService"
+import {
+  reportClientError,
+  buildErrorReportPrefill,
+  buildBugReportUrl,
+  isChunkLoadError,
+  attemptChunkLoadRecovery,
+} from "@/app/lib/services/errorReportService"
 import { toastService } from "@/app/lib/services/toastService"
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   // `null` = still attempting; boolean once the report attempt settles.
   const [reported, setReported] = useState<boolean | null>(null)
+  // Stale-chunk auto-recovery (deploy rotated hashed chunks): one silent
+  // reload per browser session, then fall through to the report flow.
+  const [recovering, setRecovering] = useState(false)
   const toastFired = useRef(false)
 
   // Sanitized prefill (message/stack/route/digest — PII redacted, capped) so
@@ -21,6 +30,21 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
 
   useEffect(() => {
     Sentry.captureException(error)
+    // Chunk-load failures are usually stale tabs after a deploy — try ONE
+    // silent reload (session-guarded) before filing a bug report. If the
+    // guard is spent (reload didn't fix it), fall through to normal flow.
+    if (isChunkLoadError(error) && attemptChunkLoadRecovery()) {
+      setRecovering(true)
+      try {
+        toastService.show({
+          message: ERROR_REPORTING_CONFIG.chunkLoad.toastMessage,
+          type: "info",
+        })
+      } catch {
+        /* toast is best-effort */
+      }
+      return
+    }
     let cancelled = false
     void reportClientError(error, { digest: error.digest }).then(({ reported }) => {
       if (!cancelled) setReported(reported)
@@ -50,8 +74,9 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     return () => { cancelled = true }
   }, [error])
 
-  const statusCopy =
-    reported === null
+  const statusCopy = recovering
+    ? ERROR_REPORTING_CONFIG.chunkLoad.recoveringCopy
+    : reported === null
       ? ERROR_REPORTING_CONFIG.copy.pending
       : reported
         ? ERROR_REPORTING_CONFIG.copy.reported

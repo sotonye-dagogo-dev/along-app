@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: central pagination config + failed-fetch ≠ end-of-list + single-source SEO suffix)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: content-hash idempotency keys — timestamps break dedup; jsdom can't spy location.reload — inject the impl)
 > - last-verified-against-code: 2026-10-18 (Sprint 76 in-runner QA: tsc 0, jest 105/105 suites 1047/1047, build clean; config count 89 re-verified)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
@@ -1041,4 +1041,13 @@ Sprint 77's EMAXCONNSESSION outage: every DB-backed route 500'd (`DriverAdapterE
 **Lesson:** Encode the two-pooler contract PER CONSUMER: runtime = DATABASE_URL-first (transaction mode, `prepare: false` detected from the URL, small per-instance pool via config), CLI/migrations = DIRECT-first (session continuity for DDL). Never let one global precedence serve both. Detect pooler mode from the URL (port 6543 / `pgbouncer=` flag), keep prepared statements for direct/session URLs, and log a one-time warn when production still resolves a session-mode URL so a mis-set env var is obvious in logs.
 **Apply When:** Wiring any new DB client/worker/CLI path against Supabase (or any session/transaction-split pooler); debugging "max clients reached" or connection-exhaustion 500s; adding a new serverless data path that opens its own pool.
 **Supersedes:** Extends the Sprint 73 Supabase two-pooler contract decision (the code had disagreed with the documented contract — docs won only after the outage).
+**Superseded by:** None
+
+## Client-generated idempotency keys must be content-derived, and location.reload needs an injectable seam
+
+**Context:**
+Sprint 79's duplicate-bug-report fix. Server-side dedup had a short same-identity window keyed on timestamps, so slow double-submits, offline-queue flushes, and route-change double mounts slipped through. The fix had to generate a stable client key, but the recovery path (`ChunkLoadError` → one `location.reload()`) couldn't be unit-tested because jsdom implements `window.location` as a non-configurable object.
+**What We Learned:** Derive the idempotency key from pure content (double FNV-1a of `title|path|digest`, prefixed `eb:`, length-capped) — never from `Date.now()`/`Math.random()`, which defeat every dedup window the server can offer. Send it BOTH as an `x-idempotency-key` header and a body field, and have the server pre-read with an OR of (key OR stable identity OR exact description) scoped to the reporter so old rows still dedup. For location-dependent recovery logic, export `attemptChunkLoadRecovery(reloadImpl?)` with an injectable reload implementation so tests pass a spy instead of fighting jsdom; guard the once-per-session reload with a sessionStorage flag keyed from config, checked read-only in effects.
+**Apply When:** Writing any "submit once" client flow; testing anything that calls `location.reload()`/`location.assign()` in jsdom; adding recovery shortcuts that must not loop.
+**Supersedes:** Extends the Sprint 12/50 idempotency-key + short-dedup-window pattern (client-emitted keys are now mandatory for anonymous error reports, which have no user/session identity server-side).
 **Superseded by:** None

@@ -10,6 +10,7 @@ import {
   ERROR_REPORTING_CONFIG,
   ERROR_SENSITIVE_PATTERNS,
 } from "@/app/lib/config/errorReporting";
+import { BUG_REPORT_DEDUP_CONFIG } from "@/app/lib/config/reportAttachments";
 
 export interface ClientErrorContext {
   digest?: string;
@@ -29,6 +30,85 @@ export function sanitizeErrorText(input: unknown, maxLength: number): string {
   }
   if (out.length > maxLength) out = out.slice(0, maxLength);
   return out;
+}
+
+/**
+ * Detects stale-chunk / dynamic-import failures (deploys rotate hashed
+ * chunks; an already-open tab then fails to load
+ * `…/chunks/app/(auth)/login/page-ed6cf….js`). Message-only match — never
+ * touches the error object beyond `message`, never throws.
+ */
+export function isChunkLoadError(error: unknown): boolean {
+  try {
+    const message =
+      error instanceof Error
+        ? `${error.name ?? ""} ${error.message ?? ""}`
+        : typeof error === "string"
+          ? error
+          : "";
+    if (!message) return false;
+    return ERROR_REPORTING_CONFIG.chunkLoad.patterns.some((re) => {
+      re.lastIndex = 0;
+      return re.test(message);
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * One auto-reload per browser session for chunk-load failures. Returns true
+ * when a reload was triggered (caller should stop and show recovering copy);
+ * false when the guard is already spent, storage is unavailable, or we're
+ * on the server — the caller then falls through to the normal error flow.
+ * `reloadImpl` exists for tests (jsdom cannot spy on location.reload).
+ */
+export function attemptChunkLoadRecovery(reloadImpl?: () => void): boolean {
+  try {
+    if (typeof window === "undefined") return false;
+    const { reloadGuardKey } = ERROR_REPORTING_CONFIG.chunkLoad;
+    if (sessionStorage.getItem(reloadGuardKey)) return false;
+    sessionStorage.setItem(reloadGuardKey, String(Date.now()));
+    if (reloadImpl) reloadImpl();
+    else window.location.reload();
+    return true;
+  } catch {
+    // Private-mode / blocked storage / reload refused — normal error flow.
+    return false;
+  }
+}
+
+/**
+ * FNV-1a (32-bit) over a stable identity string — used to build a
+ * timestamp-free idempotency key per (title + path + digest) so repeated
+ * captures of the SAME error collapse server-side even though each capture
+ * embeds a fresh `When:` timestamp in its description.
+ */
+function fnv1a(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+/**
+ * Stable idempotency key for an automatic error-boundary capture. Same
+ * error name + route + digest → same key (timestamp excluded on purpose);
+ * different error or route → different key. Prefixed `eb:` and capped to
+ * the server's `maxKeyLength`.
+ */
+export function buildStableErrorIdempotencyKey(
+  title: string,
+  path: string,
+  digest?: string,
+): string {
+  const identity = `${title}|${path}|${digest ?? ""}`;
+  return `eb:${fnv1a(identity)}${fnv1a(identity.split("").reverse().join(""))}`.slice(
+    0,
+    BUG_REPORT_DEDUP_CONFIG.maxKeyLength,
+  );
 }
 
 function currentPath(fallback?: string): string {
@@ -172,13 +252,22 @@ export async function reportClientError(
       ERROR_REPORTING_CONFIG.maxDescriptionLength,
     );
 
+    // Stable idempotency key (timestamp-free): double-fires of the same
+    // error (segment + root boundary, retries, multi-tab) collapse to ONE
+    // BugReport row server-side instead of near-identical duplicates.
+    const idempotencyKey = buildStableErrorIdempotencyKey(title, path, context?.digest);
+
     const res = await fetch(ERROR_REPORTING_CONFIG.endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        [BUG_REPORT_DEDUP_CONFIG.idempotencyHeader]: idempotencyKey,
+      },
       body: JSON.stringify({
         title: title.length > 0 ? title : "Client error",
         category: ERROR_REPORTING_CONFIG.category,
         description,
+        clientToken: idempotencyKey,
         metadata: {
           source: "error-boundary",
           digest: context?.digest ?? null,

@@ -41,6 +41,30 @@ export const ERROR_REPORTING_CONFIG = {
   /** CTA label rendered inline on the error surfaces. */
   reportCtaLabel: "Report a bug",
   /**
+   * Stale-chunk auto-recovery (deploys invalidate hashed chunks — the
+   * classic `ChunkLoadError: Loading chunk 72 failed` on /login and friends).
+   * When an error matches a pattern below, the boundary attempts ONE
+   * `location.reload()` per browser session (sessionStorage once-flag) so a
+   * hard refresh isn't needed; a second match falls through to the normal
+   * report flow (prevents reload loops).
+   */
+  chunkLoad: {
+    /** Patterns identifying stale-chunk / dynamic-import failures. */
+    patterns: [
+      /ChunkLoadError/i,
+      /Loading chunk [\w-]+ failed/i,
+      /Loading CSS chunk [\w-]+ failed/i,
+      /Failed to fetch dynamically imported module/i,
+      /error loading dynamically imported module/i,
+    ],
+    /** sessionStorage once-flag key (per browser session, private-mode safe). */
+    reloadGuardKey: "along-chunk-reload-at",
+    /** Status copy shown while the auto-reload is in flight. */
+    recoveringCopy: "App update detected — refreshing to load the latest version…",
+    /** Toast copy for the auto-reload attempt (best-effort). */
+    toastMessage: "A newer version of Along is available — refreshing…",
+  },
+  /**
    * Prefill scaffolding for the bug-report description. `{summary}` is the
    * sanitized error capture; the hints invite the reporter to add their own
    * context above or below it without wiping the capture.

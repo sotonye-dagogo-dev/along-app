@@ -13,20 +13,38 @@ export const BUG_REPORT_STATUS_COPY: Record<string, string> = {
 
 /**
  * Admin action-modal copy (config-driven). The modal handles status changes
- * + custom note entry + screenshot review in one place so admins never have
- * to accept the default note blindly. Custom notes are sanitized + capped
- * server-side; empty input falls back to the status default copy.
+ * + custom note entry + screenshot review + full context in one place so
+ * admins never have to accept the default note blindly. The note input is
+ * PREFILLED with the status default copy; custom notes are sanitized +
+ * capped server-side; emptied (even whitespace-only) input falls back to
+ * the status default copy — legacy behaviour preserved.
  */
 export const BUG_REPORT_ACTION_MODAL = {
   title: "Update report",
   description: "Change status, optionally replace the reporter note, and review screenshots before confirming.",
-  noteLabel: "Note sent to reporter (optional — blank uses the default)",
+  noteLabel: "Note sent to reporter (prefilled — edit as needed, or clear to use the default)",
   notePlaceholder: "e.g. Fixed in the latest release — please refresh and confirm…",
   noteMaxLength: 1000,
   useDefaultLabel: (status: string) => `Use default note for ${status.replace("_", " ")}`,
+  resetDefaultLabel: "Reset to default note",
   confirmLabel: "Confirm update",
   cancelLabel: "Cancel",
   statusLabel: "Status",
   screenshotsLabel: "Screenshots",
   noScreenshots: "No screenshots attached to this report.",
+  /** Full attached context (description + structured metadata). */
+  contextLabel: "Full context",
+  contextShowLabel: "Show full context",
+  contextHideLabel: "Hide full context",
+  /** Reporter identification (admin-only; already collected with the report). */
+  reportedByLabel: "Reported by",
+  reportedAnonymous: "Anonymous",
+  /** Auto-assigned reviewer (least-loaded admin at creation time). */
+  assignedToLabel: "Assigned to",
+  assignedToNobody: "Unassigned",
+  /** Structured metadata rows (source / route / digest / category). */
+  metaSourceLabel: "Source",
+  metaPathLabel: "Route",
+  metaDigestLabel: "Digest",
+  metaCategoryLabel: "Category",
 } as const;

@@ -397,12 +397,9 @@ export const SITE_CONFIG_EDITORS: SiteConfigEditorMeta[] = [
       "After maintenance/deploys, ask clients to refresh so they pick up fresh code + data (keeps sessions and drafts).",
     kind: "boolean",
   },
-  {
-    key: "announcementBanner",
-    title: "Announcement Banner",
-    description: "Short text banner shown platform-wide.",
-    kind: "text",
-  },
+  // `announcementBanner` (legacy single-string banner) is DEPRECATED — the
+  // rich `announcements` list below supersedes it. Kept registered only so
+  // stored values + validators stay back-compatible; no admin editor.
   {
     key: "announcements",
     title: "Announcements",
@@ -526,9 +523,12 @@ export const ADMIN_CONFIG_DEFAULTS: AdminConfigDefault[] = [
     defaultValue: false,
   },
   {
+    // Deprecated: superseded by the rich `announcements` list. No admin UI —
+    // registered so stored rows + merge/validate stay back-compatible.
     key: "announcementBanner",
-    title: "Announcement Banner",
-    description: "Short text banner shown platform-wide (empty = hidden).",
+    title: "Announcement Banner (deprecated)",
+    description:
+      "Deprecated — use the Announcements list instead. Kept only for stored-value back-compat; no longer editable.",
     kind: "text",
     defaultValue: "",
   },
@@ -801,20 +801,9 @@ export const ADMIN_SIMPLE_CONFIG_CARDS: AdminSimpleCardMeta[] = [
       },
     ],
   },
-  {
-    key: "announcementBanner",
-    title: "Announcement Banner",
-    description: "Short text banner shown platform-wide. Empty hides it.",
-    fields: [
-      {
-        id: "value",
-        label: "Banner text",
-        hint: "Max 500 characters. Leave empty to hide the banner.",
-        type: "text",
-        placeholder: "e.g. New routes in Lagos are live!",
-      },
-    ],
-  },
+  // `announcementBanner` card removed — deprecated by the rich Announcements
+  // list editor above (key stays registered in ADMIN_CONFIG_DEFAULTS for
+  // back-compat; hidden via ADMIN_DEPRECATED_CONFIG_KEYS).
   {
     key: "inviteRewardPoints",
     title: "Invite Reward Points",
@@ -923,12 +912,25 @@ export const ADMIN_STUDIO_LINKS: AdminStudioLinkMeta[] = [
   },
 ];
 
+/**
+ * Deprecated config keys — once owned a dedicated admin editor, superseded
+ * by newer config, and intentionally have NO UI anymore (stored values keep
+ * working; validators stay registered). Hidden from every admin surface
+ * (simple cards + raw JSON list).
+ */
+export const ADMIN_DEPRECATED_CONFIG_KEYS = [
+  // Legacy single-string banner — superseded by the rich `announcements`
+  // list editor. Never used by an admin in production; safe to hide fully.
+  "announcementBanner",
+] as const;
+
 /** Card keys with dedicated (non-generic) editors — hidden from the raw list. */
 export const ADMIN_DEDICATED_CONFIG_KEYS = [
   "earlyAdopterConfig",
   "feedDiversity",
   // Rich announcements: bespoke list editor on the Config page (no JSON).
   "announcements",
+  ...ADMIN_DEPRECATED_CONFIG_KEYS,
   ...ADMIN_STUDIO_MANAGED_KEYS,
   ...ADMIN_SIMPLE_CONFIG_CARDS.map((c) => c.key),
 ] as const;
