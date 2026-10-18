@@ -4,6 +4,7 @@ import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 import { REVIEWS_CONFIG } from "@/app/lib/config/reviews";
+import { clampPageLimit } from "@/app/lib/config";
 
 const REVIEWER_SELECT = {
   id: true,
@@ -29,10 +30,10 @@ const REVIEWER_SELECT = {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(
-      Math.max(Number(searchParams.get("limit")) || REVIEWS_CONFIG.listLimit, 1),
-      REVIEWS_CONFIG.maxListLimit,
-    );
+    // Default/max come from the central pagination registry (reviews surface)
+    // — values match REVIEWS_CONFIG.listLimit/maxListLimit (20/50) so callers
+    // passing those explicitly keep their current page sizes.
+    const limit = clampPageLimit(searchParams.get("limit"), "reviews");
     const cursor = searchParams.get("cursor");
     const mine = searchParams.get("mine") === "1";
     const authorId = searchParams.get("authorId");
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
         // Prisma can't express column-equality in where, so filter in JS.
       } as never,
       include: { reviewer: { select: REVIEWER_SELECT } },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
     });

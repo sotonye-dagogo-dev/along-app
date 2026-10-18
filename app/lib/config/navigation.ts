@@ -1,3 +1,4 @@
+import { PAGINATION_CONFIG } from "./pagination";
 import {
   Home, Compass, Search, Bookmark, Bell, User, BarChart3,
   UserPlus, Shield, ShieldCheck, Trophy,
@@ -53,7 +54,8 @@ export function filterNavItems(role: string, section?: "main" | "admin"): NavIte
 export const NOTIFICATION_BADGE_CONFIG = {
   pollMs: 60_000,
   maxDisplay: 99,
-  endpoint: "/api/notifications?limit=1",
+  // Badge surface (config): the unread-count poller asks for exactly one row.
+  endpoint: `/api/notifications?limit=${PAGINATION_CONFIG.badge.defaultLimit}`,
 } as const;
 
 /** Hrefs whose nav entries render the unread badge. */

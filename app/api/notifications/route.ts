@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
-import { CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
+import { CACHE_KEYS, CACHE_TTL, clampPageLimit } from "@/app/lib/config";
 
 interface CachedNotifications {
   notifications: unknown[];
@@ -19,12 +19,17 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get("filter"); // "all" | "unread" | "rewards"
     const cursor = searchParams.get("cursor");
-    const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
+    const limit = clampPageLimit(searchParams.get("limit"), "notifications");
     const userId = user.id as string;
 
-    // First-page reads are cached (60s) — invalidation happens on every write
-    const cacheKey = CACHE_KEYS.notifications(userId, filter ?? "all");
-    if (!cursor) {
+    // First-page reads are cached (60s) — invalidation happens on every write.
+    // The key carries the effective limit (the badge poller's `?limit=1`
+    // payload must never be served to the page) and only sizes that
+    // `notificationsAll` enumerates are cached, so every write can bust
+    // every key it may have created.
+    const cacheKey = CACHE_KEYS.notifications(userId, filter ?? "all", limit);
+    const cacheable = !cursor && CACHE_KEYS.notificationsAll(userId).includes(cacheKey);
+    if (cacheable) {
       try {
         const { redis } = await import("@/app/lib/db/redis");
         const cached = await redis.get<CachedNotifications>(cacheKey);
@@ -47,7 +52,7 @@ export async function GET(request: NextRequest) {
           select: { read: true },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
     });
@@ -62,7 +67,7 @@ export async function GET(request: NextRequest) {
 
     const payload: CachedNotifications = { notifications: resultNotifications, nextCursor, unreadCount };
 
-    if (!cursor) {
+    if (cacheable) {
       try {
         const { redis } = await import("@/app/lib/db/redis");
         await redis.set(cacheKey, payload, { ex: CACHE_TTL.notifications });
@@ -98,7 +103,7 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
-    // Read state changed → bust every filter variant of the list cache
+    // Read state changed → bust every filter × page-size variant of the cache
     try {
       const { redis } = await import("@/app/lib/db/redis");
       const { CACHE_KEYS } = await import("@/app/lib/config");

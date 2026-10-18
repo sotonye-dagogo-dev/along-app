@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: DB pooler strategy + sanitized style proxy)
-> - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance)
+> - last-verified-against-code: 2026-10-18 (Sprint 78 in-runner QA: tsc 0, jest 108/108 suites 1119/1119, build clean; config count 91 re-verified)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1739,3 +1739,25 @@ Fixed the production 500s that hit every DB-backed route after the Supabase migr
 
 - Created: `lib/config/dbPool.ts`, `lib/utils/mapStyleSanitize.ts`, `api/maps/style/route.ts`, `__tests__/config/dbPool.test.ts`, `__tests__/utils/mapStyleSanitize.test.ts`
 - Edited: `lib/config/{env,mapStack,apiRegistry,index}.ts`, `lib/db/prisma.ts`, `lib/services/mapProxyService.ts`, `public/sw.js`, `.env.example`, `__tests__/config/mapStack.test.ts`, ai-system docs
+
+## 2026-10-18 — Sprint 78: SEO title suffix single-source + feed page size 20 + pagination compliance sweep (Issue #25)
+
+**Summary:**
+Eliminated the ` | Along | Along` double title-suffix on every page by making the root layout `title.template` the single suffix authority (`DEFAULT_META.titleSuffix` in `app/lib/config/seo.ts`; metadata builders compose OG/Twitter titles once — Next never templates those fields), raised the feed default page size from 10 to 20 everywhere (server fallback, `DEFAULT_FEED_CONFIG`, `FEED_STREAM_CONFIG`, zod schema), and ran a platform-wide pagination compliance sweep: a new central `PAGINATION_CONFIG` + `clampPageLimit` now gates every cursor route (search, notifications, comments, bookmarks, reviews, admin lists, users-search, followers/following), every cursor query carries an id sort-key tiebreaker, the notifications Redis key includes the effective limit (the badge `limit=1` poller can no longer poison the page-20 first-page cache), `feedStream` treats transient fetch failures as retry-with-backoff instead of end-of-list (exponential backoff via config knobs, chained single retry timer, self-healing initial failure state), and every previously first-20-only list gained config-driven cursor load-more (followers/following + post-detail comments via `ViewMoreButton`; all six profile tabs via the new reusable `useCursorList` hook). Non-breaking: response shapes additive (`{users, nextCursor}`), no migration, no new deps.
+
+**Completed:**
+
+- SEO: `DEFAULT_META.titleSuffix` single source; root template `%s${suffix}`; bare titles in `buildMetadata`/`buildPostMetadata`/`buildProfileMetadata`; admin layout "Admin"; metadata tests rewritten with source-scan regression rejecting manual ` | Along` literals
+- `app/lib/config/pagination.ts` (new): `PAGINATION_CONFIG` surfaces + `clampPageLimit`; feed default/max 20/50
+- Feed 20-cap: `api/posts/feed` + `api/posts` clamp via config; `DEFAULT_FEED_CONFIG.pageSize` + `FEED_STREAM_CONFIG.pageSize` = 20; `FEED_QUERY_SCHEMA` defaults from config; id tiebreakers
+- Server sweep: clamp on 13 route/service files; notifications cache limit-in-key + `notificationsAll` enumeration; audit service clamp + sort key
+- feedStream hardening: `fetchFeed` → `null` on failure, `hasMore` preserved, `errorRetryBackoffMs`/`errorBackoffMaxMs` exponential backoff + chained retry
+- Load-more: followers/following cursor pages + `UserList` ViewMoreButton; post-detail appended-comment windows; profile tabs via `useCursorList` on both profile pages; admin audit dedupe/in-flight guard; explore + search + badge-endpoint literals moved to config
+- Lint fixes in touched files: feed route 5× `no-explicit-any` → `unknown[]` typed casts (P2022 pattern from `posts/route.ts`); admin bugs rules-of-hooks false positive via module-scope alias
+
+**QA:** tsc 0 errors; jest 108/108 suites 1119/1119 (+1 suite, +7 tests); lint clean on touched files; build clean.
+
+**Files:**
+
+- Created: `lib/config/pagination.ts`, `lib/hooks/useCursorList.ts`, `__tests__/config/paginationCompliance.test.ts`
+- Edited: `lib/config/{seo,feedAlgorithm,index,cache,admin,navigation}.ts`, `app/layout.tsx`, `app/admin/layout.tsx`, `lib/utils/metadata.ts`, `api/posts/{feed,route}.ts`, `api/{search,users/search,notifications,bookmarks,reviews}/route.ts`, `api/posts/[id]/comments/route.ts`, `api/admin/{posts,users,reviews,bugs,deletions,audit}/route.ts`, `api/users/[id]/{followers,following}/route.ts`, `lib/services/auditService.ts`, `lib/schemas/post.ts`, `lib/streams/feedStream.ts`, `admin/{audit,bugs,deletions,posts,reviews,users}/page.tsx`, `(dashboard)/{explore,search,posts/[id],profile,profile/[username]}/page.tsx`, `components/features/{explore/ExploreSearchInput,profile/UserList}.tsx`, `__tests__/utils/metadata.test.ts`, ai-system docs

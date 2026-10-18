@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { clampPageLimit } from "@/app/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,12 +11,12 @@ export async function GET(request: NextRequest) {
     }
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-    const limit = Math.min(Number(searchParams.get("limit")) || 20, 100);
+    const limit = clampPageLimit(searchParams.get("limit"), "admin");
     const where: Record<string, unknown> = {};
     if (status && ["PENDING", "CANCELLED", "COMPLETED"].includes(status)) where.status = status;
     const requests = await prisma.accountDeletionRequest.findMany({
       where: where as never,
-      orderBy: { requestedAt: "desc" },
+      orderBy: [{ requestedAt: "desc" }, { id: "desc" }],
       take: limit,
       include: { user: { select: { id: true, userName: true, firstName: true, lastName: true, email: true, isDeleted: true } } },
     });

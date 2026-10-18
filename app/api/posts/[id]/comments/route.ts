@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { COMMENT_SCHEMA } from "@/app/lib/schemas/post";
+import { clampPageLimit } from "@/app/lib/config";
 import { qstashService } from "@/app/lib/services/qstashService";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor");
-    const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
+    const limit = clampPageLimit(searchParams.get("limit"), "comments");
 
     const comments = await prisma.comment.findMany({
       where: { postId: id },
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
     });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
-import { MEDIA_CLEANUP_CONFIG } from "@/app/lib/config";
+import { MEDIA_CLEANUP_CONFIG, clampPageLimit } from "@/app/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const cursor = searchParams.get("cursor");
-    const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
+    const limit = clampPageLimit(searchParams.get("limit"), "admin");
     // Config-driven sort (?sort=&dir= validated against allow-list;
     // default preserves legacy newest-first, non-breaking).
     const sortParam = (searchParams.get("sort") ?? "createdAt").trim();

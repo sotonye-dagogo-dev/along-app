@@ -1,98 +1,35 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening)
-> - last-verified-against-code: 2026-10-17
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance)
+> - last-verified-against-code: 2026-10-18
 > - staleness-policy: overwritten on every test run — always current
 
-> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 865 tests currently exist across 98 suites (verified by a real `npx jest --ci` run in this session 2026-10-17).
+> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 1119 tests currently exist across 108 suites (verified by a real `npx jest --silent` run in this session 2026-10-18).
 
 ---
 
 ## Last Run (Build)
 
-**Date:** 2026-10-17
-**Run by:** AI agent (opencode — execute-feature Sprint 72)
+**Date:** 2026-10-18
+**Run by:** AI agent (opencode — execute-feature Sprint 78)
 
 **Build Result:**
 - `npx tsc --noEmit` — ✓ zero errors (real run this session, after `npm install`)
-- `npx jest --ci` — 865/865 passing (98 suites, real run this session: +3 NEW suites mapVehicleProfiles/mapView/mapPicker; locationIntent 22 → 28 with label-first + plus-code locality cases)
-- `npm run build` — ✓ compiled successfully (real run this session)
-- `npm run lint` — exit 1 from 11 pre-existing errors in untouched files (`app/api/posts/feed/route.ts` ×5, `app/api/suggestions/route.ts` ×5, `app/admin/bugs/page.tsx` ×1); 0 findings introduced by touched files (ShareRouteModal only carries its pre-existing useMemo warning)
+- `npx jest --ci` — 1119/1119 passing (108 suites, real run this session: +1 NEW suite `paginationCompliance` (40 tests: clamp sources, id tiebreakers, notifications cache keys, admin meta, clamp matrix, feed-20 + hasMore regression); `metadata.test.ts` rewritten for the single-source title suffix)
+- `npm run build` — ✓ compiled successfully (real run this session; lint skipped by next.config as configured)
+- `npx next lint` — ✓ clean on every Sprint-78-touched file (fixed 5 pre-existing `no-explicit-any` in `app/api/posts/feed/route.ts` via `unknown[]` typed casts + 1 pre-existing rules-of-hooks flag in `app/admin/bugs/page.tsx` via module-scope alias; only remaining lint errors are 5 pre-existing `any`-casts in untouched `app/api/suggestions/route.ts`)
 - Zero test failures
 
 ---
 
-## Test Suites
+## Historical Runs
 
-| Suite | Tests | Description |
-|-------|-------|-------------|
-| ValidityEngine | 12 | evaluate() score ranges, tier boundaries, sub-computation comparisons, getTrustLevel() thresholds |
-| DraftingCoachService | 9 | 6 checkpoint validations, empty/complete draft, nextSuggestion |
-| navigation config | 6 | role filtering, section filtering, admin access |
-| avatar config | 5 | URL construction, optional params, encoding |
-| metadata utils | 7 | title, description, canonical, robots, OG, Twitter, custom ogImage |
-| RewardsService | 6 | computeTier() boundary thresholds (BRONZE/SILVER/GOLD/PLATINUM) |
-| AppEmptyState | 12 | all preset renders, custom content, variants |
-| AppUserLabel | 7 | name, handle, linkToProfile, verified badge, sizes, vertical layout |
-| TrustBadge | 6 | all 4 levels, tooltip hover, showTooltip=false, sm/default sizes |
-| mutations API | 20 | posting, liking, commenting, bookmarking, following incl. error handling + undefined/null edge cases (`mutations.test.ts`, Sprint 7, Prisma mocked) |
-| locationIntent | 28 | paren coords, OLC classify/decode/encode/recover vectors, plus-code pins, reverse enrich, numeric-address + overpass-addr recall (Sprint 71); friendly-label-first pins, `CGQC+HQ2 Lekki` locality reference pin, no-reference fallthrough, `extractPlusCodeToken` split (Sprint 72) |
-| mapVehicleProfiles | 9 | profile resolution (road/default/all-null boat-train), keyed walking/cycling profiles, legacy URL byte-parity, cache slugs, `traceCacheKey`, mode-aware `traceRoute` pass with legacy fallback (Sprint 72, redis+fetch mocked) |
-| mapView | 5 | `shouldDeferFit` gate: never-interacted/active-gesture/idle-window/custom-delay + config sanity (Sprint 72) |
-| mapPicker | 6 | `MAP_PICKER_CONFIG` copy/chroma sanity, CTA labels, pure `resolveFindOnMapTarget` chain, FAQ en+pidgin parity for 4 new maps items (Sprint 72) |
-| posts API | 11 | POST persistence (type/description/quotedPostId), fan-out, validation (`posts.test.ts`, Sprint 7, Prisma mocked) |
-| search API | 9 | validation, type/region/postType filters, pagination, 503, 429 (`search.test.ts`, search session, Prisma mocked) |
-| searchService | 8 | normalization, short-query guard, cache read-through, tag aggregation, cursor, P2022 retry (`searchService.test.ts`, search session, Prisma mocked) |
-| mapStack config + proxy | 10 | keyless vector/raster URLs, fallback order, dark mapping, attribution, preconnect hosts, style-stack shape, cache-key determinism, straight-line proof, offline degradation, Nominatim-shape normalization (`mapStack.test.ts`, Sprint 19, redis mocked) |
-| reviews config | 8 | CTA cadence (≤10 end, 11→5, 14→7, ≥20 every 10, empty CTA-only), rating bounds, anonymized-author names (`reviews.test.ts`, Sprint 25) |
-| pwa config | 15 | versioned caches, guest-only precache, locale-registry precache, config/reviews cacheability, banner collapse copy, REVIEW push mirror, sanitized toast copy (`pwa.test.ts`, Sprint 24 +4 Sprint 25) |
-| locale parity | 4+ | identical en/pcm key sets (235/235 Sprint 25), PWA/offline/reviews/about/faq/leaderboard/invite coverage, pidgin divergence, interpolation preservation (`locales.test.ts`, Sprint 24, keys extended Sprint 25) |
+### Sprint 72 (2026-10-17) — map tightening
+- tsc 0; jest 865/865 (98 suites: +mapVehicleProfiles/mapView/mapPicker; locationIntent 22→28); build clean; lint 0 findings in touched files (11 pre-existing errors in untouched files at that time)
 
----
+### Sprint 75 (2026-10-18) — notice tightening
+- tsc 0; jest 1042/1042 (105 suites); build clean; config count 89 verified
 
-## Active Failures
-
-| Test | Error | Status | Assigned To |
-|------|-------|--------|------------|
-| — | — | — | — |
-
----
-
-## History
-
-| Date | Passed | Failed | Notes |
-|------|--------|--------|-------|
-| 2026-10-13 | 612 | 3 (5 suites) | Fix-build searchService viewerId type error: REAL runs with node_modules installed (npm install, 1518 pkgs). `npx tsc --noEmit` clean (0 errors — the exact Vercel failure). jest 612/615 across 74 suites; all 3 search suites pass. 5 failing suites (locationSuggestBroad, dislikeSync, pwa, locationSuggestions, blogShareVariables) confirmed PRE-EXISTING via git-stash A/B (identical failures on base without this fix — unrelated ESM/env/expectation issues, left untouched per minimal-fix contract). eslint not runnable (no eslint.config.js in repo; Vercel skips linting). |
-| 2026-10-11 | — | — | Fix-build explore type + leaderboard accuracy: no node_modules in runner, full jest/tsc/build not runnable; verified via re-reads of all 5 touched files (AvatarConfig shape identical to ExplorePinCardUser on both card call sites, rank-helper competition logic executed in node — 100,100,50,0,0 → 1,1,3,4,4 — cached re-sort keeps createdAt tie-break, count/me-fallback mocks added to leaderboard.test.ts, no dangling `period` refs on leaderboard page), updated `leaderboard.test.ts` (+1 tie-rank case) awaits CI — Vercel build to confirm |
-| 2026-10-11 | — | — | Fix-build hardening round (photo-remove z-10/ring, expanded-map createPortal, edit-prefill id guard + coord carry, AppAvatar on explore/popup/detail/reviews/About): no node_modules in runner, full jest/tsc/build not runnable; verified via full re-reads of all 10 touched files (scope/indent/type-flow, AvatarConfig shape match, AppAvatar size literals valid, no nested-anchor except pre-existing explore-card pattern, effect deps unchanged + eslint-disable retained, test expects match new class literals), cross-file grep (single ShareRouteModalConfig literal, EditPost coords optional-additive, REVIEWER_SELECT additive); extended `uxTightening.test.ts` (+2 z-10/ring expects) awaits CI — Vercel build to confirm |
-| 2026-10-11 | — | — | Fix-build photo-remove visibility + expanded-map containment: no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --ignoreConfig --noResolve` on mapStack/shareRoute/RouteMap/ShareRouteModal/tests (zero syntax errors, zero TS2305/TS2339/TS2322/TS2551/TS1xxx attributable — remaining noise is missing-module/JSX-runtime/implicit-any from absent node_modules, identical on untouched MapPins baseline), cross-file grep (single ShareRouteModalConfig literal, MAP_EXPAND_CONFIG barrel export, all 3 ShareRouteModal mounts unaffected); extended suites `uxTightening.test.ts` (+1 photo-remove case) + `mapStack.test.ts` (+2 containment cases) await CI — Vercel build to confirm |
-| 2026-10-10 | — | — | Execute-command Sprint 31 universal share + dynamic trust: no node_modules in runner, full jest/tsc/build not runnable; verified via full-scope static re-reads (all 22 touched files: scope/indent/type-flow, Prisma delegate + enum-literal consistency with existing code, closure ordering), legacy-score arithmetic proofs (61.5→verified, 100→trusted, 0-vote→developing/low unchanged), new suites `postShareService.test.ts` (8) + ValidityEngine dynamic/scorer (+9) + TrustBadge live (+2) await CI; one misplaced-block regression (breakdown insert landed in PATCH catch) caught and repaired by re-read — Vercel build to confirm |
-| 2026-10-09 | — | — | Fix-build sidebar share-route vanish: no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --noResolve` on DashboardNav/ShareRouteModal/RequestRouteModal/faq (zero attributable errors — only missing-module/JSX-runtime noise from absent node_modules, identical on untouched files; faq.ts fully clean), usage grep (all 3 ShareRouteModal mounts now POST-backed; RequestRouteModal caller returns boolean) — Vercel build to confirm |
-| 2026-10-09 | — | — | Fix-build share-route validation: no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --ignoreConfig --noResolve` (zero attributable errors in routeValidation/post-schema/modal/submit/API files — remaining noise is missing-module/implicit-any under noResolve, identical on untouched files), new suite `routeValidation.test.ts` (13 cases) awaits CI — Vercel build to confirm |
-| 2026-10-09 | — | — | Fix-build verify-email 504: no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --noEmit` (zero attributable errors in touched routes/services — remaining noise is pre-existing missing @types/node + ungenerated Prisma client), `git diff` review (9 files, parallel-Redis + maxDuration only), JSON parse (vercel.json OK) — Vercel build to confirm |
-| 2026-10-09 | — | — | Fix-build verify-email 404 + fresh-OTP "expired": no node_modules in runner, full jest/tsc/build not runnable; verified via targeted `tsc --noEmit` (zero attributable errors in touched routes/services — remaining noise is pre-existing missing @types/node + ungenerated Prisma client), `git diff` review (11 files + 4 new, DB-mirror + page only), new suites `emailOtpStore` (11 cases, mocked prisma) + `verifyEmailFlow` (6 static route/schema checks) await CI — Vercel build to confirm |
-| 2026-10-09 | 309 | 0 | Execute-feature Sprint 25 PWA/i18n/reviews QA gate: real jest/tsc/build/lint runs (36 suites, +1 reviews suite) |
-| 2026-10-09 | — | — | Fix-build maplibre CSS: no node_modules in runner, full jest/tsc/build not runnable; verified via `node --check` (next.config.mjs OK) + alias-resolution simulation (old prefix-match → doubled dist path; new exact-match leaves CSS untouched, bare import still aliased) — Vercel build to confirm |
-| 2026-10-08 | — | — | Fix-build Sentry hardening: no node_modules in runner, full jest/tsc/build not runnable; verified via `node --check` (next.config.mjs OK), JSON parse (package.json OK), grep (no `--no-engine` remains, all Sentry keys present) — Vercel build to confirm |
-| 2026-10-08 | — | — | Fix-build `bugId` duplicate: no node_modules in runner, full jest/tsc/build not runnable; verified via grep (single `targetBugId` declaration, no redeclaration) — Vercel build to confirm |
-| 2026-10-08 | 139 | 0 | Execute-feature search E2E QA gate: real jest/tsc/build/lint runs (13 suites, +2 search suites) |
-| 2026-10-08 | 122 | 0 | Resume-session QA gate: Sprint 7 verify + tsconfig downlevelIteration removal (11 suites) |
-| 2026-09-15 | 91 | 0 | Fix-build: Redis timeout guard + forgot-password non-blocking (this session) |
-| 2026-09-15 | 91 | 0 | Fix: Image Upload, Feed/Explore Visibility & Production Audit (77 pages) |
-| 2026-06-13 | 91 | 0 | Dashboard navigation, seed fixes, Prisma type fix |
-| 2026-06-10 | 91 | 0 | Auth UX: toast, redirect, auth-aware nav |
-| 2026-06-09 | 91 | 0 | Sprint 5: feed crash, guest auth, styling, login fixes |
-| 2026-06-09 | 91 | 0 | Sprint 4: Production audit fixes |
-| 2026-06-03 | 91 | 0 | OC-8: Production readiness audit |
-
-## Run (Sprint 21 — static-only, 2026-10-09)
-
-**Date:** 2026-10-09
-**Run by:** AI agent (opencode — execute-feature Sprint 21)
-
-- `npx tsc --noEmit` — NOT RUN (no node_modules in runner)
-- `npx jest` — NOT RUN (no node_modules in runner); new suite `app/__tests__/config/accountDeletion.test.ts` (9 assertions) awaits CI
-- `npm run build` — NOT RUN locally; Vercel runs `prisma generate` + `migrate deploy` before build so new models/enums resolve
-- Static verification: import paths, ConfirmOptions excess-property fix, Json-null clear, cron guard, recipient caps manually reviewed
-- Test figures from prior runs (241/241 Sprint 20) are historical, not re-verified this run
+### Sprint 77 (2026-10-18) — DB pooler + style proxy
+- tsc 0; jest 1071/1071 (107 suites: +dbPool 15, +mapStyleSanitize 7, mapStack +4); build clean

@@ -8,7 +8,7 @@ import { toastService } from "@/app/lib/services/toastService"
 import { undoService } from "@/app/lib/services/undoService"
 import { AppModal, AppInput, AppTextarea, AppButton, AppTableRowActions, type TableRowAction } from "@/app/components/ui"
 import { POST_ACTIONS_CONFIG, MODERATION_CONFIG } from "@/app/lib/config"
-import { ADMIN_BULK_SELECT_META, ADMIN_TABLE_SORT_META } from "@/app/lib/config/admin"
+import { ADMIN_BULK_SELECT_META, ADMIN_PAGINATION_META, ADMIN_TABLE_SORT_META } from "@/app/lib/config/admin"
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 
 interface AdminPost {
@@ -63,7 +63,7 @@ export default function AdminPostsPage() {
     try {
       const sortOpt = ADMIN_TABLE_SORT_META.posts.options.find((o) => o.id === sortId)
         ?? ADMIN_TABLE_SORT_META.posts.options[0]
-      const params = new URLSearchParams({ sort: sortOpt.sort, dir: sortOpt.dir, limit: "20" })
+      const params = new URLSearchParams({ sort: sortOpt.sort, dir: sortOpt.dir, limit: String(ADMIN_PAGINATION_META.defaultLimit) })
       if (cursor) params.set("cursor", cursor)
       const res = await fetch(`/api/admin/posts?${params.toString()}`)
       if (!res.ok) throw new Error("Request failed")

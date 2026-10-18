@@ -17,6 +17,7 @@ import { OfflineBanner } from "@/app/components/pwa/OfflineBanner";
 import { PwaNotices } from "@/app/components/pwa/PwaNotices";
 import { ServiceWorkerRegistrar } from "@/app/components/pwa/ServiceWorkerRegistrar";
 import { MAP_STACK_CONFIG } from "@/app/lib/config/mapStack";
+import { DEFAULT_META } from "@/app/lib/config";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,7 +31,9 @@ export const metadata: Metadata = {
   ),
   title: {
     default: "Along — Navigate Together",
-    template: "%s | Along",
+    // Single-source suffix (config): pages export bare titles; the template
+    // appends " | Along" exactly once (see DEFAULT_META.titleSuffix).
+    template: `%s${DEFAULT_META.titleSuffix}`,
   },
   description:
     "Along is a social travel-intelligence platform for sharing, verifying, and discovering transport routes in West Africa.",

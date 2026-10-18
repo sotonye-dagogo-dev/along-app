@@ -790,8 +790,13 @@ All color tokens already have dark-mode values defined in §2. Additional dark-m
 Every page exports Next.js Metadata. Minimum required per page:
 
 ```typescript
+// Title is the BARE page title — do NOT append " | Along" manually.
+// The root layout's title.template (`%s${DEFAULT_META.titleSuffix}`, seo.ts)
+// is the single source of the suffix for `title`. OpenGraph/Twitter titles
+// are NOT templated by Next — builders in app/lib/utils/metadata.ts compose
+// them once via `${title}${DEFAULT_META.titleSuffix}`.
 {
-  title: "[Page Title] | Along",
+  title: "[Page Title]",
   description: "[Unique 150-char description]",
   openGraph: {
     title, description, url, siteName: "Along",

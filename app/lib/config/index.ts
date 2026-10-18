@@ -216,6 +216,8 @@ export { resolveNotificationRoute } from "./notificationRoutes";
 export type { NotificationRouteInput } from "./notificationRoutes";
 export { PAGINATION_UI_CONFIG } from "./paginationUi";
 export type { PaginationUiConfig } from "./paginationUi";
+export { PAGINATION_CONFIG, clampPageLimit } from "./pagination";
+export type { PaginationSurface, PaginationSurfaceConfig } from "./pagination";
 export { STUDIO_LAYOUT_CONFIG, studioPreviewStyle, avatarGridStyle } from "./studioLayout";
 export type { StudioLayoutConfig } from "./studioLayout";
 export { FLOATING_UI_CONFIG, laneBottom } from "./floatingUi";

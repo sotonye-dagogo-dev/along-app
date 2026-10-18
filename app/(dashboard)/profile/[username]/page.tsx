@@ -4,10 +4,11 @@ import { useState, useMemo, Fragment } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { UserMinus, UserPlus, UserCheck, Search } from "lucide-react"
-import { AppAvatar, AppEmptyState } from "@/app/components/ui"
-import { EMPTY_STATES } from "@/app/lib/config"
+import { AppAvatar, AppEmptyState, ViewMoreButton } from "@/app/components/ui"
+import { EMPTY_STATES, PAGINATION_CONFIG } from "@/app/lib/config"
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { useCursorList } from "@/app/lib/hooks/useCursorList"
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard"
 import { EarlyAdopterBadgeFromStatus } from "@/app/components/features/profile"
 import { ReviewsPanel } from "@/app/components/features/reviews"
@@ -126,24 +127,40 @@ export default function OtherProfilePage() {
   // their own tab so they never masquerade as routes. The reviews tab owns
   // no post query — ReviewsPanel fetches the author's platform review.
   const profileId = profileRes?.user?.id
+  // Page sizes come from PAGINATION_CONFIG — no per-page limit literals.
   // NOTE: named `tabPostsQuery` (not `tabQuery`) — `tabFilter` owns the search
   // box state. A same-name collision here broke the production build.
+  const postsLimit = PAGINATION_CONFIG.posts.defaultLimit
   const tabPostsQuery = !profileId
-    ? "/api/posts?limit=20"
+    ? `/api/posts?limit=${postsLimit}`
     : activeTab === "reviews"
       ? "/api/reviews?limit=1"
       : activeTab === "liked"
-      ? `/api/posts?limit=20&likedBy=${profileId}`
+      ? `/api/posts?limit=${postsLimit}&likedBy=${profileId}`
       : activeTab === "routes"
-        ? `/api/posts?limit=20&userId=${profileId}&type=ROUTE,ROUTE_RESPONSE`
+        ? `/api/posts?limit=${postsLimit}&userId=${profileId}&type=ROUTE,ROUTE_RESPONSE`
         : activeTab === "requests"
-          ? `/api/posts?limit=20&userId=${profileId}&type=ROUTE_REQUEST`
-          : `/api/posts?limit=20&userId=${profileId}`
-  const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
-    ready && profileId ? `profile-tab:${profileId}:${activeTab}` : null,
-    tabPostsQuery,
-    { ttlSec: 120, enabled: ready && activeTab !== "reviews" }
-  )
+          ? `/api/posts?limit=${postsLimit}&userId=${profileId}&type=ROUTE_REQUEST`
+          : `/api/posts?limit=${postsLimit}&userId=${profileId}`
+  // Cursor-paginated list: first page stays cache-keyed per tab; "View more"
+  // appends the next window (list APIs return { posts, nextCursor }).
+  const {
+    items: tabPosts,
+    loading: postsLoading,
+    loadingMore: postsLoadingMore,
+    hasMore: postsHasMore,
+    loadMore: loadMorePosts,
+    mutate: mutatePosts,
+  } = useCursorList<PostItem>({
+    cacheKey: ready && profileId ? `profile-tab:${profileId}:${activeTab}` : null,
+    enabled: ready && activeTab !== "reviews",
+    buildUrl: (cursor) =>
+      cursor ? `${tabPostsQuery}&cursor=${encodeURIComponent(cursor)}` : tabPostsQuery,
+    extract: (data) => ({
+      items: data?.posts ?? [],
+      nextCursor: data?.nextCursor ?? null,
+    }),
+  })
 
   const profile = useMemo<ProfileData | null>(() => {
     const u = profileRes?.user
@@ -179,13 +196,13 @@ export default function OtherProfilePage() {
   const posts = useMemo(() => {
     // Deleted users have no personalized tabs — likes/bookmarks always empty.
     if ((profileRes as { isDeleted?: boolean } | undefined)?.isDeleted && (activeTab === "liked")) return []
-    const rows = postsData?.posts ?? []
+    const rows = tabPosts
     // The liked tab lists posts by OTHER authors the profile owner liked —
     // filtering to own author would wrongly empty it. All other tabs are
     // owner-authored, so keep the author guard there.
     if (activeTab === "liked") return rows
     return rows.filter((p) => p.user.userName === userName)
-  }, [postsData, userName, profileRes, activeTab])
+  }, [tabPosts, userName, profileRes, activeTab])
 
   const visiblePosts = useMemo(() => {
     const q = tabFilter.trim().toLowerCase()
@@ -436,12 +453,19 @@ export default function OtherProfilePage() {
                 } as never
               }
               onRemoved={(postId) =>
-                mutatePosts((prev) =>
-                  prev ? { posts: prev.posts.filter((p) => p.id !== postId) } : { posts: [] },
-                )
+                mutatePosts((prev) => prev.filter((p) => p.id !== postId))
               }
             />
           ))}
+          {postsHasMore && posts.length > 0 && (
+            <ViewMoreButton
+              onViewMore={() => void loadMorePosts()}
+              loading={postsLoadingMore}
+              shown={posts.length}
+              total={null}
+              hasMore={postsHasMore}
+            />
+          )}
             </>
           )}
         </div>

@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { feedService } from "@/app/lib/services/feedService";
 import { prisma } from "@/app/lib/db/prisma";
+import { clampPageLimit } from "@/app/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromRequest();
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor") ?? undefined;
-    const limit = Math.min(Number(searchParams.get("limit")) || 10, 50);
+    // Config-driven default (20) + max clamp — PAGINATION_CONFIG.feed.
+    const limit = clampPageLimit(searchParams.get("limit"), "feed");
     // Stable pagination: client sends ids it already renders so score-ordered
     // pages never resurface them (see feedService excludeIds).
     const excludeIds = (searchParams.get("exclude") ?? "")
@@ -37,23 +39,27 @@ export async function GET(request: NextRequest) {
     // `exclude` is honored here too so infinite scroll never repeats rows.
     const guestWhere =
       excludeSet.size > 0 ? { isArchived: false, id: { notIn: [...excludeSet] } } : { isArchived: false };
-    let posts: any[];
-    try {
-      posts = await (prisma.post.findMany as any)({
-        where: guestWhere,
-        take: limit + 1,
-        ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-        include: {
-          user: {
-            select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
-          },
+    const guestFetchArgs = {
+      where: guestWhere,
+      take: limit + 1,
+      ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
+      include: {
+        user: {
+          select: { id: true, userName: true, firstName: true, lastName: true, avatar: true, avatarConfig: true },
         },
-        orderBy: { createdAt: "desc" },
-      });
+      },
+      orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
+    };
+
+    let posts: unknown[];
+    try {
+      posts = await (prisma.post.findMany as unknown as (args: typeof guestFetchArgs) => Promise<unknown[]>)(guestFetchArgs);
     } catch (e) {
-      const isP2022 = e instanceof Error && ((e as any).code === "P2022" || e.name === "PrismaClientKnownRequestError");
+      const isP2022 = e instanceof Error && ((e as unknown as { code?: string }).code === "P2022" || e.name === "PrismaClientKnownRequestError");
       if (isP2022) {
-        posts = await (prisma.post.findMany as any)({
+        // Strip additive columns (avatarConfig select, isArchived filter) so
+        // guest reads keep working if the moderation migrations lag behind.
+        const fallbackArgs = {
           take: limit + 1,
           ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
           include: {
@@ -61,16 +67,17 @@ export async function GET(request: NextRequest) {
               select: { id: true, userName: true, firstName: true, lastName: true, avatar: true },
             },
           },
-          orderBy: { createdAt: "desc" },
-        });
+          orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
+        };
+        posts = await (prisma.post.findMany as unknown as (args: typeof fallbackArgs) => Promise<unknown[]>)(fallbackArgs);
       } else {
         throw e;
       }
     }
 
-    const hasMore = posts.length > limit;
+    const hasMore = (posts as { id: string }[]).length > limit;
     const resultPosts = hasMore ? posts.slice(0, limit) : posts;
-    const nextCursor = hasMore ? resultPosts[resultPosts.length - 1].id : null;
+    const nextCursor = hasMore ? (resultPosts as { id: string }[])[resultPosts.length - 1].id : null;
 
     // Same canonical live trust as authenticated feeds + detail — guest
     // cards carry identical breakdown values (best-effort, never fails).
@@ -78,14 +85,15 @@ export async function GET(request: NextRequest) {
       const { attachLiveBreakdownsToPosts } = await import(
         "@/app/lib/services/trustBreakdownService"
       );
-      const withTrust = await attachLiveBreakdownsToPosts(prisma, resultPosts);
+      const withTrust = await attachLiveBreakdownsToPosts(prisma, resultPosts as { id: string }[]);
       return NextResponse.json({ posts: withTrust, nextCursor }, { status: 200 });
     } catch {
       return NextResponse.json({ posts: resultPosts, nextCursor }, { status: 200 });
     }
   } catch (error) {
     console.error("Feed error:", error);
-    const isPrismaKnown = error instanceof Error && (error.name === "PrismaClientKnownRequestError" || (error as any).code === "P2022");
+    const errCode = error instanceof Error && "code" in error ? (error as { code?: unknown }).code : undefined;
+    const isPrismaKnown = error instanceof Error && (error.name === "PrismaClientKnownRequestError" || errCode === "P2022");
     const isPrismaInit = error instanceof Error && error.name === "PrismaClientInitializationError";
     if (isPrismaKnown || isPrismaInit) {
       return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });

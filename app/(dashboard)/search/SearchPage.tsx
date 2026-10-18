@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Search as SearchIcon } from "lucide-react";
 import { AppEmptyState, PostCardSkeleton, AppAvatar, ViewMoreButton } from "@/app/components/ui";
 import { EMPTY_STATES } from "@/app/lib/config";
+import { PAGINATION_CONFIG } from "@/app/lib/config"
 import { FollowButton } from "@/app/components/features/suggestions/FollowButton";
 import { ProfilePostCard } from "@/app/components/features/profile/ProfilePostCard";
 
@@ -75,7 +76,7 @@ function SearchContent() {
     setError(null);
     try {
       const res = await fetch(
-        `/api/search?q=${encodeURIComponent(q)}&type=${t}&limit=10`,
+        `/api/search?q=${encodeURIComponent(q)}&type=${t}&limit=${PAGINATION_CONFIG.search.defaultLimit}`,
         { signal: controller.signal, headers: { Accept: "application/json" } }
       );
       let payload: SearchPayload & { error?: string } | null = null;
@@ -119,7 +120,7 @@ function SearchContent() {
     setLoadingMore(true);
     try {
       const res = await fetch(
-        `/api/search?q=${encodeURIComponent(query)}&type=${tab}&limit=10&cursor=${encodeURIComponent(cursor)}`,
+        `/api/search?q=${encodeURIComponent(query)}&type=${tab}&limit=${PAGINATION_CONFIG.search.defaultLimit}&cursor=${encodeURIComponent(cursor)}`,
         { headers: { Accept: "application/json" } }
       );
       const payload = (await res.text().then((t) => (t ? JSON.parse(t) : null)).catch(() => null)) as SearchPayload | null;

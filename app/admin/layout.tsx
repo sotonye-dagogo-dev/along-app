@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import AdminShell from "./AdminShell";
 
 export const metadata: Metadata = {
-  title: "Admin | Along",
+  // Bare title — the root layout title.template appends ` | Along` once.
+  title: "Admin",
   description: "Platform administration and moderation.",
   robots: { index: false, follow: false },
 };

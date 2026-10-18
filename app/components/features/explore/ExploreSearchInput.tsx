@@ -11,6 +11,7 @@ import {
   clearRecentSearches,
 } from "@/app/lib/config/exploreSearch";
 import { AppAvatar } from "@/app/components/ui";
+import { PAGINATION_CONFIG } from "@/app/lib/config"
 
 interface SuggestionPost {
   id: string;
@@ -90,7 +91,7 @@ export function ExploreSearchInput({
       void (async () => {
         try {
           const res = await fetch(
-            `/api/search?q=${encodeURIComponent(q)}&type=all&limit=10`,
+            `/api/search?q=${encodeURIComponent(q)}&type=all&limit=${PAGINATION_CONFIG.search.defaultLimit}`,
             { signal: controller.signal, headers: { Accept: "application/json" } },
           );
           if (!res.ok) return;
