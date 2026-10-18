@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-11 (Sprint 35 link-status cast-lie entry)
-> - last-verified-against-code: 2026-10-11
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: EMAXCONNSESSION + MapLibre null-warning entries)
+> - last-verified-against-code: 2026-10-18
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
 > **Overview:** A living knowledge base of errors encountered during development, their root causes, and how they were fixed. Agents should consult this before diagnosing new errors. Every fixed bug should be logged here to prevent recurrence. This file is pre-populated with known error patterns for the Along tech stack (Next.js 15 + React 19 + Ant Design 5 + Tailwind 4).
@@ -1226,6 +1226,57 @@ pushing — this runner now has them (`npm install` completed 2026-10-13).
 - app/lib/services/searchService.ts
 
 **Date:** 2026-10-13
+**Status:** Active
+
+### EMAXCONNSESSION 500s on Every DB-Backed Route (Runtime Pointed at Session-Mode Pooler)
+
+**Symptom:**
+Constant 500s after the Supabase DB migration on feed (all cursor pages), reviews, blogs, site config, site stats, and intermittently auth/me. Vercel error: `DriverAdapterError: (EMAXCONNSESSION) max clients reached in session mode - max clients are limited to pool_size: 15`. Redis timeout warnings (`[redis] get failed ... Redis timeout after 1200ms`) rode along as secondary noise. Supabase dashboard looked healthy — no CPU/lock pressure.
+
+**Root Cause:**
+`resolveDatabaseUrl()` (app/lib/config/env.ts) production branch returned `DIRECT_URL || DATABASE_URL`, so the RUNTIME PrismaClient resolved the Supabase SESSION-mode pooler (port 5432) — which caps concurrent clients at the dashboard "Pool Size" (15). `app/lib/db/prisma.ts` then built `new PrismaPg({ connectionString })` with pg defaults: `max: 10` connections per warm Vercel instance, no connect timeout. N warm instances × 10 ≫ 15 → the pooler refused new clients under any real concurrency. The dev branch had the mirrored bug (`DIRECT_LOCAL_DB` before `LOCAL_DB`). Secondary: prepared statements must be OFF against transaction-mode Supavisor (the `?pgbouncer=true` URL param is a classic-engine switch the pg driver ignores).
+
+**Fix Applied:**
+Runtime URL precedence flipped to TRANSACTION-mode first (prod: `DATABASE_URL → DIRECT_URL → …`; dev: `LOCAL_DB → DIRECT_LOCAL_DB → …`); CLI (`prisma.config.ts`) intentionally stays DIRECT-first (DDL needs session continuity). New `app/lib/config/dbPool.ts`: `isTransactionModePoolerUrl` (port 6543 / `pgbouncer=` flag), `buildPgAdapterOptions` (per-instance max 5 via `DB_POOL_MAX`, connect timeout 5s, idle 10s, `allowExitOnIdle`, `prepare: false` iff transaction-mode), `isSessionModePoolerUrl` (one-time production warn in `prisma.ts` when the runtime still resolves a session-mode URL). Prisma singleton now cached on `globalThis` in EVERY environment (a second module copy would open a second pool — same failure class). `.env.example` documents the two-pooler contract and the new `DB_POOL_MAX` / `DB_CONNECT_TIMEOUT_MS` / `DB_IDLE_TIMEOUT_MS` knobs.
+
+**Prevention:**
+The runtime MUST resolve the transaction-mode pooler (6543) on serverless; session-mode/direct URLs are CLI-only. `dbPool.test.ts` locks the precedence (DATABASE_URL-first in prod, LOCAL_DB-first in dev) and the pooler-aware adapter options. If EMAXCONNSESSION ever reappears, check the one-time `[prisma] runtime resolved a SESSION-mode pooler URL` warn first, then `DB_POOL_MAX` vs the dashboard Pool Size.
+
+**Files Affected:**
+- app/lib/config/env.ts (resolveDatabaseUrl precedence)
+- app/lib/config/dbPool.ts (new — pooler detection + adapter options)
+- app/lib/db/prisma.ts (singleton + buildPgAdapterOptions + session-mode warn)
+- .env.example (pooler contract + pool knobs docs)
+- app/lib/config/index.ts (barrel exports)
+- app/__tests__/config/dbPool.test.ts (new — 15 tests)
+
+**Date:** 2026-10-18
+**Status:** Active
+
+### MapLibre "Expected value to be of type number, but found null instead" Console Warnings
+
+**Symptom:**
+Console warning `Expected value to be of type number, but found null instead.` on every map render (route post cards, detail, pickers). Cosmetic — maps rendered fine — but noisy and alarming.
+
+**Root Cause:**
+OpenFreeMap styles use data-driven expressions (`["get", …]` inside e.g. `layout["text-size"]`) that evaluate to `null` on features missing the property. MapLibre's numeric type check then warns (known upstream: maplibre-gl-js#7856; internal expression paths like sky/projection/light are tracked separately in #7919).
+
+**Fix Applied:**
+New same-origin sanitized style proxy `GET /api/maps/style?name=`: whitelisted names only (`MAP_STACK_CONFIG.vectorStyles`), Redis read-through (`maps:style:<name>`, TTL 86400), upstream fetch with server identity headers + 8s budget, per-instance stale-on-error copy. The pure `sanitizeMapStyleNumericExpressions` util coalesce-wraps ONLY numeric props whose expression tree reads feature data (`get`/`has`/`feature-state`/`id`), with config fallbacks (`MAP_STACK_CONFIG.numericExpressionFallbacks`); static values, zoom-only expressions, and already-coalesced values stay untouched (idempotent). `vectorStyleUrl()` now returns the proxy path so both renderers consume the hardened doc; raster fallback ladder unchanged. Route registered in `apiRegistry` + service-worker cacheable list.
+
+**Prevention:**
+New style props with data-driven numeric expressions should add their fallback to `numericExpressionFallbacks`; `mapStyleSanitize.test.ts` + the mapStack proxy tests lock the contract. Upstream warnings from internal MapLibre paths (post-#7919) remain upstream-tracked.
+
+**Files Affected:**
+- app/lib/config/mapStack.ts (styleProxyPath, styleCacheTtlSec, numericExpressionFallbacks, vectorStyleUrl → proxy, vectorStyleUpstreamUrl)
+- app/lib/utils/mapStyleSanitize.ts (new — pure sanitizer)
+- app/lib/services/mapProxyService.ts (getMapStyleDocument + styleCacheKey)
+- app/api/maps/style/route.ts (new — GET proxy)
+- app/lib/config/apiRegistry.ts (mapsStyle entry)
+- public/sw.js (cacheable list += /api/maps/style)
+- app/__tests__/utils/mapStyleSanitize.test.ts (new), app/__tests__/config/mapStack.test.ts (proxy tests)
+
+**Date:** 2026-10-18
 **Status:** Active
 
 ---

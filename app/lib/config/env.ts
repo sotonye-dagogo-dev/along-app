@@ -41,20 +41,34 @@ export function getAppUrl(): string {
   return isProduction() ? "https://www.alongng.com" : "http://localhost:3000";
 }
 
-/** Resolve DB URL with the same precedence the prisma layer uses. */
+/**
+ * Resolve the RUNTIME DB URL (PrismaClient / app queries only).
+ *
+ * Precedence prefers the TRANSACTION-mode pooler (DATABASE_URL / LOCAL_DB —
+ * Supavisor port 6543) over DIRECT_URL / DIRECT_LOCAL_DB (session-mode
+ * pooler, port 5432). Session mode caps concurrent clients at the dashboard
+ * "Pool Size" (often 15) per database-role — a serverless fleet exhausts it
+ * instantly (EMAXCONNSESSION). DIRECT_URL stays the Prisma CLI path
+ * (migrations/seeds via `prisma.config.ts`, which keeps DIRECT-first on
+ * purpose: DDL needs session continuity).
+ *
+ * Regression note (Sprint 77): the production branch used to return
+ * `DIRECT_URL || DATABASE_URL`, which pointed every warm lambda at the
+ * session-mode cap and 500'd feed/reviews/site-config/auth under load.
+ */
 export function resolveDatabaseUrl(): string {
   if (!isProduction()) {
     return (
-      process.env.DIRECT_LOCAL_DB ||
       process.env.LOCAL_DB ||
-      process.env.DIRECT_URL ||
+      process.env.DIRECT_LOCAL_DB ||
       process.env.DATABASE_URL ||
+      process.env.DIRECT_URL ||
       ""
     );
   }
   return (
-    process.env.DIRECT_URL ||
     process.env.DATABASE_URL ||
+    process.env.DIRECT_URL ||
     process.env.DIRECT_LOCAL_DB ||
     process.env.LOCAL_DB ||
     ""

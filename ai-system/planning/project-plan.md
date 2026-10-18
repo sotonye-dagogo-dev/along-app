@@ -2,10 +2,18 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: refresh-notice once-flag + catch-all note)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: DB pooler strategy + sanitized style proxy)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 77 — DB pooler strategy + sanitized style proxy (2026-10-18, execute-feature)
+
+- [x] Runtime Prisma resolves the TRANSACTION-mode pooler first (DATABASE_URL-first prod, LOCAL_DB-first dev; CLI stays DIRECT-first) — fixes the EMAXCONNSESSION 500s that blanked every DB-backed route post-Supabase-migration
+- [x] Config-driven pooler-aware pg adapter (`dbPool.ts`: small per-instance pool via `DB_POOL_MAX` default 5, connect timeout, idle release, `prepare:false` iff transaction-mode) + globalThis Prisma singleton in every env + one-time session-mode prod warn
+- [x] Same-origin sanitized vector-style proxy (`/api/maps/style?name=`, whitelisted, Redis read-through) + coalesce-wrap sanitizer silencing the MapLibre null-type console warning class; renderers load styles through the proxy
+
+---
 
 ## Sprint 76 — Refresh-notice once-flag (2026-10-18, execute-feature)
 

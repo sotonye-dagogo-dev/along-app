@@ -7,9 +7,11 @@ import {
   hasOrsKey,
   resolveRoutingProfiles,
   routingProfileSlug,
+  vectorStyleUpstreamUrl,
   type MapGeocodeProvider,
   type MapRoutingProvider,
 } from "@/app/lib/config/mapStack";
+import { sanitizeMapStyleNumericExpressions } from "@/app/lib/utils/mapStyleSanitize";
 import {
   LOCATION_SUGGESTIONS_CONFIG,
   classifyPlusCode,
@@ -927,14 +929,76 @@ export async function geocodeReverse(lat: number, lng: number): Promise<string |
   return label;
 }
 
+/** Redis key for a sanitized vector style document. */
+export function styleCacheKey(name: string): string {
+  return `maps:style:${name}`;
+}
+
+/** Optional stale copy kept in-memory (per instance) when Redis is down. */
+const styleFallbackCache = new Map<string, unknown>();
+const STYLE_FALLBACK_CACHE_MAX = 3;
+
+/**
+ * Fetch + sanitize a whitelisted vector style document (Sprint 77).
+ *
+ * Server-side read-through: Redis → OpenFreeMap upstream (8s budget,
+ * server identity headers) → in-memory stale. The document is passed
+ * through `sanitizeMapStyleNumericExpressions` BEFORE caching so every
+ * consumer gets the null-hardened form. The sanitized document is cached,
+ * not the raw upstream, so the transform runs once per refresh cycle.
+ *
+ * Whitelisted by `name` against `MAP_STACK_CONFIG.vectorStyles` — unknown
+ * names resolve null (never an open proxy). Never throws.
+ */
+export async function getMapStyleDocument(
+  name: string
+): Promise<unknown | null> {
+  const safeName = (name ?? "").trim();
+  if (!safeName) return null;
+  const upstream = vectorStyleUpstreamUrl(safeName);
+  if (!upstream) return null;
+
+  const key = styleCacheKey(safeName);
+  try {
+    const cached = await redis.get<unknown>(key);
+    if (cached && typeof cached === "object") return cached;
+  } catch {
+    // Best-effort cache read.
+  }
+
+  const data = await fetchJson(upstream, {
+    headers: { Accept: "application/json" },
+  });
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const sanitized = sanitizeMapStyleNumericExpressions(data);
+    try {
+      await redis.set(key, sanitized, { ex: MAP_STACK_CONFIG.cacheTtlSec.style });
+    } catch {
+      // Best-effort cache write; keep a per-instance copy anyway.
+    }
+    if (styleFallbackCache.size >= STYLE_FALLBACK_CACHE_MAX) {
+      const oldest = styleFallbackCache.keys().next().value;
+      if (oldest !== undefined) styleFallbackCache.delete(oldest);
+    }
+    styleFallbackCache.set(safeName, sanitized);
+    return sanitized;
+  }
+
+  // Upstream down — serve the per-instance stale copy if we have one.
+  const stale = styleFallbackCache.get(safeName);
+  return stale ?? null;
+}
+
 export const mapProxyService = {
   traceRoute,
   geocodeForward,
   geocodeReverse,
+  getMapStyleDocument,
   straightLineTrace,
   routeCacheKey,
   geocodeCacheKey,
   reverseCacheKey,
+  styleCacheKey,
   geocodeDedupKey,
   rankGeocodeHits,
 };
