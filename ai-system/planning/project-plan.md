@@ -2,10 +2,18 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: announcement deprecation + bug-report tightening)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 79 — Legacy announcement-banner deprecation + bug-report pipeline tightening (2026-10-18, execute-feature)
+
+- [x] Deprecate legacy `announcementBanner` admin UI (SimpleConfigCard + editor registration + SiteNotices strip removed; `ADMIN_DEPRECATED_CONFIG_KEYS` hides the key everywhere; defaults/validator/API field kept for back-compat)
+- [x] ChunkLoadError auto-recovery: one session-guarded `location.reload()` from both error boundaries (`ERROR_REPORTING_CONFIG.chunkLoad` patterns/copy/once-flag; second match falls through to the report flow)
+- [x] Bug-report dedup: stable timestamp-free idempotency key (`eb:` + FNV-1a of title|path|digest) from `reportClientError` + tightened server pre-read (key OR error identity OR exact description, reporter-scoped)
+- [x] Admin bug modal: collapsible full context (description + source/route/digest + category), Reported-by email, Assigned-to reviewer (modal + card)
+- [x] Status-change note prefill with `BUG_REPORT_STATUS_COPY[status]`; re-prefill only when empty/untouched-default; reset-to-default button; server whitespace-empty fallback preserved
 
 ## Sprint 78 — SEO title suffix + feed page size + pagination compliance (2026-10-18, execute-feature)
 
@@ -36,7 +44,7 @@
 
 - [x] Opaque `--color-warning-surface` token fixes translucent dark maintenance/offline strips
 - [x] Admin-configurable (default OFF) post-maintenance refresh notice with safe client reboot (protected-key storage clear + Cache Storage wipe + SW unregister + cache-busted reload; drafts/session/prefs survive; cookies untouched)
-- [x] Multiple announcements with optional CTA (central validator + href safety gate + per-id dismiss + bespoke admin list editor; legacy banner preserved)
+- [x] Multiple announcements with optional CTA (central validator + href safety gate + per-id dismiss + bespoke admin list editor; legacy single-string banner DEPRECATED Sprint 79 — admin UI + strip render removed, key kept registered for back-compat)
 - [x] Unified config-driven tag limits (10×30) with comma parsing, limit/length toasts, honest placeholders, and server-side rejection
 - [x] Scrollable 42vh stop-assignment picker card
 

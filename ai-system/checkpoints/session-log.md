@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance)
-> - last-verified-against-code: 2026-10-18 (tsc 0 errors, jest 108/108 suites 1119/1119, lint clean on touched files, next build clean; node_modules installed in-runner)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: announcement deprecation + bug-report tightening)
+> - last-verified-against-code: 2026-10-18 (tsc 0 errors, jest 110/110 suites 1134/1134, lint clean on touched files, next build clean; node_modules installed in-runner)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,37 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-18 (Sprint 79: announcement-banner deprecation + bug-report tightening)
+
+**Completed:**
+
+- Closed out the issue #25 directive end-to-end, five workstreams: (1) actually deprecated the legacy single-string `announcementBanner` config — removed its admin SimpleConfigCard + editor registration + the legacy SiteNotices strip render, added `ADMIN_DEPRECATED_CONFIG_KEYS` (folded into `ADMIN_DEDICATED_CONFIG_KEYS` so the key stays hidden from every admin surface including the raw JSON list), while keeping the shipped default + validator + `/api/site-config` field for stored-value back-compat; (2) ChunkLoadError auto-recovery — the reported `/login` `Loading chunk 72 failed` class (stale tab after deploy) now gets ONE `location.reload()` per browser session from both error boundaries (`isChunkLoadError` + `attemptChunkLoadRecovery`, config-driven patterns/copy/once-flag key in `ERROR_REPORTING_CONFIG.chunkLoad`; second occurrence falls through to the normal report flow — no reload loops); (3) duplicate bug-report rows — `reportClientError` now sends a stable timestamp-free idempotency key (`eb:` + double FNV-1a of title|path|digest) as `x-idempotency-key` + body `clientToken`, and the server dedup pre-read tightened to match idempotency key OR same error identity (title + metadata.path + metadata.digest) OR exact description, scoped to same reporter / both-anonymous; (4) admin bug modal — full attached context panel (complete description in scrollable pre + source/route/digest metadata rows + category), Reported-by with email (added to the admin GET reporter select) and Assigned-to reviewer on both the modal and the card; (5) status-change note prefill — the action modal prefills the note textarea with `BUG_REPORT_STATUS_COPY[status]`, status switches re-prefill only when the box is empty or still holds the previous default verbatim (custom notes survive), a "Reset to default note" button appears when customized, and the server keeps the legacy whitespace-empty → default fallback.
+- QA gate: tsc 0 errors; jest 110 suites / 1134 tests pass (new `chunkLoadRecovery.test.ts` 10 tests, new `bugReports.test.ts` 8 tests, +1 idempotency test in `errorReportService.test.ts`); `next lint` clean on every touched file (only pre-existing warnings elsewhere); `next build` exit 0.
+- Updated ai-system docs and executed the chained `update-ai-system.md` deep sync.
+
+**Files Modified:**
+
+- `app/lib/config/admin.ts`, `app/lib/config/index.ts`, `app/admin/config/page.tsx`, `app/components/ui/SiteNotices.tsx`, `app/lib/config/siteNotice.ts` — legacy banner deprecation (UI removed, back-compat kept).
+- `app/lib/config/errorReporting.ts`, `app/lib/services/errorReportService.ts`, `app/error.tsx`, `app/global-error.tsx` — chunk-load recovery + stable idempotency keys.
+- `app/api/bug-reports/route.ts`, `app/lib/config/reportAttachments.ts` — tightened dedup gate.
+- `app/api/admin/bugs/route.ts`, `app/admin/bugs/page.tsx`, `app/lib/config/bugReports.ts` — modal context/identification + note prefill.
+- `app/__tests__/config/designCompliance.test.ts` (deprecated-key coverage), `app/__tests__/services/errorReportService.test.ts` (+idempotency), new `app/__tests__/services/chunkLoadRecovery.test.ts`, new `app/__tests__/config/bugReports.test.ts` — tests.
+
+**Next Task:**
+
+- None in-repo — Sprint 79 closed; pipeline handles push/PR. Follow-ups ride later cleanups if ever needed: drop the `/api/site-config` `announcementBanner` field after one release of back-compat, and re-verify the designCompliance card-coverage test if more admin cards are deprecated.
+
+**Assumptions Made:**
+
+- Deprecation keeps the `/api/site-config` `announcementBanner` field and the stored SiteConfig row readable (one release of back-compat) — removal from the public endpoint can ride a future cleanup once this ships; no admin ever set the key in production (per directive), so the removed strip had zero live content.
+- Chunk recovery is once-per-browser-session via sessionStorage (not per-error-instance) so a persistent broken deploy cannot reload-loop; the digest-less client-error identity (title + path) collapsing within the 10-minute window is an acceptable trade for the reported double-row class.
+- Note prefill sends the default text explicitly when untouched (server treats it identically to the fallback) — behavior parity with the legacy blank-box path is preserved because the server-side whitespace-empty → default fallback was already present and remains authoritative.
+
+**Notes / Blockers:**
+
+- Non-breaking: no schema/migration, no removed API fields, validators + defaults retained for the deprecated key; error-boundary reports now idempotent, manual `/report-bug` form flow untouched (still sends its own per-form clientToken).
+- Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 79 + this log + dev-history + project-decisions + system-architecture + index + in-progress closed).
 
 ## Session — 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance sweep)
 

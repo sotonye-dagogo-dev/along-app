@@ -968,8 +968,9 @@ export default function AdminConfigPage() {
       {/*
         Rich announcements (multiple + optional CTA) — bespoke list editor,
         metadata-registered under the same SiteConfig store. Sits just above
-        the simple notice cards (maintenance / refresh / banner) so all
-        notice controls stay together.
+        the simple notice cards (maintenance / refresh) so all notice
+        controls stay together. (Legacy single `announcementBanner` is
+        deprecated — no editor, hidden from the raw list.)
       */}
       <AnnouncementsCard
         row={rowFor(ANNOUNCEMENTS_KEY)}

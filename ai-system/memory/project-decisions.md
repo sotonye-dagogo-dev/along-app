@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: refresh-notice once-flag + catch-all note)
-> - last-verified-against-code: 2026-10-18 (Sprint 76 in-runner QA: tsc 0, jest 105/105 suites 1047/1047, build clean)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: announcement deprecation + bug-report tightening)
+> - last-verified-against-code: 2026-10-18 (Sprint 79 in-runner QA: tsc 0, jest 110/110 suites 1134/1134, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -1129,4 +1129,19 @@ The Sprint 76→77 production 500s (`DriverAdapterError EMAXCONNSESSION max clie
 - **Fork OpenFreeMap styles to coalesce-wrap inline**: Rejected — styles are upstream assets; wrapping at serve time keeps one source of truth and survives upstream style updates.
 - **Browser-direct styles + upstream tracking only**: Rejected — the warning class is user-visible noise on every map; the proxy additionally removes browser→OpenFreeMap availability coupling for the style document.
   **Supersedes:** PARTIAL — the implicit "DIRECT-first runtime" behavior (never a recorded decision; documented contract in `.env.example` always said DATABASE_URL is the runtime URL — the code disagreed with the docs). Extends the Sprint 73 Supabase-transfer decisions (two-pooler contract).
+  **Superseded by:** None
+
+## Sprint 79 decisions (2026-10-18)
+
+**Decision:** (1) Deprecated config keys live in a first-class `ADMIN_DEPRECATED_CONFIG_KEYS` list folded into `ADMIN_DEDICATED_CONFIG_KEYS` — they keep their shipped default + validator + API field for stored-value back-compat but have NO admin editor anywhere (simple cards, studio links, or raw JSON list). The legacy `announcementBanner` key is the first member; its `SiteNotices` strip render was removed outright (directive confirmed no admin ever set it in production). (2) Stale-chunk failures (`ChunkLoadError` and dynamic-import cousins) get ONE automatic `location.reload()` per browser session from the error boundaries, driven by a config block (`ERROR_REPORTING_CONFIG.chunkLoad`: patterns, sessionStorage once-flag key, recovering/toast copy); a second match in the same session falls through to the normal report flow — the guard lives in sessionStorage (per-tab-session, private-mode safe) precisely so a persistently broken deploy can never reload-loop. (3) Automatic error-boundary reports carry a stable timestamp-free idempotency key (`eb:` + double FNV-1a of title|path|digest) in BOTH the `x-idempotency-key` header and body `clientToken`; the server dedup pre-read matches idempotency key OR the same error identity (title + `metadata.path` + `metadata.digest`, null-digest equality included) OR the exact description — always scoped to `reporterId ?? null` so two different users (or a user vs an anonymous visitor) can never collapse onto each other's rows. (4) Admin status-change notes are PREFILLED with the status default copy in the action modal; switching status re-prefills only when the textarea is empty or still holds the previous default verbatim; the server-side whitespace-empty → default fallback remains the authoritative legacy behavior (the prefilled default being sent explicitly is semantically identical).
+**Reason:**
+The rich `announcements` list superseded the single-string banner but the old card lingered in the admin UI causing confusion; a formal deprecation list keeps the pattern reusable for future key retirements without breaking stored rows or the public site-config shape. The reported `/login` ChunkLoadError was a stale-tab-after-deploy class where the user fix is a hard refresh — automating exactly one refresh removes the support burden without trading it for reload loops. The duplicate admin bug rows from ONE email report came from error-boundary double-fires whose descriptions each embed a fresh `When:` timestamp, so content-only dedup can never catch them — a timestamp-free identity key does, and reporter scoping prevents the anonymous cross-user collapse the old unscoped query allowed. Note prefill removes admin guesswork about what the reporter will receive while preserving the blank-box contract.
+**Alternatives Considered:**
+
+- **Fully delete `announcementBanner` (defaults/validator/API)**: Rejected — stored SiteConfig rows and the public endpoint shape would change; a deprecated-but-registered key is zero-risk and self-documenting.
+- **Keep rendering the legacy strip (hide only the editor)**: Rejected — leaves dead product surface for a value that has never been set; directive said "actually deprecated".
+- **Reload-loop protection via localStorage timestamp instead of sessionStorage**: Rejected — localStorage survives tab close, so a user who closes and reopens would be permanently denied the recovery; sessionStorage matches the "once per session" intent.
+- **Content-hash the full description for the idempotency key**: Rejected — the description intentionally contains a fresh timestamp; hashing it would reproduce the exact dedup failure being fixed.
+- **Unique DB constraint / migration for true create-race ACID**: Deferred — no migration appetite for this class; the tightened pre-read + idempotency key closes the reported double-fire path, and a schema-level unique expression index remains a future option.
+  **Supersedes:** None — supersedes the implicit Sprint 75 note "legacy announcementBanner still renders as its own strip (non-breaking)" (now deprecated, render removed; the back-compat surface is the API field + validator only).
   **Superseded by:** None
