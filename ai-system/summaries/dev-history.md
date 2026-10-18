@@ -1679,3 +1679,24 @@ Header journey totals (post-detail map overlay + route-guide header) now render 
 
 - Edited: `lib/config/{traffic,mapSummary,journeyTime,index,faq}`, `lib/hooks/useRouteTraffic`, `components/features/posts/{RouteMap,NavigationGuide}`, `(public)/{privacy,terms}/page`, `README.md`
 - Created: `__tests__/config/journeyConsistency.test.ts`
+
+## 2026-10-18 — Sprint 75: notice tightening — safe refresh + rich announcements + tag limits + map picker scroll
+
+**Summary:**
+The platform now has an admin-configurable post-maintenance "kindly refresh" strip that safely reboots the client (clears stale caches + unregisters the service worker + cache-busted reload) while positively preserving drafts, the offline auth snapshot, and user preferences — plus multi-announcements with optional CTAs, unified config-driven tag limits with toasts/honest placeholders, an opaque dark-theme maintenance surface, and a scrollable stop-assignment card. Everything config/metadata-driven, non-breaking (legacy announcement string still renders; shipped defaults backfill new keys; request-form tag cap loosened 5→10).
+
+**Completed:**
+
+- Dark-theme fix: `--color-warning-surface` opaque token (light `#FEF3C7`, dark `#3B2F14`) used by maintenance + offline strips
+- Refresh notice: `refreshNotice` key (default OFF) + admin card below Maintenance + `safeClientRefresh.ts` (protected-key storage clear + Cache Storage wipe + SW unregister + cache-bust reload; cookies untouched; fail-open) + strip with Refresh button
+- Rich announcements: `announcements` key (max 5, CTA label+href, `isSafeAnnouncementHref` gate) + `normalizeAnnouncements` + per-id dismiss + CTA strip rendering + bespoke no-JSON admin list editor + central validator + legacy banner preserved
+- Tags: `ROUTE_TAG_CONFIG` (10×30) in both modals + comma parsing + limit/length toasts + placeholder copy + Zod backstop (trim/`#`-strip/reject over-limit) + drafts sanitizer aligned
+- Map picker: `cardMaxHeight` 42vh + scrollable option list in `RouteMap`
+- i18n: en + pcm refresh keys; locale parity enforced
+
+**QA:** tsc 0 errors; jest 105/105 suites 1042/1042 (NEW siteNotice 12); lint 0 new issues; build clean.
+
+**Files:**
+
+- Created: `lib/config/{routeTags,safeRefresh}.ts`, `lib/pwa/safeClientRefresh.ts`, `__tests__/config/siteNotice.test.ts`
+- Edited: `lib/config/{siteNotice,admin,mapPicker,index}`, `lib/schemas/post`, `lib/services/routeDraftsService`, `api/site-config/route`, `components/ui/SiteNotices`, `components/pwa/OfflineBanner`, `components/features/posts/{ShareRouteModal,RequestRouteModal,RouteMap}`, `admin/config/page`, `globals.css`, locales, tests

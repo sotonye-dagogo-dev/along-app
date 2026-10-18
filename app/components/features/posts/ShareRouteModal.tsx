@@ -18,6 +18,7 @@ import {
 import { POST_SUBMIT_CONFIG } from "@/app/lib/config/postSubmit"
 import { LOCATION_SUGGESTIONS_CONFIG, buildGeocodeUrl } from "@/app/lib/config/locationSuggestions"
 import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
+import { ROUTE_TAG_CONFIG, parseTagInput } from "@/app/lib/config/routeTags"
 import { draftingCoachService } from "@/app/lib/services/DraftingCoachService"
 import { routeDraftsService, type RouteDraft } from "@/app/lib/services/routeDraftsService"
 import { toastService } from "@/app/lib/services/toastService"
@@ -1018,10 +1019,34 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   }
 
   const addTag = () => {
-    const trimmed = tagInput.trim().replace(/^#/, "").slice(0, 30)
-    if (trimmed && !tags.includes(trimmed) && tags.length < 10) {
-      setTags([...tags, trimmed])
+    const { maxTags, maxTagLength, toasts } = ROUTE_TAG_CONFIG
+    const candidates = parseTagInput(tagInput)
+    if (candidates.length === 0) {
+      setTagInput("")
+      return
     }
+    let rejected = false
+    let next = tags
+    for (const candidate of candidates) {
+      const tag = candidate.slice(0, maxTagLength)
+      if (candidate.length > maxTagLength) {
+        rejected = true
+      }
+      if (!tag || next.includes(tag)) continue
+      if (next.length >= maxTags) {
+        rejected = true
+        break
+      }
+      next = [...next, tag]
+    }
+    if (rejected) {
+      toastService.error(
+        candidates.some((c) => c.length > maxTagLength)
+          ? toasts.tagTooLong
+          : toasts.maxTagsReached,
+      )
+    }
+    if (next !== tags) setTags(next)
     setTagInput("")
   }
 
@@ -1108,7 +1133,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
           ...(description.trim() ? { description: description.trim() } : {}),
           routes: submitSteps,
           images,
-          tags: tags.slice(0, 10),
+          tags: tags.slice(0, ROUTE_TAG_CONFIG.maxTags),
           startLat: first?.lat,
           startLng: first?.lng,
           endLat: last?.lat && last !== first ? last.lat : undefined,
@@ -1152,7 +1177,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
         ...(isResponse && effectiveResponseTo ? { type: "ROUTE_RESPONSE" as const, quotedPostId: effectiveResponseTo.id } : {}),
         routes: submitSteps,
         images,
-        tags: tags.slice(0, 10),
+        tags: tags.slice(0, ROUTE_TAG_CONFIG.maxTags),
         startLat: first?.lat,
         startLng: first?.lng,
         endLat: last?.lat && last !== first ? last.lat : undefined,
@@ -1576,7 +1601,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5 text-text-primary">Tags</label>
+              <label className="block text-sm font-medium mb-1.5 text-text-primary">{ROUTE_TAG_CONFIG.label}</label>
               <div className="flex flex-wrap gap-1.5 px-3 py-2 border border-border radius-sm bg-bg-base min-h-[40px] items-center">
                 {tags.map((tag) => (
                   <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-xs font-medium bg-primary-muted text-primary">
@@ -1592,7 +1617,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={handleTagKeyDown}
                   onBlur={addTag}
-                  placeholder="Type to add tags..."
+                  placeholder={ROUTE_TAG_CONFIG.placeholder}
+                  maxLength={120}
                   className="border-none outline-none text-sm flex-1 min-w-[80px] bg-transparent font-sans text-text-primary placeholder:text-text-muted"
                 />
               </div>

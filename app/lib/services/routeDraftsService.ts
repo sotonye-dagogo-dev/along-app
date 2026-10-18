@@ -9,6 +9,7 @@
  * the redis.ts fallback discipline.
  */
 import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts";
+import { ROUTE_TAG_CONFIG } from "@/app/lib/config/routeTags";
 
 export interface RouteDraftStep {
   location: string;
@@ -118,6 +119,15 @@ function sanitizeStrings(raw: unknown): string[] {
   return raw.filter((t): t is string => typeof t === "string" && t.trim().length > 0).slice(0, 30);
 }
 
+/** Tag list sanitizer — config-driven count + per-tag length caps. */
+function sanitizeTags(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((t): t is string => typeof t === "string" && t.trim().length > 0)
+    .map((t) => t.trim().slice(0, ROUTE_TAG_CONFIG.maxTagLength))
+    .slice(0, ROUTE_TAG_CONFIG.maxTags);
+}
+
 function sanitizeResponseRef(raw: unknown): DraftResponseRef | null {
   if (typeof raw !== "object" || raw === null) return null;
   const r = raw as Record<string, unknown>;
@@ -137,7 +147,7 @@ function sanitizeResponseRef(raw: unknown): DraftResponseRef | null {
     id: r.id,
     title: typeof r.title === "string" ? r.title.slice(0, 100) : "",
     ...(user ? { user } : {}),
-    ...(Array.isArray(r.tags) ? { tags: sanitizeStrings(r.tags) } : {}),
+    ...(Array.isArray(r.tags) ? { tags: sanitizeTags(r.tags) } : {}),
   };
 }
 
@@ -152,7 +162,7 @@ function toDraft(raw: unknown): RouteDraft | null {
     title: typeof r.title === "string" ? r.title.slice(0, 100) : "",
     description: typeof r.description === "string" ? r.description.slice(0, 500) : "",
     steps,
-    tags: sanitizeStrings(r.tags),
+    tags: sanitizeTags(r.tags),
     images: sanitizeStrings(r.images).slice(0, 10),
     responseTo: sanitizeResponseRef(r.responseTo),
   };
@@ -264,7 +274,7 @@ export const routeDraftsService = {
       title: input.title.slice(0, 100),
       description: (input.description ?? "").slice(0, 500),
       steps: sanitizeSteps(input.steps),
-      tags: sanitizeStrings(input.tags),
+      tags: sanitizeTags(input.tags),
       images: sanitizeStrings(input.images).slice(0, 10),
       responseTo: sanitizeResponseRef(input.responseTo ?? null),
     };
@@ -284,7 +294,7 @@ export const routeDraftsService = {
       title: input.title.slice(0, 100),
       description: (input.description ?? "").slice(0, 500),
       steps: sanitizeSteps(input.steps),
-      tags: sanitizeStrings(input.tags),
+      tags: sanitizeTags(input.tags),
       images: sanitizeStrings(input.images).slice(0, 10),
       responseTo: sanitizeResponseRef(input.responseTo ?? null),
     };

@@ -272,6 +272,10 @@
   "siteNotice.maintenanceTitle": "We dey do maintenance",
   "siteNotice.maintenanceBody": "Along dey do maintenance right now. You fit still read — posting and saving don hold small till we come back.",
   "siteNotice.maintenanceAdminNote": "Admin tools still dey work for you while maintenance dey go on.",
+  "siteNotice.refreshTitle": "New update don ready",
+  "siteNotice.refreshBody": "We don make some changes — abeg refresh so you go get the newest version. You go still dey signed in and your drafts dey safe.",
+  "siteNotice.refreshAction": "Refresh now",
+  "siteNotice.refreshPending": "E dey refresh…",
   "siteNotice.announcementLabel": "Important notice",
   "siteNotice.dismiss": "Close am"
 }

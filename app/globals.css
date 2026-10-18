@@ -39,6 +39,8 @@
   --color-success-text: #065F46;
   --color-success-border: #6EE7B7;
   --color-warning: #FEF3C7;
+  /* Opaque banner-surface fill (dark-mode wash-out fix) — never translucent. */
+  --color-warning-surface: #FEF3C7;
   --color-warning-text: #92400E;
   --color-warning-border: #FCD34D;
   --color-error: #FEE2E2;
@@ -117,6 +119,9 @@
   --color-success-text: #34D399;
   --color-success-border: #059669;
   --color-warning: rgba(245, 158, 11, 0.15);
+  /* Opaque amber-brown surface — keeps maintenance/offline strips readable
+     in dark theme (the translucent 0.15 wash blended into the page bg). */
+  --color-warning-surface: #3B2F14;
   --color-warning-text: #FCD34D;
   --color-warning-border: #D97706;
   --color-error: rgba(239, 68, 68, 0.15);
@@ -233,6 +238,15 @@
 }
 
 @keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
   from {
     transform: rotate(0deg);
   }

@@ -188,7 +188,7 @@ export function CachedDataNotice({ compact = false }: { compact?: boolean }) {
         padding: compact ? "6px 10px" : "8px 12px",
         borderRadius: 8,
         border: "1px solid var(--color-warning-border, #FCD34D)",
-        background: "var(--color-warning, #FEF3C7)",
+        background: "var(--color-warning-surface, #FEF3C7)",
         color: "var(--color-warning-text, #92400E)",
         fontSize: 13,
         marginBottom: compact ? 6 : 10,

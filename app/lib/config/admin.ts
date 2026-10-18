@@ -18,6 +18,11 @@ import {
 import { validateFeedDiversityConfigValue } from "./feedAlgorithm";
 import { DEFAULT_EMAIL_CONFIG } from "./email";
 import { INVITE_CONFIG } from "./inviteConfig";
+import {
+  normalizeAnnouncements,
+  isSafeAnnouncementHref,
+  SITE_NOTICE_CONFIG,
+} from "./siteNotice";
 
 export const ADMIN_LAYOUT_CONFIG = {
   sidebarWidth: 240,
@@ -384,10 +389,24 @@ export const SITE_CONFIG_EDITORS: SiteConfigEditorMeta[] = [
     kind: "boolean",
   },
   {
+    key: "refreshNotice",
+    title: "Refresh Notice",
+    description:
+      "After maintenance/deploys, ask clients to refresh so they pick up fresh code + data (keeps sessions and drafts).",
+    kind: "boolean",
+  },
+  {
     key: "announcementBanner",
     title: "Announcement Banner",
     description: "Short text banner shown platform-wide.",
     kind: "text",
+  },
+  {
+    key: "announcements",
+    title: "Announcements",
+    description:
+      "Multiple announcements with optional call-to-action buttons (list editor below).",
+    kind: "json",
   },
   {
     key: "inviteRewardPoints",
@@ -497,11 +516,27 @@ export const ADMIN_CONFIG_DEFAULTS: AdminConfigDefault[] = [
     defaultValue: false,
   },
   {
+    key: "refreshNotice",
+    title: "Refresh Notice",
+    description:
+      "When on, a 'kindly refresh' strip prompts clients to safely refresh — clears stale caches, reboots the service worker, keeps sessions + drafts. Default off.",
+    kind: "boolean",
+    defaultValue: false,
+  },
+  {
     key: "announcementBanner",
     title: "Announcement Banner",
     description: "Short text banner shown platform-wide (empty = hidden).",
     kind: "text",
     defaultValue: "",
+  },
+  {
+    key: "announcements",
+    title: "Announcements",
+    description:
+      "Rich announcement list with optional CTA per entry (max 5). Empty list hides them.",
+    kind: "json",
+    defaultValue: [],
   },
   {
     key: "inviteRewardPoints",
@@ -651,9 +686,48 @@ function finiteNumber(v: unknown): number | null {
     if (k === "maintenanceMode") {
       return typeof value === "boolean" ? null : "value must be a boolean";
     }
+    if (k === "refreshNotice") {
+      return typeof value === "boolean" ? null : "value must be a boolean";
+    }
     if (k === "announcementBanner") {
       if (typeof value !== "string") return "value must be a string";
       if (value.length > 500) return "value must be <= 500 chars";
+      return null;
+    }
+    if (k === "announcements") {
+      if (!Array.isArray(value)) return "value must be a list of announcements";
+      if (value.length > SITE_NOTICE_CONFIG.announcement.maxItems)
+        return `at most ${SITE_NOTICE_CONFIG.announcement.maxItems} announcements allowed`;
+      for (const [index, raw] of value.entries()) {
+        if (!raw || typeof raw !== "object" || Array.isArray(raw))
+          return `announcement #${index + 1} must be an object`;
+        const item = raw as Record<string, unknown>;
+        if (typeof item.body !== "string" || item.body.trim().length === 0)
+          return `announcement #${index + 1} needs a non-empty body`;
+        if (String(item.body).length > SITE_NOTICE_CONFIG.announcement.maxChars)
+          return `announcement #${index + 1} body must be <= ${SITE_NOTICE_CONFIG.announcement.maxChars} chars`;
+        if (
+          item.ctaLabel !== undefined &&
+          item.ctaLabel !== null &&
+          typeof item.ctaLabel !== "string"
+        )
+          return `announcement #${index + 1} CTA label must be a string`;
+        if (
+          typeof item.ctaLabel === "string" &&
+          item.ctaLabel.length > SITE_NOTICE_CONFIG.announcement.maxCtaLabelChars
+        )
+          return `announcement #${index + 1} CTA label must be <= ${SITE_NOTICE_CONFIG.announcement.maxCtaLabelChars} chars`;
+        if (item.ctaHref !== undefined && item.ctaHref !== null) {
+          if (typeof item.ctaHref !== "string")
+            return `announcement #${index + 1} CTA link must be a string`;
+          if (!isSafeAnnouncementHref(item.ctaHref.trim()))
+            return `announcement #${index + 1} CTA link must be an internal path (/…) or https:// URL`;
+        }
+        // Round-trip through the normalizer — stored rows always match the
+        // shape the banner island renders (no silent drops at read time).
+        if (normalizeAnnouncements([item]).length !== 1)
+          return `announcement #${index + 1} is not displayable (empty body?)`;
+      }
       return null;
     }
     if (k === "inviteRewardPoints") {
@@ -707,6 +781,20 @@ export const ADMIN_SIMPLE_CONFIG_CARDS: AdminSimpleCardMeta[] = [
         id: "value",
         label: "Enable maintenance mode",
         hint: "When on, the platform shows a maintenance notice.",
+        type: "boolean",
+      },
+    ],
+  },
+  {
+    key: "refreshNotice",
+    title: "Refresh Notice",
+    description:
+      "Post-maintenance strip that asks clients to safely refresh — keeps signed-in sessions and drafts, clears stale caches, reboots the service worker.",
+    fields: [
+      {
+        id: "value",
+        label: "Show 'kindly refresh' notice",
+        hint: "Default off. Turn on after deploys/maintenance so clients pick up fresh code + data.",
         type: "boolean",
       },
     ],
@@ -837,6 +925,8 @@ export const ADMIN_STUDIO_LINKS: AdminStudioLinkMeta[] = [
 export const ADMIN_DEDICATED_CONFIG_KEYS = [
   "earlyAdopterConfig",
   "feedDiversity",
+  // Rich announcements: bespoke list editor on the Config page (no JSON).
+  "announcements",
   ...ADMIN_STUDIO_MANAGED_KEYS,
   ...ADMIN_SIMPLE_CONFIG_CARDS.map((c) => c.key),
 ] as const;

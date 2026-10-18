@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
-import { Plus, Trash2, Sparkles, GripVertical, ChevronUp, ChevronDown, Pencil, Check, X, RotateCcw, Settings2, Mail, Newspaper, ArrowRight } from "lucide-react"
+import { Plus, Trash2, Sparkles, Megaphone, GripVertical, ChevronUp, ChevronDown, Pencil, Check, X, RotateCcw, Settings2, Mail, Newspaper, ArrowRight } from "lucide-react"
 import { AppInput, AppButton } from "@/app/components/ui"
 import {
   inferConfigKind,
@@ -13,6 +13,12 @@ import {
   type AdminSimpleCardMeta,
   type AdminConfigSource,
 } from "@/app/lib/config/admin"
+import {
+  SITE_NOTICE_CONFIG,
+  normalizeAnnouncements,
+  isSafeAnnouncementHref,
+  type NormalizedAnnouncement,
+} from "@/app/lib/config/siteNotice"
 
 /** Icon twin for each studio link — Lucide-only, metadata-keyed (never emoji). */
 const STUDIO_LINK_ICONS = {
@@ -261,6 +267,203 @@ function SimpleConfigCard({
             <RotateCcw size={13} /> Restore to default
           </AppButton>
         )}
+      </div>
+    </div>
+  )
+}
+
+const ANNOUNCEMENTS_KEY = SITE_NOTICE_CONFIG.siteConfigKeys.announcements
+
+interface AnnouncementDraft {
+  id: string
+  body: string
+  ctaLabel: string
+  ctaHref: string
+}
+
+function toDraftRow(a?: Partial<NormalizedAnnouncement>, index = 0): AnnouncementDraft {
+  return {
+    id: a?.id ?? `ann-${Date.now().toString(36)}-${index}`,
+    body: a?.body ?? "",
+    ctaLabel: a?.ctaLabel ?? "",
+    ctaHref: a?.ctaHref ?? "",
+  }
+}
+
+/**
+ * Bespoke Announcements list editor — no JSON. Multiple entries, each with
+ * an optional CTA (label + internal/https link). Validates the same rules
+ * the central validator enforces so bad rows never reach the API.
+ */
+function AnnouncementsCard({
+  row,
+  onSave,
+  onRestore,
+}: {
+  row: SiteConfigItem | undefined
+  onSave: (key: string, value: unknown) => Promise<string | null>
+  onRestore: (key: string) => void
+}) {
+  const stored = useMemo(
+    () => normalizeAnnouncements(row?.value).map((a) => toDraftRow(a)),
+    [row?.value],
+  )
+  const [rows, setRows] = useState<AnnouncementDraft[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const draft = rows ?? stored
+  const maxItems = SITE_NOTICE_CONFIG.announcement.maxItems
+
+  const dirty = useMemo(() => {
+    if (!rows) return false
+    return (
+      rows.length !== stored.length ||
+      rows.some((r, i) => {
+        const s = stored[i]
+        return !s || r.body !== s.body || r.ctaLabel !== s.ctaLabel || r.ctaHref !== s.ctaHref
+      })
+    )
+  }, [rows, stored])
+
+  const setRow = (index: number, patch: Partial<AnnouncementDraft>) => {
+    setError(null)
+    setRows((prev) => {
+      const base = prev ?? draft
+      return base.map((r, i) => (i === index ? { ...r, ...patch } : r))
+    })
+  }
+
+  const addRow = () => {
+    setError(null)
+    if (draft.length >= maxItems) {
+      setError(`At most ${maxItems} announcements at once`)
+      return
+    }
+    setRows([...draft, toDraftRow(undefined, draft.length)])
+  }
+
+  const removeRow = (index: number) => {
+    setError(null)
+    setRows(draft.filter((_, i) => i !== index))
+  }
+
+  const handleSave = async () => {
+    const bodies = draft.filter((r) => r.body.trim().length > 0)
+    for (const [index, r] of bodies.entries()) {
+      if (r.body.trim().length > SITE_NOTICE_CONFIG.announcement.maxChars) {
+        setError(`Announcement #${index + 1}: body must be <= ${SITE_NOTICE_CONFIG.announcement.maxChars} characters`)
+        return
+      }
+      if (r.ctaHref.trim() && !r.ctaLabel.trim()) {
+        setError(`Announcement #${index + 1}: add a CTA label or remove the CTA link`)
+        return
+      }
+      if (r.ctaLabel.trim() && !r.ctaHref.trim()) {
+        setError(`Announcement #${index + 1}: add a CTA link or remove the CTA label`)
+        return
+      }
+      if (r.ctaHref.trim() && !isSafeAnnouncementHref(r.ctaHref.trim())) {
+        setError(`Announcement #${index + 1}: CTA link must be an internal path (/…) or https:// URL`)
+        return
+      }
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const value = bodies.map((r, index) => ({
+        id: r.id || `ann-${index + 1}`,
+        body: r.body.trim(),
+        ctaLabel: r.ctaLabel.trim() || null,
+        ctaHref: r.ctaHref.trim() || null,
+      }))
+      const err = await onSave(ANNOUNCEMENTS_KEY, value)
+      if (err) setError(err)
+      else setRows(null)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="bg-bg-card border border-border radius-lg p-5 shadow-xs mb-6">
+      <div className="flex items-center gap-2 mb-1 flex-wrap">
+        <Megaphone size={16} className="text-primary shrink-0" />
+        <h3 className="text-sm font-semibold">Announcements</h3>
+        <SourceBadge source={row?.source ?? "default"} />
+      </div>
+      <p className="text-xs text-text-secondary mb-4">
+        Show one or more notices across the platform — each can carry an optional
+        call-to-action button. Empty list hides them.
+      </p>
+      <div className="flex flex-col gap-3 max-w-[640px]">
+        {draft.length === 0 && (
+          <p className="text-xs text-text-muted">No announcements — the strips stay hidden.</p>
+        )}
+        {draft.map((r, index) => (
+          <div key={r.id} className="border border-border radius-md p-3 flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold text-text-secondary uppercase">
+                Announcement {index + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeRow(index)}
+                aria-label={`Remove announcement ${index + 1}`}
+                className="w-7 h-7 rounded-md flex items-center justify-center border border-border bg-transparent text-error-text cursor-pointer hover:bg-bg-elevated"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-xs font-semibold text-text-secondary">Message</span>
+              <AppInput
+                value={r.body}
+                onChange={(e) => setRow(index, { body: e.target.value })}
+                placeholder="e.g. New routes in Lagos are live!"
+              />
+              <span className="text-[11px] text-text-muted">
+                Max {SITE_NOTICE_CONFIG.announcement.maxChars} characters.
+              </span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-xs font-semibold text-text-secondary">CTA label (optional)</span>
+                <AppInput
+                  value={r.ctaLabel}
+                  onChange={(e) => setRow(index, { ctaLabel: e.target.value })}
+                  placeholder="e.g. See routes"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-xs font-semibold text-text-secondary">CTA link (optional)</span>
+                <AppInput
+                  value={r.ctaHref}
+                  onChange={(e) => setRow(index, { ctaHref: e.target.value })}
+                  placeholder="/explore or https://…"
+                />
+              </label>
+            </div>
+            {(r.ctaLabel.trim() || r.ctaHref.trim()) && (
+              <p className="text-[11px] text-text-muted">
+                CTA needs both a label and a link — internal path (/…) or https:// only.
+              </p>
+            )}
+          </div>
+        ))}
+        {error && <p className="text-xs text-error-text">{error}</p>}
+        <div className="flex gap-2 flex-wrap">
+          <AppButton variant="secondary" onClick={addRow} disabled={draft.length >= maxItems}>
+            <Plus size={13} /> Add announcement
+          </AppButton>
+          <AppButton onClick={handleSave} disabled={!dirty || busy}>
+            {busy ? "Saving..." : "Save announcements"}
+          </AppButton>
+          {row?.source === "customized" && (
+            <AppButton variant="secondary" onClick={() => onRestore(ANNOUNCEMENTS_KEY)} disabled={busy}>
+              <RotateCcw size={13} /> Restore to default
+            </AppButton>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -761,6 +964,18 @@ export default function AdminConfigPage() {
           </div>
         )
       })}
+
+      {/*
+        Rich announcements (multiple + optional CTA) — bespoke list editor,
+        metadata-registered under the same SiteConfig store. Sits just above
+        the simple notice cards (maintenance / refresh / banner) so all
+        notice controls stay together.
+      */}
+      <AnnouncementsCard
+        row={rowFor(ANNOUNCEMENTS_KEY)}
+        onSave={handleSave}
+        onRestore={handleRestore}
+      />
 
       {ADMIN_SIMPLE_CONFIG_CARDS.map((meta) => (
         <SimpleConfigCard

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ROUTE_VALIDATION_CONFIG } from "@/app/lib/config/routeValidation";
+import { ROUTE_TAG_CONFIG } from "@/app/lib/config/routeTags";
 
 /** Empty-string-tolerant optional text: "" (e.g. untouched optional inputs) parses as undefined. */
 const optionalText = (min: number) =>
@@ -62,7 +63,33 @@ export const CREATE_POST_SCHEMA = z.object({
   quotedPostId: z.string().min(1).optional(),
   routes: z.array(POST_ROUTE_STEP_SCHEMA).min(2, "At least 2 route steps required"),
   images: z.array(z.string()).optional(),
-  tags: z.array(z.string()).max(10).optional(),
+  tags: z
+    .preprocess(
+      // Trim, strip a leading hashtag, drop empties before validation
+      // (client already blocks over-limit input; the server rejects, never
+      // silently slices).
+      (tags) =>
+        Array.isArray(tags)
+          ? tags
+              .filter((t): t is string => typeof t === "string")
+              .map((t) => t.trim().replace(/^#/, ""))
+              .filter((t) => t.length > 0)
+          : tags,
+    z
+      .array(
+        z
+          .string()
+          .max(
+            ROUTE_TAG_CONFIG.maxTagLength,
+            `Tags must be at most ${ROUTE_TAG_CONFIG.maxTagLength} characters each`,
+          ),
+      )
+      .max(
+        ROUTE_TAG_CONFIG.maxTags,
+        `At most ${ROUTE_TAG_CONFIG.maxTags} tags allowed`,
+      )
+      .optional(),
+    ),
   region: z.string().optional(),
   startLat: z.number().optional(),
   startLng: z.number().optional(),
