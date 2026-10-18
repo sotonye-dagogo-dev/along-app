@@ -3,7 +3,7 @@
 > **Metadata**
 >
 > - last-updated-by: execute-feature 2026-10-17 (Sprint 72: map tightening — friendly labels, tap-to-assign, vehicle traces, deferred recenter)
-> - last-verified-against-code: 2026-10-17 (Sprint 72 in-runner QA: tsc 0, jest 98/98 suites 865/865, build clean; config count 85 re-verified)
+> - last-verified-against-code: 2026-10-18 (Sprint 75 in-runner QA: tsc 0, jest 105/105 suites 1042/1042, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -1084,4 +1084,20 @@ Users paste coords/plus codes but think in place names — a readable label that
 - **Mode pass falling straight to straight-line on failure**: Rejected — the directive explicitly contrasts "legacy driving fallback" against an outright straight line; the driving chain stays the floor.
 - **Dep-guarding only (no idle watcher)**: Rejected — bounds/pins can change mid-pan (trace arrival, edits); without deferral those refits still yank the camera.
   **Supersedes:** PARTIAL — Sprint 71 decision (3) "raw pin stays first" (see its Superseded-by link); extends the Sprint 68/69 tooltip decisions (line taps unchanged) and the Sprint 58/67 traffic/vehicle registry decisions (profiles live beside speeds, not inside them).
+  **Superseded by:** None
+
+## Sprint 75 decisions (2026-10-18)
+
+**Decision:** (1) Post-maintenance recovery is a USER-TRIGGERED strip button (`safeClientRefresh`), never an auto-reload — no surprise unloads; the existing SW update prompt keeps handling automatic worker updates. (2) Storage clearing uses a protected-key WHITELIST (`SAFE_REFRESH_CONFIG`: exact drafts/`along-auth-snapshot`/theme/locale/push/PWA/consent keys + `along-locale-cache` prefix; sessionStorage fully cleared): everything not listed is disposable cache so unknown future cache-y keys still clear, while session/drafts/prefs are positively protected; cookies are never touched; every step is fail-open and the reload is cache-busted (`?_fresh=<ts>`) so the fresh client actually wins. (3) Announcement CTA hrefs restricted to same-origin `/…` (never `//protocol-relative`) or absolute `https://…` — kills javascript:/data:/http-open-redirect vectors; CTA renders only when BOTH label and href normalize non-empty; external links `target=_blank rel="noopener noreferrer"`. (4) Server tag cap REJECTS over-limit input (Zod max count 10 + per-tag 30, trims + strips leading `#`) rather than silently slicing — client toasts already explain the limit, so silent truncation would desync user intent. (5) Unified tag limits live in ONE config module (`ROUTE_TAG_CONFIG`) consumed by both modals, the placeholder copy, toasts, the drafts sanitizer, and the schema — limits stay config-driven, not hard-coded at call sites. (6) Dark warning surfaces get an OPAQUE token (`--color-warning-surface`) rather than alpha compositing — identical result across light/dark without per-theme rgba math.
+**Reason:**
+A "maintenance over" notice that strands users on stale cached code is worse than no notice; the refresh must be safe enough to recommend from a banner (drafts + signed-in session survive) yet thorough enough to actually retire old caches/worker. Announcements are public content — href allow-listing is the minimum XSS/open-redirect posture. Centralizing tag limits keeps client, server, drafts, and copy in lockstep (the pre-sprint divergence — Share 10 silent vs Request 5 Enter-only — was exactly this missing module).
+**Alternatives Considered:**
+
+- **Auto-reload on config flip**: Rejected — yanks the user mid-interaction; a button makes refresh explicit and opt-in.
+- **Clear-all storage (no whitelist)**: Rejected — destroys drafts and the offline auth snapshot (explicitly forbidden by the directive).
+- **Confirm() dialog before refresh**: Rejected — the strip itself is the confirmation; an extra modal adds friction for a reversible action (refresh is always safe now).
+- **Allow any http(s) href on CTAs**: Rejected — http downgrade + arbitrary hosts widen the open-redirect/XSS surface for admin-authored but user-rendered links.
+- **Silent server-side tag slicing**: Rejected — user sees a tag they typed; silent drop looks like a bug.
+- **Leave request-form cap at 5**: Rejected — directive requires unified 10/30; loosening is non-breaking.
+  **Supersedes:** None — extends the Sprint 52 admin config registry decisions (validators + shipped defaults backfill) and Sprint 18 maintenance-strip decisions (opaque surfaces over translucent washes).
   **Superseded by:** None

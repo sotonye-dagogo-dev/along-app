@@ -4,12 +4,14 @@ import {
   SITE_NOTICE_CONFIG,
   normalizeMaintenanceFlag,
   normalizeAnnouncementText,
+  normalizeAnnouncements,
 } from "@/app/lib/config/siteNotice";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Public site-notice surface — `{ maintenanceMode, announcementBanner }`.
+ * Public site-notice surface — `{ maintenanceMode, refreshNotice,
+ * announcementBanner, announcements }`.
  *
  * Consumed by the `<SiteNotices />` banner island (mount + online/focus +
  * interval). Deliberately unauthenticated and shape-stable: guests, the
@@ -18,19 +20,29 @@ export const dynamic = "force-dynamic";
  * next poll instead of a stale cache window.
  */
 export async function GET() {
-  const fallback = { maintenanceMode: false, announcementBanner: "" };
+  const fallback = {
+    maintenanceMode: false,
+    refreshNotice: false,
+    announcementBanner: "",
+    announcements: [] as ReturnType<typeof normalizeAnnouncements>,
+  };
   try {
-    const [maintenanceRaw, announcementRaw] = await Promise.all([
-      getSiteConfig<unknown>(
-        SITE_NOTICE_CONFIG.siteConfigKeys.maintenance,
-        false,
-      ),
-      getSiteConfig<unknown>(SITE_NOTICE_CONFIG.siteConfigKeys.announcement, ""),
-    ]);
+    const [maintenanceRaw, announcementRaw, refreshRaw, announcementsRaw] =
+      await Promise.all([
+        getSiteConfig<unknown>(
+          SITE_NOTICE_CONFIG.siteConfigKeys.maintenance,
+          false,
+        ),
+        getSiteConfig<unknown>(SITE_NOTICE_CONFIG.siteConfigKeys.announcement, ""),
+        getSiteConfig<unknown>(SITE_NOTICE_CONFIG.siteConfigKeys.refresh, false),
+        getSiteConfig<unknown>(SITE_NOTICE_CONFIG.siteConfigKeys.announcements, []),
+      ]);
     return NextResponse.json(
       {
         maintenanceMode: normalizeMaintenanceFlag(maintenanceRaw),
+        refreshNotice: normalizeMaintenanceFlag(refreshRaw),
         announcementBanner: normalizeAnnouncementText(announcementRaw),
+        announcements: normalizeAnnouncements(announcementsRaw),
       },
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );

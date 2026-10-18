@@ -257,7 +257,14 @@ export {
   SITE_NOTICE_CONFIG,
   normalizeMaintenanceFlag,
   normalizeAnnouncementText,
+  normalizeAnnouncements,
+  isSafeAnnouncementHref,
   isBlockedMutationMethod,
   isMaintenanceExemptPath,
   maintenancePayload,
 } from "./siteNotice";
+export type { NormalizedAnnouncement } from "./siteNotice";
+export { ROUTE_TAG_CONFIG, parseTagInput } from "./routeTags";
+export type { RouteTagConfig } from "./routeTags";
+export { SAFE_REFRESH_CONFIG } from "./safeRefresh";
+export type { SafeRefreshConfig } from "./safeRefresh";

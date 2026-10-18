@@ -29,6 +29,10 @@ describe("Sprint 72: MAP_PICKER_CONFIG (card + focus hint)", () => {
     expect(MAP_PICKER_CONFIG.focusZoom).toBeGreaterThan(0);
     expect(MAP_PICKER_CONFIG.focusDurationMs).toBeGreaterThan(0);
     expect(MAP_PICKER_CONFIG.cardMaxWidth).toMatch(/^\d+rem$/);
+    // Long stop lists scroll inside a generous ceiling (never overflow the map).
+    expect(MAP_PICKER_CONFIG.cardMaxHeight.length).toBeGreaterThan(0);
+    expect(MAP_PICKER_CONFIG.optionListClass).toMatch(/overflow-y-auto/);
+    expect(MAP_PICKER_CONFIG.optionListClass).toMatch(/max-h-/);
   });
 
   it("CTA row labels live in config (row under every location input)", () => {

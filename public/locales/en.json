@@ -272,6 +272,10 @@
   "siteNotice.maintenanceTitle": "Under maintenance",
   "siteNotice.maintenanceBody": "Along is undergoing maintenance right now. Reading still works — posting and saving are paused until we're back.",
   "siteNotice.maintenanceAdminNote": "Admin tools stay available to you during maintenance.",
+  "siteNotice.refreshTitle": "Update ready",
+  "siteNotice.refreshBody": "We've made updates — kindly refresh to get the latest version. You stay signed in and keep your drafts.",
+  "siteNotice.refreshAction": "Refresh now",
+  "siteNotice.refreshPending": "Refreshing…",
   "siteNotice.announcementLabel": "Announcement",
   "siteNotice.dismiss": "Dismiss notice"
 }

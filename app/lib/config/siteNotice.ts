@@ -1,11 +1,12 @@
 /**
- * Site notice registry — maintenance mode + announcement banner.
+ * Site notice registry — maintenance mode, refresh notice, announcements.
  *
- * Single source of truth for the two platform-wide notice configs
- * (`maintenanceMode`, `announcementBanner`) that live in SiteConfig and are
- * edited via the admin Site-config board. Everything downstream reads from
- * here: the public `/api/site-config` endpoint, the `<SiteNotices />`
- * banner island, and the middleware enforcement branch.
+ * Single source of truth for the platform-wide notice configs
+ * (`maintenanceMode`, `refreshNotice`, `announcementBanner`, `announcements`)
+ * that live in SiteConfig and are edited via the admin Site-config board.
+ * Everything downstream reads from here: the public `/api/site-config`
+ * endpoint, the `<SiteNotices />` banner island, and the middleware
+ * enforcement branch.
  *
  * Edge-safe by design: pure data + pure helpers only (no prisma, no node
  * builtins) so `middleware.ts` can import it on the Edge runtime.
@@ -16,6 +17,10 @@ export const SITE_NOTICE_CONFIG = {
   siteConfigKeys: {
     maintenance: "maintenanceMode",
     announcement: "announcementBanner",
+    /** Post-maintenance/deploy "kindly refresh" toggle (default off). */
+    refresh: "refreshNotice",
+    /** Rich announcement list with optional CTA (default empty). */
+    announcements: "announcements",
   },
   /** Public endpoint the banner island polls. Already PWA-cacheable. */
   endpoint: "/api/site-config",
@@ -29,12 +34,24 @@ export const SITE_NOTICE_CONFIG = {
     maxChars: 500,
     /** sessionStorage (per-tab) — dismissed notices stay gone for the session. */
     dismissStorageKey: "along-announcement-dismissed",
+    /** Per-id prefix so multiple announcements dismiss independently. */
+    dismissIdPrefix: "along-announcement-dismissed:",
+    /** Cap on rich announcements stored/rendered at once. */
+    maxItems: 5,
+    maxCtaLabelChars: 40,
+    maxIdChars: 80,
   },
   copy: {
     maintenance: {
       title: "Under maintenance",
       body: "Along is undergoing maintenance right now. Reading still works — posting and saving are paused until we're back.",
       adminNote: "Admin tools stay available to you during maintenance.",
+    },
+    refresh: {
+      title: "Update ready",
+      body: "We've made updates — kindly refresh to get the latest version. You stay signed in and keep your drafts.",
+      action: "Refresh now",
+      pending: "Refreshing…",
     },
     announcementLabel: "Announcement",
     dismiss: "Dismiss notice",
@@ -43,20 +60,37 @@ export const SITE_NOTICE_CONFIG = {
     maintenanceTitle: "siteNotice.maintenanceTitle",
     maintenanceBody: "siteNotice.maintenanceBody",
     maintenanceAdminNote: "siteNotice.maintenanceAdminNote",
+    refreshTitle: "siteNotice.refreshTitle",
+    refreshBody: "siteNotice.refreshBody",
+    refreshAction: "siteNotice.refreshAction",
+    refreshPending: "siteNotice.refreshPending",
     announcementLabel: "siteNotice.announcementLabel",
     dismiss: "siteNotice.dismiss",
   },
-  /** Token-driven strip styles — theme-aware, no hardcoded hex. */
+  /**
+   * Token-driven strip styles — theme-aware, no hardcoded hex. Warning
+   * surfaces use the opaque `--color-warning-surface` token so the strip
+   * stays readable in dark theme (translucent amber wash-out fix).
+   */
   tokens: {
     maintenance: {
-      background: "var(--color-warning, #FEF3C7)",
+      background: "var(--color-warning-surface, #FEF3C7)",
       border: "1px solid var(--color-warning-border, #FCD34D)",
       color: "var(--color-warning-text, #92400E)",
+    },
+    refresh: {
+      background: "var(--color-bg-card, #FFFFFF)",
+      border: "1px solid var(--color-primary, #00A862)",
+      color: "var(--color-text-primary, #1A1A1A)",
+      actionBackground: "var(--color-primary, #00A862)",
+      actionColor: "#FFFFFF",
     },
     announcement: {
       background: "var(--color-bg-card, #FFFFFF)",
       border: "1px solid var(--color-border, #E5E7EB)",
       color: "var(--color-text-primary, #1A1A1A)",
+      ctaBackground: "var(--color-primary, #00A862)",
+      ctaColor: "#FFFFFF",
     },
   },
   /**
@@ -115,6 +149,75 @@ export function normalizeAnnouncementText(value: unknown): string {
     .replace(/\s+/g, " ")
     .trim();
   return cleaned.slice(0, SITE_NOTICE_CONFIG.announcement.maxChars);
+}
+
+/** A display-safe rich announcement (CTA optional). */
+export interface NormalizedAnnouncement {
+  id: string;
+  body: string;
+  ctaLabel: string | null;
+  /** Same-origin path (`/…`) or absolute https URL; null when absent/invalid. */
+  ctaHref: string | null;
+}
+
+/**
+ * Strip C0/C1 control characters + collapse whitespace for single-line
+ * notice text (shared by body/label/id sanitation).
+ */
+function cleanNoticeText(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return (
+    value
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
+}
+
+/**
+ * True when an announcement CTA href is safe to render: same-origin path
+ * (`/…`, never `//host` protocol-relative) or an absolute https URL.
+ * Blocks javascript:, data:, vbscript:, http:, and protocol-relative URLs.
+ */
+export function isSafeAnnouncementHref(href: string): boolean {
+  if (href.startsWith("/") && !href.startsWith("//")) return true;
+  if (href.startsWith("https://") && href.length > "https://".length) return true;
+  return false;
+}
+
+/**
+ * Coerce any stored SiteConfig value into a bounded, display-safe list of
+ * rich announcements. Never throws: non-arrays collapse to [], invalid
+ * entries are dropped, per-entry text is capped, unsafe CTA hrefs null out.
+ */
+export function normalizeAnnouncements(value: unknown): NormalizedAnnouncement[] {
+  if (!Array.isArray(value)) return [];
+  const { maxItems, maxChars, maxCtaLabelChars, maxIdChars } =
+    SITE_NOTICE_CONFIG.announcement;
+  const out: NormalizedAnnouncement[] = [];
+  const seenIds = new Set<string>();
+  for (const raw of value) {
+    if (out.length >= maxItems) break;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const item = raw as Record<string, unknown>;
+    const body = cleanNoticeText(item.body).slice(0, maxChars);
+    if (!body) continue;
+    let id = cleanNoticeText(item.id).slice(0, maxIdChars);
+    if (!id) id = `ann-${out.length + 1}`;
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    const ctaLabel = cleanNoticeText(item.ctaLabel).slice(0, maxCtaLabelChars) || null;
+    const rawHref = typeof item.ctaHref === "string" ? item.ctaHref.trim() : "";
+    // A CTA link is only kept when it has BOTH a label and a safe href —
+    // a bare link without a label never renders.
+    const ctaHref =
+      ctaLabel && rawHref && isSafeAnnouncementHref(rawHref)
+        ? rawHref.slice(0, 500)
+        : null;
+    out.push({ id, body, ctaLabel, ctaHref });
+  }
+  return out;
 }
 
 /** True when the request method is one maintenance blocks. */

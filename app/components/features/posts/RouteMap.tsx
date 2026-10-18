@@ -1132,7 +1132,7 @@ function RouteMap({
               role="dialog"
               aria-label={MAP_PICKER_CONFIG.cardTitle}
               className={MAP_PICKER_CONFIG.cardClass}
-              style={{ maxWidth: MAP_PICKER_CONFIG.cardMaxWidth }}
+              style={{ maxWidth: MAP_PICKER_CONFIG.cardMaxWidth, maxHeight: MAP_PICKER_CONFIG.cardMaxHeight, display: "flex", flexDirection: "column" }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -1154,7 +1154,7 @@ function RouteMap({
               <p className="text-[11px] text-text-secondary leading-relaxed mt-0 mb-2">
                 {MAP_PICKER_CONFIG.cardBody}
               </p>
-              <div className="flex flex-col gap-1">
+              <div className={MAP_PICKER_CONFIG.optionListClass}>
                 {(pickOptions ?? []).map((opt) => (
                   <button
                     key={opt.id}
