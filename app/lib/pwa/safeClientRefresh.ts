@@ -7,24 +7,44 @@
  *
  * Sequence (every step try/catch fail-open; a failure never blocks the
  * reload — worst case the next load just re-fetches something extra):
- * 1. Clear non-protected localStorage (drafts/session/prefs survive).
- * 2. Clear sessionStorage (transient notice-dismiss state only).
- * 3. Delete every Cache Storage cache (SW-held API/page/image caches).
- * 4. Unregister every service worker (browser revalidates /sw.js fresh on
+ * 1. Record the refresh-completed once-flag (preserve-whitelisted) so the
+ *    admin "kindly refresh" strip stops nagging within its TTL.
+ * 2. Clear non-protected localStorage (drafts/session/prefs survive).
+ * 3. Clear sessionStorage (transient notice-dismiss state only).
+ * 4. Delete every Cache Storage cache (SW-held API/page/image caches).
+ * 5. Unregister every service worker (browser revalidates /sw.js fresh on
  *    the next navigation — no stale worker can serve old shells).
- * 5. Reload the same URL with a cache-bust query param so the HTML itself
+ * 6. Reload the same URL with a cache-bust query param so the HTML itself
  *    comes from the network instead of the HTTP cache.
  *
  * Cookies (httpOnly auth session) are never read or written here.
  */
 
 import { SAFE_REFRESH_CONFIG } from "@/app/lib/config/safeRefresh";
+import { SITE_NOTICE_CONFIG } from "@/app/lib/config/siteNotice";
 
 function isProtectedKey(key: string): boolean {
   if (SAFE_REFRESH_CONFIG.preserveLocalStorageKeys.includes(key)) return true;
   return SAFE_REFRESH_CONFIG.preserveLocalStoragePrefixes.some((p) =>
     key.startsWith(p),
   );
+}
+
+/**
+ * Record that a safe refresh was completed, so the "kindly refresh" strip
+ * (admin `refreshNotice`) stops nagging this browser within the TTL. Written
+ * BEFORE the storage clear — the key is on the preserve whitelist so it
+ * survives the wipe below. Private-mode failures are non-fatal.
+ */
+function markRefreshCompleted(): void {
+  try {
+    window.localStorage.setItem(
+      SITE_NOTICE_CONFIG.refresh.completedAtKey,
+      String(Date.now()),
+    );
+  } catch {
+    /* private-mode / blocked storage — strip simply shows again next load */
+  }
 }
 
 function clearWebStorage(storage: Storage, preserve: boolean): void {
@@ -90,6 +110,9 @@ export async function safeClientRefresh(): Promise<boolean> {
   if (inFlight) return false;
   inFlight = true;
   try {
+    // Record completion first — the once-flag key is preserve-whitelisted
+    // so it survives the localStorage sweep immediately below.
+    markRefreshCompleted();
     clearWebStorage(window.localStorage, true);
     if (SAFE_REFRESH_CONFIG.clearSessionStorage) {
       clearWebStorage(window.sessionStorage, false);
