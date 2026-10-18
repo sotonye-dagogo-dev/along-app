@@ -32,7 +32,8 @@ export const DEFAULT_FEED_CONFIG: FeedAlgorithmConfig = {
   openRequestWeight: 0.6,
   locationBonus: 0.15,
   cacheTtlSeconds: 300,
-  pageSize: 10,
+  /** First-page size for the scored feed (client stream + server default). */
+  pageSize: 20,
 };
 
 /**
@@ -43,7 +44,7 @@ export const DEFAULT_FEED_CONFIG: FeedAlgorithmConfig = {
  */
 export const FEED_STREAM_CONFIG = {
   /** Page size for /api/posts/feed requests issued by the stream. */
-  pageSize: 10,
+  pageSize: 20,
   /** Background poll interval (ms) for new-post detection. */
   pollIntervalMs: 30000,
   /** Cached feed younger than this serves without a network request. */
@@ -52,6 +53,14 @@ export const FEED_STREAM_CONFIG = {
   retentionSec: 1800,
   /** Cap on ids sent as `exclude` for stable score-order pagination. */
   maxExcludeIds: 200,
+  /**
+   * Transient-failure backoff for the stream (never treats a failed fetch
+   * as end-of-list): first retry after `errorRetryBackoffMs`, doubling per
+   * consecutive failure up to `errorBackoffMaxMs`, reset on success. Keeps
+   * infinite scroll self-healing without hammering a failing endpoint.
+   */
+  errorRetryBackoffMs: 3000,
+  errorBackoffMaxMs: 60000,
 } as const;
 
 export type FeedStreamConfig = typeof FEED_STREAM_CONFIG;

@@ -12,6 +12,17 @@ export const DEFAULT_META = {
   siteName: "Along",
   ogImage: "/og-image.png",
   twitterHandle: "@along_app",
+  /**
+   * Brand suffix for page titles — SINGLE source of truth.
+   *
+   * The root layout's `title.template` is `%s${titleSuffix}`, so the HTML
+   * `<title>` of every page gets it exactly once (pages must export a bare
+   * title like "Explore", never "Explore | Along" — a manual suffix would
+   * render "Explore | Along | Along"). Next does NOT apply the title
+   * template to `openGraph.title` / `twitter.title`, so those two fields
+   * append this suffix themselves (once) in `lib/utils/metadata.ts`.
+   */
+  titleSuffix: " | Along",
 };
 
 export const PAGE_META: Record<string, PageMeta> = {

@@ -54,6 +54,8 @@ const LIMIT = FEED_STREAM_CONFIG.pageSize
 const FEED_FRESH_SEC = FEED_STREAM_CONFIG.freshSec
 const FEED_RETENTION_SEC = FEED_STREAM_CONFIG.retentionSec
 const MAX_EXCLUDE = FEED_STREAM_CONFIG.maxExcludeIds
+const ERROR_BACKOFF_BASE_MS = FEED_STREAM_CONFIG.errorRetryBackoffMs
+const ERROR_BACKOFF_MAX_MS = FEED_STREAM_CONFIG.errorBackoffMaxMs
 
 interface CachedFeed {
   state: FeedState
@@ -78,7 +80,8 @@ export function dedupePosts(rows: FeedPost[]): FeedPost[] {
 }
 
 export class FeedStream {
-  private polling$: Observable<FeedState>
+  /** Poll pipeline — `null` marks a transient failure (skipped by subscribers). */
+  private polling$: Observable<FeedState | null>
   private destroy$ = new Subject<void>()
 
   private feedStateSubject = new BehaviorSubject<FeedState>({
@@ -98,20 +101,31 @@ export class FeedStream {
   private lastViewerLocation: { lat: number; lng: number } | null = null
   /** Guards overlapping loadMore calls (observer can fire rapidly). */
   private loadingMore = false
+  /**
+   * Transient-failure backoff: a failed fetch NEVER reads as end-of-list —
+   * hasMore/cursor stay untouched so infinite scroll survives one 500.
+   * Failures arm `nextRetryAt` (exponential, config-capped) and chain a
+   * single auto-retry timer; success resets the window.
+   */
+  private nextRetryAt = 0
+  private consecutiveErrors = 0
+  private retryTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor() {
     this.polling$ = interval(POLL_INTERVAL).pipe(
       filter(
         () =>
           !this.feedStateSubject.value.loading &&
-          (typeof document === "undefined" || !document.hidden) // pause polling on hidden tabs
+          (typeof document === "undefined" || !document.hidden) && // pause polling on hidden tabs
+          Date.now() >= this.nextRetryAt // never poll into an armed failure backoff
       ),
       switchMap(() => this.fetchFeed()),
       share(),
     )
 
     this.polling$.pipe(takeUntil(this.destroy$)).subscribe((state) => {
-      if ((state.posts?.length ?? 0) > 0) {
+      // null === transient fetch failure — skip, never merge an empty page.
+      if (state && (state.posts?.length ?? 0) > 0) {
         const current = this.feedStateSubject.value
         const existingIds = new Set(current.posts.map((p) => p.id))
         const newPosts = state.posts.filter((p) => !existingIds.has(p.id))
@@ -151,11 +165,64 @@ export class FeedStream {
     return this.lastViewerLocation
   }
 
+  /** Arms the exponential failure backoff and chains ONE auto-retry. */
+  private armErrorBackoff(): void {
+    this.consecutiveErrors += 1
+    const delay = Math.min(
+      ERROR_BACKOFF_BASE_MS * 2 ** (this.consecutiveErrors - 1),
+      ERROR_BACKOFF_MAX_MS,
+    )
+    this.nextRetryAt = Date.now() + delay
+    if (this.retryTimer !== null) return
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null
+      // Timer drift / re-arm race: reschedule for the real remainder
+      // instead of stalling with no retry pending.
+      const remaining = this.nextRetryAt - Date.now()
+      if (remaining > 0) {
+        this.retryTimer = setTimeout(() => {
+          this.retryTimer = null
+          this.runChainedRetry()
+        }, remaining)
+        return
+      }
+      this.runChainedRetry()
+    }, delay)
+  }
+
+  /** One backoff-expired retry: next page for a populated feed, else page 1. */
+  private runChainedRetry(): void {
+    if (Date.now() < this.nextRetryAt) return
+    const state = this.feedStateSubject.value
+    if (state.posts.length > 0) {
+      void this.loadMore()
+    } else {
+      void this.refresh()
+    }
+  }
+
+  /** Success path: clear backoff so polling/retries resume immediately. */
+  private clearErrorBackoff(): void {
+    if (this.consecutiveErrors === 0 && this.nextRetryAt === 0) return
+    this.consecutiveErrors = 0
+    this.nextRetryAt = 0
+    if (this.retryTimer !== null) {
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+    }
+  }
+
+  /**
+   * Returns `null` on ANY transient failure (non-2xx, unparseable body,
+   * network error, error-shaped 200 payload) — callers keep their current
+   * cursor/hasMore instead of mistaking the failure for the end of the feed.
+   * A genuine empty page still resolves to `posts: []` + `hasMore: false`.
+   */
   private async fetchFeed(
     cursorVal?: string,
     viewerLocation?: { lat: number; lng: number } | null,
     excludeIds?: string[],
-  ): Promise<FeedState> {
+  ): Promise<FeedState | null> {
     try {
       const params = new URLSearchParams()
       if (cursorVal) params.set("cursor", cursorVal)
@@ -171,22 +238,25 @@ export class FeedStream {
         params.set("exclude", excludeIds.slice(0, MAX_EXCLUDE).join(","))
       }
       const res = await fetch(`/api/posts/feed?${params}`)
-      if (!res.ok) return { posts: [], cursor: null, hasMore: false, loading: false }
+      if (!res.ok) return null
       let data: { posts?: FeedPost[]; nextCursor?: string | null } = {}
       try {
         const text = await res.text()
         data = text ? (JSON.parse(text) as { posts?: FeedPost[]; nextCursor?: string | null }) : {}
       } catch {
-        return { posts: [], cursor: null, hasMore: false, loading: false }
+        return null
       }
+      // Error-shaped 200 ({error}) or malformed payload — not a real page.
+      if (!Array.isArray(data.posts)) return null
+      this.clearErrorBackoff()
       return {
-        posts: dedupePosts(data.posts ?? []),
+        posts: dedupePosts(data.posts),
         cursor: data.nextCursor ?? null,
         hasMore: !!data.nextCursor,
         loading: false,
       }
     } catch {
-      return { posts: [], cursor: null, hasMore: false, loading: false }
+      return null
     }
   }
 
@@ -206,24 +276,39 @@ export class FeedStream {
       if (ageSec < FEED_FRESH_SEC) return cleanCached
       // stale → silent background revalidation, keep showing cached feed
       const state = await this.fetchFeed(undefined, this.lastViewerLocation)
-      if (state.posts.length > 0) {
+      if (state && state.posts.length > 0) {
         this.feedStateSubject.next(state)
         this.persist(state)
         return state
       }
+      // Failure (null) keeps the cached feed painted; backoff stops the
+      // sentinel from re-firing a burst while the endpoint is down.
+      if (state === null) this.armErrorBackoff()
       return cleanCached
     }
 
     this.feedStateSubject.next({ ...this.feedStateSubject.value, loading: true })
     const state = await this.fetchFeed(undefined, this.lastViewerLocation)
-    this.feedStateSubject.next(state)
-    this.persist(state)
-    return state
+    if (state) {
+      this.feedStateSubject.next(state)
+      this.persist(state)
+      return state
+    }
+    // Initial failure with no cache: show the empty state but keep
+    // hasMore=true so the sentinel/backoff chain can self-heal once the
+    // endpoint recovers (a real empty feed still resolves hasMore=false).
+    this.armErrorBackoff()
+    const failed: FeedState = { posts: [], cursor: null, hasMore: true, loading: false }
+    this.feedStateSubject.next(failed)
+    return failed
   }
 
   async loadMore(viewerLocation?: { lat: number; lng: number } | null) {
     const current = this.feedStateSubject.value
     if (!current.hasMore || current.loading || this.loadingMore) return
+    // Inside an armed failure window (rapid IO re-fires) — the chained
+    // retry timer will fire when the backoff expires.
+    if (Date.now() < this.nextRetryAt) return
     this.loadingMore = true
     this.rememberLocation(viewerLocation)
     this.feedStateSubject.next({ ...current, loading: true })
@@ -234,6 +319,14 @@ export class FeedStream {
         this.lastViewerLocation,
         seenIds,
       )
+      if (state === null) {
+        // Transient failure: keep cursor/hasMore exactly as they were so the
+        // next (backed-off) attempt resumes the SAME page — never strand
+        // infinite scroll by flipping hasMore off.
+        this.armErrorBackoff()
+        this.feedStateSubject.next({ ...this.feedStateSubject.value, loading: false })
+        return
+      }
       const base = this.feedStateSubject.value
       const merged: FeedState = {
         // Skip any row already on screen even if the server page overlaps.
@@ -253,20 +346,16 @@ export class FeedStream {
     const current = this.feedStateSubject.value
     this.feedStateSubject.next({ ...current, loading: true })
     const state = await this.fetchFeed(undefined, this.lastViewerLocation)
-    // Always apply fresh state when fetch succeeded, even if empty (user may have filtered)
-    // Only keep current posts if fetch failed (state has no posts AND hasMore false due to error returns)
-    if (state.posts.length > 0) {
-      this.feedStateSubject.next({ ...state, loading: false })
-      this.persist(state)
-    } else if (state.hasMore === false && state.cursor === null) {
-      // fetchFeed returns empty on error — preserve current posts but clear loading
-      // Check if error case by seeing if we got network failure vs legit empty feed
-      // For now, preserve current to avoid flash of empty state on transient error, but ensure hasMore updated
-      this.feedStateSubject.next({ ...current, loading: false })
-    } else {
-      this.feedStateSubject.next({ ...state, loading: false })
-      this.persist(state)
+    if (state === null) {
+      // Transient failure: keep the current feed painted (no empty flash),
+      // clear loading, and arm the backoff chain.
+      this.armErrorBackoff()
+      this.feedStateSubject.next({ ...this.feedStateSubject.value, loading: false })
+      return
     }
+    // Success — apply even when genuinely empty (user may have filtered).
+    this.feedStateSubject.next({ ...state, loading: false })
+    this.persist(state)
   }
 
   applyInteraction(event: InteractionEvent) {    const cache = this.interactionCache$.value
@@ -344,6 +433,10 @@ export class FeedStream {
   }
 
   destroy() {
+    if (this.retryTimer !== null) {
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+    }
     this.destroy$.next()
     this.destroy$.complete()
     this.feedStateSubject.complete()

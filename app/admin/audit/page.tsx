@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw, ScrollText } from "lucide-react";
 import { toastService } from "@/app/lib/services/toastService";
 import {
@@ -73,11 +73,16 @@ export default function AdminAuditPage() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const inFlight = useRef(false);
   const [entity, setEntity] = useState("");
   const [action, setAction] = useState("");
 
   const load = useCallback(async (reset = true) => {
+    if (inFlight.current) return;
+    inFlight.current = true;
     if (reset) setLoading(true);
+    else setLoadingMore(true);
     try {
       const params = new URLSearchParams();
       if (entity) params.set("entity", entity);
@@ -87,12 +92,29 @@ export default function AdminAuditPage() {
       const res = await fetch(`/api/admin/audit?${params.toString()}`);
       if (!res.ok) throw new Error("Load failed");
       const data = await res.json();
-      setEntries((prev) => (reset ? data.entries ?? [] : [...prev, ...(data.entries ?? [])]));
+      const fresh: AuditEntry[] = Array.isArray(data.entries) ? data.entries : [];
+      setEntries((prev) => {
+        if (reset) {
+          const seen = new Set<string>();
+          const out: AuditEntry[] = [];
+          for (const e of fresh) {
+            if (!seen.has(e.id)) {
+              seen.add(e.id);
+              out.push(e);
+            }
+          }
+          return out;
+        }
+        const seen = new Set(prev.map((e) => e.id));
+        return [...prev, ...fresh.filter((e) => !seen.has(e.id))];
+      });
       setNextCursor(data.nextCursor ?? null);
     } catch {
       toastService.error(AUDIT_DISPLAY_CONFIG.loadError);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+      inFlight.current = false;
     }
   }, [entity, action, nextCursor]);
 
@@ -241,7 +263,7 @@ export default function AdminAuditPage() {
       </AppCard>
 
       {nextCursor && (
-        <AppButton variant="secondary" size="sm" onClick={() => load(false)} className="self-center">
+        <AppButton variant="secondary" size="sm" onClick={() => load(false)} disabled={loadingMore} className="self-center">
           {AUDIT_DISPLAY_CONFIG.loadMoreLabel}
         </AppButton>
       )}

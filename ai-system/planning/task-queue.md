@@ -2,11 +2,32 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: DB pooler fix + style proxy)
-> - last-synced: 2026-10-18 (Sprint 77)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance)
+> - last-synced: 2026-10-18 (Sprint 78)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 78 — SEO Title Suffix + Feed Page Size + Pagination Compliance Sweep (2026-10-18, execute-feature)
+
+> **Section summary:** Issue #25 directive close-out, non-breaking (no migration, no new deps, config-driven defaults + error-hardening). (1) Single-source the ` | Along` suffix via `DEFAULT_META.titleSuffix` (root `title.template` is the only title authority; OG/Twitter builders compose it once — no more ` | Along | Along` double suffix), (2) feed default cap 10 → 20 everywhere (server fallback, `DEFAULT_FEED_CONFIG`, `FEED_STREAM_CONFIG`, zod schema), (3) platform-wide pagination compliance sweep (central `PAGINATION_CONFIG` + `clampPageLimit` on every cursor route, id sort-key determinism, limit-scoped notifications cache keys so the badge `limit=1` poll can't poison the page-20 key, transient fetch errors in `feedStream` no longer read as end-of-list with config-driven exponential backoff, `ViewMoreButton` + `useCursorList` cursor load-more on followers/following and every profile tab). QA full in-runner: tsc 0 errors, jest 108 suites / 1119 tests pass (+1 suite, +7 tests), lint clean on touched files (fixed 5 no-explicit-any in feed route + conditional-hook flag in admin bugs), next build clean.
+
+| Size | Task                                                                                                                                                                                                       | Status |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| [M]  | SEO single-source: `DEFAULT_META.titleSuffix` (`app/lib/config/seo.ts`); root `title.template` = `` `%s${DEFAULT_META.titleSuffix}` ``; `buildMetadata`/`buildPostMetadata`/`buildProfileMetadata` bare titles + OG/Twitter single suffix; `app/admin/layout.tsx` "Admin" | [x]    |
+| [S]  | Metadata tests: bare-title assertions, `applyRootTemplate` composition helper, source-scan regression rejecting manual `\| Along` literals outside config/seo.ts; 34/34 pass                                | [x]    |
+| [M]  | `app/lib/config/pagination.ts` (new) — `PAGINATION_CONFIG` surfaces (feed/posts/search/notifications/comments/bookmarks/reviews/explore/admin/badge/userLists: default+max), `clampPageLimit(raw, surface)`; barrel export | [x]    |
+| [S]  | Feed default cap 10 → 20: `clampPageLimit(…, "feed")` in `api/posts/feed` + `api/posts`; `DEFAULT_FEED_CONFIG.pageSize` + `FEED_STREAM_CONFIG.pageSize` = 20; `FEED_QUERY_SCHEMA.limit` default/max from config | [x]    |
+| [M]  | Server sweep: `clampPageLimit` on search/notifications/comments/bookmarks/reviews/admin{posts,users,reviews,bugs,deletions,audit}/users-search; `CACHE_KEYS.notifications` limit-in-key + `notificationsAll` enumeration + only-cache-if-enumerable; id tiebreakers everywhere | [x]    |
+| [M]  | feedStream hardening: `fetchFeed` → `Promise<FeedState \| null>` on any failure (non-2xx/unparseable/error-shaped 200); failures never flip `hasMore`; exponential backoff `errorRetryBackoffMs`/`errorBackoffMaxMs` + chained single retry timer; initial failure emits self-healing empty state | [x]    |
+| [S]  | Admin: audit page dedupe + `inFlight` guard; explore `limit` from config; admin pages derive `pageSize` from `ADMIN_PAGINATION_META` (= `PAGINATION_CONFIG.admin`); deletions request admin max | [x]    |
+| [M]  | Followers/following: bounded `limit+cursor` (was unbounded findMany), Follow-row cursor, `{id:"desc"}` tiebreak, `{users, nextCursor}`; `UserList` `ViewMoreButton`; post-detail appended-comment windows + `ViewMoreButton` | [x]    |
+| [M]  | Profile tabs: `useCursorList` hook (cache-scoped first page, dedupe, `mutate` write-through); posts/routes/requests/liked/bookmarks/archived wired with `ViewMoreButton` on both profile pages; `limit=20` literals removed | [x]    |
+| [S]  | Client literals → config: `SearchPage` + `ExploreSearchInput` `limit=${PAGINATION_CONFIG.search.defaultLimit}`; `NOTIFICATION_BADGE_CONFIG.endpoint` from `badge.defaultLimit` | [x]    |
+| [M]  | Tests — `paginationCompliance.test.ts` (new, 40: clamp sources/tiebreakers/cache keys/admin meta/clamp matrix/feed-20 + hasMore regression); `metadata.test.ts` rewritten; 108/108 suites green | [x]    |
+| [S]  | Lint pass on touched files: feed route 5× `no-explicit-any` → `unknown[]` + typed casts (mirrors `posts/route.ts` P2022 pattern); admin bugs conditional-hook flag fixed via module-scope alias | [x]    |
+
+---
 
 ## Sprint 77 — Post-Migration DB Pool Exhaustion + MapLibre Null Warnings (2026-10-18, execute-feature)
 

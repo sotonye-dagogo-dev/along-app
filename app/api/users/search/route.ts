@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
+import { clampPageLimit } from "@/app/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,10 @@ export async function GET(request: NextRequest) {
     if (!q || q.length < 2) {
       return NextResponse.json({ users: [] }, { status: 200 });
     }
+
+    // Mention typeahead sends no `limit` → search surface default (10),
+    // exactly the fixed size it has always had.
+    const limit = clampPageLimit(searchParams.get("limit"), "search");
 
     const users = await prisma.user.findMany({
       where: {
@@ -30,8 +35,8 @@ export async function GET(request: NextRequest) {
         avatarConfig: true,
         verified: true,
       },
-      take: 10,
-      orderBy: { createdAt: "desc" },
+      take: limit,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
 
     return NextResponse.json({ users }, { status: 200 });

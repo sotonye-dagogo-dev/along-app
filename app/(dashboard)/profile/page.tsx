@@ -5,8 +5,8 @@ import Link from "next/link"
 import { LogOut, Link2, Trophy, MailCheck, AlertTriangle, Search } from "lucide-react"
 import { isAdminRole } from "@/app/lib/config/navigation"
 import { PROFILE_QUICK_LINKS_CONFIG } from "@/app/lib/config/profileQuickLinks"
-import { AppAvatar, AppButton, AppEmptyState } from "@/app/components/ui"
-import { EMPTY_STATES } from "@/app/lib/config"
+import { AppAvatar, AppButton, AppEmptyState, ViewMoreButton } from "@/app/components/ui"
+import { EMPTY_STATES, PAGINATION_CONFIG } from "@/app/lib/config"
 import dynamic from "next/dynamic"
 import { RewardsPanel, EditProfileModal, EarlyAdopterBadgeFromStatus, AvatarMenu, AvatarCameraBadge } from "@/app/components/features/profile"
 import { ReviewsPanel } from "@/app/components/features/reviews"
@@ -20,6 +20,7 @@ import { toastService } from "@/app/lib/services/toastService"
 const AvatarEditor = dynamic(() => import("@/app/components/features/profile/AvatarEditor").then((m) => m.AvatarEditor), { ssr: false })
 import { useAuth } from "@/app/hooks/useAuth"
 import { useCachedFetch } from "@/app/lib/hooks/useCachedFetch"
+import { useCursorList } from "@/app/lib/hooks/useCursorList"
 
 interface RewardHistoryItem {
   id: string
@@ -182,31 +183,48 @@ export default function OwnProfilePage() {
   )
   // Per-tab post query URL (posts / routes / requests / liked / bookmarks / archived).
   // The reviews tab owns no post query — ReviewsPanel fetches its own data.
+  // Page sizes come from PAGINATION_CONFIG — no per-page limit literals.
   // NOTE: named `tabPostsQuery` (not `tabQuery`) — `tabFilter` owns the search
   // box state below. A same-name collision here broke the production build.
+  const postsLimit = PAGINATION_CONFIG.posts.defaultLimit
+  const bookmarksLimit = PAGINATION_CONFIG.bookmarks.defaultLimit
   const tabPostsQuery =
     activeTab === "reviews"
       ? "/api/reviews?limit=1"
       : activeTab === "bookmarks"
-      ? "/api/bookmarks?limit=20"
+      ? `/api/bookmarks?limit=${bookmarksLimit}`
       : activeTab === "liked"
-        ? `/api/posts?limit=20&likedBy=${userId}`
+        ? `/api/posts?limit=${postsLimit}&likedBy=${userId}`
         : activeTab === "routes"
-          ? `/api/posts?limit=20&userId=${userId}&type=ROUTE,ROUTE_RESPONSE`
+          ? `/api/posts?limit=${postsLimit}&userId=${userId}&type=ROUTE,ROUTE_RESPONSE`
           : activeTab === "requests"
-            ? `/api/posts?limit=20&userId=${userId}&type=ROUTE_REQUEST`
+            ? `/api/posts?limit=${postsLimit}&userId=${userId}&type=ROUTE_REQUEST`
             : activeTab === "archived"
-              ? `/api/posts?limit=20&userId=${userId}&archived=true`
-              : `/api/posts?limit=20&userId=${userId}`
-  const { data: postsData, loading: postsLoading, mutate: mutatePosts } = useCachedFetch<{ posts: PostItem[] }>(
-    ready ? `profile-tab:${userId}:${activeTab}` : null,
-    tabPostsQuery,
-    { ttlSec: 120, enabled: ready && activeTab !== "reviews" }
-  )
+              ? `/api/posts?limit=${postsLimit}&userId=${userId}&archived=true`
+              : `/api/posts?limit=${postsLimit}&userId=${userId}`
+  // Cursor-paginated list: first page stays cache-keyed per tab; "View more"
+  // appends the next window (list APIs return { posts, nextCursor } — the
+  // bookmarks route keys its rows `posts` too).
+  const {
+    items: posts,
+    loading: postsLoading,
+    loadingMore: postsLoadingMore,
+    hasMore: postsHasMore,
+    loadMore: loadMorePosts,
+    mutate: mutatePosts,
+  } = useCursorList<PostItem>({
+    cacheKey: ready ? `profile-tab:${userId}:${activeTab}` : null,
+    enabled: ready && activeTab !== "reviews",
+    buildUrl: (cursor) =>
+      cursor ? `${tabPostsQuery}&cursor=${encodeURIComponent(cursor)}` : tabPostsQuery,
+    extract: (data) => ({
+      items: data?.posts ?? [],
+      nextCursor: data?.nextCursor ?? null,
+    }),
+  })
 
   const profile = profileRes?.user ?? null
   const rewardHistory = historyRes?.history ?? []
-  const posts = postsData?.posts ?? []
   const loading = authLoading || profileLoading || historyLoading
 
   const refreshProfile = async () => {
@@ -551,13 +569,20 @@ export default function OwnProfilePage() {
                 } as never
               }
               onRemoved={(postId) =>
-                mutatePosts((prev) =>
-                  prev ? { posts: prev.posts.filter((p) => p.id !== postId) } : { posts: [] },
-                )
+                mutatePosts((prev) => prev.filter((p) => p.id !== postId))
               }
             />
             ))
             })()}
+            {postsHasMore && posts.length > 0 && (
+              <ViewMoreButton
+                onViewMore={() => void loadMorePosts()}
+                loading={postsLoadingMore}
+                shown={posts.length}
+                total={null}
+                hasMore={postsHasMore}
+              />
+            )}
             </>
           )}
         </div>

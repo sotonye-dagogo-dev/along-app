@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { clampPageLimit } from "@/app/lib/config";
 
 /** GET /api/bookmarks — the authenticated user's bookmarked posts (newest first). */
 export async function GET(request: NextRequest) {
@@ -11,12 +12,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(Number(searchParams.get("limit")) || 20, 50);
+    const limit = clampPageLimit(searchParams.get("limit"), "bookmarks");
     const cursor = searchParams.get("cursor");
 
     const rows = await prisma.bookmark.findMany({
       where: { userId: user.id as string },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       include: {

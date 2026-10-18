@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 76: refresh-notice once-flag + catch-all note)
-> - last-verified-against-code: 2026-10-18 (tsc 0 errors, jest 105/105 suites 1047/1047, lint clean on touched files, next build clean; node_modules installed in-runner)
+> - last-updated-by: execute-feature 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance)
+> - last-verified-against-code: 2026-10-18 (tsc 0 errors, jest 108/108 suites 1119/1119, lint clean on touched files, next build clean; node_modules installed in-runner)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,44 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-18 (Sprint 78: SEO title suffix + feed page size + pagination compliance sweep)
+
+**Completed:**
+
+- Closed out issue #25 directive end-to-end: (1) eliminated the double ` | Along | Along` SEO title suffix by making the root layout `title.template` the single suffix authority (`DEFAULT_META.titleSuffix` in `app/lib/config/seo.ts`), with OG/Twitter titles composed once in the metadata builders; (2) raised the feed default page size from 10 to 20 across the server fallback, `DEFAULT_FEED_CONFIG`, `FEED_STREAM_CONFIG`, and the zod query schema; (3) ran a platform-wide pagination compliance sweep — new central `PAGINATION_CONFIG` + `clampPageLimit` wired into every cursor route (search, notifications, comments, bookmarks, reviews, admin lists, users-search, followers/following), id sort-key determinism on every cursor query, limit-scoped notifications Redis keys so the badge `limit=1` poller can never serve a poisoned first page, `feedStream` transient-fetch-failure hardening (failures keep cursor/`hasMore` intact + config-driven exponential backoff with chained single retry), bounded cursor pagination + `ViewMoreButton` on followers/following and post-detail comments, and `useCursorList`-driven load-more on every profile tab (both profile pages).
+- Fixed all lint errors in sprint-touched files: 5× `no-explicit-any` in the feed route (mirrored the `unknown[]` + typed-cast P2022 pattern from `posts/route.ts`) and the `rules-of-hooks` false positive in admin bugs (module-scope alias for the `useDefaultLabel` member call).
+- QA gate: tsc 0 errors; jest 108 suites / 1119 tests pass (new `paginationCompliance.test.ts` with 40 tests + rewritten `metadata.test.ts`); `next lint` clean on every touched file; `next build` exit 0.
+- Updated `ai-system/docs/DESIGN.md` §11 (bare-title SEO convention) and `ai-system/planning/task-queue.md` (Sprint 78 section); executed the chained `update-ai-system.md` deep sync.
+
+**Files Modified:**
+
+- `app/lib/config/seo.ts`, `app/layout.tsx`, `app/admin/layout.tsx`, `app/lib/utils/metadata.ts` — SEO title suffix single-source.
+- `app/lib/config/pagination.ts` (new), `app/lib/config/index.ts` — central `PAGINATION_CONFIG` + `clampPageLimit`.
+- `app/lib/config/feedAlgorithm.ts`, `app/api/posts/feed/route.ts`, `app/api/posts/route.ts`, `app/lib/schemas/post.ts`, `app/lib/streams/feedStream.ts` — feed 20-cap + stream backoff.
+- `app/api/{search,users/search,notifications,bookmarks,reviews}/route.ts`, `app/api/posts/[id]/comments/route.ts`, `app/api/admin/{posts,users,reviews,bugs,deletions,audit}/route.ts`, `app/lib/services/auditService.ts` — clamp + determinism.
+- `app/lib/config/cache.ts`, `app/lib/config/admin.ts`, `app/lib/config/navigation.ts` — cache keys, admin meta, badge endpoint from config.
+- `app/api/users/[id]/{followers,following}/route.ts`, `app/components/features/profile/UserList.tsx`, `app/(dashboard)/posts/[id]/page.tsx` — followers cursor pages + comment load-more.
+- `app/lib/hooks/useCursorList.ts` (new), `app/(dashboard)/profile/{page.tsx,[username]/page.tsx}` — profile-tab load-more.
+- `app/admin/audit/page.tsx`, `app/admin/{bugs,deletions,posts,reviews,users}/page.tsx`, `app/(dashboard)/explore/page.tsx`, `app/(dashboard)/search/SearchPage.tsx`, `app/components/features/explore/ExploreSearchInput.tsx` — config-driven client limits + guards.
+- `app/__tests__/config/paginationCompliance.test.ts` (new), `app/__tests__/utils/metadata.test.ts`, `ai-system/docs/DESIGN.md`, `ai-system/planning/task-queue.md`.
+
+**Next Task:**
+
+- Push/PR is handled by the pipeline; no in-repo follow-up remains. Any new list surface must declare its default/max in `PAGINATION_CONFIG` and parse `limit` through `clampPageLimit` (enforced by `paginationCompliance.test.ts`).
+
+**Assumptions Made:**
+
+- Kept the root `title.template` as the suffix authority (non-breaking for every bare-title page: search, marketplace, leaderboard, admin). OG/Twitter continue to carry exactly one manual suffix via the shared builders, since Next does not template those fields.
+- Admin-stored `SiteConfig` rows may still hold `pageSize: 10` for the feed; the client stream and route defaults now pass explicit limits, so the effective page size is 20 regardless.
+- The `useDefaultLabel` rename in admin bugs is a pure local alias — the exported config key is untouched.
+
+**Notes / Blockers:**
+
+- Pre-existing lint errors in untouched files (`app/api/suggestions/route.ts` any-casts) were left as-is; `next build` skips linting so they do not gate deploys.
+- `npm install` output includes the expected Prisma config deprecation warning; migrations were not run (none required by this sprint).
+
+---
 
 ## Session — 2026-10-17 (Sprint 73: Supabase database transfer close-out)
 

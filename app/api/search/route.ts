@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { searchService } from "@/app/lib/services/searchService";
 import { checkRateLimit } from "@/app/lib/utils/rateLimit";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { clampPageLimit } from "@/app/lib/config";
 
 const VALID_TYPES = new Set(["all", "posts", "users"]);
 const VALID_POST_TYPES = new Set(["ROUTE", "ROUTE_REQUEST", "ROUTE_RESPONSE"]);
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
       type,
       region: searchParams.get("region") ?? undefined,
       postType,
-      limit: Math.min(Number(searchParams.get("limit")) || 10, 50),
+      limit: clampPageLimit(searchParams.get("limit"), "search"),
       cursor: searchParams.get("cursor") ?? undefined,
       // Viewer-scoped like/bookmark enrichment (parity with GET /api/posts).
       // Best-effort — guests resolve to undefined and get false flags.

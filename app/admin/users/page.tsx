@@ -7,6 +7,7 @@ import { AppInput, AppTableRowActions, AppAvatar, type TableRowAction } from "@/
 import { useBulkSelection } from "@/app/lib/hooks/useBulkSelection"
 import {
   ADMIN_BULK_SELECT_META,
+  ADMIN_PAGINATION_META,
   ADMIN_TABLE_SORT_META,
   ADMIN_USER_DELETION_META,
   ADMIN_USER_FILTERS,
@@ -103,7 +104,7 @@ export default function AdminUsersPage() {
         ?? ADMIN_TABLE_SORT_META.users.options[0]
       params.set("sort", sortOpt.sort)
       params.set("dir", sortOpt.dir)
-      params.set("limit", "20")
+      params.set("limit", String(ADMIN_PAGINATION_META.defaultLimit))
       if (append && cursor) params.set("cursor", cursor)
       const qs = params.toString()
       const url = qs ? `/api/admin/users?${qs}` : "/api/admin/users"

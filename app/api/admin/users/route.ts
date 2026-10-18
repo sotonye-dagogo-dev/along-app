@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
+import { clampPageLimit } from "@/app/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const cursor = searchParams.get("cursor");
-    const limit = Math.min(Number(searchParams.get("limit")) || 20, 100);
+    const limit = clampPageLimit(searchParams.get("limit"), "admin");
     const search = searchParams.get("q");
     // Future-proof filter: ?earlyAdopter=true lists the earliest-joined users
     // first (badge qualification order) for rewards/audience tooling.
