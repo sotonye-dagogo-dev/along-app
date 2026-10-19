@@ -22,7 +22,7 @@ function sampleVarsFor(templateName: string): Record<string, string> {
     changeEmail: { firstName: "Adaobi", newEmail: "ada@newmail.com", otp: "482937", confirmLink: `${appUrl}/profile?emailConfirmed=1` },
     changePassword: { firstName: "Adaobi", changedAt: new Date().toUTCString() },
     contactNotification: { senderName: "Chidi Okonkwo", senderEmail: "chidi@example.com", message: "I love the app! Would love to see more routes in Lagos mainland." },
-    bugReportNotification: { title: "Route map not loading", category: "UI", description: "When I open the route map on the post page, the map stays blank. Using Chrome 120 on Windows 11." },
+    bugReportNotification: { title: "Route map not loading", category: "UI", description: "When I open the route map on the post page, the map stays blank. Using Chrome 120 on Windows 11.", reportLink: "/admin/bugs?highlight=cm3x8k2abc0001" },
     bugReportReceived: { firstName: "Adaobi", title: "Route map not loading", category: "UI", reportId: "cm3x8k2abc0001" },
     bugReportStatusUpdate: { firstName: "Adaobi", title: "Route map not loading", status: "IN PROGRESS", statusNote: "Our team is actively working on this.", reportId: "cm3x8k2abc0001" },
     accountDeletionRequested: { firstName: "Adaobi", scheduledDate: "October 16, 2026", cancelLink: `${appUrl}/profile` },

@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 77: EMAXCONNSESSION + MapLibre null-warning entries)
-> - last-verified-against-code: 2026-10-18
+> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate bug-report / multi-admin assignment race entry)
+> - last-verified-against-code: 2026-10-19
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
 > **Overview:** A living knowledge base of errors encountered during development, their root causes, and how they were fixed. Agents should consult this before diagnosing new errors. Every fixed bug should be logged here to prevent recurrence. This file is pre-populated with known error patterns for the Along tech stack (Next.js 15 + React 19 + Ant Design 5 + Tailwind 4).
@@ -1430,4 +1430,30 @@ Never reuse an email-safe renderer for article bodies — email needs inline sty
 - `app/admin/blog/page.tsx`
 
 **Date:** 2026-10-13
+**Status:** Active
+
+---
+
+### Duplicate Bug Reports / "Bug Assigned to Multiple Admins" (Non-Transactional Dedup Race)
+
+**Symptom:**
+One reported error produced multiple `BugReport` rows on the admin panel, each auto-assigned to a DIFFERENT admin — operators read this as the bug being "assigned to multiple admins at once". Sprint 79's idempotency key + tightened pre-read reduced but did not eliminate it.
+
+**Root Cause:**
+Dedup was read-then-write OUTSIDE any serialised region: the route SELECTed for a matching row, then inserted if none matched — both steps commented "transactional" but not actually serialised, so two concurrent submissions (double-fire, offline-queue flush, slow double-submit) both missed the read and both inserted. The matcher also required an exact TITLE for identity matches, so boundary reports sharing path/digest with differing titles slipped past even a single-threaded re-submit. `/api/reports` additionally created the row unassigned and patched `reviewerId` in a second statement (unassigned window + extra write).
+
+**Fix Applied:**
+New `app/lib/services/bugReportDedupService.ts` (pure identity/matcher + `acquireBugReportDedupLock`); BOTH report routes now resolve the assignee ONCE before the write and run dedup-read + insert + reviewer-in-INSERT inside ONE `prisma.$transaction` guarded by `pg_advisory_xact_lock(hashtextextended('bug-report:<reporterId|anon>', 0))` (per-reporter scope, best-effort — lock failure never fails the user's write). Matcher order: idempotency key > error identity (`metadata.path` + digest, title NOT required) > exact description, bounded by `dedupMaxCandidates`. Duplicate hit returns the original row; if unassigned, it self-heals with the single algorithmic assignee (heal-only fan-out). Config: `BUG_REPORT_DEDUP_CONFIG.dedupMaxCandidates` / `dedupLockPrefix`.
+
+**Prevention:**
+If correctness depends on "nobody wrote between my check and my write", put check + write in ONE transaction AND serialise the competing writer (advisory lock keyed narrowly per entity — never a global lock). Resolve all inputs (assignee) before opening the transaction to avoid nested pool use. Match on stable identity fields, never human-authored titles. "ACID" comments describe intent, not behavior — verify with an actual concurrent-submit test.
+
+**Files Affected:**
+
+- `app/lib/services/bugReportDedupService.ts`
+- `app/api/bug-reports/route.ts`
+- `app/api/reports/route.ts`
+- `app/lib/config/reportAttachments.ts` (BUG_REPORT_DEDUP_CONFIG)
+
+**Date:** 2026-10-19
 **Status:** Active

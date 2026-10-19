@@ -29,6 +29,8 @@ export interface FanOutInput {
   message: string;
   postId?: string;
   commentId?: string;
+  /** Deep-link context mirrored from the in-app notification (e.g. bugId). */
+  metadata?: Record<string, unknown> | null;
   recipientIds: string[];
 }
 
@@ -47,7 +49,11 @@ export async function fanOutPush(input: FanOutInput): Promise<{ sent: number; fa
     if (subs.length === 0) return { sent: 0, failed: 0 };
 
     const payload = JSON.stringify(
-      resolvePushPayload(input.type, input.message, { postId: input.postId, commentId: input.commentId }),
+      resolvePushPayload(input.type, input.message, {
+        postId: input.postId,
+        commentId: input.commentId,
+        metadata: input.metadata ?? undefined,
+      }),
     );
 
     const results = await Promise.allSettled(

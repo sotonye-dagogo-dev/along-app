@@ -2,11 +2,28 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: announcement deprecation + bug-report tightening)
-> - last-synced: 2026-10-19 (Sprint 79)
+> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
+> - last-synced: 2026-10-19 (Sprint 80)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 80 — Duplicate-Proof Bug Assignment + Notification Deep Links + Auth Session Persistence (2026-10-19, execute-feature)
+
+> **Section summary:** Issue #25 directive close-out, non-breaking (one additive nullable `Notification.metadata` column, no removed API fields, config-driven). (1) Single-admin assignment: dedup-read + assignee + insert now run inside ONE `prisma.$transaction` serialised by a per-reporter `pg_advisory_xact_lock` in both report routes (new `bugReportDedupService`; matcher = idempotency key > error identity without title requirement > exact description; unassigned dupes self-heal to the single algorithmic assignee), closing the read-then-write race that produced duplicate rows auto-assigned to different admins. (2) Admin deep links: `Notification.metadata` threading (`createNotification` → push mirror → resolvers) so REPORT/MODERATION with `bugId` route to `/admin/bugs?highlight=<id>` (assignee pings only; reporter rows carry no bugId), `GET /api/admin/bugs?id=`, page-level highlight capture/strip/scroll/ring, and a `{{appUrl}}{{reportLink}}` CTA in the admin assignee email. (3) Auth session persistence: `authSession.ts` single-source config, refresh-JWT `rm` remember-me claim, dedicated `authRefresh` rate bucket, middleware refresh-grace with downstream cookie forwarding, Google `prompt=select_account` + httpOnly remember-me handshake, AuthProvider 429 exponential backoff + throttled online/visibility revalidation. QA full in-runner: tsc 0 errors, jest 113 suites / 1178 tests pass (+3 suites, +44 tests), lint clean on touched files, next build clean, prisma validate OK.
+
+| Size | Task                                                                                                                                                                                                       | Status |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| [M]  | New `app/lib/services/bugReportDedupService.ts` — pure identity builder/matcher (key > error identity without title > description), `dedupWindowStart`, `buildDedupLockKey`, best-effort never-throws `acquireBugReportDedupLock`; `BUG_REPORT_DEDUP_CONFIG` += `dedupMaxCandidates` + `dedupLockPrefix` | [x]    |
+| [M]  | `/api/bug-reports` + `/api/reports` — assignee resolved ONCE before the tx; dedup-read + insert + reviewer-in-INSERT inside one `$transaction` guarded by `pg_advisory_xact_lock(hashtextextended('bug-report:<reporterId\|anon>',0))`; dup hit returns original + unassigned self-heal + heal-only fan-out; `bugId` only on assignee pings | [x]    |
+| [M]  | Lane B migration + threading: `prisma/schema.prisma` `Notification.metadata Json?` + `20261019000000_notification_metadata` migration; `notificationService.createNotification` persists metadata and forwards to `pushSender.fanOutPush` → `resolvePushPayload` → pwa push mirror; `/api/notifications` exposes metadata | [x]    |
+| [S]  | `resolveNotificationRoute` — REPORT/MODERATION `metadata.bugId` wins → `/admin/bugs?highlight=<id>`; absent bugId → `/notifications` (today's targets preserved for reporter rows) | [x]    |
+| [S]  | Admin surface: `GET /api/admin/bugs?id=` single-fetch (404 when absent, `BUG_INCLUDE` shared); `app/admin/bugs/page.tsx` highlight capture + `history.replaceState` strip + fetch-by-id fallback + prepend + ref-guarded one-shot `scrollIntoView` + `ring-2` on `bug-row-<id>` | [x]    |
+| [S]  | Email CTA: `sendBugReportNotification(..., reportId?)` derives path-only `reportLink`; default `bugReportNotification` template CTA `{{appUrl}}{{reportLink}}`; preview sample | [x]    |
+| [M]  | Lane C: `app/lib/config/authSession.ts` single-source (TTLs, cookie maxAges, OAuth prompt/handshake, grace toggle, client backoff); refresh-JWT `rm` claim + `includeRefresh` legacy path; `authRefresh` rate bucket (45/15min); middleware refresh-grace mints access cookie and FORWARDS it downstream (`nextWithAccessCookie`); Google `prompt=select_account` + `oauth_session_prefs` `redirectWithPrefsCleanup` at all exits; login Google button carries rememberMe; AuthProvider 429 keep-session + exponential backoff + throttled online/visibility revalidate | [x]    |
+| [M]  | Tests — new `bugReportDedupService.test.ts`, `notificationRoutes.test.ts`, `authSession.test.ts` (44 tests); full suite 113/113 green; Prisma client regenerated post-schema | [x]    |
+
+---
 
 ## Sprint 79 — Legacy Announcement-Banner Deprecation + Bug-Report Pipeline Tightening (2026-10-18, execute-feature)
 
