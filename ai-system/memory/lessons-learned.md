@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: content-hash idempotency keys — timestamps break dedup; jsdom can't spy location.reload — inject the impl)
-> - last-verified-against-code: 2026-10-18 (Sprint 76 in-runner QA: tsc 0, jest 105/105 suites 1047/1047, build clean; config count 89 re-verified)
+> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: advisory-lock serialisation for read-then-write races; refresh needs its own rate bucket; regenerate prisma client after schema edits)
+> - last-verified-against-code: 2026-10-19 (Sprint 80 in-runner QA: tsc 0, jest 113/113 suites 1178/1178, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -1050,4 +1050,31 @@ Sprint 79's duplicate-bug-report fix. Server-side dedup had a short same-identit
 **What We Learned:** Derive the idempotency key from pure content (double FNV-1a of `title|path|digest`, prefixed `eb:`, length-capped) — never from `Date.now()`/`Math.random()`, which defeat every dedup window the server can offer. Send it BOTH as an `x-idempotency-key` header and a body field, and have the server pre-read with an OR of (key OR stable identity OR exact description) scoped to the reporter so old rows still dedup. For location-dependent recovery logic, export `attemptChunkLoadRecovery(reloadImpl?)` with an injectable reload implementation so tests pass a spy instead of fighting jsdom; guard the once-per-session reload with a sessionStorage flag keyed from config, checked read-only in effects.
 **Apply When:** Writing any "submit once" client flow; testing anything that calls `location.reload()`/`location.assign()` in jsdom; adding recovery shortcuts that must not loop.
 **Supersedes:** Extends the Sprint 12/50 idempotency-key + short-dedup-window pattern (client-emitted keys are now mandatory for anonymous error reports, which have no user/session identity server-side).
+**Superseded by:** None
+
+## "ACID" in comments is not ACID — read-then-write needs a lock or a constraint, not prose
+
+**Context:**
+Sprint 80's duplicate bug reports / "assigned to multiple admins". The report routes did dedup-check (SELECT) and then INSERT with a comment claiming transactional safety, but the read and the write were not serialised — two concurrent submissions both missed the read, both inserted, and each row auto-assigned a different admin (the single `reviewerId` column meant the "multi-assignment" was really duplicate rows, each with its own assignee).
+**What We Learned:** If correctness depends on "nobody inserted between my check and my write", the check and the write must be inside ONE transaction AND serialised against the competing writer — on Postgres, a per-entity `pg_advisory_xact_lock(hashtextextended(key, 0))` is the cheapest serialisation that needs no schema change (key it narrowly, e.g. per reporter, so unrelated writes never contend; best-effort, never throwing, so a lock failure degrades to the old behavior instead of failing the user's write). Resolve all inputs (here: the assignee) BEFORE opening the transaction so you never nest pool use. Prefer matching on stable identity fields (path + digest) rather than human titles, which vary across otherwise-identical reports.
+**Apply When:** Any create-if-absent / create-if-unchanged path; "duplicate" symptoms reported against a table; comments that assert serialisation without code that provides it.
+**Supersedes:** Supersedes the Sprint 79 residual note "Unique DB constraint … remains a future option" as the primary mechanism (constraint stays optional insurance; the advisory-lock transaction is now the shipped fix).
+**Superseded by:** None
+
+## Refresh traffic needs its own rate bucket, and 429 must be transient
+
+**Context:**
+Sprint 80's auth session expiry. `/api/auth/refresh` shared the general `auth` bucket with login/OTP, so a PWA resuming after backgrounding could consume the bucket, get 429'd, and — because the client treated any auth failure as "session dead" — bounce a perfectly valid session to /login. Refresh fires far more often than login, so it both starved and was starved by the bucket.
+**What We Learned:** Give high-frequency, low-risk auth endpoints (refresh) their OWN config-driven bucket (`authRefresh` 45/15min) sized for their cadence, separate from credential endpoints. Client-side, classify 429 as TRANSIENT: keep the session, retry with exponential backoff from config (2^n, capped, honoring server `Retry-After`), and reset the backoff counter on any success; revalidate on `online`/visibility events but throttle it (min-interval ref) so a PWA resume storm can't re-trigger the bucket. Pair this with the server side: when middleware finds an expired access token + valid refresh token, mint the refresh downstream (forward the cookie ON the request via `NextResponse.next({ request: { headers } })` — `Set-Cookie` alone only reaches the browser after the response) instead of redirecting.
+**Apply When:** Any client that auto-refreshes credentials; any endpoint with an asymmetric call cadence vs its siblings in a shared bucket; PWA/background-tab resume behavior; "users randomly logged out" reports.
+**Supersedes:** None
+**Superseded by:** None
+
+## Regenerate the Prisma client after every schema edit — stale clients fail silently
+
+**Context:**
+Sprint 80 added `Notification.metadata Json?`; `npx prisma generate` failed without a datasource URL, the old client stayed in place, and TypeScript still compiled — Prisma's generated models accept unknown fields through spread assignments (`{ ...data }` bypasses excess-property checks).
+**What We Learned:** Treat `npx prisma generate` (with a real or stub `DATABASE_URL`) as part of the schema-edit step, not an optional build step; run it before `tsc` or the type checker will happily validate against the OLD model. Verify with a direct property reference or `prisma validate`, not just "tsc passed". Same class as "generated code is a build artifact": migrations (`prisma migrate`) change the DB, `prisma generate` changes the types — both are required for a schema change to be real.
+**Apply When:** Touching `prisma/schema.prisma`; adding columns/models the app reads or writes; CI setups where generate runs later than typecheck.
+**Supersedes:** None
 **Superseded by:** None

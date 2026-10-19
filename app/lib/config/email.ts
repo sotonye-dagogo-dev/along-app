@@ -363,15 +363,15 @@ export const DEFAULT_EMAIL_TEMPLATES: EmailTemplate[] = [
 <div style="background:#f9f9f9;border:1px solid #eee;border-radius:8px;padding:16px;font-size:13px;color:#444;line-height:1.6;white-space:pre-wrap">{{description}}</div>
 </td></tr>
 <tr><td style="padding:16px 32px 28px;text-align:center;border-top:1px solid #eee">
-<p style="font-size:11px;color:#999;margin:0">Manage in Admin → Bug reports.</p>
-<p style="font-size:11px;color:#999;margin:8px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
+<a href="{{appUrl}}{{reportLink}}" style="display:inline-block;background:#1a1a1a;color:#fff;text-decoration:none;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px">Open this report in the queue</a>
+<p style="font-size:11px;color:#999;margin:12px 0 0">&copy; {{year}} {{appName}}. All rights reserved.</p>
 </td></tr>
 </table>
 </td></tr></table>
 </body>
 </html>`,
-    bodyText: "New bug report\nTitle: {{title}}\nCategory: {{category}}\n\n{{description}}",
-    variables: ["title", "category", "description", "appUrl", "logoUrl", "appName", "year"],
+    bodyText: "New bug report\nTitle: {{title}}\nCategory: {{category}}\n\n{{description}}\n\nOpen in queue: {{appUrl}}{{reportLink}}",
+    variables: ["title", "category", "description", "reportLink", "appUrl", "logoUrl", "appName", "year"],
   },
   {
     name: "bugReportReceived",

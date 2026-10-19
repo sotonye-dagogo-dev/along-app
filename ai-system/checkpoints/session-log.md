@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: announcement deprecation + bug-report tightening)
-> - last-verified-against-code: 2026-10-18 (tsc 0 errors, jest 110/110 suites 1134/1134, lint clean on touched files, next build clean; node_modules installed in-runner)
+> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
+> - last-verified-against-code: 2026-10-19 (tsc 0 errors, jest 113/113 suites 1178/1178, lint clean on touched files, next build clean; prisma generate re-run after Notification.metadata)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,40 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
+
+**Completed:**
+
+- Closed out the issue #25 directive end-to-end, three lanes + QA. (1) **Duplicate-proof assignment:** new pure `bugReportDedupService` (`extractMetadataRecord`, `dedupWindowStart`, `matchesDuplicateBugReport`, `buildDedupLockKey`, `acquireBugReportDedupLock` best-effort/never-throws); `/api/bug-reports` and `/api/reports` now run assignee resolution ONCE before the write and do dedup-read + insert + assignee-in-INSERT inside ONE `prisma.$transaction` serialised per reporter by `pg_advisory_xact_lock(hashtextextended('bug-report:<reporterId|anon>', 0))` — two concurrent submissions of one error can no longer both insert (the non-transactional read-then-write race was the reported "assigned to multiple admins" root cause: duplicate rows each auto-assigned to a different admin); matcher order = idempotency key > error identity (metadata.path + digest, title NOT required — title-scoping was silently defeating dedup) > exact description; duplicate hit returns the original row and unassigned dupes self-heal with the single algorithmic assignee + heal-only fan-out; reports route writes `reviewerId` in the create (separate unassigned-window update removed). (2) **Admin deep links:** additive `Notification.metadata Json?` (migration `20261019000000_notification_metadata`), threaded `createNotification` → `pushSender.fanOutPush` → `resolvePushPayload` and exposed by `/api/notifications`; `resolveNotificationRoute` REPORT/MODERATION with `metadata.bugId` → `/admin/bugs?highlight=<id>` (assignee pings ONLY — reporter-facing receipts/status/moderation lines intentionally carry NO bugId so non-admins never bounce to /admin, missing bugId falls back to today's targets); `/api/admin/bugs?id=` single-fetch (404 when absent) + `app/admin/bugs/page.tsx` captures `?highlight=`, strips it via `history.replaceState`, fetch-by-id fallback, prepends off-page rows, one-shot ref-guarded `scrollIntoView` + `ring-2` highlight on `id={bug-row-<id>}`; admin `bugReportNotification` email gains the CTA `{{appUrl}}{{reportLink}}` (path-only var stays safe through `sanitizeStoredBody`; preview sample added; live stored template re-save/`db:seed` needed for the CTA to appear on an existing DB). (3) **Auth session persistence:** `app/lib/config/authSession.ts` (single-source TTLs/cookie maxAges/OAuth handshake/backoff knobs), refresh-JWT `rm` claim (remember-me now actually controls refresh lifetime; legacy claim-less tokens keep their refresh-cookie lifetime via `includeRefresh:false`), dedicated `authRefresh` rate bucket 45/15min (refresh can no longer starve login/OTP), middleware refresh-grace (expired access + valid refresh ⇒ Edge mints the access cookie with the right TTL AND forwards it downstream via `NextResponse.next({ request: { headers } })` — Set-Cookie alone never reaches the request handler — so PWA relaunch after >1h stops bouncing to /login), Google OAuth `prompt=select_account` at all 14 exits with remember-me carried through the httpOnly `oauth_session_prefs` handshake (`redirectWithPrefsCleanup` 307) + login-page Google button carries rememberMe, AuthProvider 429s keep the session and retry with exponential backoff (2^n up to 300s, server Retry-After honored, counter resets on success) + throttled `online`/visibility revalidation.
+- QA gate FULL green in-runner: `npx tsc --noEmit` 0 errors; `npx jest --ci --forceExit` 113/113 suites 1178/1178 tests (+3 new suites / +44 tests: `bugReportDedupService`, `notificationRoutes`, `authSession`); `npx next lint` clean on every touched file; `npx next build` clean (107 static pages, middleware 118 kB); `npx prisma validate` OK.
+- Regenerated the Prisma client after the schema edit (`npx prisma generate` needs a datasource URL even to generate — stale client had silently compiled because spread props bypass TS excess-property checks).
+- Updated ai-system docs and executed the chained `update-ai-system.md` deep sync.
+
+**Files Modified:**
+
+- Created: `app/lib/services/bugReportDedupService.ts`, `prisma/migrations/20261019000000_notification_metadata/migration.sql`, `app/__tests__/services/bugReportDedupService.test.ts`, `app/__tests__/config/notificationRoutes.test.ts`, `app/__tests__/config/authSession.test.ts`, `app/lib/config/authSession.ts`
+- Lane A: `app/api/bug-reports/route.ts`, `app/api/reports/route.ts`, `app/lib/config/reportAttachments.ts` (`dedupMaxCandidates`, `dedupLockPrefix`)
+- Lane B: `prisma/schema.prisma`, `app/lib/services/notificationService.ts`, `app/lib/services/pushSender.ts`, `app/lib/config/notificationRoutes.ts`, `app/lib/config/pwa.ts`, `app/api/admin/bugs/route.ts`, `app/admin/bugs/page.tsx`, `app/(dashboard)/notifications/page.tsx`, `app/lib/config/email.ts`, `app/lib/services/emailService.ts`, `app/api/email/preview/route.ts`
+- Lane C: `middleware.ts`, `app/providers/AuthProvider.tsx`, `app/api/auth/refresh/route.ts`, `app/lib/utils/auth.ts`, `app/lib/utils/cookies.ts`, `app/lib/config/rateLimits.ts`, `app/api/auth/google/route.ts`, `app/api/auth/google/callback/route.ts`, `app/(auth)/login/page.tsx`
+
+**Next Task:**
+
+- None in-repo — Sprint 80 closed; pipeline handles push/PR. Follow-ups: Email Studio re-save (or `db:seed`) on the live DB to publish the new `bugReportNotification` CTA row; optional future unique expression index on bug reports if the advisory-lock path ever needs a schema-level backstop.
+
+**Assumptions Made:**
+
+- "Assigned to multiple admins" = duplicate BugReport rows for one issue (each row carrying its own `reviewerId`) produced by the non-transactional dedup race — the single `reviewerId` column makes true multi-assignment impossible; the assignment policy itself (least-loaded + `crypto.randomInt` tie-break) was already single-assignee and stayed unchanged.
+- Advisory lock is best-effort: `acquireBugReportDedupLock` never throws (a lock failure must not fail the user's report — the tx still runs, just without serialization), and the lock key is scoped per reporter so two different users never serialise against each other.
+- Reporter-facing notifications must NOT deep-link to `/admin/bugs` (non-admins would 403) — `bugId` is attached only to assignee pings; this is enforced in `resolveNotificationRoute` by falling back to `/notifications` when `bugId` is absent.
+- Interactive go/no-go verification skipped (GitHub Actions context — no live site to probe); noted here as the standing exception for in-runner executions.
+
+**Notes / Blockers:**
+
+- Non-breaking: one additive nullable JSON column, additive `?id=`/`?highlight=` params, optional `metadata` on notification payloads, no removed API fields; middleware only *loosens* a redirect into a silent refresh (both tokens dead still redirect + clear).
+- Residual: live SiteConfig `emailTemplates` row wins per-name over `DEFAULT_EMAIL_TEMPLATES`, so the new email CTA needs an Email Studio re-save to appear on an existing DB; pre-existing lint findings (`renderTemplateSubject` unused in `emailService.ts:383`, `metadata.test.ts` require() errors, suggestions-route `any`s) are NOT from this sprint and CI lint has `continue-on-error: true`.
+- Final `sync-context.md` result: synced — drift found & fixed: system-architecture Config row stale count (85→92 files), repo-map stale counts (18 models→21, 9 migrations→14, 27 services→36, 91 config→92), `testing/test-results.md` stale at Sprint 78 (overwritten with the Sprint 80 run; 78/79 backfilled into history); new dependency edges verified against real imports (`middleware`/`AuthProvider`/`refresh`/`google` → `authSession`, both report routes → `bugReportDedupService`); intentionally left out of sync: `design-system.md` (Sprint 61 — design tokens untouched) and `memory/architecture-history.md` (append-only history). Checkpoint compliance: task-queue mutation + in-progress reset + this entry written in the same pass — no violation.
+- Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 80 + project-plan + this log + dev-history + project-decisions + lessons-learned + system-architecture + index/repo-map + index/dependency-graph + repair-system + in-progress closed).
 
 ## Session — 2026-10-18 (Sprint 79: announcement-banner deprecation + bug-report tightening)
 

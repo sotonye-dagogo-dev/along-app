@@ -81,6 +81,15 @@ export const BUG_REPORT_DEDUP_CONFIG = {
   dedupWindowSec: 600,
   idempotencyHeader: "x-idempotency-key",
   maxKeyLength: 128,
+  /** Candidate rows loaded per dedup check (newest first) inside the window. */
+  dedupMaxCandidates: 20,
+  /**
+   * Advisory-lock scope: serialization is per reporter so two different
+   * users filing similar reports never queue behind each other, while a
+   * double-fire from ONE reporter (error-boundary double capture, multi-tab
+   * submit, retry storm) is strictly serialised: check + insert in one tx.
+   */
+  dedupLockPrefix: "bug-report:",
 } as const;
 
 /**

@@ -1,50 +1,61 @@
 import { cookies } from "next/headers";
+import {
+  accessCookieMaxAge,
+  refreshCookieMaxAge,
+} from "@/app/lib/config/authSession";
 
-const ACCESS_MAX_AGE_DEFAULT = 3600;
-const ACCESS_MAX_AGE_REMEMBER = 604800;
-const REFRESH_MAX_AGE_DEFAULT = 604800;
-const REFRESH_MAX_AGE_REMEMBER = 2592000;
+export interface SetAuthCookiesOptions {
+  /**
+   * Rewrite the refresh cookie too. `/api/auth/refresh` passes `false` for
+   * legacy refresh tokens (issued before the remember-me claim existed) so
+   * the already-issued refresh cookie keeps its original lifetime instead of
+   * being silently shortened on every refresh. Default: true.
+   */
+  includeRefresh?: boolean;
+}
+
+/** Shared httpOnly auth-cookie attributes (single source of truth). */
+function authCookieBase() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+  };
+}
 
 export async function setAuthCookies(
   accessToken: string,
   refreshToken: string,
-  rememberMe?: boolean
+  rememberMe?: boolean,
+  options?: SetAuthCookiesOptions
 ): Promise<void> {
   const cookieStore = await cookies();
+  const includeRefresh = options?.includeRefresh !== false;
 
   cookieStore.set("access_token", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: rememberMe ? ACCESS_MAX_AGE_REMEMBER : ACCESS_MAX_AGE_DEFAULT,
+    ...authCookieBase(),
+    maxAge: accessCookieMaxAge(rememberMe === true),
   });
 
-  cookieStore.set("refresh_token", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: rememberMe ? REFRESH_MAX_AGE_REMEMBER : REFRESH_MAX_AGE_DEFAULT,
-  });
+  if (includeRefresh) {
+    cookieStore.set("refresh_token", refreshToken, {
+      ...authCookieBase(),
+      maxAge: refreshCookieMaxAge(rememberMe === true),
+    });
+  }
 }
 
 export async function clearAuthCookies(): Promise<void> {
   const cookieStore = await cookies();
 
   cookieStore.set("access_token", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    ...authCookieBase(),
     maxAge: 0,
   });
 
   cookieStore.set("refresh_token", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
+    ...authCookieBase(),
     maxAge: 0,
   });
 }

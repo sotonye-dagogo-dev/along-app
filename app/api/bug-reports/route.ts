@@ -4,6 +4,7 @@ import { prisma } from "@/app/lib/db/prisma";
 import { Prisma } from "@/app/generated/prisma/client";
 import { sendBugReportNotification } from "@/app/lib/services/emailService";
 import { sanitizeReportImageUrls, BUG_REPORT_DEDUP_CONFIG } from "@/app/lib/config/reportAttachments";
+import type { IncomingBugReport } from "@/app/lib/services/bugReportDedupService";
 
 const VALID_CATEGORIES = ["UI", "ROUTING", "AUTH", "PERFORMANCE", "DATA", "NOTIFICATIONS", "OTHER"];
 
@@ -92,83 +93,110 @@ export async function POST(request: NextRequest) {
     };
     const metadataPayload = buildMetadata();
 
-    // ACID dedup gate (before write): collapses double-fires of the SAME
-    // report — error boundaries fire once per segment (page + root) and each
-    // capture embeds a fresh `When:` timestamp, so exact-description match
-    // alone never catches them. Match order:
+    // ACID dedup + create, single-writer per reporter: the per-reporter
+    // advisory lock (bugReportDedupService) spans find + insert inside ONE
+    // transaction, closing the read-then-write race that let a double-fire
+    // insert TWO rows which were then handed to two DIFFERENT admins.
+    // Match order (title deliberately not required for identity matches):
     //   1. idempotency key (clientToken / header) — strongest signal;
-    //   2. same error identity (title + metadata.path + metadata.digest) —
-    //      catches timestamp-diverged captures of one error;
-    //   3. exact title + description (legacy content match).
+    //   2. same error identity (metadata.path + metadata.digest);
+    //   3. exact description (legacy content match).
     // Scoped to the same reporter (or both-anonymous) so two different users
     // filing similar reports never collapse into one row.
-    try {
-      const windowStart = new Date(Date.now() - BUG_REPORT_DEDUP_CONFIG.dedupWindowSec * 1000);
-      const clientMeta =
-        metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : {};
-      const clientPath = typeof clientMeta.path === "string" ? clientMeta.path : null;
-      const clientDigest = typeof clientMeta.digest === "string" ? clientMeta.digest : null;
-      const recent = await prisma.bugReport.findMany({
-        where: {
-          createdAt: { gte: windowStart },
-          reporterId: reporterId ?? null,
-          title,
-        },
-        select: { id: true, description: true, metadata: true },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      });
-      const dup = recent.find((r) => {
-        let meta: Record<string, unknown> = {};
-        try {
-          const m = r.metadata as unknown;
-          if (m && typeof m === "object" && !Array.isArray(m)) meta = m as Record<string, unknown>;
-        } catch { /* unparseable metadata — fall through to content match */ }
-        // 1. Idempotency key hit.
-        if (idempotencyKey && meta.idempotencyKey === idempotencyKey) return true;
-        // 2. Same error identity: path + digest agree (digest may be null on
-        //    both sides for pure client errors — path then carries the match).
-        if (
-          clientPath !== null &&
-          typeof meta.path === "string" &&
-          meta.path === clientPath &&
-          (clientDigest === null
-            ? meta.digest === null || meta.digest === undefined
-            : meta.digest === clientDigest)
-        ) {
-          return true;
+    const { assignAdminForIssue } = await import("@/app/lib/services/adminAssignmentService");
+    const dedup = await import("@/app/lib/services/bugReportDedupService");
+    // Single assignment pick, resolved BEFORE the transaction (load reads
+    // never sit inside the write tx) and reused for the create or the
+    // duplicate self-heal — either way exactly ONE admin ends up on the row.
+    const assignee = await assignAdminForIssue().catch(() => null);
+    const clientMeta = metadata && typeof metadata === "object" ? (metadata as Record<string, unknown>) : {};
+    const incoming: IncomingBugReport = {
+      reporterId,
+      description,
+      idempotencyKey,
+      clientPath: typeof clientMeta.path === "string" ? clientMeta.path : null,
+      clientDigest: typeof clientMeta.digest === "string" ? clientMeta.digest : null,
+    };
+    const windowStart = dedup.dedupWindowStart();
+
+    type Outcome =
+      | { kind: "duplicate"; id: string; healed: boolean }
+      | { kind: "created"; id: string };
+    const outcome: Outcome = await prisma.$transaction(
+      async (tx) => {
+        await dedup.acquireBugReportDedupLock(tx, reporterId);
+        const dup = await dedup.findDuplicateBugReport(tx, incoming, windowStart);
+        if (dup) {
+          if (dup.reviewerId || !assignee) {
+            return { kind: "duplicate" as const, id: dup.id, healed: false };
+          }
+          // Self-heal: the original row survived without an assignee (crash
+          // window / no admin resolved at insert time). Assign exactly one
+          // admin here — the row can never stay unowned again.
+          await tx.bugReport.update({ where: { id: dup.id }, data: { reviewerId: assignee.id } });
+          return { kind: "duplicate" as const, id: dup.id, healed: true };
         }
-        // 3. Legacy exact-content match.
-        return r.description === description;
-      });
-      if (dup) {
-        return NextResponse.json({ success: true, id: dup.id, deduped: true }, { status: 200 });
+        const created = await tx.bugReport.create({
+          data: {
+            title,
+            category: category as Prisma.BugReportCreateInput["category"],
+            description,
+            reporterId,
+            ...(linkedPostId ? { postId: linkedPostId } : {}),
+            ...(metadataPayload !== undefined ? { metadata: metadataPayload } : {}),
+            ...(assignee ? { reviewerId: assignee.id } : {}),
+          },
+          select: { id: true },
+        });
+        return { kind: "created" as const, id: created.id };
+      },
+      { maxWait: 10_000, timeout: 15_000 }
+    );
+
+    if (outcome.kind === "duplicate") {
+      // Self-healed rows never received their assignment fan-out — deliver it
+      // now. Plain duplicates (assignee already set) were notified by the
+      // winning request; re-notifying would double-ping the same admin.
+      if (outcome.healed && assignee) {
+        try {
+          const emailResult = await sendBugReportNotification(
+            title,
+            category,
+            description,
+            assignee.email,
+            outcome.id,
+          );
+          if (!emailResult.sent) {
+            console.warn(`[bug-report] healed-assignment email failed: ${emailResult.reason}`);
+          }
+          const { createNotification } = await import("@/app/lib/services/notificationService");
+          void createNotification({
+            type: "REPORT",
+            actorId: reporterId ?? assignee.id,
+            message: `New ${category} report assigned to you: ${title.slice(0, 120)}`,
+            recipientIds: [assignee.id],
+            allowSelf: true,
+            metadata: { bugId: outcome.id },
+          });
+        } catch (e) {
+          console.error("[bug-report] healed-assignment fan-out failed", e);
+          Sentry.captureException(e);
+        }
       }
-    } catch {
-      // Dedup is best-effort; a failed pre-read must never block reporting.
+      return NextResponse.json({ success: true, id: outcome.id, deduped: true }, { status: 200 });
     }
 
-    // Atomic create + single-admin assignment in one transaction so a crash
-    // between steps can never leave an orphan unassigned row (ACID).
-    const { assignAdminForIssue } = await import("@/app/lib/services/adminAssignmentService");
-    const assignee = await assignAdminForIssue().catch(() => null);
-    const created = await prisma.bugReport.create({
-      data: {
-        title,
-        category: category as Prisma.BugReportCreateInput["category"],
-        description,
-        reporterId,
-        ...(linkedPostId ? { postId: linkedPostId } : {}),
-        ...(metadataPayload !== undefined ? { metadata: metadataPayload } : {}),
-        ...(assignee ? { reviewerId: assignee.id } : {}),
-      },
-      select: { id: true },
-    });
     // Single-admin assignment already resolved above; fan-out is
     // best-effort (never fails the 201). Reporter also gets the new
     // bugReportReceived user email (template-gated) plus in-app receipt.
     try {
-      const emailResult = await sendBugReportNotification(title, category, description, assignee?.email ?? undefined);
+      const emailResult = await sendBugReportNotification(
+        title,
+        category,
+        description,
+        assignee?.email ?? undefined,
+        outcome.id,
+      );
       if (!emailResult.sent) {
         console.warn(`[bug-report] notification failed: ${emailResult.reason}`);
         Sentry.captureMessage(`Bug report notification failed: ${emailResult.reason}`, "warning");
@@ -178,12 +206,14 @@ export async function POST(request: NextRequest) {
       if (actorId && assignee) {
         // Assignee ping (in-app). allowSelf covers the anonymous-reporter
         // case where the assignee doubles as the notification actor.
+        // metadata.bugId deep-links the click to THIS queue entry.
         void createNotification({
           type: "REPORT",
           actorId,
           message: `New ${category} report assigned to you: ${title.slice(0, 120)}`,
           recipientIds: [assignee.id],
           allowSelf: true,
+          metadata: { bugId: outcome.id },
         });
       }
       if (reporterId) {
@@ -209,7 +239,7 @@ export async function POST(request: NextRequest) {
               firstName: reporter.firstName ?? "there",
               title: title.slice(0, 200),
               category,
-              reportId: created.id,
+              reportId: outcome.id,
             });
           }
         } catch { /* receipt email is non-critical */ }
@@ -219,7 +249,13 @@ export async function POST(request: NextRequest) {
       console.error("[bug-report] assignment exception", e);
       Sentry.captureException(e);
       try {
-        const emailResult = await sendBugReportNotification(title, category, description);
+        const emailResult = await sendBugReportNotification(
+          title,
+          category,
+          description,
+          undefined,
+          outcome.id,
+        );
         if (!emailResult.sent) {
           console.warn(`[bug-report] fallback notification failed: ${emailResult.reason}`);
         }
@@ -236,14 +272,14 @@ export async function POST(request: NextRequest) {
         actorId: reporterId,
         action: "report.create",
         entity: "report",
-        entityId: created.id,
+        entityId: outcome.id,
         metadata: { kind: "bug-report", category, ...(linkedPostId ? { postId: linkedPostId } : {}) },
       });
     } catch {
       /* audit writes are non-critical */
     }
 
-    return NextResponse.json({ success: true, id: created.id }, { status: 201 });
+    return NextResponse.json({ success: true, id: outcome.id }, { status: 201 });
   } catch (error) {
     console.error("Bug report submission error:", error);
     Sentry.captureException(error);

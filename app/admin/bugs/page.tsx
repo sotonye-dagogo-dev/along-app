@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import { Bug, Flag, ExternalLink, X } from "lucide-react"
 import { modalService } from "@/app/lib/services/modalService"
 import { toastService } from "@/app/lib/services/toastService"
@@ -69,6 +69,12 @@ export default function AdminBugsPage() {
   const [modalBusy, setModalBusy] = useState(false)
   // Collapsible "full context" panel in the action modal (single reports).
   const [showContext, setShowContext] = useState(false)
+  // ?highlight=<bugId> deep-link (assignment notification / report email CTA):
+  // captured once on mount, stripped from the URL, target fetched by id when
+  // the cursor list hasn't reached it, scrolled into view and ring-highlighted.
+  const [highlightId, setHighlightId] = useState<string | null>(null)
+  const highlightFetchedRef = useRef<string | null>(null)
+  const highlightScrolledRef = useRef(false)
 
   const sortOption = ADMIN_TABLE_SORT_META.bugs.options.find((o) => o.id === sortId)
     ?? ADMIN_TABLE_SORT_META.bugs.options[0]
@@ -91,8 +97,63 @@ export default function AdminBugsPage() {
   })
   const { items: bugs, loading, loadingMore, nextCursor } = list
 
-  useEffect(() => { void list.load(true) }, [statusFilter, sortId])
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void list.load(true) }, [statusFilter, sortId])
+
+  // Capture ?highlight= then strip it (clean URL for copy/back; the ring is
+  // the persistent affordance).
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search)
+    const h = (sp.get("highlight") ?? "").trim()
+    if (!h) return
+    setHighlightId(h)
+    sp.delete("highlight")
+    const qs = sp.toString()
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`,
+    )
+  }, [])
+
+  // The target may sit beyond the first cursor window (or be filtered out) —
+  // fetch it by id and prepend; the list hook dedupes by id so a later
+  // "view more" that reaches it never renders a second copy.
+  useEffect(() => {
+    if (!highlightId || loading) return
+    if (bugs.some((b) => b.id === highlightId)) return
+    if (highlightFetchedRef.current === highlightId) return
+    highlightFetchedRef.current = highlightId
+    void (async () => {
+      try {
+        const res = await fetch(`/api/admin/bugs?id=${encodeURIComponent(highlightId)}`)
+        if (res.status === 404) {
+          toastService.error("That report could not be found.")
+          return
+        }
+        if (!res.ok) throw new Error("Request failed")
+        const payload = (await res.json()) as { bug?: AdminBug }
+        if (payload.bug) {
+          const bug = payload.bug
+          list.setItems((prev) => (prev.some((i) => i.id === bug.id) ? prev : [bug, ...prev]))
+        }
+      } catch (err) {
+        console.error("[AdminError]", err)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, loading, bugs])
+
+  // Scroll the highlighted row into view once it lands in the DOM (once only
+  // — later list appends must not yank the admin back).
+  useEffect(() => {
+    if (!highlightId || loading || highlightScrolledRef.current) return
+    const el = document.getElementById(`bug-row-${highlightId}`)
+    if (el) {
+      highlightScrolledRef.current = true
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+    }
+  }, [highlightId, loading, bugs])
 
   const visible = useMemo(() => {
     if (kindFilter === "all") return bugs
@@ -281,8 +342,15 @@ export default function AdminBugsPage() {
           <div className="text-center py-8 text-text-muted">No bugs found</div>
         ) : visible.map((bug) => {
           const isReport = bug.metadata?.kind === "post-report"
+          const isHighlighted = bug.id === highlightId
           return (
-          <div key={bug.id} className={`bg-bg-card border border-border radius-lg p-4 shadow-xs min-w-0 overflow-hidden ${bulk.selected.has(bug.id) ? "ring-1 ring-primary" : ""}`}>
+          <div
+            key={bug.id}
+            id={`bug-row-${bug.id}`}
+            className={`bg-bg-card border border-border radius-lg p-4 shadow-xs min-w-0 overflow-hidden ${
+              isHighlighted ? "ring-2 ring-primary" : bulk.selected.has(bug.id) ? "ring-1 ring-primary" : ""
+            }`}
+          >
             <div className="flex items-start justify-between mb-2 gap-2 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <input type="checkbox" checked={bulk.selected.has(bug.id)} onChange={() => bulk.toggle(bug.id)} aria-label={`Select ${bug.title}`} className="w-4 h-4 accent-primary cursor-pointer shrink-0" />

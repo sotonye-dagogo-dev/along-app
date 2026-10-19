@@ -323,6 +323,13 @@ export function isStandaloneDisplay(): boolean {
 
 import { resolveNotificationRoute } from "./notificationRoutes";
 
+/** Options every push mirror URL builder accepts (metadata carries e.g. bugId). */
+export interface PushMirrorUrlOpts {
+  postId?: string;
+  commentId?: string;
+  metadata?: Record<string, unknown> | null;
+}
+
 /**
  * In-app notification type → push payload. Mirrors every in-app type (and
  * every emailed type) so push, in-app, and email stay in lockstep. Non-critical:
@@ -330,7 +337,11 @@ import { resolveNotificationRoute } from "./notificationRoutes";
  */
 export const PWA_PUSH_MIRROR: Record<
   string,
-  { title: string; body: (message: string) => string; url: (opts: { postId?: string; commentId?: string }) => string }
+  {
+    title: string;
+    body: (message: string) => string;
+    url: (opts: PushMirrorUrlOpts) => string;
+  }
 > = {
   LIKE: { title: "New like", body: (m) => m, url: (o) => (o.postId ? `/posts/${o.postId}` : "/notifications") },
   DISLIKE: { title: "New feedback", body: (m) => m, url: (o) => (o.postId ? `/posts/${o.postId}` : "/notifications") },
@@ -344,8 +355,24 @@ export const PWA_PUSH_MIRROR: Record<
   REWARD: { title: "Reward earned", body: (m) => m, url: () => "/notifications" },
   BADGE: { title: "New badge", body: (m) => m, url: () => "/notifications" },
   VERIFIED: { title: "Route verified", body: (m) => m, url: (o) => (o.postId ? `/posts/${o.postId}` : "/notifications") },
-  REPORT: { title: "Report update", body: (m) => m, url: () => "/notifications" },
-  MODERATION: { title: "Moderation update", body: (m) => m, url: () => "/notifications" },
+  REPORT: {
+    title: "Report update",
+    body: (m) => m,
+    // Assigned-admin reports deep-link to the queue entry; everything else
+    // falls back to /notifications (mirrors resolveNotificationRoute).
+    url: (o) =>
+      o.metadata && typeof o.metadata.bugId === "string"
+        ? `/admin/bugs?highlight=${encodeURIComponent(o.metadata.bugId)}`
+        : "/notifications",
+  },
+  MODERATION: {
+    title: "Moderation update",
+    body: (m) => m,
+    url: (o) =>
+      o.metadata && typeof o.metadata.bugId === "string"
+        ? `/admin/bugs?highlight=${encodeURIComponent(o.metadata.bugId)}`
+        : "/notifications",
+  },
   ACCOUNT_DELETION_REQUESTED: { title: "Account deletion requested", body: (m) => m, url: () => "/notifications" },
   ACCOUNT_DELETION_CANCELLED: { title: "Account deletion cancelled", body: (m) => m, url: () => "/notifications" },
   ACCOUNT_DELETION_COMPLETED: { title: "Account deletion completed", body: (m) => m, url: () => "/notifications" },
@@ -357,16 +384,22 @@ export const PWA_PUSH_MIRROR: Record<
 export function resolvePushPayload(
   type: string,
   message: string,
-  opts: { postId?: string; commentId?: string } = {},
+  opts: PushMirrorUrlOpts = {},
 ): { title: string; body: string; url: string } {
   const mirror = PWA_PUSH_MIRROR[type];
   // Single source of truth for the URL: the shared deep-routing resolver.
   // The per-type `url` lambdas above stay as documentation/fallback; the
   // resolver guarantees in-app clicks and push clicks land in the same place
-  // (post → post, comment → post?comment=, reports/queue → /notifications).
+  // (post → post, comment → post?comment=, report assignment → admin queue
+  // entry, everything else → /notifications).
   let url: string;
   try {
-    url = resolveNotificationRoute({ type, postId: opts.postId ?? null, commentId: opts.commentId ?? null });
+    url = resolveNotificationRoute({
+      type,
+      postId: opts.postId ?? null,
+      commentId: opts.commentId ?? null,
+      metadata: opts.metadata ?? null,
+    });
   } catch {
     if (!mirror) {
       return {

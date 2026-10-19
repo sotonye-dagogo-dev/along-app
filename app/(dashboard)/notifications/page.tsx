@@ -46,6 +46,8 @@ interface NotificationItem {
   }
   post?: { id: string; title: string } | null
   commentId?: string | null
+  /** Deep-link context (e.g. { bugId } → admin queue entry). Nullable/legacy-safe. */
+  metadata?: Record<string, unknown> | null
   recipients: { read: boolean }[]
 }
 
@@ -336,14 +338,16 @@ function NotificationRow({
       }).catch(() => undefined)
     }
     // Config-driven deep routing: post → /posts/:id (+?comment= anchor),
-    // follow → actor profile, reports/queue → /notifications or admin queue,
-    // never a misleading profile fallback.
+    // follow → actor profile, report assignment → the exact admin queue entry
+    // (metadata.bugId), reports/queue → /notifications, never a misleading
+    // profile fallback.
     router.push(
       resolveNotificationRoute({
         type: notification.type,
         postId: notification.post?.id ?? null,
         commentId: notification.commentId ?? null,
         actorUserName: notification.actor.userName,
+        metadata: notification.metadata ?? null,
       })
     )
   }

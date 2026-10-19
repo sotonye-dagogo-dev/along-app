@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: announcement deprecation + bug-report tightening)
-> - last-verified-against-code: 2026-10-18 (Sprint 79 in-runner QA: tsc 0, jest 110/110 suites 1134/1134, build clean)
+> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
+> - last-verified-against-code: 2026-10-19 (Sprint 80 in-runner QA: tsc 0, jest 113/113 suites 1178/1178, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -1781,3 +1781,25 @@ Five-workstream close-out of the issue #25 directive, non-breaking (no migration
 
 - Created: `__tests__/services/chunkLoadRecovery.test.ts`, `__tests__/config/bugReports.test.ts`
 - Edited: `lib/config/{admin,index,siteNotice,errorReporting,bugReports,reportAttachments}.ts`, `lib/services/errorReportService.ts`, `app/error.tsx`, `app/global-error.tsx`, `api/bug-reports/route.ts`, `api/admin/bugs/route.ts`, `admin/bugs/page.tsx`, `admin/config/page.tsx`, `components/ui/SiteNotices.tsx`, `__tests__/config/designCompliance.test.ts`, `__tests__/services/errorReportService.test.ts`, ai-system docs
+
+## 2026-10-19 — Sprint 80: Duplicate-proof bug assignment + admin notification deep links + auth session persistence (Issue #25)
+
+**Summary:**
+Three-lane close-out of the issue #25 "Tightening up" directive, config-driven and non-breaking (one additive nullable column, no removed API fields). (1) Bug-report writes are now race-proof: a new pure `bugReportDedupService` plus per-reporter Postgres advisory locks (`pg_advisory_xact_lock` on `bug-report:<reporterId|anon>`) move dedup-read, assignee resolution, and insert into ONE transaction in both `/api/bug-reports` and `/api/reports` — the non-transactional read-then-write race that produced duplicate rows (each auto-assigned to a different admin = the reported "multiple admins" symptom) is closed; the matcher orders idempotency key > error identity (metadata.path + digest, title no longer required) > exact description, and unassigned duplicates self-heal to the single algorithmic assignee. (2) Admin assignment notifications now deep-link to the exact report: additive `Notification.metadata Json?` (migration `20261019000000_notification_metadata`) threads through `createNotification` → push mirror → `resolvePushPayload`; `resolveNotificationRoute` sends REPORT/MODERATION with `metadata.bugId` to `/admin/bugs?highlight=<id>` (assignee pings only — reporter-facing rows carry no bugId); `/api/admin/bugs?id=` single-fetch + the admin page's highlight capture/strip, fetch-by-id fallback, prepend, one-shot scroll and `ring-2` highlight; the admin assignee email gained a `{{appUrl}}{{reportLink}}` CTA. (3) Auth sessions stop expiring out from under PWA/remember-me/Google users: new `app/lib/config/authSession.ts` single-sources token TTLs and cookie maxAges, the refresh JWT carries the `rm` remember-me claim (legacy claim-less tokens keep their old lifetime), a dedicated `authRefresh` rate bucket (45/15min) stops refresh traffic from starving login/OTP, the middleware refresh-grace mints the access cookie at the Edge AND forwards it downstream (PWA relaunch after >1h no longer bounces to /login), Google OAuth forces the account chooser (`prompt=select_account`) with remember-me preserved through an httpOnly `oauth_session_prefs` handshake cookie, and AuthProvider now treats 429 as transient with exponential-backoff retries plus throttled online/visibility revalidation.
+
+**Completed:**
+
+- Lane A: `bugReportDedupService.ts` (identity/matcher/lock helpers) + locked transactional writes + assignee-in-INSERT + dup self-heal + heal-only fan-out in both report routes; `BUG_REPORT_DEDUP_CONFIG` += `dedupMaxCandidates`/`dedupLockPrefix`
+- Lane B: `Notification.metadata` column + migration; metadata threaded through `notificationService`/`pushSender`/pwa push mirror/resolvers; `notificationRoutes` bugId-wins routing; `/api/admin/bugs?id=`; admin page `?highlight=` capture/strip/scroll/ring; notifications page passes metadata; `bugReportNotification` email `reportLink` CTA + preview sample
+- Lane C: `authSession.ts` config; refresh `rm` claim + `includeRefresh`; `authRefresh` rate bucket; middleware refresh-grace with downstream header forwarding (`nextWithAccessCookie`) + `applyLocale` refactor; Google `prompt=select_account` + `oauth_session_prefs` handshake at all exits; login Google button carries rememberMe; AuthProvider 429 exponential backoff + throttled revalidation
+- Tests: new `bugReportDedupService.test.ts`, `notificationRoutes.test.ts`, `authSession.test.ts` (44 new tests); Prisma client regenerated after schema edit
+
+**QA:** tsc 0 errors; jest 113/113 suites 1178/1178; lint clean on touched files (only pre-existing findings elsewhere); `next build` clean; `prisma validate` OK.
+
+**Files:**
+
+- Created: `lib/services/bugReportDedupService.ts`, `lib/config/authSession.ts`, `prisma/migrations/20261019000000_notification_metadata/migration.sql`, `__tests__/services/bugReportDedupService.test.ts`, `__tests__/config/notificationRoutes.test.ts`, `__tests__/config/authSession.test.ts`
+- Edited: `prisma/schema.prisma`, `api/bug-reports/route.ts`, `api/reports/route.ts`, `lib/config/{reportAttachments,notificationRoutes,pwa,rateLimits,email,index}.ts`, `lib/services/{notificationService,pushSender,emailService}.ts`, `middleware.ts`, `providers/AuthProvider.tsx`, `api/auth/refresh/route.ts`, `api/auth/google/{route,callback}/route.ts`, `(auth)/login/page.tsx`, `api/admin/bugs/route.ts`, `admin/bugs/page.tsx`, `(dashboard)/notifications/page.tsx`, `api/email/preview/route.ts`, `lib/utils/{auth,cookies}.ts`, ai-system docs
+
+**Next Sprint Focus:**
+Re-save the `bugReportNotification` template in Email Studio (or run `db:seed`) on the live DB so the new CTA publishes; watch refresh-bucket 429 rates in production after deploy.
