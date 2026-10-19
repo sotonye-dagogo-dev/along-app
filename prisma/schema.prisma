@@ -273,6 +273,10 @@ model Notification {
   postId    String?
   commentId String?
   message   String
+  // Deep-link context (e.g. { bugId } so a REPORT assignment notification
+  // opens the exact report in the admin queue). Additive/nullable — legacy
+  // rows have no metadata and resolve exactly as before.
+  metadata  Json?
   createdAt DateTime         @default(now())
 
   // Relations

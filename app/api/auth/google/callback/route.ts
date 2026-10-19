@@ -4,11 +4,45 @@ import { prisma } from "@/app/lib/db/prisma";
 import { signAccessToken, signRefreshToken } from "@/app/lib/utils/auth";
 import { setAuthCookies } from "@/app/lib/utils/cookies";
 import { getAppUrl } from "@/app/lib/config/env";
+import { AUTH_SESSION_CONFIG } from "@/app/lib/config/authSession";
+
+/**
+ * Remember-me preference stashed by `/api/auth/google` (httpOnly, 10 min).
+ * Absent/malformed → OAuth default from config. Read once per callback.
+ */
+function readOauthRememberMe(request: NextRequest): boolean {
+  try {
+    const raw = request.cookies.get(AUTH_SESSION_CONFIG.oauth.prefsCookieName)?.value;
+    if (!raw) return AUTH_SESSION_CONFIG.oauth.defaultRememberMe;
+    const parsed = JSON.parse(raw) as { rememberMe?: unknown };
+    return parsed.rememberMe !== false;
+  } catch {
+    return AUTH_SESSION_CONFIG.oauth.defaultRememberMe;
+  }
+}
+
+/**
+ * Every browser-visible exit from this callback goes through here: 307 to a
+ * real page plus one-shot cleanup of the handshake cookie (it must not leak
+ * into later sessions and replay a stale preference).
+ */
+function redirectWithPrefsCleanup(location: string): NextResponse {
+  const response = NextResponse.redirect(location, { status: 307 });
+  response.cookies.set(AUTH_SESSION_CONFIG.oauth.prefsCookieName, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+  return response;
+}
 
 export async function GET(request: NextRequest) {
   // All browser-visible failures redirect to a real page route (never a raw
   // /api JSON page) so a copied or refreshed address bar never strands a
   // user on an api route. `state=ref:<code>` is preserved where useful.
+  const oauthRememberMe = readOauthRememberMe(request);
   const stateEarly = request.nextUrl.searchParams.get("state");
   const refEarly =
     stateEarly && stateEarly !== "link" && stateEarly.startsWith("ref:")
@@ -21,7 +55,7 @@ export async function GET(request: NextRequest) {
     const code = request.nextUrl.searchParams.get("code");
 
     if (!code) {
-      return NextResponse.redirect(`${getAppUrl()}/login${refQuery ? `${refQuery}&error=oauth_failed` : "?error=oauth_failed"}`, { status: 307 });
+      return redirectWithPrefsCleanup(`${getAppUrl()}/login${refQuery ? `${refQuery}&error=oauth_failed` : "?error=oauth_failed"}`);
     }
 
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -29,7 +63,7 @@ export async function GET(request: NextRequest) {
     const appUrl = getAppUrl();
 
     if (!googleClientId || !googleClientSecret) {
-      return NextResponse.redirect(withRef("/login", "oauth_unconfigured"), { status: 307 });
+      return redirectWithPrefsCleanup(withRef("/login", "oauth_unconfigured"));
     }
 
     const redirectUri = `${appUrl}/api/auth/google/callback`;
@@ -49,7 +83,7 @@ export async function GET(request: NextRequest) {
     const tokenData = await tokenResponse.json();
 
     if (!tokenData.access_token) {
-      return NextResponse.redirect(withRef("/login", "oauth_failed"), { status: 307 });
+      return redirectWithPrefsCleanup(withRef("/login", "oauth_failed"));
     }
 
     const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
@@ -59,7 +93,7 @@ export async function GET(request: NextRequest) {
     const userInfo = await userInfoResponse.json();
 
     if (!userInfo.id || !userInfo.email) {
-      return NextResponse.redirect(withRef("/login", "oauth_failed"), { status: 307 });
+      return redirectWithPrefsCleanup(withRef("/login", "oauth_failed"));
     }
 
     const googleId = userInfo.id;
@@ -68,7 +102,7 @@ export async function GET(request: NextRequest) {
     // instead of colliding or forking.
     const email = typeof userInfo.email === "string" ? userInfo.email.trim().toLowerCase() : "";
     if (!email) {
-      return NextResponse.redirect(withRef("/login", "oauth_failed"), { status: 307 });
+      return redirectWithPrefsCleanup(withRef("/login", "oauth_failed"));
     }
     const firstName = userInfo.given_name || "";
     const lastName = userInfo.family_name || "";
@@ -94,10 +128,10 @@ export async function GET(request: NextRequest) {
             // Check if googleId already taken by another user
             const taken = await prisma.user.findUnique({ where: { googleId } });
             if (taken && taken.id !== existingUser.id) {
-              return NextResponse.redirect(`${appUrl}/profile?error=google_already_linked`, { status: 307 });
+              return redirectWithPrefsCleanup(`${appUrl}/profile?error=google_already_linked`);
             }
             await prisma.user.update({ where: { id: existingUser.id }, data: { googleId } });
-            return NextResponse.redirect(`${appUrl}/profile?success=google_linked`, { status: 307 });
+            return redirectWithPrefsCleanup(`${appUrl}/profile?success=google_linked`);
           }
         } catch {
           // fall through to normal flow
@@ -108,12 +142,12 @@ export async function GET(request: NextRequest) {
     let user = await prisma.user.findUnique({ where: { googleId } });
 
     if (user) {
-      const accessToken = signAccessToken({ userId: user.id, role: user.role });
-      const refreshToken = signRefreshToken({ userId: user.id, role: user.role });
+      const accessToken = signAccessToken({ userId: user.id, role: user.role }, oauthRememberMe);
+      const refreshToken = signRefreshToken({ userId: user.id, role: user.role }, oauthRememberMe);
 
-      await setAuthCookies(accessToken, refreshToken);
+      await setAuthCookies(accessToken, refreshToken, oauthRememberMe);
 
-      return NextResponse.redirect(`${appUrl}/home`, { status: 307 });
+      return redirectWithPrefsCleanup(`${appUrl}/home`);
     }
 
     user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
@@ -121,7 +155,7 @@ export async function GET(request: NextRequest) {
     if (user) {
       // Prevent overwriting an already linked googleId
       if (user.googleId && user.googleId !== googleId) {
-        return NextResponse.redirect(`${appUrl}/login?error=account_exists`, { status: 307 });
+        return redirectWithPrefsCleanup(`${appUrl}/login?error=account_exists`);
       }
       // Auth-type-agnostic referrals: an email user signing in with Google
       // for the first time still honours a pending invite (link-only when
@@ -147,12 +181,12 @@ export async function GET(request: NextRequest) {
         void notifyReferralConversion(referralUpdate.invitedById, user.id, user.userName);
       }
 
-      const accessToken = signAccessToken({ userId: user.id, role: user.role });
-      const refreshToken = signRefreshToken({ userId: user.id, role: user.role });
+      const accessToken = signAccessToken({ userId: user.id, role: user.role }, oauthRememberMe);
+      const refreshToken = signRefreshToken({ userId: user.id, role: user.role }, oauthRememberMe);
 
-      await setAuthCookies(accessToken, refreshToken);
+      await setAuthCookies(accessToken, refreshToken, oauthRememberMe);
 
-      return NextResponse.redirect(`${appUrl}/home`, { status: 307 });
+      return redirectWithPrefsCleanup(`${appUrl}/home`);
     }
 
     // Derive a username that always satisfies the app's username rules
@@ -235,12 +269,12 @@ export async function GET(request: NextRequest) {
       void notifyReferralConversion(invitedById, user.id, userName);
     }
 
-    const accessToken = signAccessToken({ userId: user.id, role: user.role });
-    const refreshToken = signRefreshToken({ userId: user.id, role: user.role });
+    const accessToken = signAccessToken({ userId: user.id, role: user.role }, oauthRememberMe);
+    const refreshToken = signRefreshToken({ userId: user.id, role: user.role }, oauthRememberMe);
 
-    await setAuthCookies(accessToken, refreshToken);
+    await setAuthCookies(accessToken, refreshToken, oauthRememberMe);
 
-    return NextResponse.redirect(`${appUrl}/home`, { status: 307 });
+    return redirectWithPrefsCleanup(`${appUrl}/home`);
   } catch (error) {
     console.error("Google callback error:", error);
     Sentry.captureException(error);
@@ -251,13 +285,13 @@ export async function GET(request: NextRequest) {
     // already renders; everything else is a generic failure.
     if (name === "PrismaClientKnownRequestError" || name === "PrismaClientInitializationError" || code === "P2022" || code === "P1001" || code === "P1002") {
       try {
-        return NextResponse.redirect(withRef("/login", "server_busy"), { status: 307 });
+        return redirectWithPrefsCleanup(withRef("/login", "server_busy"));
       } catch {
         return NextResponse.json({ error: "We're experiencing high demand. Please try again in a moment." }, { status: 503 });
       }
     }
     try {
-      return NextResponse.redirect(withRef("/login", "oauth_failed"), { status: 307 });
+      return redirectWithPrefsCleanup(withRef("/login", "oauth_failed"));
     } catch {
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 500 });
     }

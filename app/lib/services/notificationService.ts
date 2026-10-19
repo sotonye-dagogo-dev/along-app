@@ -6,6 +6,7 @@
 
 import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/app/lib/db/prisma";
+import type { Prisma } from "@/app/generated/prisma/client";
 import type { RouteRequestAudienceConfig } from "@/app/lib/config/routeRequestAudience";
 
 export interface CreateNotificationInput {
@@ -31,6 +32,12 @@ export interface CreateNotificationInput {
   message: string;
   postId?: string;
   commentId?: string;
+  /**
+   * Deep-link context persisted on the notification (additive/nullable) and
+   * mirrored to push. `{ bugId }` makes a REPORT assignment open the exact
+   * report in the admin queue (`resolveNotificationRoute`).
+   */
+  metadata?: Record<string, unknown> | null;
   /** Users who receive this notification. Duplicates/self are filtered out. */
   recipientIds: string[];
   /**
@@ -76,6 +83,9 @@ export async function createNotification(input: CreateNotificationInput): Promis
         message: input.message,
         postId: input.postId ?? null,
         commentId: input.commentId ?? null,
+        ...(input.metadata && Object.keys(input.metadata).length > 0
+          ? { metadata: input.metadata as unknown as Prisma.InputJsonValue }
+          : {}),
         recipients: { create: recipientIds.map((userId) => ({ userId })) },
       },
       select: { id: true },
@@ -91,6 +101,7 @@ export async function createNotification(input: CreateNotificationInput): Promis
           message: input.message,
           postId: input.postId,
           commentId: input.commentId,
+          metadata: input.metadata ?? undefined,
           recipientIds,
         }),
       )

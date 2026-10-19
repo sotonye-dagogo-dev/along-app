@@ -181,9 +181,12 @@ export default function LoginPage() {
         fullWidth
         className="bg-bg-card border-border text-text-primary hover:bg-bg-elevated"
         onClick={() => {
-          window.location.href = refCode
-            ? `/api/auth/google?state=${encodeURIComponent(`ref:${refCode}`)}`
-            : '/api/auth/google'
+          // Carry the remember-me checkbox into the OAuth handshake so Google
+          // sessions get the same lifetime as email+password sessions.
+          const params = new URLSearchParams()
+          if (refCode) params.set("state", `ref:${refCode}`)
+          params.set("rememberMe", rememberMe ? "true" : "false")
+          window.location.href = `/api/auth/google?${params.toString()}`
         }}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

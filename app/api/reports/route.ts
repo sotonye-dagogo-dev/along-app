@@ -72,8 +72,28 @@ export async function POST(request: NextRequest) {
     const reportImages = sanitizeReportImageUrls(images);
     const windowStart = new Date(Date.now() - MODERATION_CONFIG.duplicateWindowHours * 3600_000);
 
-    // Transaction: dedup check + insert are atomic (no duplicate rows on retry).
+    // Single-admin assignment resolved BEFORE the transaction (load reads
+    // never sit inside the write tx). One pick feeds the insert, the in-app
+    // ping, and the email so all three agree on the same assignee.
+    let assignee: { id: string; email: string } | null = null;
+    try {
+      const { assignAdminForIssue } = await import(
+        "@/app/lib/services/adminAssignmentService"
+      );
+      assignee = await assignAdminForIssue();
+    } catch (e) {
+      console.error("[reports] admin assignment failed (non-critical):", e);
+    }
+
+    // Transaction: per-reporter advisory lock (same lock as /api/bug-reports)
+    // + dedup check + insert are atomic — concurrent double-submits can never
+    // interleave between "not a duplicate" and "insert" (the race that handed
+    // duplicate rows to two different admins).
+    const { acquireBugReportDedupLock } = await import(
+      "@/app/lib/services/bugReportDedupService"
+    );
     const result = await prisma.$transaction(async (tx) => {
+      await acquireBugReportDedupLock(tx, reporterId);
       if (reporterId) {
         const dupe = await tx.bugReport.findFirst({
           where: {
@@ -102,6 +122,7 @@ export async function POST(request: NextRequest) {
             .join("\n"),
           reporterId,
           postId,
+          ...(assignee ? { reviewerId: assignee.id } : {}),
           metadata: {
             kind: "post-report",
             reason,
@@ -133,30 +154,19 @@ export async function POST(request: NextRequest) {
       /* audit writes are non-critical */
     }
 
-    // Single-admin assignment (non-critical, never fails the request):
-    // exactly one admin owns the report and gets the ping + mail.
-    // Resolved once and reused for the reviewer update, the in-app ping,
-    // and the email so all three agree on the same assignee.
-    let assignee: { id: string; email: string } | null = null;
+    // Single-admin assignment already resolved BEFORE the tx and written in
+    // the same insert (no separate update — a crash can no longer leave the
+    // row unassigned). Fan-out below is non-critical, never fails the request.
+    // Resolved once and reused for the in-app ping and the email so both
+    // agree on the same assignee.
     try {
-      const { assignAdminForIssue } = await import(
-        "@/app/lib/services/adminAssignmentService"
-      );
-      assignee = await assignAdminForIssue();
-    } catch (e) {
-      console.error("[reports] admin assignment failed (non-critical):", e);
-    }
-    try {
-      if (assignee && result.reportId) {
-        await prisma.bugReport.update({
-          where: { id: result.reportId },
-          data: { reviewerId: assignee.id },
-        });
-      }
       // Actor must be a real user id for the FK; prefer the reporter, else the
       // post author (message text itself carries no identities — anonymity).
       const actorId = reporterId ?? post.userId;
       if (assignee) {
+        // metadata.bugId deep-links the admin's click to THIS queue entry
+        // (/admin/bugs?highlight=). The reporter's receipt below must NOT
+        // carry it — a non-admin reporter would be bounced to /admin.
         await createNotification({
           type: "REPORT",
           actorId,
@@ -164,6 +174,7 @@ export async function POST(request: NextRequest) {
           message: `A post was reported (${reasonLabel}) and needs review`,
           recipientIds: [assignee.id],
           allowSelf: true,
+          metadata: { bugId: result.reportId },
         });
       }
       if (reporterId) {
@@ -187,7 +198,8 @@ export async function POST(request: NextRequest) {
         `Report post ${postId}: ${reasonLabel}`,
         POST_ACTIONS_CONFIG.reportCategory,
         trimmedDetails || reasonLabel,
-        assignee?.email
+        assignee?.email,
+        result.reportId
       );
       if (!emailResult.sent) {
         console.warn(`[reports] email notification failed: ${emailResult.reason}`);

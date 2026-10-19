@@ -8,6 +8,7 @@ import {
   writeAuthSnapshot,
   clearAuthSnapshot,
 } from "@/app/lib/config/authOffline";
+import { AUTH_SESSION_CONFIG } from "@/app/lib/config/authSession";
 
 // Layout effect on the client, no-op on the server: the offline snapshot is
 // applied after hydration but before paint, so the signed-in identity shows
@@ -60,6 +61,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const router = useRouter();
   const fetchingRef = useRef(false);
+  // One scheduled 429 retry at a time; last online/visibility revalidation
+  // timestamp (PWA resume storms must not stampede /api/auth/me + refresh).
+  // Chained 429 retries back off exponentially so our own retry cadence can
+  // never keep the refresh bucket permanently maxed.
+  const refreshRetryTimerRef = useRef<number | null>(null);
+  const refreshRetryScheduledRef = useRef(false);
+  const refreshRetryAttemptsRef = useRef(0);
+  const lastRevalidateRef = useRef<number>(Date.now());
 
   useIsoLayoutEffect(() => {
     const snapshot = readAuthSnapshot() as User | null;
@@ -73,6 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await fetch("/api/auth/me");
       if (res.ok) {
+        // Healthy again — clear any 429 backoff.
+        refreshRetryAttemptsRef.current = 0;
         try {
           const data = await res.json();
           // `{ user }` envelope (incl. the guest `{ user: null }` response)
@@ -107,6 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const refreshRes = await fetch("/api/auth/refresh", { method: "POST" });
           if (refreshRes.ok) {
+            refreshRetryAttemptsRef.current = 0;
             fetchingRef.current = false;
             return fetchUser(true);
           }
@@ -114,6 +126,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (refreshRes.status === 401) {
             setUser(null);
             clearAuthSnapshot();
+          } else if (refreshRes.status === 429 && !refreshRetryScheduledRef.current) {
+            // Rate-limited (PWA resume / flapping network): the session is
+            // NOT invalid — keep it and retry after backoff instead of
+            // degrading the user to guest. Server Retry-After wins when
+            // present; exponential growth guarantees our own retries can never
+            // keep the refresh bucket permanently maxed (3/min threshold).
+            refreshRetryScheduledRef.current = true;
+            const attempt = refreshRetryAttemptsRef.current;
+            refreshRetryAttemptsRef.current = attempt + 1;
+            const retryAfterSec = Number(refreshRes.headers.get("Retry-After"));
+            const backoffMs = Math.min(
+              AUTH_SESSION_CONFIG.client.refreshRetryDelayMs * 2 ** Math.min(attempt, 5),
+              300_000,
+            );
+            const delayMs =
+              Number.isFinite(retryAfterSec) && retryAfterSec > 0
+                ? Math.min(Math.max(retryAfterSec * 1000, backoffMs), 300_000)
+                : backoffMs;
+            if (typeof window !== "undefined") {
+              refreshRetryTimerRef.current = window.setTimeout(() => {
+                refreshRetryScheduledRef.current = false;
+                refreshRetryTimerRef.current = null;
+                void fetchUser();
+              }, delayMs);
+            }
           }
           // Otherwise (5xx / network): transient — keep last-known session so
           // users are never randomly logged out by a blip or offline restore.
@@ -144,7 +181,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchUser();
+    lastRevalidateRef.current = Date.now();
   }, [fetchUser]);
+
+  // Revalidate the session when connectivity returns or the PWA/tab becomes
+  // visible again — an installed PWA resumed after long idle re-establishes
+  // its session BEFORE the next API call 401s. Throttled to one revalidation
+  // per config interval; a pending 429 retry timer is left alone (its own
+  // cadence), and every failure path in fetchUser already keeps the session.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const revalidate = () => {
+      const now = Date.now();
+      if (now - lastRevalidateRef.current < AUTH_SESSION_CONFIG.client.revalidateMinIntervalMs) return;
+      lastRevalidateRef.current = now;
+      void fetchUser();
+    };
+    const onOnline = () => revalidate();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") revalidate();
+    };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [fetchUser]);
+
+  // Cancel a pending 429 retry on unmount.
+  useEffect(() => {
+    return () => {
+      if (refreshRetryTimerRef.current !== null && typeof window !== "undefined") {
+        window.clearTimeout(refreshRetryTimerRef.current);
+      }
+    };
+  }, []);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);

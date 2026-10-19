@@ -3,6 +3,15 @@ import { prisma } from "@/app/lib/db/prisma";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { MEDIA_CLEANUP_CONFIG, clampPageLimit } from "@/app/lib/config";
 
+/** Shared row shape for list + single-fetch (?id=) responses. */
+const BUG_INCLUDE = {
+  // Email rides along for the admin modal's reporter-identification
+  // block (admin-only surface — never serialized to end users).
+  reporter: { select: { id: true, firstName: true, lastName: true, userName: true, avatar: true, email: true } },
+  reviewer: { select: { id: true, firstName: true, lastName: true, userName: true } },
+  post: { select: { id: true, title: true, userId: true } },
+} as const;
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getUserFromRequest();
@@ -11,6 +20,17 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    // ?id=<bugId> — single fetch used by the /admin/bugs?highlight= deep-link
+    // when the target row is not inside the first list page (cursor list).
+    const idParam = searchParams.get("id");
+    if (idParam && idParam.trim()) {
+      const bug = await prisma.bugReport.findUnique({
+        where: { id: idParam.trim() },
+        include: BUG_INCLUDE,
+      });
+      if (!bug) return NextResponse.json({ error: "Report not found" }, { status: 404 });
+      return NextResponse.json({ bug }, { status: 200 });
+    }
     const status = searchParams.get("status");
     const cursor = searchParams.get("cursor");
     const limit = clampPageLimit(searchParams.get("limit"), "admin");
@@ -27,13 +47,7 @@ export async function GET(request: NextRequest) {
 
     const bugs = await prisma.bugReport.findMany({
       where: where as never,
-      include: {
-        // Email rides along for the admin modal's reporter-identification
-        // block (admin-only surface — never serialized to end users).
-        reporter: { select: { id: true, firstName: true, lastName: true, userName: true, avatar: true, email: true } },
-        reviewer: { select: { id: true, firstName: true, lastName: true, userName: true } },
-        post: { select: { id: true, title: true, userId: true } },
-      },
+      include: BUG_INCLUDE,
       orderBy: [{ [sortField]: sortDir } as never, { id: sortDir } as never],
       take: limit + 1,
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),

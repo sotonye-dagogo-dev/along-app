@@ -303,10 +303,11 @@ export async function sendContactNotification(senderName: string, senderEmail: s
   });
 }
 
-export async function sendBugReportNotification(title: string, category: string, description: string, recipientOverride?: string) {
+export async function sendBugReportNotification(title: string, category: string, description: string, recipientOverride?: string, reportId?: string) {
   // Single-assignee policy: callers pass the assigned admin's email so only
   // one admin gets the mail. Falls back to the platform inbox when no
-  // assignee resolved (e.g. zero admins seeded).
+  // assignee resolved (e.g. zero admins seeded). reportId powers the CTA
+  // deep-link to the exact queue entry (/admin/bugs?highlight=<id>).
   const recipient = (recipientOverride ?? "").trim() || process.env.PLATFORM_USER_EMAIL || "alongtoanywhere@gmail.com";
   if (!(await isTemplateEnabled("bugReportNotification"))) {
     await logEmail({ to: recipient, subject: "[disabled] bug", type: "bugReportNotification", status: "skipped", error: "template disabled" });
@@ -321,7 +322,17 @@ export async function sendBugReportNotification(title: string, category: string,
     return { sent: false, reason };
   }
 
-  const vars = { title: sanitizeVarText(title, 200), category: sanitizeVarText(category, 80), description: sanitizeVarText(description, 5000) };
+  const vars = {
+    title: sanitizeVarText(title, 200),
+    category: sanitizeVarText(category, 80),
+    description: sanitizeVarText(description, 5000),
+    // CTA target: the exact queue entry when the id is known, else the queue
+    // root (template renders {{appUrl}}{{reportLink}} — path only, so the
+    // stored href stays a safe relative link through Studio sanitisation).
+    reportLink: reportId
+      ? `/admin/bugs?highlight=${sanitizeVarText(reportId, 64)}`
+      : "/admin/bugs",
+  };
   return sendEmail({
     to: recipient,
     subject: renderEmailSubject(template.subject, vars),

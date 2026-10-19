@@ -2,10 +2,19 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-18 (Sprint 79: announcement deprecation + bug-report tightening)
+> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 80 — Duplicate-proof bug assignment + admin notification deep links + auth session persistence (2026-10-19, execute-feature)
+
+- [x] Duplicate-proof report writes: dedup-read + assignee + insert in ONE transaction serialised by a per-reporter advisory lock (`bugReportDedupService` + `pg_advisory_xact_lock`) in both `/api/bug-reports` and `/api/reports`; assignee written in the INSERT; unassigned duplicates self-heal to the single algorithmic admin (no more "assigned to multiple admins")
+- [x] Dedup matcher tightened: idempotency key > error identity (metadata.path + digest — title no longer required) > exact description, reporter-scoped, candidate window bounded by `dedupMaxCandidates`
+- [x] Admin assignment notifications deep-link: additive `Notification.metadata Json?` threaded through `createNotification` → push mirror → resolvers; REPORT/MODERATION with `bugId` → `/admin/bugs?highlight=<id>` (assignee pings only — reporter rows carry no bugId and keep today's targets)
+- [x] Admin bug page consumes `?highlight=` (capture + strip via `history.replaceState`, `GET /api/admin/bugs?id=` fetch-by-id fallback, prepend off-page rows, one-shot scroll + ring highlight)
+- [x] Admin assignee email CTA: `{{appUrl}}{{reportLink}}` in the default `bugReportNotification` template + `sendBugReportNotification(..., reportId?)` + preview sample
+- [x] Auth session persistence: `authSession.ts` single-source config, refresh-JWT `rm` remember-me claim (legacy tokens keep old lifetime), dedicated `authRefresh` rate bucket, middleware refresh-grace with downstream cookie forwarding (PWA >1h relaunch no longer bounces to /login), Google `prompt=select_account` + httpOnly remember-me handshake, AuthProvider 429 exponential backoff + throttled online/visibility revalidation
 
 ## Sprint 79 — Legacy announcement-banner deprecation + bug-report pipeline tightening (2026-10-18, execute-feature)
 

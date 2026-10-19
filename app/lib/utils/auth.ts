@@ -1,6 +1,10 @@
 import jwt from "jsonwebtoken";
 import { prisma } from "@/app/lib/db/prisma";
 import { cookies } from "next/headers";
+import {
+  AUTH_SESSION_CONFIG,
+  REFRESH_REMEMBER_CLAIM,
+} from "@/app/lib/config/authSession";
 function resolveSecret(envKey: string, fallbacks: string[], devDefault: string): string {
   const val = (process.env[envKey] as string | undefined) || fallbacks.map((k) => process.env[k] as string | undefined).find(Boolean);
   if (!val && process.env.NODE_ENV === "production") {
@@ -18,14 +22,31 @@ const JWT_REFRESH_SECRET = resolveSecret("JWT_REFRESH_SECRET", ["JWT_SECRET", "J
 interface JwtPayload {
   userId: string;
   role: string;
+  /**
+   * remember-me claim — embedded on the REFRESH token only, so the flag
+   * survives token refresh (it was previously dropped, silently downgrading
+   * remember-me sessions to the 1h/7d defaults after the first refresh).
+   * Absent on legacy tokens (pre-deploy) — callers treat undefined as
+   * "unknown, keep current cookie lifetime".
+   */
+  [REFRESH_REMEMBER_CLAIM]?: boolean;
 }
 
 export function signAccessToken(payload: JwtPayload, rememberMe?: boolean): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: rememberMe ? "7d" : "1h" });
+  const { accessTtl } = AUTH_SESSION_CONFIG;
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: rememberMe ? accessTtl.remember : accessTtl.default,
+  });
 }
 
 export function signRefreshToken(payload: JwtPayload, rememberMe?: boolean): string {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: rememberMe ? "30d" : "7d" });
+  const { refreshTtl } = AUTH_SESSION_CONFIG;
+  // Always embed an explicit boolean so refresh can distinguish
+  // "remember-me off" (false) from "legacy token issued before this claim
+  // existed" (undefined) — the latter keeps its existing cookie lifetime.
+  return jwt.sign({ ...payload, [REFRESH_REMEMBER_CLAIM]: rememberMe === true }, JWT_REFRESH_SECRET, {
+    expiresIn: rememberMe ? refreshTtl.remember : refreshTtl.default,
+  });
 }
 
 export function verifyAccessToken(token: string): JwtPayload {
