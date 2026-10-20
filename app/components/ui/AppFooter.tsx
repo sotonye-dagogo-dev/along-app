@@ -24,12 +24,28 @@ export function AppFooter() {
               <ul className={linkListClass}>
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-xs sm:text-sm text-text-secondary hover:text-text-primary transition-colors duration-base break-words"
-                    >
-                      {link.i18nKey ? tLink(link.i18nKey, link.label) : link.label}
-                    </Link>
+                    {link.actionEvent ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            window.dispatchEvent(new CustomEvent(link.actionEvent as string));
+                          } catch {
+                            // Event dispatch is best-effort — never break the footer.
+                          }
+                        }}
+                        className="text-left text-xs sm:text-sm text-text-secondary hover:text-text-primary transition-colors duration-base break-words cursor-pointer bg-transparent border-none p-0 font-sans"
+                      >
+                        {link.i18nKey ? tLink(link.i18nKey, link.label) : link.label}
+                      </button>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        className="text-xs sm:text-sm text-text-secondary hover:text-text-primary transition-colors duration-base break-words"
+                      >
+                        {link.i18nKey ? tLink(link.i18nKey, link.label) : link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -23,9 +23,15 @@ export const TOUR_START_EVENT = "along:tour-start";
 
 export type TourStepPlacement = "top" | "bottom" | "left" | "right";
 
+/**
+ * Who a step is for. The tour filters its step list per viewer so guests get
+ * the auth walkthrough and signed-in users never see it.
+ */
+export type TourAudience = "all" | "guest" | "authenticated";
+
 export interface TourStep {
   id: string;
-  /** Dashboard route the step runs on (component navigates when needed). */
+  /** Route the step runs on (component navigates when needed). */
   route: string;
   /**
    * CSS selector list; FIRST VISIBLE match is spotlighted. Empty/undefined
@@ -42,6 +48,10 @@ export interface TourStep {
   /** Element whose click counts as the interaction (defaults to target). */
   interactionSelector?: string;
   placement?: TourStepPlacement;
+  /** Viewer filter (default "all"). */
+  audience?: TourAudience;
+  /** Per-step target wait override (ms); falls back to display.targetTimeoutMs. */
+  timeoutMs?: number;
 }
 
 export interface PlatformTourEndCard {
@@ -83,11 +93,35 @@ export interface PlatformTourOfflineConfig {
   skipLabelHint: string;
 }
 
+/**
+ * Resume behaviour after a refresh/relaunch. Interrupted runs are never
+ * silently hijacked: by default a small dismissible prompt offers to pick up
+ * where the viewer left off (`autoResume` opts back into the old silent
+ * resume for deployments that prefer it).
+ */
+export interface PlatformTourResumeConfig {
+  enabled: boolean;
+  promptDelayMs: number;
+  autoResume: boolean;
+  message: string;
+  actionLabel: string;
+  dismissLabel: string;
+}
+
+export interface PlatformTourGuestConfig {
+  /** Guests may run the tour (auth steps included) when true. */
+  enabled: boolean;
+}
+
 export interface PlatformTourConfig {
   enabled: boolean;
-  /** Start once automatically for authenticated users without state flags. */
+  /** Start once automatically for viewers without state flags. */
   autoStart: boolean;
   autoStartDelayMs: number;
+  /** Paths where auto-start is allowed (guests + signed-in users). */
+  autoStartRoutes: string[];
+  guest: PlatformTourGuestConfig;
+  resume: PlatformTourResumeConfig;
   display: PlatformTourDisplayConfig;
   storage: PlatformTourStorageConfig;
   offline: PlatformTourOfflineConfig;
@@ -106,6 +140,21 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
   enabled: true,
   autoStart: true,
   autoStartDelayMs: 2500,
+  // Auto-start only on the dashboard feed — auth/FAQ/public pages get the
+  // tour through an explicit trigger so a first-time visitor is never
+  // hijacked mid-signup.
+  autoStartRoutes: ["/home"],
+  guest: {
+    enabled: true,
+  },
+  resume: {
+    enabled: true,
+    promptDelayMs: 1200,
+    autoResume: false,
+    message: "Your platform tour is paused — pick up where you left off?",
+    actionLabel: "Resume tour",
+    dismissLabel: "Not now",
+  },
   display: {
     spotPadPx: 8,
     spotRadiusPx: 24,
@@ -140,17 +189,89 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       body: "A guided stroll through the app. Follow the glow — you can tap the highlighted controls as we go. Take the wheel anytime with Back, Next, or Skip.",
       titleKey: "tour.welcomeTitle",
       bodyKey: "tour.welcomeBody",
+      audience: "all",
+    },
+    {
+      id: "auth-sign-in",
+      route: "/login",
+      targetSelector: '[data-tour="login-email"]',
+      title: "Sign in your way",
+      body: "Use email and password, continue with Google, or keep browsing as a guest. Signing in unlocks posting, bookmarks, and notifications.",
+      titleKey: "tour.authLoginTitle",
+      bodyKey: "tour.authLoginBody",
+      audience: "guest",
+      placement: "bottom",
+    },
+    {
+      id: "auth-register",
+      route: "/register",
+      targetSelector: '[data-tour="register-email"]',
+      title: "Create your account",
+      body: "A name, username, email, and password is all it takes. We then send a 6-digit code to verify your email before your first post.",
+      titleKey: "tour.authRegisterTitle",
+      bodyKey: "tour.authRegisterBody",
+      audience: "guest",
+      placement: "bottom",
     },
     {
       id: "share-route",
       route: "/home",
       targetSelector: '[aria-label="Share a route"]',
       title: "Share your route",
-      body: "Post a full journey with stops, fares, and vehicle details. Try tapping it — the composer opens right up.",
+      body: "Post a full journey with stops, fares, and vehicle details. Try tapping it — the composer opens right up and the tour waits for you.",
       titleKey: "tour.shareTitle",
       bodyKey: "tour.shareBody",
       interactive: true,
       placement: "bottom",
+      audience: "all",
+    },
+    {
+      id: "composer-locations",
+      route: "/home",
+      targetSelector: '[data-tour="route-origin"]',
+      title: "Find any location",
+      body: "Type a place, address, landmark, coordinates, or plus code — suggestions appear as you type. Every stop uses the same field, so you can build the whole journey.",
+      titleKey: "tour.composerLocationsTitle",
+      bodyKey: "tour.composerLocationsBody",
+      placement: "bottom",
+      audience: "all",
+      timeoutMs: 3500,
+    },
+    {
+      id: "composer-locate",
+      route: "/home",
+      targetSelector: '[data-tour="route-locate"]',
+      title: "Use your current location",
+      body: "This fills a stop with your live position — handy for the origin. You can also pick a suggestion from the dropdown or place the stop on the map instead.",
+      titleKey: "tour.composerLocateTitle",
+      bodyKey: "tour.composerLocateBody",
+      placement: "top",
+      audience: "all",
+      timeoutMs: 3500,
+    },
+    {
+      id: "composer-find-on-map",
+      route: "/home",
+      targetSelector: '[data-tour="route-find-on-map"]',
+      title: "Find it on the map",
+      body: "Open the preview and tap the exact point to set this stop. The map shows the live tracing and traffic for the whole route as you build it.",
+      titleKey: "tour.composerFindMapTitle",
+      bodyKey: "tour.composerFindMapBody",
+      placement: "top",
+      audience: "all",
+      timeoutMs: 3500,
+    },
+    {
+      id: "composer-score",
+      route: "/home",
+      targetSelector: '[data-tour="route-score"]',
+      title: "Build a strong route score",
+      body: "The Route Quality Score grows with clear locations, fares, vehicle details, and a helpful description. A higher score earns trust badges and better reach.",
+      titleKey: "tour.composerScoreTitle",
+      bodyKey: "tour.composerScoreBody",
+      placement: "left",
+      audience: "all",
+      timeoutMs: 3500,
     },
     {
       id: "explore-near-me",
@@ -162,6 +283,7 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       bodyKey: "tour.exploreBody",
       interactive: true,
       placement: "bottom",
+      audience: "all",
     },
     {
       id: "profile-account",
@@ -173,6 +295,7 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       bodyKey: "tour.profileBody",
       interactive: true,
       placement: "top",
+      audience: "authenticated",
     },
     {
       id: "notifications",
@@ -181,6 +304,7 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       body: "In-app notifications mirror to push and email where wired, so you hear about responses, rewards, and requests wherever you are.",
       titleKey: "tour.notificationsTitle",
       bodyKey: "tour.notificationsBody",
+      audience: "authenticated",
     },
   ],
 };
@@ -188,7 +312,10 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
 export interface PlatformTourState {
   version: number;
   startedAt: number;
+  /** Index in the FULL config step list (stable across audience filters). */
   stepIndex: number;
+  /** Current step id — preferred over the index when resuming. */
+  stepId?: string;
   completedAt?: number;
   dismissedAt?: number;
 }
@@ -207,6 +334,7 @@ export function readTourStateShape(raw: string | null): PlatformTourState | null
       version: PLATFORM_TOUR_STATE_VERSION,
       startedAt: parsed.startedAt,
       stepIndex: Number.isFinite(parsed.stepIndex) ? Math.max(0, Math.floor(parsed.stepIndex as number)) : 0,
+      stepId: typeof parsed.stepId === "string" && parsed.stepId.trim() ? parsed.stepId.trim() : undefined,
       completedAt: Number.isFinite(parsed.completedAt) ? (parsed.completedAt as number) : undefined,
       dismissedAt: Number.isFinite(parsed.dismissedAt) ? (parsed.dismissedAt as number) : undefined,
     } as PlatformTourState;
@@ -231,6 +359,60 @@ export function isLastStep(index: number, stepCount: number): boolean {
   return stepCount > 0 && index >= stepCount - 1;
 }
 
+export function isTourAudience(value: unknown): value is TourAudience {
+  return value === "all" || value === "guest" || value === "authenticated";
+}
+
+export interface VisibleTourStep {
+  step: TourStep;
+  /** Index of this step in the FULL config list (persisted in state). */
+  configIndex: number;
+}
+
+/** Filter the full step list to the steps this viewer may see. */
+export function selectVisibleTourSteps(steps: TourStep[], isGuest: boolean): VisibleTourStep[] {
+  return steps.flatMap((step, configIndex) => {
+    const audience = step.audience ?? "all";
+    const visible =
+      audience === "all" ||
+      (audience === "guest" && isGuest) ||
+      (audience === "authenticated" && !isGuest);
+    return visible ? [{ step, configIndex }] : [];
+  });
+}
+
+/**
+ * Map a persisted position onto the current (possibly audience-filtered)
+ * step list. Prefer the step id (survives auth transitions that remove
+ * steps); otherwise take the first visible step at/after the stored index.
+ * Never returns an out-of-range position for a non-empty list.
+ */
+export function resolveTourResumeIndex(visibleSteps: VisibleTourStep[], state: PlatformTourState | null): number {
+  if (visibleSteps.length === 0) return 0;
+  if (!state) return 0;
+  if (state.stepId) {
+    const byId = visibleSteps.findIndex((entry) => entry.step.id === state.stepId);
+    if (byId >= 0) return byId;
+  }
+  const atOrAfter = visibleSteps.findIndex((entry) => entry.configIndex >= state.stepIndex);
+  if (atOrAfter >= 0) return atOrAfter;
+  return visibleSteps.length - 1;
+}
+
+/** True when the current pathname is allowed to auto-start the tour. */
+export function isTourAutoStartRoute(pathname: string, routes: string[]): boolean {
+  if (!pathname) return false;
+  return routes.some((route) => route.startsWith("/") && pathname.startsWith(route));
+}
+
+/** Per-step target wait, clamped to the display knob's safe range. */
+export function tourStepTimeoutMs(step: TourStep | undefined, config: PlatformTourConfig): number {
+  const fallback = config.display.targetTimeoutMs;
+  const raw = step?.timeoutMs;
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return fallback;
+  return Math.min(Math.max(raw, 1000), 20000);
+}
+
 /**
  * Merge a stored/admin raw value over the shipped defaults (stored-wins,
  * field-wise; corrupt/partial rows keep working — the same discipline as
@@ -248,6 +430,31 @@ export function normalizePlatformTourConfig(
   if (typeof value.autoStart === "boolean") merged.autoStart = value.autoStart;
   if (typeof value.autoStartDelayMs === "number" && Number.isFinite(value.autoStartDelayMs)) {
     merged.autoStartDelayMs = Math.min(Math.max(value.autoStartDelayMs, 0), 60000);
+  }
+  if (Array.isArray(value.autoStartRoutes)) {
+    const routes = value.autoStartRoutes.filter(
+      (route): route is string => typeof route === "string" && route.startsWith("/") && route.length > 1,
+    );
+    if (routes.length > 0) merged.autoStartRoutes = Array.from(new Set(routes));
+  }
+
+  if (value.guest && typeof value.guest === "object" && !Array.isArray(value.guest)) {
+    const g = value.guest as Partial<PlatformTourGuestConfig>;
+    merged.guest = { ...fallback.guest };
+    if (typeof g.enabled === "boolean") merged.guest.enabled = g.enabled;
+  }
+
+  if (value.resume && typeof value.resume === "object" && !Array.isArray(value.resume)) {
+    const r = value.resume as Partial<PlatformTourResumeConfig>;
+    merged.resume = { ...fallback.resume };
+    if (typeof r.enabled === "boolean") merged.resume.enabled = r.enabled;
+    if (typeof r.autoResume === "boolean") merged.resume.autoResume = r.autoResume;
+    if (typeof r.promptDelayMs === "number" && Number.isFinite(r.promptDelayMs)) {
+      merged.resume.promptDelayMs = Math.min(Math.max(r.promptDelayMs, 0), 60000);
+    }
+    if (typeof r.message === "string" && r.message.trim()) merged.resume.message = r.message.trim();
+    if (typeof r.actionLabel === "string" && r.actionLabel.trim()) merged.resume.actionLabel = r.actionLabel.trim();
+    if (typeof r.dismissLabel === "string" && r.dismissLabel.trim()) merged.resume.dismissLabel = r.dismissLabel.trim();
   }
 
   if (value.display && typeof value.display === "object" && !Array.isArray(value.display)) {
@@ -313,6 +520,11 @@ export function normalizePlatformTourConfig(
         interactive: typeof s.interactive === "boolean" ? s.interactive : undefined,
         interactionSelector: typeof s.interactionSelector === "string" ? s.interactionSelector : undefined,
         placement: isTourPlacement(s.placement) ? s.placement : undefined,
+        audience: isTourAudience(s.audience) ? s.audience : undefined,
+        timeoutMs:
+          typeof s.timeoutMs === "number" && Number.isFinite(s.timeoutMs)
+            ? Math.min(Math.max(s.timeoutMs, 1000), 20000)
+            : undefined,
       }));
     if (steps.length > 0) merged.steps = steps;
   }
@@ -339,6 +551,40 @@ export function validatePlatformTourConfigValue(value: unknown): string | null {
     }
     if (v.autoStartDelayMs > 60000) return "autoStartDelayMs must stay under 60000ms.";
   }
+  if ("autoStartRoutes" in v) {
+    if (!Array.isArray(v.autoStartRoutes)) return "autoStartRoutes must be an array of paths.";
+    if (v.autoStartRoutes.some((route) => typeof route !== "string" || !route.startsWith("/"))) {
+      return "every autoStartRoutes entry must start with '/'.";
+    }
+  }
+  if ("guest" in v) {
+    if (typeof v.guest !== "object" || v.guest === null || Array.isArray(v.guest)) return "guest must be an object.";
+    const guest = v.guest as Record<string, unknown>;
+    if ("enabled" in guest && typeof guest.enabled !== "boolean") return "guest.enabled must be true or false.";
+  }
+  if ("resume" in v) {
+    if (typeof v.resume !== "object" || v.resume === null || Array.isArray(v.resume)) return "resume must be an object.";
+    const resume = v.resume as Record<string, unknown>;
+    if ("enabled" in resume && typeof resume.enabled !== "boolean") return "resume.enabled must be true or false.";
+    if ("autoResume" in resume && typeof resume.autoResume !== "boolean") {
+      return "resume.autoResume must be true or false.";
+    }
+    if ("promptDelayMs" in resume) {
+      if (
+        typeof resume.promptDelayMs !== "number" ||
+        !Number.isFinite(resume.promptDelayMs) ||
+        resume.promptDelayMs < 0
+      ) {
+        return "resume.promptDelayMs must be a non-negative number of milliseconds.";
+      }
+      if (resume.promptDelayMs > 60000) return "resume.promptDelayMs must stay under 60000ms.";
+    }
+    for (const field of ["message", "actionLabel", "dismissLabel"] as const) {
+      if (field in resume && (typeof resume[field] !== "string" || !(resume[field] as string).trim())) {
+        return `resume.${field} must be a non-empty string.`;
+      }
+    }
+  }
   if (v.steps !== undefined) {
     if (!Array.isArray(v.steps)) return "steps must be an array of step objects.";
     for (const step of v.steps) {
@@ -349,6 +595,15 @@ export function validatePlatformTourConfigValue(value: unknown): string | null {
       if (typeof s.title !== "string" || !s.title.trim()) return `step '${s.id}' needs a non-empty title.`;
       if (s.placement !== undefined && !isTourPlacement(s.placement)) {
         return `step '${s.id}' placement must be top, bottom, left or right.`;
+      }
+      if (s.audience !== undefined && !isTourAudience(s.audience)) {
+        return `step '${s.id}' audience must be all, guest or authenticated.`;
+      }
+      if (s.timeoutMs !== undefined) {
+        if (typeof s.timeoutMs !== "number" || !Number.isFinite(s.timeoutMs) || s.timeoutMs < 1000) {
+          return `step '${s.id}' timeoutMs must be at least 1000ms.`;
+        }
+        if (s.timeoutMs > 20000) return `step '${s.id}' timeoutMs must stay under 20000ms.`;
       }
     }
   }

@@ -114,6 +114,7 @@ export default function LoginPage() {
           type="email"
           placeholder="you@example.com"
           icon={<Mail size={16} />}
+          data-tour="login-email"
           value={email}
           onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => ({ ...prev, email: undefined })) }}
           error={fieldErrors.email}

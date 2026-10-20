@@ -1420,6 +1420,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                           onFocus={() => setStepExtra(index, { _focused: true })}
                           onBlur={() => setTimeout(() => setStepExtra(index, { _focused: false }), 160)}
                           placeholder={LOCATION_SUGGESTIONS_CONFIG.locationPlaceholder}
+                          data-tour={index === 0 ? "route-origin" : undefined}
                           aria-label={index === 0 ? "Origin location" : index === steps.length - 1 ? "Destination location" : `Stop ${index} location`}
                           aria-invalid={Boolean(fieldErrors.steps[index]?.location)}
                           className={`w-full h-10 pl-[34px] pr-3 py-2.5 border radius-sm text-sm font-sans outline-none transition-colors duration-fast bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted ${fieldErrorClass(Boolean(fieldErrors.steps[index]?.location))}`}
@@ -1463,6 +1464,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => locateMe(index)}
                           disabled={step._locating}
+                          data-tour={index === 0 ? "route-locate" : undefined}
                           className="inline-flex items-center gap-1.5 px-0 py-0.5 border-none bg-transparent cursor-pointer text-xs font-medium text-primary font-sans disabled:opacity-60 hover:text-primary-light transition-colors"
                         >
                           <Crosshair size={12} className="shrink-0" />
@@ -1472,6 +1474,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => findOnMap(index)}
+                          data-tour={index === 0 ? "route-find-on-map" : undefined}
                           className="inline-flex items-center gap-1.5 px-0 py-0.5 border-none bg-transparent cursor-pointer text-xs font-medium text-text-secondary font-sans hover:text-text-primary transition-colors"
                         >
                           <MapPinned size={12} className="shrink-0" />
@@ -1678,13 +1681,15 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
               )}
             </div>
 
-            <DraftingCoach
-              score={evaluation.score}
-              maxScore={evaluation.maxScore}
-              checkpoints={evaluation.checkpoints}
-              nextSuggestion={evaluation.nextSuggestion}
-              defaultOpen={SHARE_ROUTE_MODAL_CONFIG.scoreDefaultOpen}
-            />
+            <div data-tour="route-score">
+              <DraftingCoach
+                score={evaluation.score}
+                maxScore={evaluation.maxScore}
+                checkpoints={evaluation.checkpoints}
+                nextSuggestion={evaluation.nextSuggestion}
+                defaultOpen={SHARE_ROUTE_MODAL_CONFIG.scoreDefaultOpen}
+              />
+            </div>
           </div>
         </div>
 

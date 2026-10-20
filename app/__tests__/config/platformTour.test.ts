@@ -13,11 +13,17 @@ import {
   TOUR_START_EVENT,
   coerceStepIndex,
   isLastStep,
+  isTourAudience,
+  isTourAutoStartRoute,
   isTourTerminal,
   normalizePlatformTourConfig,
   readTourStateShape,
+  resolveTourResumeIndex,
+  selectVisibleTourSteps,
+  tourStepTimeoutMs,
   validatePlatformTourConfigValue,
   type PlatformTourConfig,
+  type PlatformTourState,
 } from "@/app/lib/config/platformTour";
 import { DEFAULT_FAQ_ITEMS, FAQ_PCM } from "@/app/lib/config/faq";
 import {
@@ -30,8 +36,8 @@ import { API_REGISTRY } from "@/app/lib/config/apiRegistry";
 import { PWA_CACHEABLE_API_PREFIXES, PWA_NEVER_CACHE_API } from "@/app/lib/config/pwa";
 import { PROFILE_QUICK_LINKS_CONFIG } from "@/app/lib/config/profileQuickLinks";
 
-/** Routes a dashboard tour step is allowed to live on. */
-const DASHBOARD_ROUTES = [
+/** Routes a tour step is allowed to live on (dashboard + guest auth). */
+const TOUR_ROUTES = [
   "/home",
   "/explore",
   "/search",
@@ -42,6 +48,8 @@ const DASHBOARD_ROUTES = [
   "/leaderboard",
   "/invite",
   "/posts",
+  "/login",
+  "/register",
 ] as const;
 
 describe("platform tour config", () => {
@@ -52,7 +60,7 @@ describe("platform tour config", () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (const step of steps) {
       expect(step.id.match(/^[a-z0-9-]+$/)).toBeTruthy();
-      expect(DASHBOARD_ROUTES.some((route) => step.route.startsWith(route))).toBe(true);
+      expect(TOUR_ROUTES.some((route) => step.route.startsWith(route))).toBe(true);
       expect(step.title.trim().length).toBeGreaterThan(0);
       expect(step.body.trim().length).toBeGreaterThan(20);
       expect(step.route.startsWith("/")).toBe(true);
@@ -130,6 +138,75 @@ describe("platform tour helpers", () => {
     expect(isTourTerminal(null)).toBe(false);
   });
 
+  it("audience filtering gives guests the auth walkthrough and hides it after sign-in", () => {
+    const guestSteps = selectVisibleTourSteps(DEFAULT_PLATFORM_TOUR_CONFIG.steps, true);
+    const memberSteps = selectVisibleTourSteps(DEFAULT_PLATFORM_TOUR_CONFIG.steps, false);
+    expect(guestSteps.some((entry) => entry.step.id === "auth-sign-in")).toBe(true);
+    expect(guestSteps.some((entry) => entry.step.id === "auth-register")).toBe(true);
+    expect(memberSteps.some((entry) => entry.step.id === "auth-sign-in")).toBe(false);
+    expect(memberSteps.some((entry) => entry.step.id === "auth-register")).toBe(false);
+    expect(memberSteps.some((entry) => entry.step.id === "profile-account")).toBe(true);
+    expect(guestSteps.some((entry) => entry.step.id === "profile-account")).toBe(false);
+    expect(guestSteps.length).toBeGreaterThan(0);
+    expect(memberSteps.length).toBeGreaterThan(0);
+    expect(isTourAudience("guest")).toBe(true);
+    expect(isTourAudience("admin")).toBe(false);
+  });
+
+  it("resume position prefers a step id and skips steps removed by auth", () => {
+    const guestSteps = selectVisibleTourSteps(DEFAULT_PLATFORM_TOUR_CONFIG.steps, true);
+    const memberSteps = selectVisibleTourSteps(DEFAULT_PLATFORM_TOUR_CONFIG.steps, false);
+    const authEntry = guestSteps.find((entry) => entry.step.id === "auth-register")!;
+    const stored: PlatformTourState = {
+      version: PLATFORM_TOUR_STATE_VERSION,
+      startedAt: 1,
+      stepIndex: authEntry.configIndex,
+      stepId: authEntry.step.id,
+    };
+    // Signed in after registration: the auth stop is gone; resume at the
+    // first still-visible step at/after it (share route), never out of range.
+    const resumed = resolveTourResumeIndex(memberSteps, stored);
+    expect(memberSteps[resumed]?.step.id).toBe("share-route");
+    expect(resolveTourResumeIndex(memberSteps, { ...stored, stepIndex: 999, stepId: undefined })).toBe(
+      memberSteps.length - 1,
+    );
+    expect(resolveTourResumeIndex([], stored)).toBe(0);
+  });
+
+  it("auto-start is limited to configured routes and step timeouts clamp", () => {
+    expect(isTourAutoStartRoute("/home", DEFAULT_PLATFORM_TOUR_CONFIG.autoStartRoutes)).toBe(true);
+    expect(isTourAutoStartRoute("/faq", DEFAULT_PLATFORM_TOUR_CONFIG.autoStartRoutes)).toBe(false);
+    expect(isTourAutoStartRoute("/login", DEFAULT_PLATFORM_TOUR_CONFIG.autoStartRoutes)).toBe(false);
+    const step = DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((s) => s.id === "composer-score");
+    expect(tourStepTimeoutMs(step, DEFAULT_PLATFORM_TOUR_CONFIG)).toBe(3500);
+    expect(tourStepTimeoutMs({ ...step!, timeoutMs: 99999 }, DEFAULT_PLATFORM_TOUR_CONFIG)).toBe(20000);
+    expect(tourStepTimeoutMs({ ...step!, timeoutMs: 1 }, DEFAULT_PLATFORM_TOUR_CONFIG)).toBe(1000);
+  });
+
+  it("ships guest/resume defaults and the composer + auth selector contract", () => {
+    expect(DEFAULT_PLATFORM_TOUR_CONFIG.guest.enabled).toBe(true);
+    expect(DEFAULT_PLATFORM_TOUR_CONFIG.resume.enabled).toBe(true);
+    expect(DEFAULT_PLATFORM_TOUR_CONFIG.resume.autoResume).toBe(false);
+    expect(DEFAULT_PLATFORM_TOUR_CONFIG.resume.actionLabel.trim().length).toBeGreaterThan(0);
+    const ids = DEFAULT_PLATFORM_TOUR_CONFIG.steps.map((s) => s.id);
+    for (const id of [
+      "auth-sign-in",
+      "auth-register",
+      "composer-locations",
+      "composer-locate",
+      "composer-find-on-map",
+      "composer-score",
+    ]) {
+      expect(ids).toContain(id);
+    }
+    expect(
+      DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((s) => s.id === "auth-sign-in")?.targetSelector,
+    ).toContain("login-email");
+    expect(
+      DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((s) => s.id === "composer-score")?.targetSelector,
+    ).toContain("route-score");
+  });
+
   it("normalize merges stored rows field-wise and survives corruption", () => {
     const fallback = DEFAULT_PLATFORM_TOUR_CONFIG;
     const merged = normalizePlatformTourConfig(
@@ -147,6 +224,23 @@ describe("platform tour helpers", () => {
       fallback,
     );
     expect(clamped.autoStartDelayMs).toBe(60000);
+
+    const tuned = normalizePlatformTourConfig(
+      {
+        autoStartRoutes: ["/home", "/faq", "not-a-path"],
+        guest: { enabled: false },
+        resume: { enabled: false, autoResume: true, promptDelayMs: 999999, message: "Paused" },
+        steps: [{ id: "x", route: "/home", title: "X", body: "Body", audience: "guest", timeoutMs: 2500 }],
+      },
+      fallback,
+    );
+    expect(tuned.autoStartRoutes).toEqual(["/home", "/faq"]);
+    expect(tuned.guest.enabled).toBe(false);
+    expect(tuned.resume.enabled).toBe(false);
+    expect(tuned.resume.autoResume).toBe(true);
+    expect(tuned.resume.promptDelayMs).toBe(60000);
+    expect(tuned.steps[0].audience).toBe("guest");
+    expect(tuned.steps[0].timeoutMs).toBe(2500);
 
     for (const garbage of [null, undefined, "string", 5, [], { steps: "nope" }]) {
       expect(normalizePlatformTourConfig(garbage, fallback)).toEqual(fallback);
@@ -196,6 +290,12 @@ describe("platform tour admin config", () => {
     expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, { steps: [{ id: "x", route: "/home", title: "Hi" }] })).toBeNull();
     expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, { steps: [{ id: "  ", route: "/home", title: "Hi" }] })).toMatch(/id/);
     expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, { steps: [{ id: "x", route: "/home", title: "Hi", placement: "side" }] })).toMatch(/placement/);
+    expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, { steps: [{ id: "x", route: "/home", title: "Hi", audience: "admin" }] })).toMatch(/audience/);
+    expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, { steps: [{ id: "x", route: "/home", title: "Hi", timeoutMs: 10 }] })).toMatch(/timeoutMs/);
+    expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, { autoStartRoutes: ["home"] })).toMatch(/autoStartRoutes/);
+    expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, { resume: { promptDelayMs: -1 } })).toMatch(/promptDelayMs/);
+    expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, { resume: { message: " " } })).toMatch(/message/);
+    expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, { guest: { enabled: "yes" } })).toMatch(/guest/);
     expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, 42)).toMatch(/object/);
     expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, null)).toBeNull();
     expect(validateAdminConfigValue(PLATFORM_TOUR_CONFIG_KEY, undefined)).toBeNull();
@@ -221,11 +321,34 @@ describe("platform tour registration (offline + api surface)", () => {
     expect(swSource).toContain('"/api/tour"');
   });
 
-  it("component mounts survive layout refactors", () => {
-    const layout = fs.readFileSync(path.join(process.cwd(), "app", "(dashboard)", "layout.tsx"), "utf8");
-    expect(layout).toContain("PlatformTour");
+  it("component mounts survive layout refactors (root-mounted for guests)", () => {
+    const dashboard = fs.readFileSync(path.join(process.cwd(), "app", "(dashboard)", "layout.tsx"), "utf8");
+    expect(dashboard).not.toContain("PlatformTour");
     const root = fs.readFileSync(path.join(process.cwd(), "app", "layout.tsx"), "utf8");
+    expect(root).toContain("PlatformTour");
     expect(root).toContain("ReviewNotice");
+    const faq = fs.readFileSync(path.join(process.cwd(), "app", "(public)", "faq", "FaqClient.tsx"), "utf8");
+    expect(faq).toContain("TourLaunchButton");
+    const footer = fs.readFileSync(path.join(process.cwd(), "app", "components", "ui", "AppFooter.tsx"), "utf8");
+    expect(footer).toContain("actionEvent");
+  });
+
+  it("tour targets exist in the surfaces the steps point at", () => {
+    const home = fs.readFileSync(path.join(process.cwd(), "app", "(dashboard)", "home", "page.tsx"), "utf8");
+    expect(home).toContain('aria-label="Share a route"');
+    const explore = fs.readFileSync(path.join(process.cwd(), "app", "(dashboard)", "explore", "page.tsx"), "utf8");
+    expect(explore).toContain('aria-label={locating ? "Locating…" : "Near me"}');
+    const login = fs.readFileSync(path.join(process.cwd(), "app", "(auth)", "login", "page.tsx"), "utf8");
+    expect(login).toContain('data-tour="login-email"');
+    const register = fs.readFileSync(path.join(process.cwd(), "app", "(auth)", "register", "page.tsx"), "utf8");
+    expect(register).toContain('data-tour="register-email"');
+    const composer = fs.readFileSync(
+      path.join(process.cwd(), "app", "components", "features", "posts", "ShareRouteModal.tsx"),
+      "utf8",
+    );
+    for (const token of ["route-origin", "route-locate", "route-find-on-map", "route-score"]) {
+      expect(composer).toContain(token);
+    }
   });
 
   it("profile quick links expose the tour replay action", () => {
@@ -241,7 +364,14 @@ describe("platform tour registration (offline + api surface)", () => {
 
 describe("platform tour FAQ (en + pidgin)", () => {
   const category = DEFAULT_FAQ_ITEMS.find((c) => c.id === "tour");
-  const TOUR_ITEM_IDS = ["tour-what-is-it", "tour-interact", "tour-replay-offline"];
+  const TOUR_ITEM_IDS = [
+    "tour-what-is-it",
+    "tour-interact",
+    "tour-replay-offline",
+    "tour-guests-auth",
+    "tour-composer",
+    "tour-resume",
+  ];
 
   it("ships a Platform Tour category with the contract items", () => {
     expect(category).toBeDefined();

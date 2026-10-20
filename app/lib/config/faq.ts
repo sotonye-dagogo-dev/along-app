@@ -313,7 +313,25 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "tour-replay-offline",
         question: "How do I replay the tour, and does it work offline?",
         answer:
-          "Open your profile's quick links and choose 'Replay platform tour'. The tour also runs offline: the guide content is stored on your device, and any stop whose page isn't available offline shows an honest note with a 'Skip this stop' option so you can keep going.",
+          "Open your profile's quick links and choose 'Replay platform tour', or use the tour button on the FAQ page or the footer link — those work for guests too. The tour also runs offline: the guide content is stored on your device, and any stop whose page isn't available offline shows an honest note with a 'Skip this stop' option so you can keep going.",
+      },
+      {
+        id: "tour-guests-auth",
+        question: "Can guests take the tour, and does it cover signing in?",
+        answer:
+          "Yes. Guests can start the tour from the FAQ page or the footer without an account, and the guest walkthrough includes sign-in and registration stops (email/password, Google, or continue as guest). If you sign in or register mid-tour, your place is saved and the tour can resume after the page reloads — signed-in users skip the auth stops automatically.",
+      },
+      {
+        id: "tour-composer",
+        question: "Does the tour cover posting a route?",
+        answer:
+          "Yes. Tap the highlighted 'Share a route' trigger and the tour waits while the composer opens. It then covers all three ways to enter a location (type to search, use my current location, find on map), explains how to set the exact stop on the map, and shows how the Route Quality Score grows so your post earns better trust and reach.",
+      },
+      {
+        id: "tour-resume",
+        question: "What happens if I refresh or leave the app during the tour?",
+        answer:
+          "Your progress is saved on your device. After a refresh or relaunch, a small 'Tour paused' prompt offers to pick up where you left off — choose Resume tour, or Not now to keep it for later. The tour never covers the app: you can still use the theme toggle and every highlighted control while it is open.",
       },
     ],
   },
@@ -567,6 +585,21 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "tour-replay-offline": {
     question: "How I go replay di tour, and e dey work offline?",
     answer:
-      "Open di quick links for your profile come choose 'Replay platform tour'. Di tour dey run offline too: di guide content dey store for your device, and any stop wey page no dey available offline go show you honest note with 'Skip dis stop' option so you fit continue.",
+      "Open di quick links for your profile come choose 'Replay platform tour', or use di tour button for FAQ page or di footer link — dem dey work for guests too. Di tour dey run offline too: di guide content dey store for your device, and any stop wey page no dey available offline go show you honest note with 'Skip dis stop' option so you fit continue.",
+  },
+  "tour-guests-auth": {
+    question: "Guests fit take di tour, and e dey cover sign in?",
+    answer:
+      "Yes. Guests fit start di tour from FAQ page or footer without account, and di guest walkthrough include sign-in and registration stops (email/password, Google, or continue as guest). If you sign in or register mid-tour, we go save your place and di tour fit resume after di page reload — signed-in users go skip di auth stops automatically.",
+  },
+  "tour-composer": {
+    question: "Di tour dey cover how to post route?",
+    answer:
+      "Yes. Tap di highlighted 'Share a route' trigger and di tour go wait while di composer open. E go then cover all three ways to enter location (type to search, use my current location, find on map), explain how to set di exact stop for map, and show how Route Quality Score dey grow so your post go earn better trust and reach.",
+  },
+  "tour-resume": {
+    question: "Wetin happen if I refresh or leave di app during di tour?",
+    answer:
+      "Your progress dey save for your device. After refresh or relaunch, small 'Tour paused' prompt go offer make you continue from where you stop — choose Resume tour, or Not now to keep am for later. Di tour no dey cover di app: you fit still use di theme toggle and every highlighted control while e open.",
   },
 };
