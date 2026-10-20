@@ -16,6 +16,7 @@ import { DEFAULT_EMAIL_CONFIG, DEFAULT_EMAIL_TEMPLATES } from '../app/lib/config
 import { DEFAULT_VALIDITY_CONFIG } from '../app/lib/config/validityConfig';
 import { DEFAULT_FEED_CONFIG } from '../app/lib/config/feedAlgorithm';
 import { DEFAULT_EARLY_ADOPTER_CONFIG, EARLY_ADOPTER_CONFIG_KEY } from '../app/lib/config/earlyAdopter';
+import { DEFAULT_PLATFORM_TOUR_CONFIG, PLATFORM_TOUR_CONFIG_KEY } from '../app/lib/config/platformTour';
 import type { VehicleType } from '../app/lib/types';
 
 // Type definitions for seed data
@@ -88,6 +89,16 @@ async function seedSiteConfig(): Promise<void> {
         { key: 'email', value: DEFAULT_EMAIL_CONFIG },
         { key: 'emailTemplates', value: DEFAULT_EMAIL_TEMPLATES },
         { key: EARLY_ADOPTER_CONFIG_KEY, value: DEFAULT_EARLY_ADOPTER_CONFIG },
+        {
+            // Operational subset only — never steps/step content (shipped
+            // bundle owns those), matching ADMIN_SIMPLE_CONFIG_CARDS fields.
+            key: PLATFORM_TOUR_CONFIG_KEY,
+            value: {
+                enabled: DEFAULT_PLATFORM_TOUR_CONFIG.enabled,
+                autoStart: DEFAULT_PLATFORM_TOUR_CONFIG.autoStart,
+                autoStartDelayMs: DEFAULT_PLATFORM_TOUR_CONFIG.autoStartDelayMs,
+            },
+        },
     ];
 
     for (const entry of entries) {

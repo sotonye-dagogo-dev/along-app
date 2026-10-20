@@ -1078,3 +1078,12 @@ Sprint 80 added `Notification.metadata Json?`; `npx prisma generate` failed with
 **Apply When:** Touching `prisma/schema.prisma`; adding columns/models the app reads or writes; CI setups where generate runs later than typecheck.
 **Supersedes:** None
 **Superseded by:** None
+
+## Write the gate tests as a CONTRAST matrix against the exported pure helper — not against a restated rule
+
+**Context:**
+Sprint 82's review-notice gate: the first test draft restated the intended rules from memory (input shape, reason strings, evaluation ORDER) and mostly failed against the real implementation — the pure helper owns an exact order (done > dismissed > account-age > review-probe), numeric-only state shaping (`1.5` is accepted, words are not), and "" → empty-object (not null) garbage handling. Rewriting the tests as a direct characterization of `shouldShowReviewNotice`/`readReviewNoticeState` turned a suite into real regression armor in minutes.
+**What We Learned:** When the deliverable is a decision matrix, the test is a CHARACTERIZATION of the exported pure helper (all inputs and actions, boundary stamps, failure paths), not a restatement of a rules paragraph — draft only after reading the implementation, or extract the decision into the pure helper FIRST so both component and test consume one truth. Same class as "config integrity tests": assert the exported config values, not your memory of them.
+**Apply When:** Testing any gate/visibility matrix, validator, or precedence chain; fixing a flaky/leaky component-internal decision; reviewing a PR whose tests read like requirement prose instead of behavior probes.
+**Supersedes:** None
+**Superseded by:** None

@@ -72,6 +72,9 @@ const CACHEABLE_API = [
   "/api/reviews",
   // Sanitized vector styles (same-origin proxy, long-lived cache headers).
   "/api/maps/style",
+  // Platform-tour config (GET-only; the tour runs offline from bundled
+  // defaults, this cached copy covers admin overrides while offline).
+  "/api/tour",
 ];
 const MAP_HOSTS = [
   "tiles.openfreemap.org",

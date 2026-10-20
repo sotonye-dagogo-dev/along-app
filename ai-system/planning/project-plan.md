@@ -2,10 +2,18 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
+> - last-updated-by: execute-feature 2026-10-20 (Sprint 82: platform tour + review notice)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 82 — Platform tour + review notice (2026-10-20, execute-feature)
+
+- [x] Platform tour [Sprint 82]: config/metadata-driven interactive spotlight wizard (5 steps, 3 interactive, stable selectors, spot-ring + scrim, mascot w/ app-logo fallback, prev/next/skip + "Step n of m", Esc), thank-you end card with CTA, resume/auto-start-once, replay via profile quick-link `kind: "action"` → `TOUR_START_EVENT`; offline-first (step content in code config; `/api/tour` serves admin override SWR-cached + registered in sw.js/PWA prefixes/apiRegistry); admin `platformTourConfig` operational-knobs simple card + central validator + seed entry
+- [x] Review notice [Sprint 82]: dismissible floating quick-review prompt on a dedicated `reviewNoticeBottomPx` lane; pure gate matrix (authed, ≥3-day account age, no review, 7-day dismissal TTL, done-forever flag, fail-safe unknown-probe), `/api/reviews?mine=1` best-effort probe + POST via `useRequireOnline`; mounted root-layout
+- [x] Shared work: FAQ `tour` category (3 items en+pcm) + `review-prompt` item; en/pcm `tour.*`/`reviewNotice.*` keys (27); `REQUIRED_KEYS` extended; NEW `platformTour.test.ts` (18) + `reviewNotice.test.ts` (16); full gate green in-runner (tsc 0, 116/116 suites 1216/1216, lint clean touched, build clean)
+
+---
 
 ## Sprint 80 — Duplicate-proof bug assignment + admin notification deep links + auth session persistence (2026-10-19, execute-feature)
 

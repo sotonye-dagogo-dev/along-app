@@ -273,3 +273,27 @@ export { ROUTE_TAG_CONFIG, parseTagInput } from "./routeTags";
 export type { RouteTagConfig } from "./routeTags";
 export { SAFE_REFRESH_CONFIG } from "./safeRefresh";
 export type { SafeRefreshConfig } from "./safeRefresh";
+export {
+  DEFAULT_PLATFORM_TOUR_CONFIG,
+  PLATFORM_TOUR_CONFIG_KEY,
+  PLATFORM_TOUR_STATE_VERSION,
+  PLATFORM_TOUR_MANAGED_FIELDS,
+  TOUR_START_EVENT,
+  coerceStepIndex,
+  isLastStep,
+  isTourPlacement,
+  isTourTerminal,
+  normalizePlatformTourConfig,
+  readTourStateShape,
+  validatePlatformTourConfigValue,
+} from "./platformTour";
+export type { PlatformTourConfig, TourStep, TourStepPlacement } from "./platformTour";
+export {
+  REVIEW_NOTICE_CONFIG,
+  accountAgeMsFromCreatedAt,
+  isFlagActive,
+  readReviewNoticeState,
+  reviewNoticeStorageKey,
+  shouldShowReviewNotice,
+} from "./reviewNotice";
+export type { ReviewNoticeGateInput, ReviewNoticeGateReason, ReviewNoticeState } from "./reviewNotice";

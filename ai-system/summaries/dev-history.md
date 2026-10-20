@@ -1818,3 +1818,22 @@ Fixed a timing-dependent bug where the home feed could remain on its loading ske
 **Files:**
 - Edited: `app/(dashboard)/home/page.tsx`, ai-system docs
 - Created: `app/__tests__/config/feedFirstLoad.test.ts`
+
+## 2026-10-20 — Sprint 82: Platform tour + review notice
+
+**Summary:**
+Shipped two non-breaking Issue-#25 features end to end: a config/metadata-driven interactive platform tour (spotlight overlay wizard across dashboard pages, replayable, offline-aware) and a dismissible floating review prompt with an embedded quick form, plus the shared FAQ/i18n/PWA/admin work they ride on. Tree-shaking-safe design: all gate/logic lives in pure config-module helpers so components stay dumb and the behavior matrices are directly unit-testable.
+
+**Completed:**
+- Platform tour: `platformTour.ts` config (5 steps, 3 interactive, stable selectors, spot-ring knobs, end card, offline copy, localStorage state), guest `/api/tour` GET serving the SiteConfig-merged config (SWR-cached and registered in sw.js/PWA prefixes/apiRegistry), `PlatformTour.tsx` spot-ring + tooltip wizard with interactive steps, offline blocked phase, resume/auto-start/replay, mounts + profile quick-link `action` kind replay entry.
+- Review notice: `reviewNotice.ts` pure gate matrix (3-day age, 7-day dismiss TTL, done flag, fail-safe has-review probe), `reviewNoticeBottomPx` lane, `ReviewNotice.tsx` floating collapse-to-pill card reusing `/api/reviews` + `reviews.*` i18n, root-layout mount.
+- Docs: en+pcm FAQ (new `tour` category, `review-prompt`), 27 new i18n keys, admin `platformTourConfig` simple card + validator branch + seed entry.
+- Tests: `platformTour.test.ts` (18) + `reviewNotice.test.ts` (16); suites 116, tests 1216, all green with the full QA gate.
+
+**Key Changes:**
+- New precedent: operational knobs in SiteConfig + `ADMIN_SIMPLE_CONFIG_CARDS`, content in code config — the tour never depends on the network for its step list, which is what makes it PWA-offline usable.
+- New floating-UI lane `reviewNoticeBottomPx` keeps stacked notices collision-free.
+
+**Files:**
+- Created: `app/lib/config/platformTour.ts`, `app/lib/config/reviewNotice.ts`, `app/api/tour/route.ts`, `app/components/features/tour/PlatformTour.tsx`, `app/components/features/reviews/ReviewNotice.tsx`, `app/__tests__/config/platformTour.test.ts`, `app/__tests__/config/reviewNotice.test.ts`
+- Edited: `app/lib/config/{floatingUi,admin,index,profileQuickLinks,pwa,apiRegistry}.ts`, `app/(dashboard)/{layout.tsx,profile/page.tsx}`, `app/layout.tsx`, `app/lib/config/faq.ts`, `public/locales/{en,pcm}.json`, `app/__tests__/config/locales.test.ts`, `prisma/seed.ts`, `public/sw.js`

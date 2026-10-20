@@ -2,11 +2,29 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 81: feed first-load hydration fix)
-> - last-synced: 2026-10-20 (Sprint 81)
+> - last-updated-by: execute-feature 2026-10-20 (Sprint 82: platform tour + review notice)
+> - last-synced: 2026-10-20 (Sprint 82)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 82 — Platform tour + review notice (2026-10-20, execute-feature) [L]
+
+> **Section summary:** Issue #25 enhancement directive, two non-breaking features. (1) Config/metadata-driven platform tour: spotlight overlay wizard routed across dashboard pages, interactive steps, offline-aware, replayable from profile quick links, auto-start-once, admin knob card; step copy + step list stay in code config with SiteConfig merged field-wise so the tour works offline. (2) Dismissible floating review prompt gated by a pure matrix (3-day account age, 7-day dismiss TTL, done flag, has-review probe fails-safe to hidden). FAQs (en + pcm) in new `tour` category + `review-prompt`; i18n `tour.*`/`reviewNotice.*` chrome keys. QA full in-runner: `npm install` ok, tsc 0 errors, jest 116/116 suites 1216/1216 tests, next lint clean on touched files, full `next build` clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [M]  | NEW `app/lib/config/platformTour.ts` — `PLATFORM_TOUR_CONFIG_KEY`/`TOUR_START_EVENT`/`PLATFORM_TOUR_STATE_VERSION` + `DEFAULT_PLATFORM_TOUR_CONFIG` (5 steps across /home /explore /profile /notifications, 3 interactive with stable selectors `[aria-label="Share a route"]` / `[aria-label="Near me"]` / `#account`, spot-ring display knobs, localStorage `along-tour-state-v1`, thank-you end card, offline copy, mascot w/ app-logo fallback) + pure helpers (`normalizePlatformTourConfig` clamped field-wise merge, `validatePlatformTourConfigValue`, `coerceStepIndex`, `isLastStep`, `isTourTerminal`, `readTourStateShape`) | [x] |
+| [M]  | NEW `app/api/tour/route.ts` — guest GET returning the SiteConfig field-wise-merged tour config (`public, s-maxage=300, stale-while-revalidate=600`); registered cacheable end-to-end (`/api/tour` in sw.js CACHEABLE_API + PWA_CACHEABLE_API_PREFIXES + apiRegistry `platformTour`) | [x] |
+| [M]  | NEW `app/components/features/tour/PlatformTour.tsx` — spotlight ring w/ 9999px scrim, tooltip card (mascot Image w/ AppLogo fallback, i18n step copy w/ code fallback, prev/next/skip, "Step n of m", Esc), interactive steps (capture-click detection → interacted phase w/ Continue/End), offline blocked phase (honest note + Skip-this-stop/End), rAF remeasure on scroll/resize, config fetch + normalize, resume interrupted tour / auto-start once / CustomEvent replay | [x] |
+| [S]  | Mounts — `<PlatformTour />` in `app/(dashboard)/layout.tsx`; profile quick links += `kind: "action"` variant + "tour-replay" entry dispatching `TOUR_START_EVENT`; profile page renders the action-kind button | [x] |
+| [M]  | NEW `app/lib/config/reviewNotice.ts` — pure gate matrix (`shouldShowReviewNotice` reasons eligible/disabled/not-authed/not-matured/unknown-account-age/dismissed/done/already-reviewed/unknown-review-status; done > dismissed > age > review-probe order), `accountAgeMsFromCreatedAt`, `readReviewNoticeState`, `isFlagActive`, `reviewNoticeStorageKey` (sanitized per-user); `floatingUi.ts` += `lanes.reviewNoticeBottomPx` (356, above transient 228) | [x] |
+| [M]  | NEW `app/components/features/reviews/ReviewNotice.tsx` — mount-delay-gated floating card: collapse-to-pill expand/collapse, 1–5 star radiogroup + textarea (`REVIEWS_CONFIG.maxCommentLength`), POST `/api/reviews` via `useRequireOnline` (`offlineFriendlyError` + `toastService`), dismiss re-asks after TTL, done never re-shows; `GET /api/reviews?mine=1` probe fails-safe to hidden; mounted in `app/layout.tsx` + features/reviews barrel | [x] |
+| [S]  | FAQ — new `tour` category (tour-what-is-it / tour-interact / tour-replay-offline) + `review-prompt` item in `reviews`, en + FAQ_PCM; locales en/pcm `tour.*` (20 keys) + `reviewNotice.*` (7 keys); `locales.test.ts` REQUIRED_KEYS extended | [x] |
+| [S]  | Admin — `platformTourConfig` in `ADMIN_CONFIG_DEFAULTS` (operational knobs only) + central validator branch + ADMIN_SIMPLE_CONFIG_CARDS no-JSON card (enabled/autoStart/autoStartDelayMs); `prisma/seed.ts` seeds the same operational subset (never step content) | [x] |
+| [S]  | Tests — NEW `app/__tests__/config/platformTour.test.ts` (18: config integrity incl. routes/selectors/placements, coerce/terminal/state shaping, normalize+clamp matrix, admin default/card/validator/merge, cacheable registration + sw.js sync, layout mounts, quick-link replay action, FAQ en+pcm) + NEW `app/__tests__/config/reviewNotice.test.ts` (16: gate matrix incl. TTL edge + fail-safe probe, storage key sanitization, flag/age helpers, lane ordering, admin-doc-only surface, FAQ en+pcm, layout mount) | [x] |
+
+---
 
 ## Sprint 81 — Feed first-load hydration: never strand the skeleton (2026-10-20, execute-feature)
 
