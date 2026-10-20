@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: advisory-lock serialisation for read-then-write races; refresh needs its own rate bucket; regenerate prisma client after schema edits)
-> - last-verified-against-code: 2026-10-19 (Sprint 80 in-runner QA: tsc 0, jest 113/113 suites 1178/1178, build clean)
+> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: overlay scrims must be click-through; resume progress by step identity not index)
+> - last-verified-against-code: 2026-10-20 (Sprint 83 in-runner QA: tsc 0, jest 116/116 suites 1221/1221, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -1085,5 +1085,23 @@ Sprint 80 added `Notification.metadata Json?`; `npx prisma generate` failed with
 Sprint 82's review-notice gate: the first test draft restated the intended rules from memory (input shape, reason strings, evaluation ORDER) and mostly failed against the real implementation — the pure helper owns an exact order (done > dismissed > account-age > review-probe), numeric-only state shaping (`1.5` is accepted, words are not), and "" → empty-object (not null) garbage handling. Rewriting the tests as a direct characterization of `shouldShowReviewNotice`/`readReviewNoticeState` turned a suite into real regression armor in minutes.
 **What We Learned:** When the deliverable is a decision matrix, the test is a CHARACTERIZATION of the exported pure helper (all inputs and actions, boundary stamps, failure paths), not a restatement of a rules paragraph — draft only after reading the implementation, or extract the decision into the pure helper FIRST so both component and test consume one truth. Same class as "config integrity tests": assert the exported config values, not your memory of them.
 **Apply When:** Testing any gate/visibility matrix, validator, or precedence chain; fixing a flaky/leaky component-internal decision; reviewing a PR whose tests read like requirement prose instead of behavior probes.
+**Supersedes:** None
+**Superseded by:** None
+
+## A full-screen overlay is a click shield unless it says otherwise
+
+**Context:**
+Sprint 83's platform tour: the spotlight wizard mounted a transparent `fixed inset-0 z-[60]` container so it could draw the scrim/dimming. The spotlighted page looked usable, but every click outside the tooltip (theme toggle, "Share a route" trigger, modal controls) hit the overlay instead of the app — reported as "pressing share route did nothing".
+**What We Learned:** Any guided-overlay root must be `pointer-events-none`; only the interactive cards (tooltip, resume/offline/end prompt) should set `pointer-events-auto`. Drawing a scrim (box-shadow/backdrop) never requires the container to receive pointer events, and a click-through scrim is also what lets real page handlers fire during interactive steps. If an overlay must block the page, say so explicitly at the container and make the affordance visually obvious — never let transparency imply click-through.
+**Apply When:** Adding spotlight tours, coach marks, modal backdrops, or any fixed full-viewport layer that is not meant to be the sole interaction target; debugging "clicks do nothing but only sometimes" reports.
+**Supersedes:** None
+**Superseded by:** None
+
+## Index the user's PROGRESS by identity, not by position, when the list can change under it
+
+**Context:**
+Sprint 83's guest tour: the step list is audience-filtered, so a guest walking `welcome → auth-sign-in → auth-register → share-route` loses two steps the moment they finish registration (and the page reloads). A stored index would land on the wrong stop — or past the end — after the list shrank.
+**What We Learned:** Persist a stable step `id` alongside the positional index, resolve the id first, and on a miss pick the first still-visible step at or after the stored config index (then clamp). The same rule applies to persisted cursors/tabs/onboarding checklists whenever visibility depends on permissions, feature flags, or account state. Leave the index in the blob for forward-compat/analytics, but never make it the sole resume key.
+**Apply When:** Persisting progress through onboarding/wizards/multi-step forms where steps can be hidden per role/plan/audience; any saved cursor over a filtered list.
 **Supersedes:** None
 **Superseded by:** None

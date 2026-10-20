@@ -1837,3 +1837,24 @@ Shipped two non-breaking Issue-#25 features end to end: a config/metadata-driven
 **Files:**
 - Created: `app/lib/config/platformTour.ts`, `app/lib/config/reviewNotice.ts`, `app/api/tour/route.ts`, `app/components/features/tour/PlatformTour.tsx`, `app/components/features/reviews/ReviewNotice.tsx`, `app/__tests__/config/platformTour.test.ts`, `app/__tests__/config/reviewNotice.test.ts`
 - Edited: `app/lib/config/{floatingUi,admin,index,profileQuickLinks,pwa,apiRegistry}.ts`, `app/(dashboard)/{layout.tsx,profile/page.tsx}`, `app/layout.tsx`, `app/lib/config/faq.ts`, `public/locales/{en,pcm}.json`, `app/__tests__/config/locales.test.ts`, `prisma/seed.ts`, `public/sw.js`
+
+## 2026-10-20 — Sprint 83: Platform tour enhancements
+
+**Summary:**
+Extended the shipped platform tour without changing its config-driven architecture: guests now get the tour (including a sign-in/register walkthrough) from the root layout, the spotlight scrim is click-through, the route composer and explore mobile bar are covered, and interrupted tours resume through an explicit top-center prompt instead of a silent hijack.
+
+**Completed:**
+- Guest + auth journey: `PlatformTour` moved from the dashboard layout to `app/layout.tsx`; steps carry an `audience` (`all`/`guest`/`authenticated`), added `auth-sign-in`/`auth-register` anchored on login/register email inputs, and `stepId` persists so a full-page registration/sign-in reload resumes at the first still-visible step (`resolveTourResumeIndex`).
+- Non-blocking spotlight: outer overlay is `pointer-events-none` with `pointer-events-auto` on tooltip/resume/offline/end cards, so theme toggle, share trigger, modal controls and normal page actions keep working.
+- Composer + explore: `data-tour` anchors on the first origin input, locate-me, find-on-map and route-score in `ShareRouteModal`, per-step `timeoutMs`; persistent mobile "Near me" button on `/explore`.
+- Entry points + persistence: `TourLaunchButton` on FAQ, config-driven footer `actionEvent` link, auto-start only on `autoStartRoutes` (default `/home`), top-center resume prompt (`resume.autoResume` false), and `bootstrapConfigRef` so config-fetch resolution no longer cancels the start timer.
+- Docs/copy: en+pcm auth/composer/resume/takeTour keys (+17, 331 total) and FAQ guests-auth/composer/resume (en+pcm); tests extended for audience/resume/auto-start/timeout/normalize/validate and anchor/mount/trigger source assertions.
+- QA full in-runner: `npx tsc --noEmit` 0 errors; jest 116/116 suites 1221/1221 tests; lint clean on touched files; `next build` clean (107 static pages).
+
+**Key Changes:**
+- Audience filtering is the mechanism that makes one shipped step list valid for both guests and signed-in users; `stepId` (not just an index) is what survives the auth transition.
+- Interactive steps must not capture the pointer globally — a `pointer-events-none` scrim is now the standing rule for any guided overlay.
+
+**Files:**
+- Created: `app/components/features/tour/TourLaunchButton.tsx`
+- Edited: `app/lib/config/{platformTour,faq,footer}.ts`, `app/components/features/tour/PlatformTour.tsx`, `app/components/features/posts/ShareRouteModal.tsx`, `app/components/ui/AppFooter.tsx`, `app/(public)/faq/FaqClient.tsx`, `app/(auth)/{login,register}/page.tsx`, `app/(dashboard)/{layout.tsx,explore/page.tsx}`, `app/layout.tsx`, `public/locales/{en,pcm}.json`, `app/__tests__/config/{platformTour,locales}.test.ts`

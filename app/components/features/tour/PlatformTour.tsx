@@ -12,16 +12,22 @@ import {
   TOUR_START_EVENT,
   coerceStepIndex,
   isLastStep,
+  isTourAutoStartRoute,
   isTourPlacement,
   isTourTerminal,
   normalizePlatformTourConfig,
   readTourStateShape,
+  resolveTourResumeIndex,
+  selectVisibleTourSteps,
+  tourStepTimeoutMs,
   type PlatformTourConfig,
   type TourStep,
   type TourStepPlacement,
+  type VisibleTourStep,
 } from "@/app/lib/config/platformTour";
 import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
 import { useTranslation } from "@/app/providers/I18nProvider";
+import { useAuth } from "@/app/hooks/useAuth";
 
 /** One-past-viewport scrim — intentionally dark in both themes (modal parity). */
 const SCRIM_SHADOW = "0 0 0 9999px rgba(10, 10, 10, 0.62)";
@@ -133,6 +139,7 @@ function readState(config: PlatformTourConfig) {
 
 interface TourStatePatch {
   stepIndex?: number;
+  stepId?: string | null;
   startedAt?: number;
   completedAt?: number | null;
   dismissedAt?: number | null;
@@ -145,6 +152,7 @@ function writeState(config: PlatformTourConfig, patch: TourStatePatch) {
       version: PLATFORM_TOUR_STATE_VERSION,
       startedAt: current?.startedAt ?? Date.now(),
       stepIndex: current?.stepIndex ?? 0,
+      stepId: current?.stepId,
       completedAt: current?.completedAt,
       dismissedAt: current?.dismissedAt,
       ...patch,
@@ -153,16 +161,28 @@ function writeState(config: PlatformTourConfig, patch: TourStatePatch) {
       delete (next as Record<string, unknown>).completedAt;
       delete (next as Record<string, unknown>).dismissedAt;
     }
+    if (patch.stepId === null) delete (next as Record<string, unknown>).stepId;
     window.localStorage.setItem(config.storage.stateKey, JSON.stringify(next));
   } catch {
     // Storage unavailable — the tour still runs for this session.
   }
 }
 
+/** Write the current visible step's full-config index + stable id. */
+function persistStep(config: PlatformTourConfig, entry: VisibleTourStep | undefined, visibleIndex: number) {
+  writeState(config, {
+    stepIndex: entry?.configIndex ?? Math.max(visibleIndex, 0),
+    stepId: entry?.step.id ?? null,
+    completedAt: null,
+    dismissedAt: null,
+  });
+}
+
 export default function PlatformTour() {
   const router = useRouter();
   const { t } = useTranslation();
   const { isOnline } = useOnlineStatus();
+  const { isGuest, isLoading: authLoading } = useAuth();
   const [config, setConfig] = useState<PlatformTourConfig>(DEFAULT_PLATFORM_TOUR_CONFIG);
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -170,14 +190,20 @@ export default function PlatformTour() {
   const [spot, setSpot] = useState<SpotRect | null>(null);
   const [endCard, setEndCard] = useState(false);
   const [mascotFailed, setMascotFailed] = useState(false);
+  const [resumePrompt, setResumePrompt] = useState<{ index: number } | null>(null);
   const bootstrapRef = useRef(false);
   const primaryButtonRef = useRef<HTMLButtonElement | null>(null);
   const targetRef = useRef<HTMLElement | null>(null);
   const findTokenRef = useRef(0);
 
-  const stepCount = config.steps.length;
-  const enabled = config.enabled && stepCount > 0;
-  const step: TourStep | undefined = enabled ? config.steps[stepIndex] : undefined;
+  const visibleSteps = React.useMemo(
+    () => selectVisibleTourSteps(config.steps, isGuest),
+    [config.steps, isGuest],
+  );
+  const stepCount = visibleSteps.length;
+  const enabled = config.enabled && stepCount > 0 && (!isGuest || config.guest.enabled);
+  const currentEntry: VisibleTourStep | undefined = enabled ? visibleSteps[stepIndex] : undefined;
+  const step: TourStep | undefined = currentEntry?.step;
   const centered = !step?.targetSelector;
 
   const tt = useCallback((key: string, fallback: string) => ttf(t, key, fallback), [t]);
@@ -199,36 +225,67 @@ export default function PlatformTour() {
     };
   }, []);
 
-  // Bootstrap: resume an interrupted tour, else auto-start once, else wait
-  // for the replay event (profile quick link).
-  useEffect(() => {
-    if (!enabled || bootstrapRef.current) return;
-    bootstrapRef.current = true;
-    if (isTourTerminal(readState(config))) return;
-    const resumed = readState(config);
-    const delay = resumed ? 400 : Math.max(config.autoStartDelayMs, 0);
-    if (!resumed && !config.autoStart) return;
-    const timer = window.setTimeout(() => {
-      setActive(true);
-      setStepIndex(coerceStepIndex(resumed?.stepIndex ?? 0, stepCount));
-      writeState(config, { stepIndex: resumed?.stepIndex ?? 0, completedAt: null, dismissedAt: null });
-    }, delay);
-    return () => window.clearTimeout(timer);
-  }, [enabled, stepCount, config]);
-
-  // Replay trigger (CustomEvent from profile quick links).
-  useEffect(() => {
-    if (!enabled) return;
-    const onStart = () => {
+  const beginTour = useCallback(
+    (visibleIndex: number) => {
+      const index = coerceStepIndex(visibleIndex, visibleSteps.length);
       setActive(true);
       setEndCard(false);
+      setResumePrompt(null);
       setPhase("finding");
-      setStepIndex(0);
-      writeState(config, { stepIndex: 0, completedAt: null, dismissedAt: null });
-    };
+      setStepIndex(index);
+      persistStep(config, visibleSteps[index], index);
+    },
+    [config, visibleSteps],
+  );
+
+  // Bootstrap reads the latest config/steps without re-arming on every
+  // config fetch (the served copy resolving mid-delay used to cancel the
+  // pending auto-start timer).
+  const bootstrapConfigRef = useRef({ config, visibleSteps, beginTour });
+  bootstrapConfigRef.current = { config, visibleSteps, beginTour };
+
+  // Bootstrap: resume an interrupted tour, else auto-start once on an
+  // allowed route, else wait for the replay event (profile/FAQ triggers).
+  useEffect(() => {
+    if (!enabled || bootstrapRef.current || authLoading) return;
+    bootstrapRef.current = true;
+    const latest = bootstrapConfigRef.current;
+    const stored = readState(latest.config);
+    if (isTourTerminal(stored)) return;
+
+    let timer = 0;
+    if (stored) {
+      // Interrupted run (refresh/relaunch/full-page auth redirect). Never
+      // hijack the screen: offer a small resume prompt, or honour the
+      // configured silent auto-resume.
+      const index = resolveTourResumeIndex(latest.visibleSteps, stored);
+      const delay = Math.max(latest.config.resume.promptDelayMs, 0);
+      if (latest.config.resume.autoResume) {
+        timer = window.setTimeout(() => latest.beginTour(index), delay);
+      } else if (latest.config.resume.enabled) {
+        timer = window.setTimeout(() => setResumePrompt({ index }), delay);
+      } else {
+        timer = window.setTimeout(() => latest.beginTour(index), Math.min(delay, 400));
+      }
+      return () => window.clearTimeout(timer);
+    }
+
+    if (!latest.config.autoStart) return;
+    if (!isTourAutoStartRoute(window.location.pathname, latest.config.autoStartRoutes)) return;
+    timer = window.setTimeout(
+      () => latest.beginTour(0),
+      Math.max(latest.config.autoStartDelayMs, 0),
+    );
+    return () => window.clearTimeout(timer);
+  }, [enabled, authLoading]);
+
+  // Replay trigger (profile quick links, FAQ/footer launch buttons).
+  useEffect(() => {
+    if (!enabled) return;
+    const onStart = () => beginTour(0);
     window.addEventListener(TOUR_START_EVENT, onStart);
     return () => window.removeEventListener(TOUR_START_EVENT, onStart);
-  }, [enabled, config]);
+  }, [enabled, beginTour]);
 
   const resetVisuals = useCallback(() => {
     setSpot(null);
@@ -247,6 +304,7 @@ export default function PlatformTour() {
   const closeTour = useCallback(() => {
     setActive(false);
     setEndCard(false);
+    setResumePrompt(null);
     resetVisuals();
   }, [resetVisuals]);
 
@@ -269,19 +327,19 @@ export default function PlatformTour() {
       return;
     }
     const nextIndex = stepIndex + 1;
-    writeState(config, { stepIndex: nextIndex });
+    persistStep(config, visibleSteps[nextIndex], nextIndex);
     setStepIndex(nextIndex);
     resetVisuals();
-  }, [step, stepIndex, stepCount, config, finish, resetVisuals]);
+  }, [step, stepIndex, stepCount, config, visibleSteps, finish, resetVisuals]);
 
   const goPrev = useCallback(() => {
     if (stepIndex <= 0) return;
     const prevIndex = stepIndex - 1;
-    writeState(config, { stepIndex: prevIndex });
+    persistStep(config, visibleSteps[prevIndex], prevIndex);
     setStepIndex(prevIndex);
     setEndCard(false);
     resetVisuals();
-  }, [stepIndex, config, resetVisuals]);
+  }, [stepIndex, config, visibleSteps, resetVisuals]);
 
   // Step activation: navigate when needed, poll for the first visible
   // target, then spotlight it. Missing target degrades by connectivity:
@@ -289,20 +347,34 @@ export default function PlatformTour() {
   useEffect(() => {
     if (!active || !enabled || endCard || !step) return;
     const token = (findTokenRef.current += 1);
+    const onRoute = () => window.location.pathname.startsWith(step.route);
     if (!step.targetSelector?.trim()) {
-      if (!window.location.pathname.startsWith(step.route)) router.push(step.route);
+      if (!onRoute()) router.push(step.route);
       setPhase("ready");
       return;
     }
-    let navigated = false;
-    if (!window.location.pathname.startsWith(step.route)) {
-      navigated = true;
-      router.push(step.route);
-    }
+    const navigated = !onRoute();
+    if (navigated) router.push(step.route);
     const startedAt = Date.now();
+    const timeoutMs = tourStepTimeoutMs(step, config);
     setPhase("finding");
     const tick = () => {
       if (token !== findTokenRef.current) return;
+      // Never spotlight a look-alike control on the previous page while the
+      // router transition is still in flight.
+      if (!onRoute()) {
+        if (Date.now() - startedAt >= timeoutMs) {
+          if (isOnline) {
+            if (isLastStep(stepIndex, stepCount)) finish();
+            else goNext();
+          } else {
+            setPhase("offline-blocked");
+          }
+          return;
+        }
+        window.setTimeout(tick, 140);
+        return;
+      }
       const target = findStepTarget(step.targetSelector);
       if (target) {
         targetRef.current = target;
@@ -310,7 +382,7 @@ export default function PlatformTour() {
         setPhase("ready");
         return;
       }
-      if (Date.now() - startedAt >= config.display.targetTimeoutMs) {
+      if (Date.now() - startedAt >= timeoutMs) {
         if (isOnline) {
           // Target never showed up (page failed to load, layout drifted):
           // keep the tour usable — advance politely.
@@ -395,16 +467,23 @@ export default function PlatformTour() {
     return () => document.removeEventListener("keydown", onKey);
   }, [active, skip]);
 
-  // Move focus to the primary control after each step switch.
+  // Move focus to the primary control after each step switch / resume ask.
   useEffect(() => {
-    if (!active || phase === "finding") return;
+    if ((!active && !resumePrompt) || (active && phase === "finding")) return;
     primaryButtonRef.current?.focus({ preventScroll: true });
-  }, [active, stepIndex, phase, endCard]);
+  }, [active, resumePrompt, stepIndex, phase, endCard]);
 
-  if (!enabled || !active) return null;
+  // A live sign-in/out can shrink the audience-filtered list mid-tour.
+  useEffect(() => {
+    if (!active || stepCount === 0) return;
+    if (stepIndex > stepCount - 1) setStepIndex(stepCount - 1);
+  }, [active, stepCount, stepIndex]);
+
+  if (!enabled || (!active && !resumePrompt)) return null;
 
   const offlineNote = tt(config.offline.bodyKey ?? "tour.offlineNote", config.offline.note);
-  const tooltipVisible = !endCard && phase !== "offline-blocked" && (centered || !!spot);
+  const tooltipVisible =
+    active && !resumePrompt && !endCard && phase !== "offline-blocked" && (centered || !!spot);
   const title = endCard
     ? tt("tour.thanksTitle", config.endCard.title)
     : phase === "offline-blocked"
@@ -420,7 +499,43 @@ export default function PlatformTour() {
   const nextLabel = isLastStep(stepIndex, stepCount) ? tt("tour.finish", "Finish") : tt("tour.next", "Next");
 
   return (
-    <div className="fixed inset-0 z-[60]" role="dialog" aria-label={tt("tour.ariaLabel", "Platform tour")}>
+    <div
+      className="fixed inset-0 z-[60] pointer-events-none"
+      role="dialog"
+      aria-label={tt("tour.ariaLabel", "Platform tour")}
+    >
+      {resumePrompt && !active ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-auto absolute left-4 right-4 top-20 mx-auto max-w-md bg-bg-card border border-border shadow-md p-3.5 flex items-start gap-3"
+          style={{ borderRadius: "var(--radius-lg, 12px)" }}
+        >
+          <Compass size={18} className="text-primary shrink-0 mt-0.5" aria-hidden />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-text-primary">{tt("tour.resumeTitle", "Tour paused")}</p>
+            <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">
+              {tt("tour.resumeMessage", config.resume.message)}
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              <AppButton
+                variant="primary"
+                size="sm"
+                onClick={() => beginTour(resumePrompt.index)}
+                ref={(node) => {
+                  primaryButtonRef.current = node;
+                }}
+              >
+                {tt("tour.resumeAction", config.resume.actionLabel)}
+              </AppButton>
+              <AppButton variant="ghost" size="sm" onClick={() => setResumePrompt(null)}>
+                {tt("tour.resumeDismiss", config.resume.dismissLabel)}
+              </AppButton>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {spot && !endCard && phase === "ready" && (
         <div
           aria-hidden="true"
@@ -439,7 +554,7 @@ export default function PlatformTour() {
       {!endCard && phase === "offline-blocked" ? (
         <div
           aria-live="polite"
-          className="absolute left-4 right-4 mx-auto bg-bg-card border border-border shadow-md p-4"
+          className="pointer-events-auto absolute left-4 right-4 mx-auto bg-bg-card border border-border shadow-md p-4"
           style={{ ...centeredStyle, borderRadius: "var(--radius-lg, 12px)" }}
         >
           <div className="flex items-start gap-2.5">
@@ -472,7 +587,7 @@ export default function PlatformTour() {
       {tooltipVisible ? (
         <div
           aria-live="polite"
-          className="absolute bg-bg-card border border-border shadow-md p-4"
+          className="pointer-events-auto absolute bg-bg-card border border-border shadow-md p-4"
           style={{
             ...(!centered && spot
               ? tooltipPosition(
@@ -517,7 +632,7 @@ export default function PlatformTour() {
           </div>
           <div className="flex items-center gap-1.5 mt-3" aria-hidden="true">
             {stepCount <= 20 &&
-              config.steps.map((_, idx) => (
+              visibleSteps.map((_, idx) => (
                 <span
                   key={idx}
                   className={`h-1.5 rounded-full transition-all ${
@@ -579,7 +694,7 @@ export default function PlatformTour() {
       {endCard ? (
         <div
           aria-live="polite"
-          className="absolute bg-bg-card border border-border shadow-md p-5 text-center"
+          className="pointer-events-auto absolute bg-bg-card border border-border shadow-md p-5 text-center"
           style={{ ...centeredStyle, borderRadius: "var(--radius-lg, 12px)", maxWidth: 360 }}
         >
           <div className="mx-auto rounded-full overflow-hidden border border-border bg-primary-muted grid place-items-center w-12 h-12">

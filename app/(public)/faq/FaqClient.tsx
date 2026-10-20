@@ -5,6 +5,7 @@ import { Search, ChevronDown } from "lucide-react";
 import { useTranslation } from "@/app/providers/I18nProvider";
 import type { FaqCategory } from "@/app/lib/config/faq";
 import { FAQ_PCM } from "@/app/lib/config/faq";
+import TourLaunchButton from "@/app/components/features/tour/TourLaunchButton";
 
 interface FaqClientProps {
   categories: FaqCategory[];
@@ -92,6 +93,9 @@ export default function FaqClient({ categories }: FaqClientProps) {
         <p className="text-text-secondary mb-6">
           {tf("faq.subtitle", "Everything you need to know about Along.")}
         </p>
+        <div className="flex justify-center mb-6">
+          <TourLaunchButton />
+        </div>
         <div className="relative max-w-md mx-auto">
           <Search
             size={18}

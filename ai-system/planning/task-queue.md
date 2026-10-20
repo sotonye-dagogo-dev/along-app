@@ -2,11 +2,26 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 82: platform tour + review notice)
-> - last-synced: 2026-10-20 (Sprint 82)
+> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: platform tour enhancements)
+> - last-synced: 2026-10-20 (Sprint 83)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 83 — Platform tour enhancements (2026-10-20, execute-feature) [L]
+
+> **Section summary:** Issue #240 enhancement directive, non-breaking (config + component + layout move; no schema/migration). (1) Guest access: root-mount `PlatformTour` in `app/layout.tsx` (removed from dashboard layout), audience-filtered steps (`all`/`guest`/`authenticated`), explicit launch triggers via `TourLaunchButton` on the FAQ page + a config-driven footer `actionEvent` link. (2) Auth walkthrough: new `auth-sign-in` / `auth-register` guest steps anchored on `data-tour="login-email"` / `"register-email"`, with persisted `stepId` so progress survives sign-in/registration reloads and resumes at the first still-visible step. (3) Click-through overlay: outer `pointer-events-none` + `pointer-events-auto` cards, so the theme toggle, share-route trigger and modal actions are usable while spotlighted. (4) Composer coverage: `composer-locations` / `composer-locate` / `composer-find-on-map` / `composer-score` steps anchored on new `data-tour` markers in `ShareRouteModal` (first step only), plus per-step `timeoutMs`. (5) Explore fix: persistent mobile "Near me" button next to Filters so the step's target exists on every viewport. (6) Non-intrusive persistence: top-center resume prompt (`resume.enabled`, `resume.autoResume:false`) instead of silent auto-resume; auto-start limited to `autoStartRoutes` (default `/home`) so public/auth pages never hijack. (7) Config discipline: `guest.enabled`, `resume.{enabled,autoResume,promptDelayMs,…}`, `autoStartRoutes`, per-step `audience`/`timeoutMs`, all field-wise normalized/validated; helpers `isTourAudience`, `selectVisibleTourSteps`, `resolveTourResumeIndex`, `isTourAutoStartRoute`, `tourStepTimeoutMs`. FAQ en+pcm += guests-auth/composer/resume; 17 new i18n keys; tests expanded. QA full in-runner: tsc 0 errors, jest 116/116 suites 1221/1221 tests, lint clean on touched files, full `next build` clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [M] | `app/lib/config/platformTour.ts` — add `TourAudience`, per-step `audience`/`timeoutMs`, `autoStartRoutes`, `guest`, `resume` config; `PlatformTourState.stepId`; audience/resume/auto-start/timeout pure helpers; normalize + validate every new field; rework steps to guest auth + route-composer journey | [x] |
+| [M] | `app/components/features/tour/PlatformTour.tsx` — root-layout compatible bootstrap (config-fetch resolution cannot cancel the auto-start timer), audience-filtered `visibleSteps`, `stepId` persistence, resume prompt UI, click-through `pointer-events-none` scrim, route guard per tick, per-step timeout, live audience-shrink clamp | [x] |
+| [S] | Mounts/triggers — remove from `app/(dashboard)/layout.tsx`; add root `app/layout.tsx`; NEW `TourLaunchButton.tsx`; FAQ page trigger; `FOOTER_CONFIG` `actionEvent` link + `AppFooter` button rendering | [x] |
+| [S] | Anchors — `data-tour` on login/register email inputs, `ShareRouteModal` origin/locate/find-on-map/score, persistent mobile "Near me" button on `/explore` | [x] |
+| [S] | Copy/docs — en+pcm `tour.*` keys (auth/composer/resume/takeTour), FAQ `tour-guests-auth`/`tour-composer`/`tour-resume`, replay answer update | [x] |
+| [S] | Tests — `platformTour.test.ts` audience/resume/auto-start/timeout/normalize/validate + anchor/mount/trigger source assertions; `locales.test.ts` REQUIRED_KEYS extended | [x] |
+
+---
 
 ## Sprint 82 — Platform tour + review notice (2026-10-20, execute-feature) [L]
 

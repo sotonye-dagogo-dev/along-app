@@ -2,10 +2,21 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 82: platform tour + review notice)
+> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: platform tour enhancements)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 83 — Platform tour enhancements (2026-10-20, execute-feature)
+
+- [x] Guest access + triggers [Sprint 83]: mount `PlatformTour` at the root layout (removed from dashboard layout), audience-filtered steps (`guest`/`authenticated`/`all`), `TourLaunchButton` on FAQ + config-driven footer `actionEvent` link, guest-safe `TOUR_START_EVENT` replay
+- [x] Auth walkthrough [Sprint 83]: `auth-sign-in`/`auth-register` guest steps with `login-email`/`register-email` anchors; `stepId` persisted so registration/sign-in reloads resume at the first still-visible step (`resolveTourResumeIndex`)
+- [x] Click-through spotlight [Sprint 83]: `pointer-events-none` scrim + `pointer-events-auto` cards; theme toggle, share trigger and modal controls stay usable; route guard per tick
+- [x] Route-composer coverage [Sprint 83]: origin input / use-current-location / find-on-map / route-score steps anchored via `data-tour` in `ShareRouteModal`, per-step `timeoutMs`; persistent mobile "Near me" button fixes the explore step on small screens
+- [x] Persistence without hijack [Sprint 83]: top-center resume prompt (`resume.enabled`, `resume.autoResume:false`, configurable delay/copy), auto-start restricted to `autoStartRoutes` (default `/home`), state survives config-fetch failure/timer races via `bootstrapConfigRef`
+- [x] Docs/tests [Sprint 83]: en+pcm auth/composer/resume/takeTour keys (17), FAQ guests-auth/composer/resume (en+pcm), `platformTour.test.ts` audience/resume/timeout/anchor/mount contract, `locales.test.ts` keys; full gate green in-runner (tsc 0, 116/116 suites 1221/1221, lint clean touched, build clean)
+
+---
 
 ## Sprint 82 — Platform tour + review notice (2026-10-20, execute-feature)
 

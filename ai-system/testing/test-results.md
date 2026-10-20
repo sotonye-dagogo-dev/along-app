@@ -1,24 +1,22 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 82: platform tour + review notice)
+> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: platform tour enhancements)
 > - last-verified-against-code: 2026-10-20
 > - staleness-policy: overwritten on every test run — always current
 
-> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 1216 tests currently exist across 116 suites (verified by a real `npm test` run in this session 2026-10-20).
+> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 1221 tests currently exist across 116 suites (verified by a real `npm test` run in this session 2026-10-20).
 
 ---
 
 ## Last Run (Build)
 
 **Date:** 2026-10-20
-**Run by:** AI agent (opencode — execute-feature Sprint 82)
+**Run by:** AI agent (opencode — execute-feature Sprint 83)
 
 **Build Result:**
 - `npx tsc --noEmit` — ✓ zero errors (real run this session)
-- `npm test` — 1216/1216 passing (116 suites, real run this session: +3 suites +33 tests — `platformTour` (18: config integrity/routes/selectors/placements, coerce/state shaping, normalize+clamp, admin card/validator/merge, offline registration + sw.js sync, replay quick link, FAQ en+pcm), `reviewNotice` (16: gate matrix incl. TTL edge + fail-safe probe, storage sanitization, flag/age helpers, lane ordering, FAQ en+pcm); `locales.test.ts` REQUIRED_KEYS extended for the 27 new `tour.*`/`reviewNotice.*` keys)
-- `npx next lint` — ✓ clean on every Sprint-82-touched file (3 hook-dep/a11y/unused warnings found and fixed in-session; remaining project findings are pre-existing only — CI lint runs `continue-on-error: true`)
-- `npx next build` — ✓ compiled successfully (real run this session; `/api/tour` present in the route output; only pre-existing Sentry deprecation warning)
+- `npx jest --runInBand` — 1221/1221 passing (116 suites, real run this session: +5 tests in `platformTour.test.ts` for audience filtering, stepId resume, auto-start routes/timeout clamps, guest/resume defaults + selector contract, and anchor/mount/trigger source assertions; `locales.test.ts` REQUIRED_KEYS extended for the new `tour.*` keys)
+- `npx next lint` — ✓ clean on every Sprint-83-touched file (removed one unused type import; the only remaining warning is the pre-existing `ShareRouteModal` `editPost` exhaustive-deps finding — CI lint runs `continue-on-error: true`)
+- `npx prisma generate` + `npx next build` — ✓ compiled successfully (real run this session; 107 static pages, `/api/tour` present)
 - Zero test failures
-
----
