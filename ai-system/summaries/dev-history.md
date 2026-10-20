@@ -1803,3 +1803,18 @@ Three-lane close-out of the issue #25 "Tightening up" directive, config-driven a
 
 **Next Sprint Focus:**
 Re-save the `bugReportNotification` template in Email Studio (or run `db:seed`) on the live DB so the new CTA publishes; watch refresh-bucket 429 rates in production after deploy.
+
+## 2026-10-20 — Sprint 81: Feed first-load hydration fix (Issue #25)
+
+**Summary:**
+Fixed a timing-dependent bug where the home feed could remain on its loading skeleton until the user navigated away and back. The geo-aware init effect in `app/(dashboard)/home/page.tsx` armed the per-viewer `startedForRef` guard before awaiting `feedStream.loadInitial`; when the passive location fix resolved after the `geoWaitMs` timer had started the fetch (geo wait 1.5s vs an 8s geolocation timeout), the `passiveFix` dependency re-ran the effect, whose cleanup only set `cancelled` — dropping the awaited commit and `setIsReady(true)` while leaving the guard armed. The replacement effect then skipped fetching because the guard was present, stranding the skeleton permanently for that mount. The effect now tracks `started` vs `settled`, lets `runInitial` own the guard, and releases it on cleanup only when a started load never committed, so the next run retries with the latest fix; successful loads keep the guard to avoid a geo double-fetch.
+
+**Completed:**
+- `home/page.tsx` init effect: `started`/`settled` ownership, guard release on cancelled-but-unsettled cleanup, single guard owner
+- New `app/__tests__/config/feedFirstLoad.test.ts` regression suite (guard contract, single owner, ready commit, timing-window sanity)
+
+**QA:** Full gate green in-runner: tsc 0 errors; jest 114/114 suites 1183/1183 tests (new `feedFirstLoad.test.ts`); lint clean on touched files; `next build` clean.
+
+**Files:**
+- Edited: `app/(dashboard)/home/page.tsx`, ai-system docs
+- Created: `app/__tests__/config/feedFirstLoad.test.ts`
