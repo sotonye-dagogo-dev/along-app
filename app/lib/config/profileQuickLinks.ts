@@ -1,10 +1,12 @@
-import { Link2, Trophy, Bell, BarChart3, UserPlus, Shield, LayoutList, Search } from "lucide-react";
+import { Link2, Trophy, Bell, BarChart3, UserPlus, Shield, LayoutList, Search, Compass } from "lucide-react";
 import { LEADERBOARD_LINKS_CONFIG } from "@/app/lib/config/leaderboardLinks";
+import { TOUR_START_EVENT } from "@/app/lib/config/platformTour";
 
 export type ProfileQuickLinkKind =
   | { kind: "accountTab"; tab: "connected" | "points" | "security" | "danger" }
   | { kind: "scroll"; targetId: string }
-  | { kind: "route"; href: string };
+  | { kind: "route"; href: string }
+  | { kind: "action"; event: string };
 
 export type ProfileQuickLink = ProfileQuickLinkKind & {
   id: string;
@@ -18,8 +20,9 @@ export type ProfileQuickLink = ProfileQuickLinkKind & {
  * Profile quick-links (config-driven).
  * Rendered between the account tabs and content tabs on the own-profile page.
  * `accountTab` entries switch the account tab + scroll; `scroll` entries just
- * scroll; `route` entries are plain Next Links. Admin entries are filtered
- * at render time via `isAdminRole`.
+ * scroll; `route` entries are plain Next Links; `action` entries dispatch a
+ * window CustomEvent (e.g. the platform-tour replay). Admin entries are
+ * filtered at render time via `isAdminRole`.
  */
 export const PROFILE_QUICK_LINKS_CONFIG: ProfileQuickLink[] = [
   { id: "connected", label: "Connected accounts", icon: Link2, kind: "accountTab", tab: "connected" },
@@ -37,5 +40,13 @@ export const PROFILE_QUICK_LINKS_CONFIG: ProfileQuickLink[] = [
   },
   { id: "invite", label: "Invite Friends", icon: UserPlus, kind: "route", href: "/invite" },
   { id: "search", label: "Search", i18nKey: "footer.search", icon: Search, kind: "route", href: "/search" },
+  {
+    id: "tour-replay",
+    label: "Replay platform tour",
+    i18nKey: "tour.replay",
+    icon: Compass,
+    kind: "action",
+    event: TOUR_START_EVENT,
+  },
   { id: "admin", label: "Admin Dashboard", icon: Shield, kind: "route", href: "/admin", adminOnly: true },
 ];

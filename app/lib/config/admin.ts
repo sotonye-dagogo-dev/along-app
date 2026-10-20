@@ -11,6 +11,10 @@ import { validateEarlyAdopterConfigValue } from "./earlyAdopter";
 import { DEFAULT_ROUTE_REQUEST_AUDIENCE_CONFIG } from "./routeRequestAudience";
 import { validateRouteRequestAudienceValue } from "./routeRequestAudience";
 import {
+  DEFAULT_PLATFORM_TOUR_CONFIG,
+  validatePlatformTourConfigValue,
+} from "./platformTour";
+import {
   DEFAULT_FEED_CONFIG,
   FEED_DIVERSITY_CONFIG,
   FEED_STREAM_CONFIG,
@@ -477,6 +481,18 @@ export const ADMIN_CONFIG_DEFAULTS: AdminConfigDefault[] = [
     defaultValue: { ...DEFAULT_EARLY_ADOPTER_CONFIG },
   },
   {
+    key: "platformTourConfig",
+    title: "Platform Tour",
+    description:
+      "Guided spotlight tour switches: on/off, auto-start for new users, and the start delay. Step content ships with the bundle.",
+    kind: "json",
+    defaultValue: {
+      enabled: DEFAULT_PLATFORM_TOUR_CONFIG.enabled,
+      autoStart: DEFAULT_PLATFORM_TOUR_CONFIG.autoStart,
+      autoStartDelayMs: DEFAULT_PLATFORM_TOUR_CONFIG.autoStartDelayMs,
+    },
+  },
+  {
     key: "feedDiversity",
     title: "Feed Diversity",
     description:
@@ -637,6 +653,7 @@ function finiteNumber(v: unknown): number | null {
     const k = String(key ?? "");
     if (k === "earlyAdopterConfig") return validateEarlyAdopterConfigValue(value);
     if (k === "routeRequestAudience") return validateRouteRequestAudienceValue(value);
+    if (k === "platformTourConfig") return validatePlatformTourConfigValue(value);
     if (k === "feedDiversity") return validateFeedDiversityConfigValue(value);
     if (k === "feedAlgorithm") {
       if (!isPlainObject(value)) return "value must be an object";
@@ -857,6 +874,16 @@ export const ADMIN_SIMPLE_CONFIG_CARDS: AdminSimpleCardMeta[] = [
       { id: "mode", label: "Audience mode", hint: '"community" notifies everyone (followers first); "followers" is legacy.', type: "text", placeholder: "community" },
       { id: "maxRecipients", label: "Max recipients", hint: "Cap on notification rows per request.", type: "number", min: 1, max: 5000, step: 1 },
       { id: "excludeDeleted", label: "Exclude deleted accounts", hint: "Skip soft-deleted accounts.", type: "boolean" },
+    ],
+  },
+  {
+    key: "platformTourConfig",
+    title: "Platform Tour",
+    description: "Guided spotlight tour switches — no code, no JSON. Step content ships with the bundle.",
+    fields: [
+      { id: "enabled", label: "Tour enabled", hint: "When on, the guided tour (spotlight + steps) is available.", type: "boolean" },
+      { id: "autoStart", label: "Auto-start", hint: "Start the tour once automatically for signed-in users who haven't taken it.", type: "boolean" },
+      { id: "autoStartDelayMs", label: "Auto-start delay (ms)", hint: "Wait after the dashboard loads before the tour opens.", type: "number", min: 0, max: 60000, step: 250 },
     ],
   },
 ];

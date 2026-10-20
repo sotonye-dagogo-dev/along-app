@@ -285,6 +285,36 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         answer:
           "The About page shows community reviews, also shown on the landing and Invite pages. You'll occasionally see an invite to add your own.",
       },
+      {
+        id: "review-prompt",
+        question: "Why am I seeing a 'leave a review' prompt?",
+        answer:
+          "A few days after you join, Along asks for a quick rating if you haven't left one yet — the form is right in the prompt, no need to go hunting. Dismiss it with 'Not now' and it stays quiet for a week before asking again. Once you've reviewed, it never comes back (you can always update your review from your profile's Reviews tab).",
+      },
+    ],
+  },
+  {
+    id: "tour",
+    category: "Platform Tour",
+    items: [
+      {
+        id: "tour-what-is-it",
+        question: "What is the platform tour?",
+        answer:
+          "A short guided walkthrough of the app: it moves between pages, highlights the exact control it's talking about with a glowing ring, and explains what it does. Use Back/Next to move, watch the 'step 2 of 5' counter, and Skip whenever you like.",
+      },
+      {
+        id: "tour-interact",
+        question: "Can I actually use the highlighted features during the tour?",
+        answer:
+          "Yes — steps that say so are live. Tap the highlighted control (like 'Share a route' or 'Near me'); the tour notices, confirms, and then lets you Continue or End. The rest of the app stays fully usable while the tour is on.",
+      },
+      {
+        id: "tour-replay-offline",
+        question: "How do I replay the tour, and does it work offline?",
+        answer:
+          "Open your profile's quick links and choose 'Replay platform tour'. The tour also runs offline: the guide content is stored on your device, and any stop whose page isn't available offline shows an honest note with a 'Skip this stop' option so you can keep going.",
+      },
     ],
   },
   {
@@ -518,5 +548,25 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     question: "Where I fit read oda people reviews?",
     answer:
       "About page dey show community reviews, dem dey also for landing and Invite pages. Once-once you go see invite make you add your own.",
+  },
+  "review-prompt": {
+    question: "Why I dey see 'leave a review' prompt?",
+    answer:
+      "Few days after you join, Along go ask you for quick rating if you never drop one before — di form dey inside di prompt, you no need go find am. Use 'Not now' to push am aside; e go rest for one week before e ask again. Once you don review, e no go come back (you fit always update am from di Reviews tab for your profile).",
+  },
+  "tour-what-is-it": {
+    question: "Wetin be di platform tour?",
+    answer:
+      "Na small guided walk around di app: e dey move between pages, highlight di exact control e dey talk about with glow ring, come explain wetin e dey do. Use Back/Next to move, watch di 'step 2 of 5' counter, come Skip anytime you like.",
+  },
+  "tour-interact": {
+    question: "I fit use di highlighted features while di tour dey go on?",
+    answer:
+      "Yes — steps wey talk so na live. Tap di highlighted control (like 'Share a route' or 'Near me'); di tour go notice, confirm, come allow you Continue or End. Di rest of di app dey work normal while di tour dey on.",
+  },
+  "tour-replay-offline": {
+    question: "How I go replay di tour, and e dey work offline?",
+    answer:
+      "Open di quick links for your profile come choose 'Replay platform tour'. Di tour dey run offline too: di guide content dey store for your device, and any stop wey page no dey available offline go show you honest note with 'Skip dis stop' option so you fit continue.",
   },
 };

@@ -458,6 +458,15 @@ export default function OwnProfilePage() {
                   </a>
                 );
               }
+              if (l.kind === "action") {
+                return (
+                  <button key={l.id} type="button" onClick={() => { window.dispatchEvent(new CustomEvent(l.event)); }}
+                    className={cls}>
+                    <Icon size={18} className="shrink-0" />
+                    {label}
+                  </button>
+                );
+              }
               return (
                 <Link key={l.id} href={l.href} className={cls}>
                   <Icon size={18} className="shrink-0" />

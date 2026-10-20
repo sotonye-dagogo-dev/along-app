@@ -44,6 +44,7 @@ export const API_REGISTRY: Record<string, ApiEndpoint> = {
   analyticsUser: { path: "/api/analytics/user", methods: ["GET"], auth: true },
   bugReports: { path: "/api/bug-reports", methods: ["POST"], auth: true, rateLimit: "posts" },
   reviews: { path: "/api/reviews", methods: ["GET", "POST"], auth: false },
+  platformTour: { path: "/api/tour", methods: ["GET"], auth: false },
   invite: { path: "/api/invite", methods: ["GET"], auth: true },
   adminUsers: { path: "/api/admin/users/[id]", methods: ["PATCH", "DELETE"], auth: true },
   adminPosts: { path: "/api/admin/posts/[id]", methods: ["PATCH", "DELETE"], auth: true },
