@@ -3253,3 +3253,18 @@ Nothing pending — feature complete.
   **Notes / Blockers:**
 - Non-breaking: no schema/migration, no removed APIs, same response shapes; env precedence change IS the bug fix (the documented contract in `.env.example` always said DATABASE_URL is the runtime URL — the code disagreed). Redis timeouts seen in the original logs are warnings with existing DB fallback (secondary, not the 500 cause); `/api/suggestions` 401 is expected for guests (out of scope).
 - Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 77 + project-plan + this log + dev-history + project-decisions + lessons-learned + system-architecture + index/repo-map + index/dependency-graph + repair-system + in-progress closed).
+
+**Session 2026-10-20 — Feed first-load hydration fix (execute-feature, Sprint 81).**
+**Directive:** Issue #25 follow-up — "Minor issue observed. Feed isn't rendering until user navigates to another page and back, it just keeps showing loading skeleton. Need that resolved."
+**Found:** In `app/(dashboard)/home/page.tsx` the geo-aware init effect marked `startedForRef` for the viewer *before* awaiting `feedStream.loadInitial`. The passive location fix resolves asynchronously (and after the 1.5s geo-wait timer has already started a non-geo fetch), which re-runs the effect because `passiveFix` is a dependency. The old cleanup only set `cancelled`, so the awaited commit (and `setIsReady(true)`) was dropped while the one-shot guard stayed armed; the next effect run saw the guard and refused to fetch again — leaving the feed pinned to its skeleton until a remount reset the refs. Repro is timing-dependent (geo fix slower than the 1.5s wait but faster than the 8s geolocation timeout).
+**Implemented:** Split per-effect ownership into `started`/`settled`; `runInitial` now owns the guard (no timer-side `.add`), guards re-entry, marks `settled` on commit/catch, and cleanup deletes the `startedForRef` entry only when `started && !settled`, letting the next effect run retry with the latest fix. Successful loads still keep the guard so the geo transition never double-fetches.
+**QA:** FULL gate green in-runner (`npm install --ignore-scripts` completed): `npx tsc --noEmit` 0 errors; `npx jest` 114/114 suites 1183/1183 tests (NEW `feedFirstLoad.test.ts` 5 checks); `next lint` clean on both touched files; full `next build` clean.
+**Files Modified:**
+- Edited: `app/(dashboard)/home/page.tsx`, ai-system docs
+- Created: `app/__tests__/config/feedFirstLoad.test.ts`
+**Assumptions Made:**
+- The location fix can legitimately arrive after the geo-wait timer (geo wait 1500ms < geolocation timeout 8000ms), so cancelling an in-flight initial fetch must remain retryable rather than terminal.
+- Re-fetching after the cancelled run is acceptable; the stream is idempotent (dedup + cache) and the user sees one settled snapshot.
+**Notes / Blockers:**
+- None. Non-breaking: one client effect, no API/config/schema changes; successful-load behavior unchanged.
+- Chain: execute-feature §5 — no architecture impact and no [L]/[XL] entry, so sync-context-level close applies (task-queue Sprint 81 + this log + dev-history + in-progress); `update-ai-system.md` deep sync not triggered.

@@ -202,21 +202,35 @@ function HomeContent() {
   useEffect(() => {
     if (authLoading) return // wait for auth so the feed cache key is user-scoped
     let cancelled = false
+    // Tracks whether THIS effect run actually owns the in-flight initial
+    // load. The one-shot guard is released on cleanup only when the load
+    // never committed (see below) — otherwise a geo-fix arriving after the
+    // fetch started would cancel the commit, keep the guard armed, and
+    // strand the page on its skeleton until a remount.
+    let started = false
+    let settled = false
 
     // Single geo-aware first load: the passive fix resolves asynchronously
     // after mount, so the fetch waits for it up to geoWaitMs. Only one
     // scored order ever paints — no non-geo list followed by a silent geo
     // re-rank (the old second loadInitial that reshuffled the feed twice).
     const viewerKey = user?.id ?? "anon"
+    const startedFor = startedForRef.current
     const runInitial = async (fix: { lat: number; lng: number } | null) => {
+      if (started || settled) return
+      started = true
+      if (!startedFor.has(viewerKey)) startedFor.add(viewerKey)
       try {
         const state = await feedStream.loadInitial(user?.id, fix)
         if (cancelled) return
+        settled = true
         setPosts(state.posts)
         setHasMore(state.hasMore)
         setLoading(false)
       } catch {
-        if (!cancelled) setLoading(false)
+        if (cancelled) return
+        settled = true
+        setLoading(false)
       } finally {
         if (!cancelled) {
           readyRef.current = true
@@ -226,16 +240,12 @@ function HomeContent() {
     }
     let geoTimer: ReturnType<typeof setTimeout> | null = null
     if (!passiveFix) {
-      if (!startedForRef.current.has(viewerKey)) {
+      if (!startedFor.has(viewerKey)) {
         geoTimer = setTimeout(() => {
-          if (!cancelled && !startedForRef.current.has(viewerKey)) {
-            startedForRef.current.add(viewerKey)
-            void runInitial(null)
-          }
+          if (!cancelled) void runInitial(null)
         }, FEED_FIRST_LOAD_CONFIG.geoWaitMs)
       }
-    } else if (!startedForRef.current.has(viewerKey)) {
-      startedForRef.current.add(viewerKey)
+    } else if (!startedFor.has(viewerKey)) {
       void runInitial(passiveFix)
     }
 
@@ -260,6 +270,11 @@ function HomeContent() {
       cancelled = true
       if (geoTimer) clearTimeout(geoTimer)
       sub.unsubscribe()
+      // Release the one-shot guard when this run started a load but never
+      // committed it (auth/geo dep churn cancelled the await). The next
+      // effect run then retries with the latest fix instead of leaving the
+      // feed stuck on the first-load skeleton forever.
+      if (started && !settled) startedFor.delete(viewerKey)
     }
     // passiveFix in deps: null → fix transition triggers the single fetch.
     // startedForRef keeps it one-shot per viewer (no geo double-fetch).

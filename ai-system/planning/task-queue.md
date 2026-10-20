@@ -2,11 +2,22 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
-> - last-synced: 2026-10-19 (Sprint 80)
+> - last-updated-by: execute-feature 2026-10-20 (Sprint 81: feed first-load hydration fix)
+> - last-synced: 2026-10-20 (Sprint 81)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 81 — Feed first-load hydration: never strand the skeleton (2026-10-20, execute-feature)
+
+> **Section summary:** Issue #25 follow-up bug fix, non-breaking (single home-page effect; no API/config/schema change). The feed could stay on its loading skeleton until a remount (navigate away and back) because the geo-aware initial-load effect cancelled an in-flight `feedStream.loadInitial` when the passive location fix arrived, while the per-viewer one-shot guard (`startedForRef`) stayed armed — so the next effect run refused to fetch again. Fixed by separating `started` from `settled` and releasing the guard on cleanup only when a started load never committed. QA full in-runner: tsc 0 errors, jest 114/114 suites 1183/1183 tests, lint clean on touched files, `next build` clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [S]  | `app/(dashboard)/home/page.tsx` — init effect tracks `started`/`settled`; `runInitial` owns the one-shot guard; cleanup deletes `startedForRef` entry when `started && !settled` so the next effect run retries with the latest geo fix instead of holding the skeleton | [x]    |
+| [S]  | Regression test — `app/__tests__/config/feedFirstLoad.test.ts` (started/settled contract, guard release, single owner, ready commit, geo-wait < geolocation timeout) | [x]    |
+
+---
 
 ## Sprint 80 — Duplicate-Proof Bug Assignment + Notification Deep Links + Auth Session Persistence (2026-10-19, execute-feature)
 
