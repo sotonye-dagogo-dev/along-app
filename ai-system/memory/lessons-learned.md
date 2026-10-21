@@ -36,9 +36,9 @@
 
 **Context:** Sprint 88. The navigation step became interactive, which surfaced an End button at exactly the point where the following composer, request and explore lessons matter most. A single global skip affordance let viewers leave before the essential path.
 
-**What We Learned:** Exit affordances are part of step metadata. A default-on `allowEnd` flag lets ordinary steps stay freely skippable while pivotal stops keep Back/Next and withhold End/X/Escape. The component should read the flag, not a hardcoded step id, so admin-stored step lists inherit the same rule.
+**What We Learned:** Exit affordances are part of step metadata, but accessibility guarantees belong in the component. A default-on `allowEnd` flag lets ordinary steps show every exit while pivotal stops hide only the labelled End button; the header X and Escape must always work. The component should read the flag, not a hardcoded step id, so admin-stored step lists inherit the same rule — and it should refuse to let that metadata remove the escape hatch entirely.
 
-**Apply When:** Adding any tour/onboarding step where the remaining content is essential or materially more complex. Always preserve a forward path (Next) so withholding exit does not trap the viewer.
+**Apply When:** Adding any tour/onboarding step where the remaining content is essential or materially more complex. Always preserve both a forward path (Next) and an immediate way out (X/Escape), so withholding a labelled action never traps the viewer.
 
 **Supersedes:** None
 **Superseded by:** None

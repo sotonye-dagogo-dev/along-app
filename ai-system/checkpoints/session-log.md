@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
 > - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 118/118 suites 1261/1261, lint no new findings on touched files, next build clean)
 > - staleness-policy: append-only — never modify past entries
 
@@ -34,6 +34,31 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
+
+**Completed:**
+
+- Closed the final Enhancements tour follow-up, non-breaking (component/copy/tests/docs only; no schema, migration, API or config-shape changes). (1) **Hero entry:** `HeroCtas` now renders `TourLaunchButton` for both audiences — guests get it beside Get Started/Sign In, signed-in users beside Continue to feed — reusing the existing `landing.cta.takeTour` en/pcm copy. (2) **Escape hatch:** PlatformTour always renders the tooltip/offline X and handles Escape regardless of `allowEnd`; `post-navigate` keeps `allowEnd: false` but that metadata now hides only the labelled End button, so a viewer is never trapped. (3) **FAQ:** en + PCM explain the hero entry and the always-available X/Escape. (4) **Tests:** hero source contract + unconditional-close assertions.
+- QA gate green in-runner: `npx tsc --noEmit` 0 errors; `npx jest --ci --maxWorkers=2 --silent` 118/118 suites 1261/1261 tests; `npm run lint` no new findings on touched files (pre-existing unrelated repo errors unchanged); `DIRECT_LOCAL_DB=placeholder npm run build` clean.
+- Chain: execute-feature → update-ai-system deep sync executed (Sprint 89 in project-plan/task-queue, this log, dev-history, decisions/lessons, system-architecture, project-context, in-progress closed).
+
+**Files Modified:**
+
+- Edited: `app/components/features/tour/PlatformTour.tsx`, `app/components/ui/LandingCtas.tsx`, `app/lib/config/{platformTour,faq}.ts`, `app/__tests__/config/{platformTour,guestTourNotice}.test.ts`, ai-system docs
+
+**Next Task:**
+
+Select the next directive from `planning/task-queue.md`.
+
+**Assumptions Made:**
+
+- The latest directive supersedes the earlier navigation-stop exit choice: the X/Escape must always work, while the labelled End button can remain hidden on pivotal stops to keep the essential path visible.
+- Reusing `landing.cta.takeTour` for the hero keeps one translated label for every landing tour entry (no new key needed; en/pcm parity preserved).
+
+**Notes / Blockers:**
+
+- None. Non-breaking: source-only UI change plus test/doc updates; no persisted state or API contract changed.
 
 ## Session — 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
 

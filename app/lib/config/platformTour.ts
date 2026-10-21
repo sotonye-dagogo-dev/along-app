@@ -80,9 +80,10 @@ export interface TourStep {
   /** Element whose click counts as the interaction (defaults to target). */
   interactionSelector?: string;
   /**
-   * Whether the viewer may end/skip the whole tour from this step
+   * Whether the viewer sees the labelled End-tour button on this step
    * (default true). Set false on pivotal teaching stops where the following
-   * steps are essential — Next stays available, End/X/Escape do not.
+   * steps are essential — Next stays available and the header X/Escape always
+   * remain as escape hatches so the viewer is never trapped.
    */
   allowEnd?: boolean;
   placement?: TourStepPlacement;

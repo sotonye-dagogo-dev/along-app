@@ -257,6 +257,11 @@ describe("platform tour helpers", () => {
     );
     expect(component).toContain("allowEnd");
     expect(component).toContain("step?.allowEnd !== false");
+    // The close X and Escape are always available, even on a step whose
+    // metadata hides the labelled End button — users must never be trapped.
+    expect(component).not.toContain("if (!active || !allowEnd) return;");
+    expect(component).toContain("Escape always exits the tour");
+    expect(component.split('aria-label={tt("tour.skip", "Skip tour")}').length - 1).toBe(2);
   });
 
   it("normalize merges stored rows field-wise and survives corruption", () => {

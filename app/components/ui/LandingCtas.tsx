@@ -18,12 +18,20 @@ export function HeroCtas() {
 
   if (isAuth) {
     return (
-      <Link
-        href="/home"
-        className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-white text-primary text-base font-semibold hover:shadow-lg transition-shadow"
-      >
-        {tf("landing.cta.continueToFeed", "Continue to feed")} &rarr;
-      </Link>
+      <>
+        <Link
+          href="/home"
+          className="inline-flex items-center gap-2 h-12 px-6 rounded-md bg-white text-primary text-base font-semibold hover:shadow-lg transition-shadow"
+        >
+          {tf("landing.cta.continueToFeed", "Continue to feed")} &rarr;
+        </Link>
+        <TourLaunchButton
+          label={tf("landing.cta.takeTour", "Take the tour")}
+          variant="on-primary"
+          size="lg"
+          className="whitespace-nowrap"
+        />
+      </>
     )
   }
 
@@ -41,6 +49,12 @@ export function HeroCtas() {
       >
         {tf("landing.hero.signIn", "Sign In")}
       </Link>
+      <TourLaunchButton
+        label={tf("landing.cta.takeTour", "Take the tour")}
+        variant="on-primary"
+        size="lg"
+        className="whitespace-nowrap"
+      />
     </>
   )
 }
