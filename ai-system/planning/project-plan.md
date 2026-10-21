@@ -2,10 +2,18 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 88 — Landing tour CTA + guest-banner spacing + tour exit policy (2026-10-21, execute-feature)
+
+- [x] Landing CTA [Sprint 88]: `LandingCtaActions` pairs the auth-aware bottom CTA with a permanent `TourLaunchButton` ("Take the tour"); new `AppButton` `on-primary` variant keeps the outlined action legible on the brand gradient; `landing.cta.takeTour` en/pcm
+- [x] Guest banner spacing [Sprint 88]: the three CTAs now `flex-auto` wrap and grow to fill each narrow row (`sm:flex-none` restores the compact desktop row), removing the dead space on the right
+- [x] Tour exit policy [Sprint 88]: additive per-step `allowEnd` metadata (default true, normalized/validated); `post-navigate` is awareness-only (`interactive` off, `allowEnd: false`) and hides End/X/Escape so the essential sharing/request/explore stops stay on the path
+- [x] Post timing [Sprint 88]: post-overview/post-trust/post-actions/post-navigate target windows raised to 6000ms, preserving online auto-advance and offline note fallbacks
+- [x] FAQ + QA [Sprint 88]: en/pcm navigation awareness/exit copy, landing-page entry, banner spacing; tests extended for allowEnd and landing/banner wiring; tsc 0, jest 118/118 suites 1261/1261, build clean
 
 ## Sprint 87 — Post/request/navigation tour + guest-banner tour CTA (2026-10-21, execute-feature)
 

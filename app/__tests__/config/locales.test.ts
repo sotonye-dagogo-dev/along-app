@@ -25,6 +25,7 @@ const REQUIRED_KEYS = [
   "notifications.title",
   "profile.signOut",
   "guest.takeTour",
+  "landing.cta.takeTour",
   // Tightening-up coverage: collapsible banner, config-driven pages, reviews.
   "pwa.collapse",
   "pwa.expand",

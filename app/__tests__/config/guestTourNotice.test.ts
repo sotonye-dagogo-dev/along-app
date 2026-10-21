@@ -124,6 +124,18 @@ describe("guest tour prompt wiring", () => {
     expect(banner).toContain("guest.takeTour");
   });
 
+  it("offers the tour on the landing CTA and fills the guest-banner row", () => {
+    const page = read("app/(public)/page.tsx");
+    expect(page).toContain("LandingCtaActions");
+    const ctas = read("app/components/ui/LandingCtas.tsx");
+    expect(ctas).toContain("TourLaunchButton");
+    expect(ctas).toContain("landing.cta.takeTour");
+    expect(ctas).toContain('variant="on-primary"');
+    const banner = read("app/components/ui/GuestBanner.tsx");
+    expect(banner).toContain("flex-auto");
+    expect(banner).toContain("sm:flex-none");
+  });
+
   it("keeps the tour link in the Along footer column", () => {
     const along = FOOTER_CONFIG.columns.find((column) => column.i18nKey === "footer.company");
     const community = FOOTER_CONFIG.columns.find((column) => column.i18nKey === "footer.community");

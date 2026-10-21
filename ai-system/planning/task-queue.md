@@ -2,11 +2,25 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
-> - last-synced: 2026-10-21 (Sprint 87)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
+> - last-synced: 2026-10-21 (Sprint 88)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 88 — Landing tour CTA + guest-banner spacing + tour exit policy (2026-10-21, execute-feature) [S]
+
+> **Section summary:** Issue #240 follow-up, non-breaking (config/component/copy/test; no schema/migration/API changes). The landing CTA section now offers a permanent “Take the tour” action for guests and members, the guest-banner CTAs fill narrow rows instead of leaving dead space, and the tour gained per-step `allowEnd` metadata: the navigation stop is awareness-only and withholds End/X/Escape so the following essential stops cannot be skipped. Post walkthrough targets get the full 6s window. FAQ en + PCM updated. QA full in-runner: tsc 0, jest 118/118 suites 1261/1261, build clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [S] | Landing CTA — `LandingCtaActions` + `TourLaunchButton` on the gradient, additive `AppButton` `on-primary` variant, `landing.cta.takeTour` en/pcm | [x] |
+| [S] | Guest banner — `flex-auto` CTA row growth/wrap on narrow screens, `sm:flex-none` desktop row, no right-side dead space | [x] |
+| [S] | Tour exit policy — per-step `allowEnd` (default true, normalize/validate), `post-navigate` awareness-only + End/X/Escape withheld, post target timeouts 6000ms | [x] |
+| [S] | FAQ + tests — en/pcm navigation awareness/exit + landing/banner entry points; `allowEnd` config/normalize/validate + component wiring tests; full gate green | [x] |
+| [S] | Deep sync — update ai-system architecture, indexes, history, decisions, lessons, current test results, checkpoints | [x] |
+
+---
 
 ## Sprint 87 — Post/request/navigation tour + guest-banner tour CTA (2026-10-21, execute-feature) [M]
 

@@ -223,6 +223,42 @@ describe("platform tour helpers", () => {
     ).toBe(SHARE_ROUTE_OPEN_EVENT);
   });
 
+  it("keeps the navigation stop awareness-only and preserves essential stops", () => {
+    const nav = DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((s) => s.id === "post-navigate");
+    expect(nav?.interactive).toBeFalsy();
+    expect(nav?.allowEnd).toBe(false);
+    expect(nav?.timeoutMs).toBe(6000);
+    for (const id of ["post-overview", "post-trust", "post-actions"]) {
+      expect(DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((s) => s.id === id)?.timeoutMs).toBe(6000);
+    }
+    const normalized = normalizePlatformTourConfig(
+      {
+        steps: [
+          {
+            id: "keep-moving",
+            route: "/home",
+            title: "Keep moving",
+            body: "A pivotal stop where ending early hides essential follow-ups.",
+            allowEnd: false,
+          },
+        ],
+      },
+      DEFAULT_PLATFORM_TOUR_CONFIG,
+    );
+    expect(normalized.steps[0].allowEnd).toBe(false);
+    expect(
+      validatePlatformTourConfigValue({
+        steps: [{ id: "bad", route: "/home", title: "Bad", allowEnd: "no" }],
+      }),
+    ).toMatch(/allowEnd/);
+    const component = fs.readFileSync(
+      path.join(process.cwd(), "app", "components", "features", "tour", "PlatformTour.tsx"),
+      "utf8",
+    );
+    expect(component).toContain("allowEnd");
+    expect(component).toContain("step?.allowEnd !== false");
+  });
+
   it("normalize merges stored rows field-wise and survives corruption", () => {
     const fallback = DEFAULT_PLATFORM_TOUR_CONFIG;
     const merged = normalizePlatformTourConfig(

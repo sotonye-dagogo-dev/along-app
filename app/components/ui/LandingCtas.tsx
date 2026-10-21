@@ -4,6 +4,7 @@ import { useContext } from "react"
 import Link from "next/link"
 import { AuthContext } from "@/app/providers/AuthProvider"
 import { useTranslation } from "@/app/providers/I18nProvider"
+import TourLaunchButton from "@/app/components/features/tour/TourLaunchButton"
 
 export function HeroCtas() {
   const auth = useContext(AuthContext)
@@ -72,6 +73,27 @@ export function BottomCta() {
     >
       {tf("landing.cta.createAccount", "Create Free Account →").replace(" →", "")} &rarr;
     </Link>
+  )
+}
+
+/**
+ * Bottom CTA pair: the auth-aware primary action plus a permanent tour entry.
+ * The tour is deliberately outside the auth branch — guests and signed-in
+ * users can both preview the platform before leaving the landing page.
+ */
+export function LandingCtaActions() {
+  const { tf } = useTranslation()
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-3">
+      <BottomCta />
+      <TourLaunchButton
+        label={tf("landing.cta.takeTour", "Take the tour")}
+        variant="on-primary"
+        size="lg"
+        className="whitespace-nowrap"
+      />
+    </div>
   )
 }
 

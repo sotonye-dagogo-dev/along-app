@@ -79,6 +79,12 @@ export interface TourStep {
   interactive?: boolean;
   /** Element whose click counts as the interaction (defaults to target). */
   interactionSelector?: string;
+  /**
+   * Whether the viewer may end/skip the whole tour from this step
+   * (default true). Set false on pivotal teaching stops where the following
+   * steps are essential — Next stays available, End/X/Escape do not.
+   */
+  allowEnd?: boolean;
   placement?: TourStepPlacement;
   /** Viewer filter (default "all"). */
   audience?: TourAudience;
@@ -247,7 +253,7 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       id: "welcome",
       route: "/home",
       title: "Welcome to Along",
-      body: "A guided stroll through the app. Follow the glow — you can tap the highlighted controls as we go. Take the wheel anytime with Back, Next, or Skip.",
+      body: "A guided stroll through the app. Follow the glow — you can tap the highlighted controls as we go. Use Back and Next to move, and most stops let you Skip.",
       titleKey: "tour.welcomeTitle",
       bodyKey: "tour.welcomeBody",
       audience: "all",
@@ -284,9 +290,9 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       bodyKey: "tour.postOverviewBody",
       placement: "bottom",
       audience: "all",
-      // Feed data can still be loading when the tour arrives — wait a little
-      // longer than composer anchors before politely skipping.
-      timeoutMs: 4500,
+      // Feed data can still be loading when the tour arrives — give posts a
+      // full display time window before politely skipping.
+      timeoutMs: 6000,
     },
     {
       id: "post-trust",
@@ -298,7 +304,7 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       bodyKey: "tour.postTrustBody",
       placement: "top",
       audience: "all",
-      timeoutMs: 4500,
+      timeoutMs: 6000,
     },
     {
       id: "post-actions",
@@ -310,20 +316,23 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       bodyKey: "tour.postActionsBody",
       placement: "top",
       audience: "all",
-      timeoutMs: 4500,
+      timeoutMs: 6000,
     },
     {
       id: "post-navigate",
       route: "/home",
       targetSelector: '[data-tour="post-navigate"]',
       title: "Navigate the route",
-      body: "Tap Navigate to open the live guide — turn-by-turn stops, the map tracing, distance, time, and fare. The tour waits while you look around, then continue when you're ready.",
+      body: "Tap Navigate to open the live guide — turn-by-turn stops, the map tracing, distance, time, and fare. Explore it at your own pace; press Next when you're ready for the next stop.",
       titleKey: "tour.postNavigateTitle",
       bodyKey: "tour.postNavigateBody",
-      interactive: true,
+      // Awareness-only: viewers can still tap Navigate, but the tour does not
+      // wait for it and does not offer End here — the following sharing,
+      // request, explore and profile stops are essential walkthrough content.
+      allowEnd: false,
       placement: "top",
       audience: "all",
-      timeoutMs: 4500,
+      timeoutMs: 6000,
     },
     {
       id: "share-route",
@@ -677,6 +686,7 @@ export function normalizePlatformTourConfig(
         bodyKey: typeof s.bodyKey === "string" ? s.bodyKey : undefined,
         interactive: typeof s.interactive === "boolean" ? s.interactive : undefined,
         interactionSelector: typeof s.interactionSelector === "string" ? s.interactionSelector : undefined,
+        allowEnd: typeof s.allowEnd === "boolean" ? s.allowEnd : undefined,
         placement: isTourPlacement(s.placement) ? s.placement : undefined,
         audience: isTourAudience(s.audience) ? s.audience : undefined,
         timeoutMs:
@@ -797,6 +807,9 @@ export function validatePlatformTourConfigValue(value: unknown): string | null {
       }
       if (s.scrollIntoView !== undefined && typeof s.scrollIntoView !== "boolean") {
         return `step '${s.id}' scrollIntoView must be true or false.`;
+      }
+      if (s.allowEnd !== undefined && typeof s.allowEnd !== "boolean") {
+        return `step '${s.id}' allowEnd must be true or false.`;
       }
       for (const field of ["activateEvent", "advanceEvent"] as const) {
         if (s[field] === undefined) continue;

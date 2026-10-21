@@ -26,19 +26,25 @@ export default function GuestBanner() {
         <p className="text-sm text-text-primary min-w-0 sm:flex-1">
           <span className="font-semibold">{t("guest.banner")}</span>
         </p>
-        {/* Three guest CTAs: tour, sign in, sign up. Wraps instead of
-            squeezing on narrow screens; sign-up stays last and primary. */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <TourLaunchButton label={t("guest.takeTour")} variant="ghost" size="sm" className="text-primary" />
+        {/* Three guest CTAs: tour, sign in, sign up. Narrow screens let them
+            grow to fill each row (flex-auto wraps by content), so a wrapped
+            row never leaves dead space on the right; desktop keeps one row. */}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:shrink-0">
+          <TourLaunchButton
+            label={t("guest.takeTour")}
+            variant="ghost"
+            size="sm"
+            className="flex-auto justify-center whitespace-nowrap text-primary sm:flex-none"
+          />
           <Link
             href="/login"
-            className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors px-3 py-1.5"
+            className="inline-flex flex-auto items-center justify-center gap-1 whitespace-nowrap text-xs font-medium text-text-secondary hover:text-text-primary transition-colors px-3 py-1.5 sm:flex-none"
           >
             <LogIn size={14} /> {t("guest.signIn")}
           </Link>
           <Link
             href="/register"
-            className="inline-flex items-center gap-1 text-xs font-medium bg-primary text-text-inverse px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity"
+            className="inline-flex flex-auto items-center justify-center gap-1 whitespace-nowrap text-xs font-medium bg-primary text-text-inverse px-3 py-1.5 rounded-md hover:opacity-90 transition-opacity sm:flex-none"
           >
             <UserPlus size={14} /> {t("guest.signUp")}
           </Link>

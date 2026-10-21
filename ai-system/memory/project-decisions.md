@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: persistent guest CTA replaces floating prompt)
-> - last-verified-against-code: 2026-10-21 (Sprint 87 in-runner QA: tsc 0, jest 118/118 suites 1259/1259, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: per-step allowEnd + landing/banner tour entries)
+> - last-verified-against-code: 2026-10-21 (Sprint 88 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -34,6 +34,34 @@
 ---
 
 ## Decisions
+
+## Pivotal Tour Steps Can Withhold Ending via `allowEnd`
+
+**Decision:** Add optional `TourStep.allowEnd` (default `true`, normalized/validated). When `false`, PlatformTour keeps Back/Next but withholds the End button, the header X and Escape. The navigation stop (`post-navigate`) uses `allowEnd: false` and is awareness-only (`interactive: false`) so viewers can still tap Navigate but the tour does not wait or offer an early exit before sharing, requests and explore.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 88)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:** The navigation lesson introduced interaction that surfaced End at a point where the following composer/request/explore lessons are more complex and important. A generic per-step flag avoids hardcoding a step id in the component and lets future pivotal stops opt in. Back/Next stay available, so the tour is not a trap.
+
+**Alternatives Considered:** Special-casing `post-navigate` by id (brittle, not config-driven); removing `interactive` only (X/Escape could still end the tour silently); removing all exit affordances globally (harms ordinary steps).
+
+**Implications:** Admin-stored step lists can also set `allowEnd: false`; invalid values fail validation. Offline-blocked cards on such a step still offer "Skip this stop" (continue), not "End tour".
+
+## Landing CTA and Guest Banner Are the Primary Tour Entries
+
+**Decision:** Keep the tour permanently available on the landing page CTA section (`LandingCtaActions` + `TourLaunchButton`) for both guests and signed-in users, and let the guest-banner CTA row grow/wrap to fill narrow widths (`flex-auto`, `sm:flex-none`). The footer Along column, FAQ button and profile quick link remain secondary/replay entries.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 88)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:** A visitor can now preview the product before deciding to register or sign in, and signed-in users leaving the landing page have the same option without a separate auth branch. Filling wrapped CTA rows removes the mobile dead space without changing the desktop layout.
+
+**Alternatives Considered:** Auth-gating the landing tour (contradicts the directive); a second floating prompt (already retired); fixed-width banner buttons (the source of the right-side gap).
+
+**Implications:** The tour remains a first-class, non-persistent entry point. New landing CTA work should compose with `LandingCtaActions` rather than duplicating the launch event.
 
 ## Tour Post Walkthrough Targets the First Route-Bearing Post
 
