@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
-> - last-verified-against-code: 2026-10-19 (Sprint 80 in-runner QA: tsc 0, jest 113/113 suites 1178/1178, build clean)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed share-route composer)
+> - last-verified-against-code: 2026-10-21 (Sprint 85 in-runner QA: tsc 0, jest 117/117 suites 1246/1246, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,27 @@
 ---
 
 ## History
+
+## 2026-10-21 — Tabbed Share-Route Composer (Sprint 85)
+
+**Summary:**
+Reworked the share-route modal from cramped stacked collapsibles into one config-driven tabbed workspace: Details, Map, Score and Drafts share the full modal width, with short labels/icons and a live Drafts count badge so each section is legible on small screens. The footer now holds only Save Draft and Share. A pre-share nudge at the bottom of Details links directly to Map and Score (both highlighted), Find on map jumps to the Map tab, restoring a draft returns to Details, and the tour's score anchor sits on the always-visible Score tab. FAQs (English + PCM) document the layout.
+
+**Completed:**
+- `SHARE_ROUTE_MODAL_CONFIG` tab metadata (`tabs`, `defaultTab`, `tabsAriaLabel`, `detailsHint`, `mapPanelHeight`) + pure `resolveShareRouteTabId` fallback helper; legacy collapse flags retained
+- `ShareRouteModal` ARIA tablist with keyboard navigation, full-width Details form, Map preview, expanded Score coach, Drafts panel; tab-switching Details hint; Find-on-map tab jump; footer reduced to Save Draft + Share
+- `data-tour="route-score"` moved to the Score tab button; FAQ `share-route-tabs` (en + PCM) + Map-tab wording in `map-find-on-map`
+- New `shareRouteTabs.test.ts` covering metadata, fallback matrix, source wiring/footer contract and FAQ parity
+
+**Key Changes:**
+- Sections are peers in one workspace rather than nested accordions — no column-width squeeze and no hidden-state stacking
+- Tab ids resolve through a pure helper; unknown/stale ids degrade to Details rather than rendering an empty modal
+- No schema/migration/API changes; config additions are additive and the old flags still exist for compatibility
+
+**QA:** tsc 0 errors; jest 117/117 suites, 1246/1246 tests; lint no new findings in touched files; `prisma generate` + `next build` clean (107 static pages).
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`. Optional polish: per-tab completion indicators or remembering the last-used tab per session.
 
 ## 2026-10-21 — Tour Viewport Safety, Drafts Footer, Nigeria-Aware Journey Times (Sprint 84)
 

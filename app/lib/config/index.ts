@@ -26,8 +26,14 @@ export { ENDLESS_CAROUSEL_CONFIG } from "./carousel";
 export type { EndlessCarouselConfig } from "./carousel";
 export { SUGGESTIONS_PANEL_CONFIG } from "./suggestionsPanel";
 export type { SuggestionsPanelConfig } from "./suggestionsPanel";
-export { SHARE_ROUTE_MODAL_CONFIG } from "./shareRoute";
-export type { ShareRouteModalConfig } from "./shareRoute";
+export { SHARE_ROUTE_MODAL_CONFIG, resolveShareRouteTabId } from "./shareRoute";
+export type {
+  ShareRouteModalConfig,
+  ShareRouteTabConfig,
+  ShareRouteTabIcon,
+  ShareRouteTabId,
+  ShareRouteDetailsHintConfig,
+} from "./shareRoute";
 export { ROUTE_STEPS_CONFIG, isDestinationStep, showStepFare, showStepVehicle, normalizeRouteSteps } from "./routeSteps";
 export type { RouteStepsConfig, RouteStepLike } from "./routeSteps";
 export { buildRoutePinsFromPost, buildTraceInputFromPins, ROUTE_PINS_CONFIG } from "./routePins";

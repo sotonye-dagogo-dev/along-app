@@ -40,6 +40,12 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
           "Tap the 'Share Route' button from the navigation menu. Add your start and end locations, waypoints, fare details, transport mode, and any relevant photos. The more details you provide, the higher your post's quality score. You can park unfinished work with Save Draft and continue it later — reopening a draft lets you update it in place or save it as a new entry.",
       },
       {
+        id: "share-route-tabs",
+        question: "How is the route composer laid out?",
+        answer:
+          "The composer is split into four tabs — Details, Map, Score, and Drafts — so each section gets the full width instead of being squeezed into a collapsible column. Drafts shows a live count badge, and the footer always keeps Save Draft and Share within reach. At the bottom of Details, a quick hint links straight to Map and Score (and Find on map jumps to Map too) so you can check the tracing and improve your Route Quality Score before sharing.",
+      },
+      {
         id: "route-verification",
         question: "How are routes verified?",
         answer:
@@ -181,7 +187,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "map-find-on-map",
         question: 'What does "Find on map" do?',
         answer:
-          'Every location field has "Find on map" under it. It opens the route preview, flies the camera to that stop (or the closest thing known — your typed text, an earlier stop, or your area) and shows a short hint that you can tap anywhere to set the point. "Use my current location" fills the field with your live position instead.',
+          'Every location field has "Find on map" under it. It switches to the Map tab, flies the camera to that stop (or the closest thing known — your typed text, an earlier stop, or your area) and shows a short hint that you can tap anywhere to set the point. "Use my current location" fills the field with your live position instead.',
       },
       {
         id: "map-plus-code",
@@ -388,6 +394,11 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     answer:
       "Tap di 'Share Route' button from navigation menu. Add where you dey start and where you dey go, stops for middle, fare details, transport mode, and any correct photos. Di more details you drop, di higher your post quality score. You fit park work wey never finish with Save Draft come continue am later — if you reopen draft you fit update am there or save am as new entry.",
   },
+  "share-route-tabs": {
+    question: "How di route composer take arrange?",
+    answer:
+      "Di composer get four tabs — Details, Map, Score, and Drafts — so every section get full width instead of being squeezed inside collapsible column. Drafts dey show live count badge, and di footer always keep Save Draft and Share near your hand. For di bottom of Details, small hint go link you straight to Map and Score (and Find on map go jump to Map too) so you fit check di tracing and improve your Route Quality Score before you share.",
+  },
   "route-verification": {
     question: "How dem take dey verify routes?",
     answer:
@@ -456,7 +467,7 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "map-find-on-map": {
     question: 'Wetin "Find on map" dey do?',
     answer:
-      'Every location field get "Find on map" for under am. E open di route preview, move camera go dat stop (or di closest thing wey we know — your typing, one earlier stop, or your area), then e show small hint say you fit tap anywhere make you set di point. "Use my current location" na to fill di field with your current position instead.',
+      'Every location field get "Find on map" for under am. E dey switch go di Map tab, move camera go dat stop (or di closest thing wey we know — your typing, one earlier stop, or your area), then e show small hint say you fit tap anywhere make you set di point. "Use my current location" na to fill di field with your current position instead.',
   },
   "map-plus-code": {
     question: "I fit use Plus Code search, like CGQC+HQ2 Lekki?",

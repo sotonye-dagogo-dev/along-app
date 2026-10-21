@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: overlay scrims must be click-through; resume progress by step identity not index)
-> - last-verified-against-code: 2026-10-20 (Sprint 83 in-runner QA: tsc 0, jest 116/116 suites 1221/1221, build clean)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed metadata keeps composer sections legible)
+> - last-verified-against-code: 2026-10-21 (Sprint 85 in-runner QA: tsc 0, jest 117/117 suites 1246/1246, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -1125,5 +1125,14 @@ Sprint 83's platform tour: the spotlight wizard mounted a transparent `fixed ins
 Sprint 83's guest tour: the step list is audience-filtered, so a guest walking `welcome → auth-sign-in → auth-register → share-route` loses two steps the moment they finish registration (and the page reloads). A stored index would land on the wrong stop — or past the end — after the list shrank.
 **What We Learned:** Persist a stable step `id` alongside the positional index, resolve the id first, and on a miss pick the first still-visible step at or after the stored config index (then clamp). The same rule applies to persisted cursors/tabs/onboarding checklists whenever visibility depends on permissions, feature flags, or account state. Leave the index in the blob for forward-compat/analytics, but never make it the sole resume key.
 **Apply When:** Persisting progress through onboarding/wizards/multi-step forms where steps can be hidden per role/plan/audience; any saved cursor over a filtered list.
+**Supersedes:** None
+**Superseded by:** None
+
+## Split a dense composer into peer tabs before shrinking typography or columns
+
+**Context:**
+Sprint 85's share-route composer: Details, Map, Score and Drafts were stacked as collapsible sections plus a narrow side column. On small screens the Drafts count/save strip overlapped the footer actions, section headers clipped, and the preview/score got squeezed instead of using the modal width.
+**What We Learned:** When several independent, similarly-prioritised sections compete inside one modal, a peer tablist (one full-width panel at a time) is usually the right fix — not smaller text, narrower columns, or more nested accordions. Keep tab metadata config-driven (short label + icon key + optional count badge), resolve unknown ids through a pure fallback helper, and make cross-section references real tab switches rather than prose. Leave the footer for two primary actions only; everything else belongs in a tab. When tour/setup anchors target a now-conditional section, move the anchor to the always-visible tab button so it cannot disappear based on active state.
+**Apply When:** Redesigning dense forms/modals with 3+ peer sections; fixing mobile overlap/clipping caused by stacked collapsibles; preserving guided-tour anchors through layout changes.
 **Supersedes:** None
 **Superseded by:** None

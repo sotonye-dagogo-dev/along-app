@@ -2,11 +2,25 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 84: tour viewport safety + drafts footer + journey-time accuracy)
-> - last-synced: 2026-10-21 (Sprint 84)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: share-route composer tabs)
+> - last-synced: 2026-10-21 (Sprint 85)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 85 — Tabbed share-route composer (2026-10-21, execute-feature) [M]
+
+> **Section summary:** Issue #240 follow-up directive, non-breaking (config + component + FAQ/tests; no schema/migration). The share-route modal swaps its cramped collapsible columns for one shared tabbed workspace — Details, Map, Score, Drafts — with short config-driven labels/icons and a live Drafts count badge. The footer keeps only Save Draft + Share. A Details-tab nudge links straight to Map and Score (both highlighted and focusable), and Find on map jumps to the Map tab. The tour's score anchor stays visible on the Score tab. FAQ en + PCM explain the layout. QA full in-runner: tsc 0 errors, jest 117/117 suites 1246/1246 tests, lint no new findings on touched files (one pre-existing editPost warning), prisma generate + full next build clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [S] | `shareRoute.ts` — additive `ShareRouteTabId`/`ShareRouteTabConfig` metadata (`tabs`, short labels, icon keys, Drafts badge), `defaultTab`, `tabsAriaLabel`, `detailsHint`, `mapPanelHeight`; pure `resolveShareRouteTabId` fallback helper; legacy collapse flags retained for compatibility | [x] |
+| [M] | `ShareRouteModal.tsx` — replace Drafts/Details/Preview/Score collapsibles with one ARIA tablist + panels (arrow/Home/End keyboard support); Details form, Map preview (`mapPanelHeight`), expanded DraftingCoach, RouteDraftsPanel; Find-on-map switches to Map; Details hint buttons switch to Map/Score; footer only Save Draft + Share | [x] |
+| [S] | Tour anchor — `data-tour="route-score"` moved onto the always-visible Score tab button so the composer-score step resolves regardless of active tab | [x] |
+| [S] | FAQ — new `share-route-tabs` (en + PCM) + `map-find-on-map` wording now says it switches to the Map tab | [x] |
+| [S] | Tests — NEW `shareRouteTabs.test.ts` (tab metadata/order/short labels/icon keys/badge/default + fallback matrix + source wiring/footer contract + FAQ en/pcm) | [x] |
+
+---
 
 ## Sprint 84 — Tour viewport safety + drafts footer + Nigeria-aware journey times (2026-10-21, execute-feature) [L]
 
