@@ -1,8 +1,9 @@
 /**
  * Platform tour config — fully config/metadata-driven guided tour.
  *
- * Zero app deps (mirrors routeRequestAudience.ts discipline): the steps live
- * in code as the safe hardcoded fallback (§3 fallback discipline) and the
+ * Only sibling config imports (share-route event names) — no components, no
+ * network, no storage. The steps live in code as the safe hardcoded fallback
+ * (§3 fallback discipline) and the
  * operational knobs are admin-editable through the `platformTourConfig`
  * SiteConfig row (merged field-wise over these defaults at read time,
  * served to clients via GET /api/tour which is SWR-cached by the service
@@ -16,12 +17,43 @@
  * Never target layout attributes that redesigns routinely rename.
  */
 
+import {
+  SHARE_ROUTE_OPEN_EVENT,
+  SHARE_ROUTE_TAB_EVENT,
+  type ShareRouteTabId,
+} from "./shareRoute";
+
 export const PLATFORM_TOUR_CONFIG_KEY = "platformTourConfig";
 
 /** CustomEvent fired by profile quick links to replay the tour. */
 export const TOUR_START_EVENT = "along:tour-start";
 
 export type TourStepPlacement = "top" | "bottom" | "left" | "right";
+
+/** Viewport scrolling used to bring a spotlight target into view. */
+export type TourScrollBlock = "start" | "center" | "end" | "nearest";
+export type TourScrollBehavior = "smooth" | "auto";
+
+export interface PlatformTourScrollConfig {
+  /** Smooth-scroll a step target into view before spotlighting it. */
+  enabled: boolean;
+  behavior: TourScrollBehavior;
+  block: TourScrollBlock;
+  /** Skip the scroll when the target is already comfortably visible. */
+  onlyWhenOffscreen: boolean;
+  /** Breathing room used by the offscreen check (px). */
+  visibilityMarginPx: number;
+  /** Let a freshly-opened modal/tab settle before scrolling (ms). */
+  delayMs: number;
+}
+
+/** Optional window CustomEvent fired by a tour step. */
+export interface TourStepEvent {
+  /** Must be an `along:*` event name (validated/normalized). */
+  event: string;
+  /** Optional flat string payload exposed as `event.detail`. */
+  detail?: Record<string, string>;
+}
 
 /**
  * Who a step is for. The tour filters its step list per viewer so guests get
@@ -52,6 +84,15 @@ export interface TourStep {
   audience?: TourAudience;
   /** Per-step target wait override (ms); falls back to display.targetTimeoutMs. */
   timeoutMs?: number;
+  /** Fire when the step becomes active (e.g. switch the composer tab). */
+  activateEvent?: TourStepEvent;
+  /**
+   * Fire when Next advances past this step unless the user already interacted
+   * with the target (e.g. open the composer the tour is about to cover).
+   */
+  advanceEvent?: TourStepEvent;
+  /** Per-step scroll override; defaults to `config.scroll.enabled`. */
+  scrollIntoView?: boolean;
 }
 
 export interface PlatformTourEndCard {
@@ -129,6 +170,7 @@ export interface PlatformTourConfig {
   guest: PlatformTourGuestConfig;
   resume: PlatformTourResumeConfig;
   display: PlatformTourDisplayConfig;
+  scroll: PlatformTourScrollConfig;
   storage: PlatformTourStorageConfig;
   offline: PlatformTourOfflineConfig;
   endCard: PlatformTourEndCard;
@@ -174,6 +216,16 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
     // value with a safe, always-present fallback).
     mascotImage: "",
     mascotAlt: "Along guide",
+  },
+  scroll: {
+    enabled: true,
+    behavior: "smooth",
+    block: "center",
+    // Scrolling only when needed avoids needless page jumps for targets that
+    // are already in view (especially inside the composer modal).
+    onlyWhenOffscreen: true,
+    visibilityMarginPx: 12,
+    delayMs: 120,
   },
   storage: {
     stateKey: "along-tour-state-v1",
@@ -231,6 +283,9 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       titleKey: "tour.shareTitle",
       bodyKey: "tour.shareBody",
       interactive: true,
+      // If the viewer presses Next without tapping the trigger, open the
+      // composer for them — the following steps live inside it.
+      advanceEvent: { event: SHARE_ROUTE_OPEN_EVENT },
       placement: "bottom",
       audience: "all",
     },
@@ -278,6 +333,9 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
       body: "The Route Quality Score grows with clear locations, fares, vehicle details, and a helpful description. A higher score earns trust badges and better reach.",
       titleKey: "tour.composerScoreTitle",
       bodyKey: "tour.composerScoreBody",
+      // Switch the composer to the Score tab so the step's content is visible
+      // while the always-on Score tab button stays spotlighted.
+      activateEvent: { event: SHARE_ROUTE_TAB_EVENT, detail: { tab: "score" as ShareRouteTabId } },
       placement: "left",
       audience: "all",
       timeoutMs: 3500,
@@ -497,6 +555,21 @@ export function normalizePlatformTourConfig(
     if (typeof d.mascotAlt === "string" && d.mascotAlt.trim()) merged.display.mascotAlt = d.mascotAlt.trim();
   }
 
+  if (value.scroll && typeof value.scroll === "object" && !Array.isArray(value.scroll)) {
+    const sc = value.scroll as Partial<PlatformTourScrollConfig>;
+    merged.scroll = { ...fallback.scroll };
+    if (typeof sc.enabled === "boolean") merged.scroll.enabled = sc.enabled;
+    if (isTourScrollBehavior(sc.behavior)) merged.scroll.behavior = sc.behavior;
+    if (isTourScrollBlock(sc.block)) merged.scroll.block = sc.block;
+    if (typeof sc.onlyWhenOffscreen === "boolean") merged.scroll.onlyWhenOffscreen = sc.onlyWhenOffscreen;
+    if (typeof sc.visibilityMarginPx === "number" && Number.isFinite(sc.visibilityMarginPx)) {
+      merged.scroll.visibilityMarginPx = Math.min(Math.max(sc.visibilityMarginPx, 0), 120);
+    }
+    if (typeof sc.delayMs === "number" && Number.isFinite(sc.delayMs)) {
+      merged.scroll.delayMs = Math.min(Math.max(sc.delayMs, 0), 2000);
+    }
+  }
+
   if (value.storage && typeof value.storage === "object" && !Array.isArray(value.storage)) {
     const s = value.storage as Partial<PlatformTourStorageConfig>;
     if (typeof s.stateKey === "string" && s.stateKey.trim()) {
@@ -543,6 +616,9 @@ export function normalizePlatformTourConfig(
           typeof s.timeoutMs === "number" && Number.isFinite(s.timeoutMs)
             ? Math.min(Math.max(s.timeoutMs, 1000), 20000)
             : undefined,
+        activateEvent: normalizeTourStepEvent(s.activateEvent),
+        advanceEvent: normalizeTourStepEvent(s.advanceEvent),
+        scrollIntoView: typeof s.scrollIntoView === "boolean" ? s.scrollIntoView : undefined,
       }));
     if (steps.length > 0) merged.steps = steps;
   }
@@ -552,6 +628,35 @@ export function normalizePlatformTourConfig(
 
 export function isTourPlacement(value: unknown): value is TourStepPlacement {
   return value === "top" || value === "bottom" || value === "left" || value === "right";
+}
+
+export function isTourScrollBlock(value: unknown): value is TourScrollBlock {
+  return value === "start" || value === "center" || value === "end" || value === "nearest";
+}
+
+export function isTourScrollBehavior(value: unknown): value is TourScrollBehavior {
+  return value === "smooth" || value === "auto";
+}
+
+const TOUR_EVENT_NAME = /^along:[a-z0-9-]+$/;
+
+/**
+ * Never-throw event action parser. Only `along:*` names are accepted (the
+ * config is code-shipped; this also keeps admin-overridden rows harmless) and
+ * the detail payload is a small flat string map.
+ */
+export function normalizeTourStepEvent(value: unknown): TourStepEvent | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const v = value as Record<string, unknown>;
+  if (typeof v.event !== "string" || !TOUR_EVENT_NAME.test(v.event)) return undefined;
+  let detail: Record<string, string> | undefined;
+  if (v.detail && typeof v.detail === "object" && !Array.isArray(v.detail)) {
+    const entries = Object.entries(v.detail as Record<string, unknown>)
+      .filter(([key, val]) => /^[a-zA-Z0-9_-]{1,32}$/.test(key) && typeof val === "string")
+      .slice(0, 8) as [string, string][];
+    if (entries.length > 0) detail = Object.fromEntries(entries);
+  }
+  return detail ? { event: v.event, detail } : { event: v.event };
 }
 
 /** Admin-config validator body (string | null — null means valid). */
@@ -623,10 +728,54 @@ export function validatePlatformTourConfigValue(value: unknown): string | null {
         }
         if (s.timeoutMs > 20000) return `step '${s.id}' timeoutMs must stay under 20000ms.`;
       }
+      if (s.scrollIntoView !== undefined && typeof s.scrollIntoView !== "boolean") {
+        return `step '${s.id}' scrollIntoView must be true or false.`;
+      }
+      for (const field of ["activateEvent", "advanceEvent"] as const) {
+        if (s[field] === undefined) continue;
+        const event = s[field];
+        if (!event || typeof event !== "object" || Array.isArray(event)) {
+          return `step '${s.id}' ${field} must be an object with an along:* event name.`;
+        }
+        const ev = event as Record<string, unknown>;
+        if (typeof ev.event !== "string" || !/^along:[a-z0-9-]+$/.test(ev.event)) {
+          return `step '${s.id}' ${field}.event must be an along:* event name.`;
+        }
+        if (ev.detail !== undefined) {
+          if (!ev.detail || typeof ev.detail !== "object" || Array.isArray(ev.detail)) {
+            return `step '${s.id}' ${field}.detail must be a flat string map.`;
+          }
+          if (Object.values(ev.detail as Record<string, unknown>).some((val) => typeof val !== "string")) {
+            return `step '${s.id}' ${field}.detail values must be strings.`;
+          }
+        }
+      }
     }
   }
   if (v.display !== undefined && (typeof v.display !== "object" || v.display === null || Array.isArray(v.display))) {
     return "display must be an object.";
+  }
+  if (v.scroll !== undefined && (typeof v.scroll !== "object" || v.scroll === null || Array.isArray(v.scroll))) {
+    return "scroll must be an object.";
+  }
+  if (v.scroll && typeof v.scroll === "object" && !Array.isArray(v.scroll)) {
+    const scroll = v.scroll as Record<string, unknown>;
+    if ("enabled" in scroll && typeof scroll.enabled !== "boolean") return "scroll.enabled must be true or false.";
+    if ("behavior" in scroll && !isTourScrollBehavior(scroll.behavior)) {
+      return "scroll.behavior must be smooth or auto.";
+    }
+    if ("block" in scroll && !isTourScrollBlock(scroll.block)) {
+      return "scroll.block must be start, center, end or nearest.";
+    }
+    if ("onlyWhenOffscreen" in scroll && typeof scroll.onlyWhenOffscreen !== "boolean") {
+      return "scroll.onlyWhenOffscreen must be true or false.";
+    }
+    if ("visibilityMarginPx" in scroll && (typeof scroll.visibilityMarginPx !== "number" || !Number.isFinite(scroll.visibilityMarginPx) || scroll.visibilityMarginPx < 0 || scroll.visibilityMarginPx > 120)) {
+      return "scroll.visibilityMarginPx must be between 0 and 120.";
+    }
+    if ("delayMs" in scroll && (typeof scroll.delayMs !== "number" || !Number.isFinite(scroll.delayMs) || scroll.delayMs < 0 || scroll.delayMs > 2000)) {
+      return "scroll.delayMs must be between 0 and 2000.";
+    }
   }
   if (v.display && typeof v.display === "object" && !Array.isArray(v.display)) {
     const display = v.display as Record<string, unknown>;

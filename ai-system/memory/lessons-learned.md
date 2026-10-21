@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed metadata keeps composer sections legible)
-> - last-verified-against-code: 2026-10-21 (Sprint 85 in-runner QA: tsc 0, jest 117/117 suites 1246/1246, build clean)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: serialize notices, metadata step actions)
+> - last-verified-against-code: 2026-10-21 (Sprint 86 in-runner QA: tsc 0, jest 118/118 suites 1257/1257, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -31,6 +31,28 @@
 ---
 
 ## Lessons
+
+## Serialize Global Notices in a Pure Gate, Not With CSS
+
+**Context:** Sprint 86. The guest tour nudge would have been the fourth bottom-of-screen notice (after the cookie bar and PWA install card, plus the guest banner). Layout-only fixes (different `bottom` lanes) prevent overlap but still present several cards at once.
+
+**What We Learned:** Put the policy in a pure ordered gate: feature enabled → audience → feature availability → terminal/in-progress → auto-start route → existing notice pending → dismissal TTL. Components become dumb renderers and listeners; coordination happens through small named CustomEvents (`along:cookie-consent-changed`, `along:pwa-install-changed`). This makes the "one notice at a time" contract testable without a DOM, and every unknown/garbage input safely hides the prompt.
+
+**Apply When:** Any new global banner/prompt/toast lane that shares the bottom or top stack with existing notices. Decide the queue order in config, not in z-index.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Tour Steps Should Express Actions as Metadata, Not Component Branches
+
+**Context:** Sprint 86. Pressing Next on the share-route tour stop without tapping the highlighted trigger left the next composer steps looking for targets inside a closed modal; switching to Score required knowing the composer’s tab API from inside PlatformTour.
+
+**What We Learned:** Give steps optional `activateEvent` / `advanceEvent` metadata (`along:*` + flat string details). The tour dispatches them at lifecycle points (step active / Next past it) and the owning surface listens (`home` opens the composer, `ShareRouteModal` selects a tab). This keeps the tour content-driven, prevents platform-specific imports, and lets validation reject arbitrary events from stored admin rows.
+
+**Apply When:** A guided walkthrough needs to change state on a page it does not own (open a modal, select a tab, expand a panel).
+
+**Supersedes:** None
+**Superseded by:** None
 
 ## Never Position Overlay Cards From Estimates Alone — Measure and Fit
 

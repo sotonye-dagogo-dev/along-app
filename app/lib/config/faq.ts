@@ -43,7 +43,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "share-route-tabs",
         question: "How is the route composer laid out?",
         answer:
-          "The composer is split into four tabs — Details, Map, Score, and Drafts — so each section gets the full width instead of being squeezed into a collapsible column. Drafts shows a live count badge, and the footer always keeps Save Draft and Share within reach. At the bottom of Details, a quick hint links straight to Map and Score (and Find on map jumps to Map too) so you can check the tracing and improve your Route Quality Score before sharing.",
+          "The composer is split into four tabs — Details, Map, Score, and Drafts — so each section gets the full width instead of being squeezed into a collapsible column. Drafts shows a live count badge, and the footer keeps Save Draft and Share at opposite ends so both stay within reach. At the bottom of Details, a quick hint links straight to Map and Score — the Score link shows your live score, like (72/100) — and Find on map jumps to Map too, so you can check the tracing and improve your Route Quality Score before sharing.",
       },
       {
         id: "route-verification",
@@ -325,7 +325,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "tour-replay-offline",
         question: "How do I replay the tour, and does it work offline?",
         answer:
-          "Open your profile's quick links and choose 'Replay platform tour', or use the tour button on the FAQ page or the footer link — those work for guests too. The tour also runs offline: the guide content is stored on your device, and any stop whose page isn't available offline shows an honest note with a 'Skip this stop' option so you can keep going.",
+          "Open your profile's quick links and choose 'Replay platform tour', or use the tour button on the FAQ page or the 'Take the platform tour' link in the footer's Along column — those work for guests too. The tour also runs offline: the guide content is stored on your device, and any stop whose page isn't available offline shows an honest note with a 'Skip this stop' option so you can keep going.",
       },
       {
         id: "tour-guests-auth",
@@ -337,7 +337,13 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "tour-composer",
         question: "Does the tour cover posting a route?",
         answer:
-          "Yes. Tap the highlighted 'Share a route' trigger and the tour waits while the composer opens. It then covers all three ways to enter a location (type to search, use my current location, find on map), explains how to set the exact stop on the map, and shows how the Route Quality Score grows so your post earns better trust and reach.",
+          "Yes. Tap the highlighted 'Share a route' trigger, or simply press Next and the tour opens the composer for you. It then covers all three ways to enter a location (type to search, use my current location, find on map), scrolls each highlighted field into view, switches to the Score tab to show the Route Quality Score growing, and helps you set the exact stop on the map so your post earns better trust and reach.",
+      },
+      {
+        id: "tour-guest-prompt",
+        question: "Why did a tour prompt appear, and how do I get rid of it?",
+        answer:
+          "Guests may see a single, dismissible nudge to try the tour. It waits politely for the cookie bar and the install prompt to clear so notifications never pile up, and it never appears on pages where the tour already starts by itself or while a tour is in progress. Choose 'Not now' (or the X) and it stays away for 14 days. Signed-in users are never prompted — the tour stays available anytime from the Along column in the footer.",
       },
       {
         id: "tour-resume",
@@ -397,7 +403,7 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "share-route-tabs": {
     question: "How di route composer take arrange?",
     answer:
-      "Di composer get four tabs — Details, Map, Score, and Drafts — so every section get full width instead of being squeezed inside collapsible column. Drafts dey show live count badge, and di footer always keep Save Draft and Share near your hand. For di bottom of Details, small hint go link you straight to Map and Score (and Find on map go jump to Map too) so you fit check di tracing and improve your Route Quality Score before you share.",
+      "Di composer get four tabs — Details, Map, Score, and Drafts — so every section get full width instead of being squeezed inside collapsible column. Drafts dey show live count badge, and di footer keep Save Draft and Share for opposite ends so both dey near your hand. For di bottom of Details, small hint go link you straight to Map and Score — di Score link dey show your live score, like (72/100) — and Find on map go jump to Map too, so you fit check di tracing and improve your Route Quality Score before you share.",
   },
   "route-verification": {
     question: "How dem take dey verify routes?",
@@ -607,7 +613,7 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "tour-replay-offline": {
     question: "How I go replay di tour, and e dey work offline?",
     answer:
-      "Open di quick links for your profile come choose 'Replay platform tour', or use di tour button for FAQ page or di footer link — dem dey work for guests too. Di tour dey run offline too: di guide content dey store for your device, and any stop wey page no dey available offline go show you honest note with 'Skip dis stop' option so you fit continue.",
+      "Open di quick links for your profile come choose 'Replay platform tour', or use di tour button for FAQ page or di 'Take the platform tour' link for di Along column for footer — dem dey work for guests too. Di tour dey run offline too: di guide content dey store for your device, and any stop wey page no dey available offline go show you honest note with 'Skip dis stop' option so you fit continue.",
   },
   "tour-guests-auth": {
     question: "Guests fit take di tour, and e dey cover sign in?",
@@ -617,7 +623,12 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "tour-composer": {
     question: "Di tour dey cover how to post route?",
     answer:
-      "Yes. Tap di highlighted 'Share a route' trigger and di tour go wait while di composer open. E go then cover all three ways to enter location (type to search, use my current location, find on map), explain how to set di exact stop for map, and show how Route Quality Score dey grow so your post go earn better trust and reach.",
+      "Yes. Tap di highlighted 'Share a route' trigger, or just press Next and di tour go open di composer for you. E go then cover all three ways to enter location (type to search, use my current location, find on map), scroll each highlighted field enter view, switch to di Score tab to show Route Quality Score dey grow, and help you set di exact stop for map so your post go earn better trust and reach.",
+  },
+  "tour-guest-prompt": {
+    question: "Why tour prompt appear, and how I go take remove am?",
+    answer:
+      "Guests fit see one dismissible nudge to try di tour. E dey wait well for cookie bar and install prompt to clear so notices no go pile up, and e no dey show for pages wey tour dey start by itself or while tour dey go on. Choose 'Not now' (or di X) and e go stay away for 14 days. Dem no dey prompt signed-in users — di tour dey always available from di Along column for footer.",
   },
   "tour-resume": {
     question: "Wetin happen if I refresh or leave di app during di tour?",

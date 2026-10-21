@@ -13,6 +13,7 @@ import {
 import { FLOATING_UI_CONFIG, laneBottom } from "@/app/lib/config/floatingUi";
 import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
 import { isLikelyIos } from "@/app/lib/config/pushPrompt";
+import { PWA_INSTALL_NOTICE_EVENT } from "@/app/lib/config/guestTourNotice";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -32,6 +33,15 @@ function writeLocal(key: string, value: string): void {
     localStorage.setItem(key, value);
   } catch {
     /* private-mode safe */
+  }
+}
+
+/** Let serialized global notices (guest tour prompt) take the next turn. */
+function notifyInstallNoticeChanged(): void {
+  try {
+    window.dispatchEvent(new CustomEvent(PWA_INSTALL_NOTICE_EVENT));
+  } catch {
+    /* non-critical */
   }
 }
 
@@ -134,6 +144,7 @@ export function InstallPrompt() {
       setDeferred(null);
       deferredRef.current = null;
       writeLocal(PWA_INSTALL_CONFIG.storage.installedKey, "1");
+      notifyInstallNoticeChanged();
       try {
         toastService.success(copy.installedToast);
       } catch {
@@ -161,6 +172,7 @@ export function InstallPrompt() {
     dismissedRef.current = true;
     setDismissed(true);
     writeLocal(PWA_INSTALL_CONFIG.storage.dismissedAtKey, String(Date.now()));
+    notifyInstallNoticeChanged();
   }, []);
 
   const install = useCallback(async () => {
@@ -181,6 +193,7 @@ export function InstallPrompt() {
         installedRef.current = true;
         setInstalled(true);
         writeLocal(PWA_INSTALL_CONFIG.storage.installedKey, "1");
+        notifyInstallNoticeChanged();
         try {
           toastService.success(copy.installedToast);
         } catch {

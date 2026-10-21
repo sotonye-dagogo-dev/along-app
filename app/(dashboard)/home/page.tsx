@@ -13,7 +13,7 @@ const RequestRouteModal = dynamic(() => import("@/app/components/features/posts/
 import { AppEmptyState, PostCardSkeleton } from "@/app/components/ui"
 import { SuggestionsPanel } from "@/app/components/ui/SuggestionsPanel"
 import { SuggestionsRail } from "@/app/components/features/suggestions/SuggestionsRail"
-import { EMPTY_STATES } from "@/app/lib/config"
+import { EMPTY_STATES, SHARE_ROUTE_OPEN_EVENT } from "@/app/lib/config"
 import { FEED_FIRST_LOAD_CONFIG, FEED_NEW_POSTS_PROMPT_CONFIG } from "@/app/lib/config/feedAlgorithm"
 import { ROUTE_DRAFTS_CONFIG } from "@/app/lib/config/routeDrafts"
 import { routeDraftsService } from "@/app/lib/services/routeDraftsService"
@@ -145,6 +145,20 @@ function HomeContent() {
       setShowShareModal(true)
     }
   }, [searchParams])
+
+  // Tour step hand-off: pressing Next on the share-route stop (without tapping
+  // the spotlighted Share trigger) opens the same composer instance here.
+  useEffect(() => {
+    const openComposer = () => {
+      setRespondTo(null)
+      setEditPost(null)
+      setEditRequest(null)
+      setOpenDraftsOnShare(false)
+      setShowShareModal(true)
+    }
+    window.addEventListener(SHARE_ROUTE_OPEN_EVENT, openComposer)
+    return () => window.removeEventListener(SHARE_ROUTE_OPEN_EVENT, openComposer)
+  }, [])
 
   // Saved route drafts: badge count stays fresh via the drafts-changed event.
   useEffect(() => {

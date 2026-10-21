@@ -49,6 +49,12 @@ export const FOOTER_CONFIG: FooterConfig = {
       links: [
         { label: "About", href: "/about", i18nKey: "footer.about" },
         { label: "Contact", href: "/contact", i18nKey: "footer.contact" },
+        {
+          label: "Take the platform tour",
+          href: "/faq",
+          i18nKey: "tour.takeTour",
+          actionEvent: TOUR_START_EVENT,
+        },
         { label: "Privacy Policy", href: "/privacy", i18nKey: "footer.privacy" },
         { label: "Terms of Service", href: "/terms", i18nKey: "footer.terms" },
       ],
@@ -71,12 +77,6 @@ export const FOOTER_CONFIG: FooterConfig = {
       links: [
         { label: "Blog", href: "/blog", i18nKey: "footer.blog" },
         { label: "FAQ", href: "/faq", i18nKey: "footer.faq" },
-        {
-          label: "Take the platform tour",
-          href: "/faq",
-          i18nKey: "tour.takeTour",
-          actionEvent: TOUR_START_EVENT,
-        },
         { label: "Leave a Review", href: "/profile#reviews", i18nKey: "footer.leaveReview" },
         { label: "Report a Bug", href: "/report-bug", i18nKey: "footer.reportBug" },
         { label: "Join Discord", href: "https://discord.gg/along", i18nKey: "footer.joinDiscord" },

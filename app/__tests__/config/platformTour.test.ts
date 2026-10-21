@@ -36,6 +36,7 @@ import {
 import { API_REGISTRY } from "@/app/lib/config/apiRegistry";
 import { PWA_CACHEABLE_API_PREFIXES, PWA_NEVER_CACHE_API } from "@/app/lib/config/pwa";
 import { PROFILE_QUICK_LINKS_CONFIG } from "@/app/lib/config/profileQuickLinks";
+import { SHARE_ROUTE_OPEN_EVENT, SHARE_ROUTE_TAB_EVENT } from "@/app/lib/config/shareRoute";
 
 /** Routes a tour step is allowed to live on (dashboard + guest auth). */
 const TOUR_ROUTES = [
@@ -304,6 +305,42 @@ describe("platform tour admin config", () => {
     expect(validatePlatformTourConfigValue({ display: "no" })).toMatch(/display/);
   });
 
+  it("ships safe scroll defaults and validates overrides", () => {
+    expect(DEFAULT_PLATFORM_TOUR_CONFIG.scroll).toMatchObject({
+      enabled: true,
+      behavior: "smooth",
+      block: "center",
+      onlyWhenOffscreen: true,
+    });
+    expect(validatePlatformTourConfigValue({ scroll: { behavior: "jump" } })).toMatch(/scroll.behavior/);
+    expect(validatePlatformTourConfigValue({ scroll: { block: "middle" } })).toMatch(/scroll.block/);
+    expect(validatePlatformTourConfigValue({ scroll: { delayMs: -1 } })).toMatch(/scroll.delayMs/);
+    expect(validatePlatformTourConfigValue({ scroll: { behavior: "auto", block: "nearest" } })).toBeNull();
+  });
+
+  it("step activation/advance events are constrained to along:* names", () => {
+    const share = DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((step) => step.id === "share-route");
+    const score = DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((step) => step.id === "composer-score");
+    expect(share?.advanceEvent?.event).toBe(SHARE_ROUTE_OPEN_EVENT);
+    expect(score?.activateEvent?.event).toBe(SHARE_ROUTE_TAB_EVENT);
+    expect(score?.activateEvent?.detail).toEqual({ tab: "score" });
+    expect(
+      validatePlatformTourConfigValue({
+        steps: [{ id: "bad", route: "/home", title: "Bad", advanceEvent: { event: "click" } }],
+      }),
+    ).toMatch(/along:\*/);
+    expect(
+      validatePlatformTourConfigValue({
+        steps: [{ id: "bad", route: "/home", title: "Bad", activateEvent: { event: "along:ok", detail: { tab: 3 } } }],
+      }),
+    ).toMatch(/detail values/);
+    expect(
+      validatePlatformTourConfigValue({ steps: [{ id: "ok", route: "/home", title: "Ok", scrollIntoView: "yes" }] }),
+    ).toMatch(
+      /scrollIntoView/,
+    );
+  });
+
   it("stored partial rows merge over the default at read time", () => {
     const merged = mergeAdminConfigsWithDefaults([{ key: PLATFORM_TOUR_CONFIG_KEY, value: { enabled: false } } as never]);
     const entry = merged.find((c) => c.key === PLATFORM_TOUR_CONFIG_KEY);
@@ -371,6 +408,7 @@ describe("platform tour FAQ (en + pidgin)", () => {
     "tour-replay-offline",
     "tour-guests-auth",
     "tour-composer",
+    "tour-guest-prompt",
     "tour-resume",
   ];
 

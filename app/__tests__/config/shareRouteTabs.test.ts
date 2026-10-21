@@ -100,13 +100,19 @@ describe("share-route modal tab wiring", () => {
     expect(source).toContain("SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreLabel");
   });
 
+  it("details hint shows the live score beside the Score link", () => {
+    expect(source).toContain("detailsHint.scoreValueTemplate");
+    expect(source).toContain("evaluation.score");
+    expect(source).toContain("evaluation.maxScore");
+  });
+
   it("score tab keeps the tour anchor visible and opens expanded", () => {
     expect(source).toContain('data-tour={tab.id === "score" ? "route-score" : undefined}');
     expect(source).toContain("defaultOpen");
   });
 
   it("footer contains only Save Draft + Share actions", () => {
-    const footerStart = source.lastIndexOf("<div className=\"flex items-center justify-end gap-2");
+    const footerStart = source.lastIndexOf("<div className=\"flex items-center justify-between gap-2");
     const footer = source.slice(footerStart);
     expect(footer).toContain("saveDraft");
     expect(footer).toContain("handleSubmit");
