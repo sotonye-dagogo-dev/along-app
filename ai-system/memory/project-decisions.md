@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: platform tour enhancements)
-> - last-verified-against-code: 2026-10-20 (Sprint 83 in-runner QA: tsc 0, jest 116/116 suites 1221/1221, build clean)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed share-route composer)
+> - last-verified-against-code: 2026-10-21 (Sprint 85 in-runner QA: tsc 0, jest 117/117 suites 1246/1246, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -1223,4 +1223,18 @@ A single shipped step list must serve two different audiences without duplicatin
 - **Auto-resume on refresh**: Rejected as default — the directive explicitly asked for non-interference; `resume.autoResume` stays as an opt-in for deployments that prefer the old behavior.
 - **Add admin knobs for the new fields**: Rejected — no-code surface has no demonstrated admin need; step content/audience is bundle-coupled like the rest of the step list, and operational `enabled`/`autoStart`/`autoStartDelayMs` remain the admin contract.
   **Supersedes:** PARTIAL — supersedes Sprint 82 decision (4)'s "capture-click detection" wording only insofar as the overlay must be click-through; interactive steps still watch element focus/pointer/key events, but the scrim never intercepts. Extends Sprint 82 decision (1) by moving the mount to the root and adding audience-gated steps; the content-in-code/config-in-SiteConfig split is unchanged.
+  **Superseded by:** None
+
+## Sprint 85 decisions (2026-10-21)
+
+**Decision:** (1) **The share-route composer is a peer-tab workspace, not nested accordions.** `SHARE_ROUTE_MODAL_CONFIG.tabs` owns the section list/order (Details, Map, Score, Drafts), short labels, icon keys and the Drafts count badge; the component renders exactly one full-width panel at a time so every section gets the modal's full width and no column can clip its controls. (2) **Tab metadata stays in the bundle, not SiteConfig.** Like the platform tour's step list, the tabs are coupled to the component's render branches and selectors; making them admin-editable would require a bespoke validator/card for no user benefit. (3) **Unknown tab ids degrade, never blank.** `resolveShareRouteTabId` maps any stale/unknown/nullish value to `defaultTab` → first configured tab → Details, and `startWithDraftsOpen` only selects Drafts when drafts actually exist. (4) **Cross-section actions are real tab switches.** The Details nudge's map/score words are buttons (`selectTab`), Find on map switches to Map before flying/pinning, restoring a draft returns to Details, and the tour's `route-score` anchor sits on the always-visible Score tab so its step resolves even when Details is active. (5) **Legacy collapse flags remain exported but inert.** `previewDefaultOpen`/`scoreDefaultOpen`/`formDefaultOpen` stay in the config object for non-breaking consumers/tests; the tab renderer intentionally ignores them (the Score tab always opens expanded).
+**Reason:**
+The reported problem was structural: two narrow columns plus nested collapsibles made the drafts count/save controls overlap and shrank sections on mobile. Tabs allocate the full panel to the active task, make Drafts discoverable via a count badge, and keep the primary actions (Save Draft, Share) permanently reachable in the footer. Short labels + icons meet the 320px constraint without losing meaning, while ARIA tabs and keyboard cycling preserve accessibility. Keeping section metadata in code means selectors/render branches and labels cannot drift across deployments; the pure resolver makes persistence/edge inputs safe.
+**Alternatives Considered:**
+- **Keep collapsibles but make the columns wider**: Rejected — the modal is already 800px max; the squeeze is inherent to splitting Details/Map/Score into columns and stacking Drafts above them.
+- **One long scrollable form with all sections expanded**: Rejected — the reported burden was length/overlap; tabs keep each task focused and let Map render at a useful height.
+- **Admin-editable tab labels/order**: Rejected — labels map to fixed render branches and tour anchors; a bad row could hide the only path to Save/Share. Config-in-bundle is the safer contract.
+- **Remove the legacy collapse flags entirely**: Rejected — non-breaking mandate; they are inert but still exported for any consumer/test expecting the old shape.
+- **Open the score tab automatically after a draft restore**: Rejected — restoring means "continue editing"; Details is the useful landing tab, with the nudge one tap away to Map/Score.
+  **Supersedes:** None
   **Superseded by:** None

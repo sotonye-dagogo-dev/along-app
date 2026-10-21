@@ -2,10 +2,10 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair, History, Loader2, MapPinned } from "lucide-react"
+import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, Crosshair, History, Loader2, MapPinned, FileText, BarChart3, Info, type LucideIcon } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
-import { SHARE_ROUTE_MODAL_CONFIG } from "@/app/lib/config"
+import { SHARE_ROUTE_MODAL_CONFIG, resolveShareRouteTabId, type ShareRouteTabConfig, type ShareRouteTabIcon, type ShareRouteTabId } from "@/app/lib/config"
 import { ROUTE_STEPS_CONFIG, showStepFare, showStepVehicle, normalizeRouteSteps, totalFareForSteps } from "@/app/lib/config/routeSteps"
 import {
   ROUTE_VALIDATION_CONFIG,
@@ -153,6 +153,14 @@ interface ShareRouteModalProps {
 
 const VEHICLE_OPTIONS = Object.keys(VEHICLE_REGISTRY) as VehicleType[]
 
+/** Config icon keys → Lucide components (the config itself stays zero-dep). */
+const SHARE_ROUTE_TAB_ICONS: Record<ShareRouteTabIcon, LucideIcon> = {
+  details: FileText,
+  map: MapPinned,
+  score: BarChart3,
+  drafts: History,
+}
+
 function newMutationKey(): string {
   try {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID()
@@ -190,7 +198,12 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   const isEditing = Boolean(editPost)
   const [drafts, setDrafts] = useState<RouteDraft[]>([])
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
-  const [showDrafts, setShowDrafts] = useState(false)
+  // Tabbed workspace: one shared panel (Details / Map / Score / Drafts) so
+  // no section is squeezed into a narrow column. Unknown ids resolve safely.
+  const [activeTab, setActiveTab] = useState<ShareRouteTabId>(() =>
+    resolveShareRouteTabId(SHARE_ROUTE_MODAL_CONFIG.defaultTab),
+  )
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [savePromptOpen, setSavePromptOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -205,15 +218,13 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
-  const [previewOpen, setPreviewOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.previewDefaultOpen)
   // Sprint 72 — "Find on map": an explicit RouteMap fly-to request; the
   // nonce bumps so repeat requests (same stop) still refocus + re-hint.
   const [focusRequest, setFocusRequest] = useState<{ lat?: number; lng?: number; nonce: number } | null>(null)
   const focusNonceRef = useRef(0)
-  // Always-mounted preview anchor (contains the toggle + conditional panel)
-  // so scrolling does not race the previewOpen render.
+  // Anchor inside the Map tab so "Find on map" can scroll the shared panel
+  // to the preview after switching tabs.
   const previewAnchorRef = useRef<HTMLDivElement>(null)
-  const [formOpen, setFormOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.formDefaultOpen)
   // Double-submit guard: while a post is in flight the Share/Save buttons are
   // disabled with spinner feedback, and re-entry is ignored. `mutationKey`
   // identifies this composer session for server-side idempotency replay.
@@ -249,6 +260,36 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
    * per opened post id; later renders for the same id leave user input alone.
    */
   const editInitRef = useRef<string | null>(null)
+
+  // Config order wins; a defensive single-tab fallback keeps the composer
+  // usable even if a deployment empties the tab metadata by mistake.
+  const shareTabs = useMemo<ShareRouteTabConfig[]>(
+    () =>
+      SHARE_ROUTE_MODAL_CONFIG.tabs.length > 0
+        ? SHARE_ROUTE_MODAL_CONFIG.tabs
+        : [{ id: "details", label: "Details", icon: "details", ariaLabel: "Route details" }],
+    [],
+  )
+
+  const selectTab = useCallback((id: string) => {
+    setActiveTab(resolveShareRouteTabId(id))
+  }, [])
+
+  // ARIA tab pattern: Left/Right cycle, Home/End jump, focus follows.
+  const handleTabKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      let next = index
+      if (event.key === "ArrowRight") next = (index + 1) % shareTabs.length
+      else if (event.key === "ArrowLeft") next = (index - 1 + shareTabs.length) % shareTabs.length
+      else if (event.key === "Home") next = 0
+      else if (event.key === "End") next = shareTabs.length - 1
+      else return
+      event.preventDefault()
+      setActiveTab(shareTabs[next].id)
+      requestAnimationFrame(() => tabRefs.current[next]?.focus())
+    },
+    [shareTabs],
+  )
 
   const doGeocode = useCallback(async (query: string, stepIndex: number) => {
     if (!query || query.length < LOCATION_SUGGESTIONS_CONFIG.minQueryLength) {
@@ -406,7 +447,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   // bias → GPS. Any resolution arms the tap-hint pill inside RouteMap; a
   // total miss still opens the preview (hint only — nothing to fly to).
   const findOnMap = (index: number) => {
-    setPreviewOpen(true)
+    // Jump straight to the Map tab — the preview is no longer collapsible,
+    // so the tap-to-assign hint and fly-to are immediately visible.
+    selectTab("map")
     setStepExtra(index, { _focused: false })
     requestAnimationFrame(() =>
       previewAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
@@ -878,7 +921,6 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
     // Working on the same draft → prompt: update in place or save as new.
     // Fresh composer → save as a new entry directly.
     if (activeDraftId) {
-      setShowDrafts(false)
       setSavePromptOpen(true)
       return
     }
@@ -887,7 +929,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
 
   const restoreDraft = useCallback((draft: RouteDraft) => {
     applyDraft(draft)
-    setShowDrafts(false)
+    // Return to Details so the user can review and continue editing the
+    // restored draft without hunting through tabs.
+    setActiveTab("details")
     setSavePromptOpen(false)
     toastService.success(ROUTE_DRAFTS_CONFIG.restoredToast)
   }, [applyDraft])
@@ -974,10 +1018,10 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
         (editPost.images ?? []).filter((u): u is string => typeof u === "string")
       )
       setActiveDraftId(null)
-      setShowDrafts(false)
+      setActiveTab(resolveShareRouteTabId(SHARE_ROUTE_MODAL_CONFIG.defaultTab))
       setRestoredResponseTo(null)
-      // Drafts stay accessible while editing (footer + panel above) — a draft
-      // saved mid-edit carries the edit target's linkage via editResponseTo.
+      // Drafts stay accessible while editing (Drafts tab + footer save) — a
+      // draft saved mid-edit carries the edit target's linkage via editResponseTo.
       setDrafts(routeDraftsService.listDrafts())
       setFieldErrors({ steps: (prefill.length >= 2 ? prefill : []).map(() => ({})) })
       setFormError(null)
@@ -994,12 +1038,16 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
         setTags((prev) => (prev.length === 0 ? [...responseTags] : prev))
       }
       setDrafts(routeDraftsService.listDrafts())
-      setShowDrafts(false)
+      setActiveTab(resolveShareRouteTabId(SHARE_ROUTE_MODAL_CONFIG.defaultTab))
       return
     }
     const stored = routeDraftsService.listDrafts()
     setDrafts(stored)
-    setShowDrafts(Boolean(startWithDraftsOpen && stored.length > 0))
+    setActiveTab(
+      startWithDraftsOpen && stored.length > 0
+        ? "drafts"
+        : resolveShareRouteTabId(SHARE_ROUTE_MODAL_CONFIG.defaultTab),
+    )
     // Create mode has no live-post originals — every Cloudinary removal is a
     // session/draft orphan and safe for immediate background cleanup.
     editOriginalsRef.current = new Set()
@@ -1290,54 +1338,69 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
           </div>
         )}
 
-        {/* Drafts stay accessible in edit mode too (see footer save) — a
-            draft saved mid-edit carries the edit target's response linkage. */}
-        <div className="mx-6 mt-4 border border-border radius-lg bg-bg-elevated">
-          <button
-            type="button"
-            onClick={() => setShowDrafts((open) => !open)}
-            aria-expanded={showDrafts}
-            aria-controls="route-drafts-panel"
-            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 border-none bg-transparent cursor-pointer font-sans text-left"
+        {/* Tabbed workspace: Details / Map / Score / Drafts share one panel.
+            Short labels + icons keep every tab legible (count badge on
+            Drafts), and the footer owns only Save Draft + Share. */}
+        <div className="px-4 sm:px-6 pt-4">
+          <div
+            role="tablist"
+            aria-label={SHARE_ROUTE_MODAL_CONFIG.tabsAriaLabel}
+            aria-orientation="horizontal"
+            className="flex items-stretch gap-1 sm:gap-2 border-b border-border overflow-x-auto overscroll-x-contain -mx-1 px-1 scrollbar-thin"
           >
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-primary">
-              <History size={15} className="text-text-secondary" />
-              {ROUTE_DRAFTS_CONFIG.panelToggleLabel}
-              <span className="text-xs font-medium text-text-muted">
-                ({ROUTE_DRAFTS_CONFIG.draftsCountLabel(drafts.length)})
-              </span>
-            </span>
-            <ChevronDown
-              size={16}
-              className={`text-text-secondary transition-transform duration-fast ${showDrafts ? "rotate-180" : ""}`}
-            />
-          </button>
-          {showDrafts && (
-            <div id="route-drafts-panel" className="px-3 pb-3">
-              <RouteDraftsPanel drafts={drafts} activeDraftId={activeDraftId} onRestore={restoreDraft} onDelete={deleteDraft} onUpdate={persistDraftUpdate} />
-            </div>
-          )}
+            {shareTabs.map((tab, index) => {
+              const TabIcon = SHARE_ROUTE_TAB_ICONS[tab.icon] ?? FileText
+              const selected = activeTab === tab.id
+              const count = tab.badge === "drafts" ? drafts.length : null
+              return (
+                <button
+                  key={tab.id}
+                  ref={(el) => { tabRefs.current[index] = el }}
+                  type="button"
+                  role="tab"
+                  id={`route-tab-${tab.id}`}
+                  aria-selected={selected}
+                  aria-controls={`route-tabpanel-${tab.id}`}
+                  aria-label={
+                    tab.badge === "drafts"
+                      ? `${tab.ariaLabel} (${ROUTE_DRAFTS_CONFIG.draftsCountLabel(drafts.length)})`
+                      : tab.ariaLabel
+                  }
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => selectTab(tab.id)}
+                  onKeyDown={(event) => handleTabKeyDown(event, index)}
+                  data-tour={tab.id === "score" ? "route-score" : undefined}
+                  className={`relative flex-1 basis-0 min-w-[60px] inline-flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-4 py-3 border-none bg-transparent text-[11px] sm:text-sm font-medium cursor-pointer font-sans whitespace-nowrap transition-colors duration-fast ${
+                    selected ? "text-primary" : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <TabIcon size={14} className="shrink-0 sm:w-[15px] sm:h-[15px]" aria-hidden />
+                  <span>{tab.label}</span>
+                  {count !== null && count > 0 && (
+                    <span
+                      className="inline-flex items-center justify-center min-w-[16px] h-4 px-0.5 radius-pill bg-primary-muted text-primary text-[9px] font-semibold shrink-0"
+                      aria-hidden
+                    >
+                      {count}
+                    </span>
+                  )}
+                  {selected && (
+                    <span className="absolute bottom-0 left-[20%] right-[20%] h-[2.5px] bg-primary radius-pill" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row overflow-y-auto flex-1">
-          <div className="flex-1 p-4 sm:p-6 flex flex-col gap-5 overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => setFormOpen((open) => !open)}
-              aria-expanded={formOpen}
-              aria-controls="route-form-panel"
-              className="w-full flex items-center justify-between gap-2 py-1 border-none bg-transparent cursor-pointer font-sans text-left group"
+        <div className="overflow-y-auto flex-1">
+          {activeTab === "details" && (
+            <div
+              id="route-tabpanel-details"
+              role="tabpanel"
+              aria-labelledby="route-tab-details"
+              className="p-4 sm:p-6 flex flex-col gap-5"
             >
-              <span className="text-sm font-semibold text-text-primary">
-                {SHARE_ROUTE_MODAL_CONFIG.formTitle}
-              </span>
-              <ChevronDown
-                size={16}
-                className={`text-text-secondary transition-transform duration-fast ${formOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {formOpen && (
-              <div id="route-form-panel" className="flex flex-col gap-5">
             <div>
               <label className="block text-sm font-medium mb-1 text-text-primary">
                 Route title <span className="text-error-text">*</span>
@@ -1640,70 +1703,123 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
               </div>
             </div>
 
-            {/* Actions live in the modal footer below preview + score. */}
-              </div>
-            )}
-          </div>
-
-          <div className="w-full lg:w-[280px] shrink-0 p-4 sm:py-5 sm:pr-6 sm:pl-0 flex flex-col gap-4 border-t lg:border-t-0 lg:border-l border-border">
-            <div ref={previewAnchorRef}>
-              <button
-                type="button"
-                onClick={() => setPreviewOpen((open) => !open)}
-                aria-expanded={previewOpen}
-                aria-controls="route-preview-panel"
-                className="w-full flex items-center justify-between gap-2 px-0 py-1.5 border-none bg-transparent cursor-pointer font-sans text-left group"
+              {/* Pre-share nudge: map/score are real buttons that switch tabs. */}
+              <div
+                role="note"
+                aria-label={SHARE_ROUTE_MODAL_CONFIG.detailsHint.ariaLabel}
+                className="flex items-start gap-2 px-3 py-2.5 radius-md bg-info border border-info-border text-info-text text-xs leading-relaxed"
               >
-                <span className="flex items-center gap-1.5 text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
-                  <MapPin size={14} />
+                <Info size={14} className="shrink-0 mt-0.5" aria-hidden />
+                <p>
+                  {SHARE_ROUTE_MODAL_CONFIG.detailsHint.text}{" "}
+                  <button
+                    type="button"
+                    onClick={() => selectTab("map")}
+                    aria-label={shareTabs.find((tab) => tab.id === "map")?.ariaLabel ?? "Map preview"}
+                    className="font-semibold underline underline-offset-2 border-none bg-transparent cursor-pointer font-sans text-info-text hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors"
+                  >
+                    {SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapLabel}
+                  </button>{" "}
+                  {SHARE_ROUTE_MODAL_CONFIG.detailsHint.conjunction}{" "}
+                  <button
+                    type="button"
+                    onClick={() => selectTab("score")}
+                    aria-label={shareTabs.find((tab) => tab.id === "score")?.ariaLabel ?? "Route quality score"}
+                    className="font-semibold underline underline-offset-2 border-none bg-transparent cursor-pointer font-sans text-info-text hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors"
+                  >
+                    {SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreLabel}
+                  </button>{" "}
+                  {SHARE_ROUTE_MODAL_CONFIG.detailsHint.suffix}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "map" && (
+            <div
+              id="route-tabpanel-map"
+              role="tabpanel"
+              aria-labelledby="route-tab-map"
+              className="p-4 sm:p-6 flex flex-col gap-3"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                  <MapPinned size={15} className="text-text-secondary" aria-hidden />
                   {SHARE_ROUTE_MODAL_CONFIG.previewTitle}
                   {tracing && (
                     <span className="text-[10px] font-normal text-text-muted animate-pulse">updating...</span>
                   )}
-                </span>
-                <span className="flex items-center gap-1.5 text-xs text-text-muted">
+                </h3>
+                <span className="text-xs text-text-muted">
                   {displayDistance > 0 ? `${displayDistance} km` : ""}
                   {displayDuration > 0 ? ` · ${displayDuration} min` : ""}
-                  <ChevronDown
-                    size={14}
-                    className={`transition-transform duration-fast ${previewOpen ? "rotate-180" : ""}`}
-                  />
                 </span>
-              </button>
-              {previewOpen && (
-                <div id="route-preview-panel">
-                  <RouteMap
-                    pins={pins}
-                    encodedPolyline={liveTrace?.polyline}
-                    height={180}
-                    editable={false}
-                    showOverlay={true}
-                    distance={displayDistance > 0 ? displayDistance : undefined}
-                    duration={displayDuration > 0 ? displayDuration : undefined}
-                    fare={totalFare > 0 ? `₦${totalFare.toLocaleString()}` : undefined}
-                    vehicle={previewVehicle}
-                    pickOptions={pickOptions}
-                    onPickOption={handlePickOption}
-                    focusRequest={focusRequest}
-                  />
-                  <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted">
-                    <span>{liveTrace ? "Live route" : "Estimated route — updates as you edit"}</span>
-                    <span>{steps.filter((s) => s.location).length} steps</span>
-                  </div>
-                </div>
-              )}
+              </div>
+              <div ref={previewAnchorRef}>
+                <RouteMap
+                  pins={pins}
+                  encodedPolyline={liveTrace?.polyline}
+                  height={SHARE_ROUTE_MODAL_CONFIG.mapPanelHeight}
+                  editable={false}
+                  showOverlay={true}
+                  distance={displayDistance > 0 ? displayDistance : undefined}
+                  duration={displayDuration > 0 ? displayDuration : undefined}
+                  fare={totalFare > 0 ? `₦${totalFare.toLocaleString()}` : undefined}
+                  vehicle={previewVehicle}
+                  pickOptions={pickOptions}
+                  onPickOption={handlePickOption}
+                  focusRequest={focusRequest}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-text-muted">
+                <span>{liveTrace ? "Live route" : "Estimated route — updates as you edit"}</span>
+                <span>{steps.filter((s) => s.location).length} steps</span>
+              </div>
             </div>
+          )}
 
-            <div data-tour="route-score">
+          {activeTab === "score" && (
+            <div
+              id="route-tabpanel-score"
+              role="tabpanel"
+              aria-labelledby="route-tab-score"
+              className="p-4 sm:p-6"
+            >
               <DraftingCoach
                 score={evaluation.score}
                 maxScore={evaluation.maxScore}
                 checkpoints={evaluation.checkpoints}
                 nextSuggestion={evaluation.nextSuggestion}
-                defaultOpen={SHARE_ROUTE_MODAL_CONFIG.scoreDefaultOpen}
+                defaultOpen
               />
             </div>
-          </div>
+          )}
+
+          {activeTab === "drafts" && (
+            <div
+              id="route-tabpanel-drafts"
+              role="tabpanel"
+              aria-labelledby="route-tab-drafts"
+              className="p-4 sm:p-6 flex flex-col gap-3"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                  <History size={15} className="text-text-secondary" aria-hidden />
+                  {ROUTE_DRAFTS_CONFIG.panelTitle}
+                </h3>
+                <span className="text-xs text-text-muted">
+                  {ROUTE_DRAFTS_CONFIG.draftsCountLabel(drafts.length)} · {SHARE_ROUTE_MODAL_CONFIG.actionsNote}
+                </span>
+              </div>
+              <RouteDraftsPanel
+                drafts={drafts}
+                activeDraftId={activeDraftId}
+                onRestore={restoreDraft}
+                onDelete={deleteDraft}
+                onUpdate={persistDraftUpdate}
+              />
+            </div>
+          )}
         </div>
 
         {savePromptOpen && activeDraftId && (
@@ -1732,23 +1848,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
             <span className="text-xs font-medium text-error-text flex-1">{formError}</span>
           </div>
         )}
-        <div className="flex flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
-          <div className="flex items-center gap-2 min-w-0 sm:flex-1">
-            <button
-              type="button"
-              onClick={() => setShowDrafts((open) => !open)}
-              aria-expanded={showDrafts}
-              aria-controls="route-drafts-panel"
-              className="inline-flex items-center gap-1.5 h-9 px-3 radius-md border border-border bg-transparent text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast min-w-0 max-w-full"
-            >
-              <History size={14} className="shrink-0" />
-              <span className="truncate">
-                {ROUTE_DRAFTS_CONFIG.panelToggleLabel} ({drafts.length})
-              </span>
-            </button>
-            <span className="text-xs text-text-muted hidden md:inline truncate">{SHARE_ROUTE_MODAL_CONFIG.actionsNote}</span>
-          </div>
-          <div className="flex items-center justify-end gap-2 shrink-0">
+        <div className="flex items-center justify-end gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
             {/* Drafts stay savable while editing too: a draft saved mid-edit
                 carries the edit target's response linkage (buildDraftInput
                 falls back to editResponseTo), so edit→draft→repost never
@@ -1773,7 +1873,6 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                 ? (isEditing ? "Saving…" : isResponse ? POST_SUBMIT_CONFIG.responseSharingLabel : POST_SUBMIT_CONFIG.sharingLabel)
                 : (isEditing ? "Save changes" : isResponse ? POST_SUBMIT_CONFIG.responseShareLabel : POST_SUBMIT_CONFIG.shareLabel)}
             </button>
-          </div>
         </div>
       </div>
     </AppModal>

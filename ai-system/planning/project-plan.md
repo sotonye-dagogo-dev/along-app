@@ -2,10 +2,17 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 84: tour viewport safety + drafts footer + journey-time accuracy)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed share-route composer)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 85 — Tabbed share-route composer (2026-10-21, execute-feature)
+
+- [x] Tab metadata [Sprint 85]: `SHARE_ROUTE_MODAL_CONFIG.tabs` (Details/Map/Score/Drafts short labels + icon keys), `defaultTab`, `tabsAriaLabel`, `detailsHint`, `mapPanelHeight`, Drafts badge; pure `resolveShareRouteTabId` fallback
+- [x] Composer layout [Sprint 85]: one full-width ARIA tabpanel replaces nested collapsibles; keyboard tab cycling; footer reduced to Save Draft + Share; Drafts count badge
+- [x] Cross-section actions [Sprint 85]: Details nudge buttons switch to Map/Score; Find on map switches to Map; draft restore returns to Details; tour score anchor moved to the Score tab
+- [x] FAQ/tests [Sprint 85]: `share-route-tabs` en + PCM, Map-tab wording in `map-find-on-map`; new `shareRouteTabs.test.ts`; full gate green (tsc 0, 117/117 suites 1246/1246, build clean)
 
 ## Sprint 84 — Tour viewport safety + drafts footer + Nigeria-aware journey times (2026-10-21, execute-feature)
 

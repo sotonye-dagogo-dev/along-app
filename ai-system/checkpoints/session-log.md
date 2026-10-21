@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: platform tour enhancements)
-> - last-verified-against-code: 2026-10-20 (tsc 0 errors, jest 116/116 suites 1221/1221, lint clean on touched files, next build clean)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed share-route composer)
+> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 117/117 suites 1246/1246, lint no new findings on touched files, next build clean)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,39 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-21 (Sprint 85: tabbed share-route composer)
+
+**Completed:**
+
+- Closed the issue #240 follow-up directive end-to-end, non-breaking and config/metadata driven. The share-route modal now uses one shared tabbed workspace instead of stacked collapsible columns: **Details / Map / Score / Drafts**, with short labels, Lucide icons from config keys, a live count badge on Drafts, ARIA tab semantics (aria-selected/controls, roving tabIndex, Left/Right/Home/End) and full-width panels so nothing is squeezed or clipped. The footer now contains only the two primary actions — Save Draft and Share. The Map tab owns the preview at configurable `mapPanelHeight`; the Score tab mounts `DraftingCoach` expanded; the Drafts tab renders `RouteDraftsPanel` with restore/update/delete. A Details-tab nudge ("Before you share, check the map and score…") renders real highlighted buttons that switch to the Map/Score tabs; Find on map now switches to the Map tab before flying/pinning. Restoring a draft returns to Details. The tour's `route-score` anchor moved to the always-visible Score tab button so the composer-score step resolves regardless of active tab. FAQ `share-route-tabs` added in English + PCM and `map-find-on-map` now documents the tab jump.
+- QA gate green in-runner: `npx tsc --noEmit` 0 errors; `npx jest --ci --maxWorkers=2` 117/117 suites 1246/1246 tests (new `shareRouteTabs.test.ts`); `next lint` no new findings on touched files (pre-existing `editPost` exhaustive-deps warning only; unrelated legacy repo errors unchanged); `prisma generate` + full `next build` clean (107 static pages).
+
+**Files Modified:**
+
+- `app/lib/config/shareRoute.ts` — new tab metadata/types, `tabsAriaLabel`, `defaultTab`, `tabs`, `detailsHint`, `mapPanelHeight`, pure `resolveShareRouteTabId`; legacy collapse flags kept for compatibility.
+- `app/lib/config/index.ts` — exports new tab helpers/types.
+- `app/components/features/posts/ShareRouteModal.tsx` — tabbed workspace renderer, config icon map, keyboard tab handling, Map/Score/Drafts panels, Details nudge, Find-on-map tab switch, footer reduced to Save Draft + Share; removed showDrafts/previewOpen/formOpen state.
+- `app/lib/config/faq.ts` — new `share-route-tabs` item (en + `FAQ_PCM`) and Map-tab wording in `map-find-on-map`.
+- `app/__tests__/config/shareRouteTabs.test.ts` — new metadata/fallback/wiring/FAQ contract tests.
+- ai-system docs (task queue, this log, dev history, project decisions, lessons, architecture/index, in-progress).
+
+**Next Task:**
+
+- None in-repo — Sprint 85 closed; pipeline handles push/PR. Optional follow-ups: surface a Details completion indicator on tabs, or remember the last active tab per session.
+
+**Assumptions Made:**
+
+- Tabs are static bundle metadata (not admin-editable), consistent with the tour's bundle-coupled content; unknown/stale tab ids resolve to Details via the pure fallback helper.
+- The Score tab intentionally overrides the legacy `scoreDefaultOpen` collapse flag so opening the tab always shows the score; the old flags remain exported only for non-breaking compatibility.
+- `startWithDraftsOpen` (home resume chip) maps to the Drafts tab when drafts exist, otherwise Details; restoring a draft returns the user to Details to review.
+- Interactive/go-no-go verification skipped (GitHub Actions context — no live site to probe).
+
+**Notes / Blockers:**
+
+- Non-breaking: no schema/migration, no API changes; additive config fields, old config fields retained.
+- Design compliance: buttons/tabs use existing token classes + Lucide icons, focus-visible rings, 320px-safe short labels, no emoji.
+- Chain: execute-feature → chained update-ai-system.md executed (task-queue Sprint 85 + session log + dev-history + project-decisions + lessons-learned + system-architecture + index/repo-map + index/dependency-graph + in-progress closed).
 
 ## Session — 2026-10-21 (Sprint 84: tour viewport safety + drafts footer + Nigeria-aware journey times)
 
