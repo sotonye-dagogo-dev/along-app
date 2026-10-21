@@ -359,6 +359,7 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
                   maxLength={120}
                   autoComplete="off"
                   aria-label="Starting point (location suggestions appear as you type)"
+                  data-tour="request-route-origin"
                   className={inputClass}
                 />
                 {fromLoading && (
@@ -404,6 +405,7 @@ export default function RequestRouteModal({ isOpen, onClose, onSubmit, editReque
                   maxLength={120}
                   autoComplete="off"
                   aria-label="Destination (location suggestions appear as you type)"
+                  data-tour="request-route-destination"
                   className={inputClass}
                 />
                 {toLoading && (

@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: serialized guest tour prompt + tour hand-off/scroll)
-> - last-verified-against-code: 2026-10-21 (Sprint 86 in-runner QA: tsc 0, jest 118/118 suites 1257/1257, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
+> - last-verified-against-code: 2026-10-21 (Sprint 87 in-runner QA: tsc 0, jest 118/118 suites 1259/1259, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,29 @@
 ---
 
 ## History
+
+## 2026-10-21 — Post/Request/Navigation Tour + Guest-Banner Tour CTA (Sprint 87)
+
+**Summary:**
+Expanded the config-driven tour from the route-composer journey into the core reading experience: a real route post now teaches stops, fares, vehicles, trust breakdown, reactions, and live navigation, while a separate step follows the community route-request path. Guests get a permanent tour entry in the banner, replacing the floating prompt that competed with other notices, and the composer’s Details hint now shows live distance and time beside the Map link.
+
+**Completed:**
+- `SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapValueTemplate` (`({distance} km · {duration} min)`) + reusable `fillShareRouteHintTemplate`; Map and Score suffixes render only when complete
+- Four `platformTour` post steps (`post-overview`, `post-trust`, `post-actions`, interactive `post-navigate`) anchored on the first route-bearing `PostCard`; requests and platform-generated posts excluded
+- Interactive `route-request` step on the composer header request trigger; `SHARE_ROUTE_OPEN_EVENT` reopens a closed composer
+- `data-tour` anchors on request origin/destination, `NavigationGuide`, and `LiveNavigationModal`; `AppCard` gained a `dataTour` passthrough
+- `GuestBanner` now renders three responsive CTAs (Take tour / Sign in / Sign up); `GuestTourNotice` is retired by default and unmounted, with code retained for opt-in deployments
+- English + Pidgin FAQ updates for posts/trust/reactions, requests, navigation, guest entry points, retired prompt, and the live map hint
+- Tests extended for the hint helper/template, tour ids/anchors/events, guest banner/retired mount, and locale parity
+
+**Key Changes:**
+- Tour content now spans reading, requesting, and navigating — not only account creation and route composition
+- The first route-bearing post is the canonical walkthrough target; because the feed is ranked, it is normally a representative route rather than a request
+- Global notice policy moved from a floating guest-tour card to a persistent banner CTA, removing one competing timed prompt while keeping every entry point
+- No schema, migration, or API change; deprecated notice code remains available but disabled
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`. Optional follow-ups: add explicit tour steps for the in-guide/live-navigation anchors if the walkthrough should enter navigation rather than explain its trigger, and consider shortening post-step timeouts when no route post is present.
 
 ## 2026-10-21 — Guest Tour Prompt + Tour Hand-Off/Scroll + Share Modal Polish (Sprint 86)
 

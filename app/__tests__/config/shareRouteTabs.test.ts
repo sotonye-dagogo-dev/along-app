@@ -10,6 +10,7 @@ import fs from "fs";
 import path from "path";
 import {
   SHARE_ROUTE_MODAL_CONFIG,
+  fillShareRouteHintTemplate,
   resolveShareRouteTabId,
   type ShareRouteTabIcon,
 } from "@/app/lib/config/shareRoute";
@@ -47,7 +48,20 @@ describe("share-route tab metadata", () => {
     expect(hint.scoreLabel.length).toBeGreaterThan(0);
     expect(hint.conjunction.length).toBeGreaterThan(0);
     expect(hint.ariaLabel.length).toBeGreaterThan(0);
+    expect(hint.mapValueTemplate).toContain("{distance}");
+    expect(hint.mapValueTemplate).toContain("{duration}");
     expect(SHARE_ROUTE_MODAL_CONFIG.mapPanelHeight).toBeGreaterThanOrEqual(240);
+  });
+
+  it("fills the map hint only when both estimates are available", () => {
+    const template = SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapValueTemplate;
+    expect(fillShareRouteHintTemplate(template, { distance: 12.4, duration: 31 })).toBe(
+      "(12.4 km · 31 min)",
+    );
+    expect(fillShareRouteHintTemplate(template, { distance: 12.4, duration: "" })).toBe("");
+    expect(fillShareRouteHintTemplate(template, { distance: "", duration: 31 })).toBe("");
+    expect(fillShareRouteHintTemplate(undefined, { distance: 1, duration: 2 })).toBe("");
+    expect(fillShareRouteHintTemplate("({distance} km)", { distance: 1, duration: 2 })).toBe("(1 km)");
   });
 });
 
@@ -104,6 +118,13 @@ describe("share-route modal tab wiring", () => {
     expect(source).toContain("detailsHint.scoreValueTemplate");
     expect(source).toContain("evaluation.score");
     expect(source).toContain("evaluation.maxScore");
+  });
+
+  it("details hint shows live distance/time beside the Map link", () => {
+    expect(source).toContain("detailsHint.mapValueTemplate");
+    expect(source).toContain("detailsHintMapValue");
+    expect(source).toContain("displayDistance");
+    expect(source).toContain("displayDuration");
   });
 
   it("score tab keeps the tour anchor visible and opens expanded", () => {

@@ -46,6 +46,13 @@ export interface ShareRouteDetailsHintConfig {
   conjunction: string;
   scoreLabel: string;
   /**
+   * Live distance/time suffix rendered inside the Map link, e.g.
+   * "(12.4 km · 31 min)". `{distance}` / `{duration}` are replaced with the
+   * current estimate. The suffix is omitted until both values are available,
+   * so the label always renders safely on its own.
+   */
+  mapValueTemplate: string;
+  /**
    * Live score suffix rendered inside the Score link, e.g. "(72/100)".
    * `{score}` / `{max}` are replaced with the current evaluation. Empty
    * string always renders the label alone (safe fallback).
@@ -124,6 +131,7 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
     mapLabel: "map",
     conjunction: "and",
     scoreLabel: "score",
+    mapValueTemplate: "({distance} km · {duration} min)",
     scoreValueTemplate: "({score}/{max})",
     suffix: "— they help others trust your route.",
     ariaLabel: "Check the map and route score before sharing",
@@ -141,6 +149,25 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
   responseBannerDismissLabel: "Stop responding to this request",
   responseBannerDismissTitle: "Dismiss — share a normal route instead",
 };
+
+/**
+ * Fill a details-hint value template (e.g. "({distance} km · {duration} min)")
+ * with live values. Never renders a half-filled or unresolved placeholder:
+ * any missing/blank value or leftover token returns an empty string, so the
+ * hint link always falls back to its label alone.
+ */
+export function fillShareRouteHintTemplate(
+  template: string | undefined,
+  values: Record<string, string | number | null | undefined>,
+): string {
+  if (!template) return "";
+  let output = template;
+  for (const [key, value] of Object.entries(values)) {
+    if (value === null || value === undefined || value === "") return "";
+    output = output.split(`{${key}}`).join(String(value));
+  }
+  return /[{}]/.test(output) ? "" : output;
+}
 
 /**
  * Resolve any tab id (possibly stale/unknown) to a real configured tab.

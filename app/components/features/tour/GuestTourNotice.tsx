@@ -49,10 +49,11 @@ function readFlag(key: string): boolean {
 /**
  * One serialized, dismissible guest prompt for the platform tour.
  *
- * It only asks guests, and only after the cookie bar is accepted and the
- * install prompt is out of the way — so the bottom of the screen never hosts
- * a pile of simultaneous notices. The permanent entry point remains the
- * footer's Along column (and the FAQ button), which the copy points at.
+ * @deprecated Not mounted by default (see GUEST_TOUR_NOTICE_CONFIG.enabled).
+ * Guests now use the permanent "Take tour" CTA in the guest banner; the
+ * footer/profile/FAQ entry points remain. Re-mount explicitly to restore the
+ * old prompt — it still only asks guests, and only after the cookie bar is
+ * accepted and the install prompt is out of the way.
  */
 export default function GuestTourNotice() {
   const pathname = usePathname();

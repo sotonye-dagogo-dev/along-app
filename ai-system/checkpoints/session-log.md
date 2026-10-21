@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: guest tour prompt + tour hand-off/scroll + share modal polish)
-> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 118/118 suites 1257/1257, lint no new findings on touched files, next build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
+> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 118/118 suites 1259/1259, lint no new findings on touched files, next build clean)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,31 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
+
+**Completed:**
+
+- Closed the follow-up Enhancements directive end-to-end, config-driven and non-breaking (no schema/migration/API changes). (1) **Details hint:** `SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapValueTemplate` (`({distance} km · {duration} min)`) and pure `fillShareRouteHintTemplate`; the Map link now shows live distance/time while the Score link reuses the same safe helper, both degrading to the bare label when values are missing. (2) **Tour expansion:** `platformTour` grew to 16 steps with `post-overview`, `post-trust`, `post-actions`, interactive `post-navigate`, and interactive `route-request`; the first route-bearing `PostCard` is the canonical example (requests/platform posts excluded), the request step reopens a closed composer via `SHARE_ROUTE_OPEN_EVENT`. (3) **Anchors:** `AppCard` `dataTour` passthrough; `PostCard` feed-route-post/post-trust/post-actions/post-navigate; `RequestRouteModal` origin/destination; `NavigationGuide` navigation-guide; `LiveNavigationModal` live-navigation; composer request trigger. (4) **Guest entry:** `GuestBanner` now has responsive Take tour / Sign in / Sign up CTAs with `guest.takeTour`; floating `GuestTourNotice` is default-disabled and unmounted while its code remains for backwards-compatible opt-in. (5) **FAQ:** en + PCM post/trust/reaction walkthrough, route-request, navigation, retired guest prompt, banner CTA, and live map distance/time hint.
+- QA gate green in-runner: `npx tsc --noEmit` 0 errors; `npx jest --runInBand --silent` 118/118 suites 1259/1259 tests; lint no new findings on touched files (pre-existing unrelated metadata require warnings and ShareRouteModal `editPost` warning unchanged); `prisma generate` + full `next build` clean (107 static pages, placeholder `DIRECT_LOCAL_DB` in the no-DB runner).
+
+**Files Modified:**
+
+- Edited: `app/lib/config/{shareRoute,platformTour,guestTourNotice,index,faq}.ts`, `app/components/features/posts/{ShareRouteModal,PostCard,RequestRouteModal,NavigationGuide,LiveNavigationModal}.tsx`, `app/components/ui/{AppCard,GuestBanner}.tsx`, `app/components/features/tour/GuestTourNotice.tsx`, `app/layout.tsx`, `public/locales/{en,pcm}.json`, `app/__tests__/config/{shareRouteTabs,platformTour,guestTourNotice,locales}.test.ts`, ai-system docs
+
+**Next Task:**
+
+Select the next directive from `planning/task-queue.md`. Optional follow-up: add explicit steps for `navigation-guide`/`live-navigation` if the tour should enter navigation, and tune the post-step `timeoutMs` when no route post is available.
+
+**Assumptions Made:**
+
+- The first route-bearing post in the ranked feed is the best available teaching example; request posts and platform-generated posts are deliberately excluded because they do not carry route stops/fares/trust the same way.
+- The floating guest prompt is retired rather than deleted: disabling + unmounting removes the stacking problem immediately, while keeping the gate/component avoids a breaking removal for forks that still want it.
+
+**Notes / Blockers:**
+
+- None. Non-breaking: additive config fields/steps/anchors and locale keys; no API/schema/response changes. `GuestTourNotice` is opt-in now (`enabled: false`) and is no longer mounted by the root layout.
+- Chain: execute-feature → update-ai-system deep sync executed (Sprint 87 in project-plan/task-queue, this log, dev-history, decisions/lessons, system-architecture, repo-map/dependency-graph, test-results, in-progress closed).
 
 ## Session — 2026-10-21 (Sprint 86: guest tour prompt + tour hand-off/scroll + share modal polish)
 

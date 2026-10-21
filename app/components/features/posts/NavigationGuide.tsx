@@ -222,7 +222,10 @@ export default function NavigationGuide({ steps, totalDistanceKm, estimatedMins,
   const showRemainingTraffic = shouldShowTrafficAdjusted(remainingAdjusted, remainingBase)
 
   return (
-    <div className="flex flex-col bg-bg-card border border-border radius-xl overflow-hidden shadow-lg">
+    <div
+      className="flex flex-col bg-bg-card border border-border radius-xl overflow-hidden shadow-lg"
+      data-tour="navigation-guide"
+    >
       {isNavigating ? (
         <>
           <div className="flex items-center justify-between px-4 py-3 bg-primary text-white">

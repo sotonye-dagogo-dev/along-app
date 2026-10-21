@@ -2,10 +2,19 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: guest tour prompt + tour hand-off/scroll)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 87 — Post/request/navigation tour + guest-banner tour CTA (2026-10-21, execute-feature)
+
+- [x] Share hint [Sprint 87]: `SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapValueTemplate` + pure `fillShareRouteHintTemplate`; Details Map link renders live `(distance km · duration min)`, degrading to the bare label when values are unavailable
+- [x] Post tour [Sprint 87]: four feed steps (`post-overview`, `post-trust`, `post-actions`, interactive `post-navigate`) anchored on the first route-bearing `PostCard`; requests/platform posts intentionally excluded
+- [x] Route-request tour [Sprint 87]: interactive `route-request` step on the composer header trigger, with `SHARE_ROUTE_OPEN_EVENT` reopening a closed composer
+- [x] Navigation coverage [Sprint 87]: `data-tour` anchors on `NavigationGuide` and `LiveNavigationModal`; post step explains live guide, tracing, distance/time/fare
+- [x] Guest entry [Sprint 87]: `GuestBanner` gains a responsive “Take tour” CTA (tour/sign-in/sign-up); floating `GuestTourNotice` retired (disabled + unmounted, code retained for opt-in)
+- [x] FAQ + QA [Sprint 87]: en/pcm post/request/navigation + retired-prompt + map-hint copy; tsc 0, jest 118/118 suites 1259/1259, build clean
 
 ## Sprint 86 — Guest tour prompt + tour hand-off/scroll + share modal polish (2026-10-21, execute-feature)
 
