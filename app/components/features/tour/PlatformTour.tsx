@@ -209,9 +209,9 @@ export default function PlatformTour() {
   const currentEntry: VisibleTourStep | undefined = enabled ? visibleSteps[stepIndex] : undefined;
   const step: TourStep | undefined = currentEntry?.step;
   const centered = !step?.targetSelector;
-  // Pivotal stops keep the tour moving: Next/Back stay available, but the
-  // end-tour affordances (End/X/Escape) are withheld so the essential
-  // following steps cannot be skipped accidentally.
+  // Pivotal stops keep the tour moving: Next/Back stay available and the
+  // labelled End button is withheld, but the close X and Escape always work
+  // so a viewer is never trapped in the guide (metadata is advisory here).
   const allowEnd = step?.allowEnd !== false;
 
   const tt = useCallback((key: string, fallback: string) => ttf(t, key, fallback), [t]);
@@ -512,15 +512,16 @@ export default function PlatformTour() {
     return () => document.removeEventListener("click", onCaptureClick, true);
   }, [active, phase, step?.interactive, step?.interactionSelector, step?.targetSelector]);
 
-  // Escape exits the tour unless this is an essential (allowEnd: false) stop.
+  // Escape always exits the tour — even on an allowEnd: false step the viewer
+  // must keep an escape hatch (the labelled End button may still be hidden).
   useEffect(() => {
-    if (!active || !allowEnd) return;
+    if (!active) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") skip();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [active, allowEnd, skip]);
+  }, [active, skip]);
 
   // Move focus to the primary control after each step switch / resume ask.
   useEffect(() => {
@@ -688,16 +689,14 @@ export default function PlatformTour() {
               <p className="text-sm text-text-secondary mt-1">{body}</p>
               <p className="text-xs text-text-muted mt-1">{tt("tour.offlineSkipHint", config.offline.skipLabelHint)}</p>
             </div>
-            {allowEnd && (
-              <button
-                type="button"
-                onClick={skip}
-                aria-label={tt("tour.skip", "Skip tour")}
-                className="text-text-muted hover:text-text-secondary focus-visible:outline focus-visible:outline-primary rounded-circle p-1 shrink-0"
-              >
-                <X size={16} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={skip}
+              aria-label={tt("tour.skip", "Skip tour")}
+              className="text-text-muted hover:text-text-secondary focus-visible:outline focus-visible:outline-primary rounded-circle p-1 shrink-0"
+            >
+              <X size={16} />
+            </button>
           </div>
           <div className="flex items-center justify-end gap-2 mt-3">
             <AppButton variant="secondary" size="sm" onClick={isLastStep(stepIndex, stepCount) ? finish : goNext}>
@@ -749,16 +748,14 @@ export default function PlatformTour() {
               <h3 className="text-sm font-bold text-text-primary leading-snug">{title}</h3>
               <p className="text-sm text-text-secondary mt-1 leading-relaxed">{body}</p>
             </div>
-            {allowEnd && (
-              <button
-                type="button"
-                onClick={skip}
-                aria-label={tt("tour.skip", "Skip tour")}
-                className="text-text-muted hover:text-text-secondary focus-visible:outline focus-visible:outline-primary rounded-circle p-1 shrink-0"
-              >
-                <X size={16} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={skip}
+              aria-label={tt("tour.skip", "Skip tour")}
+              className="text-text-muted hover:text-text-secondary focus-visible:outline focus-visible:outline-primary rounded-circle p-1 shrink-0"
+            >
+              <X size={16} />
+            </button>
           </div>
           <div className="flex items-center gap-1.5 mt-3" aria-hidden="true">
             {stepCount <= 20 &&

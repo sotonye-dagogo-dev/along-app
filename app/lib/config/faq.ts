@@ -313,19 +313,19 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "tour-what-is-it",
         question: "What is the platform tour?",
         answer:
-          "A short guided walkthrough of the app: it moves between pages, highlights the exact control it's talking about with a glowing ring, and explains what it does. Use Back/Next to move, watch the step counter, and Skip whenever you like — except on the navigation stop, which intentionally keeps you moving so the essential following stops aren't missed.",
+          "A short guided walkthrough of the app: it moves between pages, highlights the exact control it's talking about with a glowing ring, and explains what it does. Use Back/Next to move and watch the step counter. You can always leave with the X (or Escape) and most stops also offer Skip — the navigation stop hides the labelled End button so the essential following stops stay on the path, but the X still works.",
       },
       {
         id: "tour-interact",
         question: "Can I actually use the highlighted features during the tour?",
         answer:
-          "Yes — steps that say so are live. Tap the highlighted control (like 'Share a route' or 'Near me'); the tour notices, confirms, and then lets you Continue or End. The navigation stop is awareness-only: it doesn't offer End, so the important sharing, request and explore stops stay on the path (press Next to continue). The rest of the app stays fully usable while the tour is on.",
+          "Yes — steps that say so are live. Tap the highlighted control (like 'Share a route' or 'Near me'); the tour notices, confirms, and then lets you Continue or End. The navigation stop is awareness-only: it hides the labelled End button so the important sharing, request and explore stops stay on the path (press Next to continue), but the X and Escape still close the tour. The rest of the app stays fully usable while the tour is on.",
       },
       {
         id: "tour-replay-offline",
         question: "How do I replay the tour, and does it work offline?",
         answer:
-          "Open your profile's quick links and choose 'Replay platform tour', use the 'Take tour' button in the guest banner or the 'Take the tour' button in the landing page CTA section, use the tour button on the FAQ page, or use the 'Take the platform tour' link in the footer's Along column — those work for guests and signed-in users. The tour also runs offline: the guide content is stored on your device, and any stop whose page isn't available offline shows an honest note with a 'Skip this stop' option so you can keep going.",
+          "Open your profile's quick links and choose 'Replay platform tour', use the 'Take tour' button in the guest banner, the 'Take the tour' button in the landing page hero and CTA section, the tour button on the FAQ page, or the 'Take the platform tour' link in the footer's Along column — those work for guests and signed-in users. The tour also runs offline: the guide content is stored on your device, and any stop whose page isn't available offline shows an honest note with a 'Skip this stop' option so you can keep going.",
       },
       {
         id: "tour-guests-auth",
@@ -349,13 +349,13 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "tour-navigation",
         question: "Does the tour cover the navigation feature?",
         answer:
-          "Yes. The tour spotlights the Navigate quick link on a route post and explains that it opens the live guide with turn-by-turn stops, the map tracing, distance, time and fare. That stop is awareness-only — tap Navigate if you want to look around the guide, then press Next when you are ready. It deliberately does not offer End, so the following route-sharing, request and explore stops are not skipped.",
+          "Yes. The tour spotlights the Navigate quick link on a route post and explains that it opens the live guide with turn-by-turn stops, the map tracing, distance, time and fare. That stop is awareness-only — tap Navigate if you want to look around the guide, then press Next when you are ready. It hides the labelled End button so the following route-sharing, request and explore stops are not skipped, but you can still close the tour with the X or Escape.",
       },
       {
         id: "tour-guest-prompt",
         question: "Why don't I see a pop-up asking me to take the tour anymore?",
         answer:
-          "The floating guest-tour notice was retired to avoid stacking another pop-up beside the cookie bar, install prompt and guest banner. Guests now have a permanent 'Take tour' button in the guest banner and the landing page CTA section, and the footer/FAQ/profile entry points stay available. Nothing needs dismissing, so the tour is always one tap away.",
+          "The floating guest-tour notice was retired to avoid stacking another pop-up beside the cookie bar, install prompt and guest banner. Guests now have a permanent 'Take tour' button in the guest banner, the landing page hero and CTA section, and the footer/FAQ/profile entry points stay available. Nothing needs dismissing, so the tour is always one tap away.",
       },
       {
         id: "tour-resume",
@@ -615,17 +615,17 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "tour-what-is-it": {
     question: "Wetin be di platform tour?",
     answer:
-      "Na small guided walk around di app: e dey move between pages, highlight di exact control e dey talk about with glow ring, come explain wetin e dey do. Use Back/Next to move, watch di step counter, come Skip anytime you like — except for di navigation stop, wey deliberately dey keep you moving so di essential following stops no go miss.",
+      "Na small guided walk around di app: e dey move between pages, highlight di exact control e dey talk about with glow ring, come explain wetin e dey do. Use Back/Next to move, watch di step counter. You fit always comot with di X (or Escape) and most stops still get Skip — di navigation stop dey hide di labelled End button so di essential following stops go stay for di path, but di X still dey work.",
   },
   "tour-interact": {
     question: "I fit use di highlighted features while di tour dey go on?",
     answer:
-      "Yes — steps wey talk so na live. Tap di highlighted control (like 'Share a route' or 'Near me'); di tour go notice, confirm, come allow you Continue or End. Di navigation stop na awareness-only: e no dey offer End, so di important sharing, request and explore stops go remain for di path (press Next to continue). Di rest of di app dey work normal while di tour dey on.",
+      "Yes — steps wey talk so na live. Tap di highlighted control (like 'Share a route' or 'Near me'); di tour go notice, confirm, come allow you Continue or End. Di navigation stop na awareness-only: e dey hide di labelled End button so di important sharing, request and explore stops go remain for di path (press Next to continue), but di X and Escape still dey close di tour. Di rest of di app dey work normal while di tour dey on.",
   },
   "tour-replay-offline": {
     question: "How I go replay di tour, and e dey work offline?",
     answer:
-      "Open di quick links for your profile come choose 'Replay platform tour', use di 'Take tour' button for di guest banner or di 'Take di tour' button for di landing page CTA section, use di tour button for FAQ page, or use di 'Take the platform tour' link for di Along column for footer — dem dey work for guests and signed-in users. Di tour dey run offline too: di guide content dey store for your device, and any stop wey page no dey available offline go show you honest note with 'Skip dis stop' option so you fit continue.",
+      "Open di quick links for your profile come choose 'Replay platform tour', use di 'Take tour' button for di guest banner, di 'Take di tour' button for di landing page hero and CTA section, di tour button for FAQ page, or di 'Take the platform tour' link for di Along column for footer — dem dey work for guests and signed-in users. Di tour dey run offline too: di guide content dey store for your device, and any stop wey page no dey available offline go show you honest note with 'Skip dis stop' option so you fit continue.",
   },
   "tour-guests-auth": {
     question: "Guests fit take di tour, and e dey cover sign in?",
@@ -645,12 +645,12 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "tour-navigation": {
     question: "Di tour dey cover di navigation feature?",
     answer:
-      "Yes. Di tour go spotlight di Navigate quick link for route post come explain say e dey open live guide with turn-by-turn stops, map tracing, distance, time and fare. Dat stop na awareness-only — tap Navigate if you want look around di guide, den press Next when you ready. E deliberately no dey offer End, so di following route-sharing, request and explore stops no go skip.",
+      "Yes. Di tour go spotlight di Navigate quick link for route post come explain say e dey open live guide with turn-by-turn stops, map tracing, distance, time and fare. Dat stop na awareness-only — tap Navigate if you want look around di guide, den press Next when you ready. E dey hide di labelled End button so di following route-sharing, request and explore stops no go skip, but you fit still close di tour with di X or Escape.",
   },
   "tour-guest-prompt": {
     question: "Why pop-up wey dey ask me to take tour no dey show again?",
     answer:
-      "We retire di floating guest-tour notice so e no go stack another pop-up beside cookie bar, install prompt and guest banner. Guests now get permanent 'Take tour' button for di guest banner and di landing page CTA section, and footer/FAQ/profile entry points still dey. Nothing need dismissing, so di tour dey always one tap away.",
+      "We retire di floating guest-tour notice so e no go stack another pop-up beside cookie bar, install prompt and guest banner. Guests now get permanent 'Take tour' button for di guest banner, di landing page hero and CTA section, and footer/FAQ/profile entry points still dey. Nothing need dismissing, so di tour dey always one tap away.",
   },
   "tour-resume": {
     question: "Wetin happen if I refresh or leave di app during di tour?",

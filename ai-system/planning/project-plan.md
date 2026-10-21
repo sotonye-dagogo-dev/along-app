@@ -2,10 +2,16 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 89 — Hero tour CTA + unconditional tour escape (2026-10-21, execute-feature)
+
+- [x] Hero entry [Sprint 89]: `HeroCtas` renders `TourLaunchButton` beside Continue to feed (authenticated) or Get Started + Sign In (guests), reusing `landing.cta.takeTour` en/pcm
+- [x] Escape hatch [Sprint 89]: PlatformTour always renders the header X and handles Escape; `allowEnd: false` hides only the labelled End button, never the escape hatch
+- [x] FAQ + QA [Sprint 89]: en/pcm hero entry + X/Escape copy; hero source-contract and unconditional-close tests; tsc 0, jest 118/118 suites 1261/1261, build clean
 
 ## Sprint 88 — Landing tour CTA + guest-banner spacing + tour exit policy (2026-10-21, execute-feature)
 

@@ -124,13 +124,18 @@ describe("guest tour prompt wiring", () => {
     expect(banner).toContain("guest.takeTour");
   });
 
-  it("offers the tour on the landing CTA and fills the guest-banner row", () => {
+  it("offers the tour on the landing hero + CTA and fills the guest-banner row", () => {
     const page = read("app/(public)/page.tsx");
     expect(page).toContain("LandingCtaActions");
     const ctas = read("app/components/ui/LandingCtas.tsx");
     expect(ctas).toContain("TourLaunchButton");
     expect(ctas).toContain("landing.cta.takeTour");
     expect(ctas).toContain('variant="on-primary"');
+    // The tour entry must sit in the top hero among the other primary CTAs,
+    // not only in the bottom CTA section.
+    const hero = ctas.slice(ctas.indexOf("export function HeroCtas"), ctas.indexOf("export function BottomCta"));
+    expect(hero).toContain("TourLaunchButton");
+    expect(hero).toContain("landing.cta.takeTour");
     const banner = read("app/components/ui/GuestBanner.tsx");
     expect(banner).toContain("flex-auto");
     expect(banner).toContain("sm:flex-none");

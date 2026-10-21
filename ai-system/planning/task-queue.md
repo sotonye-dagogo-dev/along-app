@@ -2,11 +2,24 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
-> - last-synced: 2026-10-21 (Sprint 88)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
+> - last-synced: 2026-10-21 (Sprint 89)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 89 — Hero tour CTA + unconditional tour escape (2026-10-21, execute-feature) [S]
+
+> **Section summary:** Issue #240 follow-up, non-breaking (component/copy/test/docs only; no schema, migration, API or config-shape changes). The landing hero now offers “Take the tour” beside the existing starter CTAs for guests and signed-in users, using the already-translated `landing.cta.takeTour` en/pcm key. The tour’s header X and Escape now always exit, even on `allowEnd: false` steps; that metadata now hides only the labelled End button, so users are never trapped. FAQ en + PCM refreshed (hero entry + escape hatch). QA full in-runner: tsc 0, jest 118/118 suites 1261/1261, build clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [S] | Hero entry — `HeroCtas` renders `TourLaunchButton` in both auth branches (Continue to feed / Get Started + Sign In), reusing `landing.cta.takeTour` en/pcm | [x] |
+| [S] | Escape hatch — PlatformTour always renders the header X and honours Escape; `allowEnd: false` hides only the labelled End button (post-navigate metadata retained) | [x] |
+| [S] | FAQ + tests — en/pcm hero entry + always-on X/Escape copy; hero source contract and unconditional-close assertions; full gate green | [x] |
+| [S] | Deep sync — update ai-system architecture, history, decisions, lessons, checkpoints | [x] |
+
+---
 
 ## Sprint 88 — Landing tour CTA + guest-banner spacing + tour exit policy (2026-10-21, execute-feature) [S]
 

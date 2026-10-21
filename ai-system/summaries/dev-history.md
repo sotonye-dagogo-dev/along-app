@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
-> - last-verified-against-code: 2026-10-21 (Sprint 88 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
+> - last-verified-against-code: 2026-10-21 (Sprint 89 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,26 @@
 ---
 
 ## History
+
+## 2026-10-21 — Hero Tour CTA + Unconditional Escape (Sprint 89)
+
+**Summary:**
+Closed the final tour polish directive while keeping the feature config-driven. The landing hero now offers the tour beside the existing starter CTAs for both audiences, and the tour's header X/Escape always work so metadata can no longer trap a viewer on a pivotal stop. Only the labelled End button remains governed by `allowEnd`.
+
+**Completed:**
+- `HeroCtas` renders `TourLaunchButton` for guests (beside Get Started/Sign In) and signed-in users (beside Continue to feed), reusing `landing.cta.takeTour` en/pcm
+- PlatformTour always renders the tooltip/offline X and handles Escape; `allowEnd: false` now hides only the labelled End button
+- `post-navigate` keeps its awareness-only `allowEnd: false` metadata, but the escape hatch is guaranteed
+- FAQ en + PCM updated for the hero entry and the always-available X/Escape
+- Tests extended for the hero source contract and unconditional-close wiring
+
+**Key Changes:**
+- Step metadata can shape the offered CTA but can no longer remove the user's immediate escape hatch
+- The tour is reachable from the landing hero as well as the bottom CTA, guest banner, footer, FAQ and profile
+- No schema, migration, API, or config-shape change
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`.
 
 ## 2026-10-21 — Landing Tour CTA + Tour Exit Policy (Sprint 88)
 
