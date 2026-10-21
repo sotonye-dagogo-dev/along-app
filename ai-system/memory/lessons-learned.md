@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: route-bearing tour target, safe value templates)
-> - last-verified-against-code: 2026-10-21 (Sprint 87 in-runner QA: tsc 0, jest 118/118 suites 1259/1259, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: per-step exit policy, responsive CTA rows)
+> - last-verified-against-code: 2026-10-21 (Sprint 88 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -31,6 +31,28 @@
 ---
 
 ## Lessons
+
+## Guided Tours Need an Exit Policy Per Step, Not Just Global Skip
+
+**Context:** Sprint 88. The navigation step became interactive, which surfaced an End button at exactly the point where the following composer, request and explore lessons matter most. A single global skip affordance let viewers leave before the essential path.
+
+**What We Learned:** Exit affordances are part of step metadata. A default-on `allowEnd` flag lets ordinary steps stay freely skippable while pivotal stops keep Back/Next and withhold End/X/Escape. The component should read the flag, not a hardcoded step id, so admin-stored step lists inherit the same rule.
+
+**Apply When:** Adding any tour/onboarding step where the remaining content is essential or materially more complex. Always preserve a forward path (Next) so withholding exit does not trap the viewer.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Responsive CTA Rows Should Grow Into Wrapped Space
+
+**Context:** Sprint 88. The guest banner's three CTAs wrapped on narrow screens but kept their content width, leaving dead space on the right when two or one fit a row.
+
+**What We Learned:** Use `flex-auto` (grow with content) instead of `flex-1` (zero basis can prevent wrapping) so wrapped items expand to fill their row; reset to `sm:flex-none` for the compact desktop row. This avoids fixed widths and translation-specific clipping.
+
+**Apply When:** Building mobile-first rows of two to four short actions that may not fit on one line.
+
+**Supersedes:** None
+**Superseded by:** None
 
 ## Tour Targets Need a Semantic Predicate, Not Just “First Match”
 

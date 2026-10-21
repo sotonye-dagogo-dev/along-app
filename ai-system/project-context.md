@@ -1,8 +1,8 @@
 # Project Context
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
-> - last-verified-against-code: 2026-10-21 (95 configs, 348 en+pcm keys, 118 test suites / 1259 tests, 14 migrations / 21 models)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
+> - last-verified-against-code: 2026-10-21 (95 configs, 349 en+pcm keys, 118 test suites / 1261 tests, 14 migrations / 21 models)
 > - staleness-policy: re-verify if >10 sessions old or after major scope changes
 
 > **Overview:** Along is a social travel-intelligence platform built for urban commuters in Nigeria and West Africa. It solves the problem of unreliable public transit information by letting users share, verify, and discover transport routes in real time — combining the social dynamics of Twitter with the utility of Google Maps. The platform targets the 80%+ of urban commuters who rely on informal transit (buses, danfos, keke, okada) with no reliable real-time information.
@@ -43,7 +43,7 @@ Along empowers urban commuters to share and verify transport route information i
 
 Phase: Active Development (Application Complete)
 
-The full application is in active development with the core product complete: 95 config registries, 43 universal UI components (App* wrappers), 6 context providers, 36 service modules, 60+ API route files, 14 Prisma migrations, 21 models, and 1259 Jest tests across 118 suites. The product includes auth, feed/search, route composition (tabbed Details/Map/Score/Drafts), route requests, live navigation, trust/validity and reactions, PWA offline support + push, internationalisation (English + Pidgin, 348 keys), reviews, referrals/rewards, admin tooling, blog/FAQ, and a config-driven platform tour. Sprint 87 expanded the tour to route-post comprehension, trust/reactions, navigation, and community requests, added a permanent guest-banner tour CTA, retired the floating guest prompt, and added live distance/time to the share Details Map hint. Last full QA gate (2026-10-21, Sprint 87, run in-runner): tsc 0 errors, 118/118 suites / 1259/1259 tests, production build clean.
+The full application is in active development with the core product complete: 95 config registries, 43 universal UI components (App* wrappers), 6 context providers, 36 service modules, 60+ API route files, 14 Prisma migrations, 21 models, and 1261 Jest tests across 118 suites. The product includes auth, feed/search, route composition (tabbed Details/Map/Score/Drafts), route requests, live navigation, trust/validity and reactions, PWA offline support + push, internationalisation (English + Pidgin, 349 keys), reviews, referrals/rewards, admin tooling, blog/FAQ, and a config-driven platform tour. Sprint 88 added an always-available tour CTA to the landing CTA section, made the guest-banner CTAs fill narrow rows, added per-step `allowEnd` metadata, made the navigation stop awareness-only (no End/X/Escape there), and gave post steps the full 6s target window. Last full QA gate (2026-10-21, Sprint 88, run in-runner): tsc 0 errors, 118/118 suites / 1261/1261 tests, production build clean.
 
 Active sprint focus: Production readiness and product polish; select the next directive from `ai-system/planning/task-queue.md` (remaining candidates include live-map tracking improvements, basemap routing credentials, auth provider linking, clustering, and Redis rate limiting).
 

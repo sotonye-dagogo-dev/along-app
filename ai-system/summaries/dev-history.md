@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
-> - last-verified-against-code: 2026-10-21 (Sprint 87 in-runner QA: tsc 0, jest 118/118 suites 1259/1259, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
+> - last-verified-against-code: 2026-10-21 (Sprint 88 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,27 @@
 ---
 
 ## History
+
+## 2026-10-21 — Landing Tour CTA + Tour Exit Policy (Sprint 88)
+
+**Summary:**
+Polished the tour's entry points and pacing without changing its config-driven architecture. The landing CTA section now offers a permanent tour action for guests and signed-in visitors, the guest-banner CTAs fill narrow rows instead of leaving dead space, and the navigation stop is now an awareness-only lesson that cannot end the tour before the essential sharing/request/explore stops.
+
+**Completed:**
+- `LandingCtaActions` pairs the auth-aware bottom CTA with `TourLaunchButton`; additive `AppButton` `on-primary` variant for the brand gradient; `landing.cta.takeTour` en/pcm
+- Guest banner three-CTA row uses `flex-auto` growth/wrap on narrow screens with `sm:flex-none` for the desktop row
+- Additive `TourStep.allowEnd` metadata (default true, normalized/validated); `post-navigate` becomes `interactive: false` + `allowEnd: false`; PlatformTour withholds End/X/Escape on such steps while keeping Back/Next
+- Post walkthrough targets (`post-overview`, `post-trust`, `post-actions`, `post-navigate`) now use the full 6000ms target window
+- FAQ en + PCM explain the landing entry, navigation awareness-only behavior, and retained exit paths
+- Tests extended for `allowEnd` normalize/validate/component wiring and the landing/guest-banner source contract
+
+**Key Changes:**
+- Tour steps can now declare whether ending is offered; pivotal teaching stops keep the path intact without trapping users (Next/Back always work)
+- The landing page is a first-class guest tour entry alongside the guest banner, footer, FAQ and profile
+- No schema, migration, or API change
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`. No further tour follow-up is required from this directive.
 
 ## 2026-10-21 — Post/Request/Navigation Tour + Guest-Banner Tour CTA (Sprint 87)
 

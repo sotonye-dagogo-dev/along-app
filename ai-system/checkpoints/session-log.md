@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
-> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 118/118 suites 1259/1259, lint no new findings on touched files, next build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
+> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 118/118 suites 1261/1261, lint no new findings on touched files, next build clean)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,31 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-21 (Sprint 88: landing tour CTA + guest-banner spacing + tour exit policy)
+
+**Completed:**
+
+- Closed the final Enhancements tour directive end-to-end, config-driven and non-breaking (no schema/migration/API changes). (1) **Landing CTA:** new `LandingCtaActions` pairs the auth-aware bottom CTA with a permanent `TourLaunchButton` ("Take the tour") for guests and members; additive `AppButton` `on-primary` variant keeps the outlined action legible on the brand gradient; `landing.cta.takeTour` added en/pcm. (2) **Guest banner:** the three CTAs now use `flex-auto` growth/wrap on narrow screens and `sm:flex-none` on desktop, filling wrapped rows so no dead space remains to the right. (3) **Tour exit policy:** additive `TourStep.allowEnd` (default true, normalized/validated); `post-navigate` is now awareness-only (`interactive: false`, `allowEnd: false`) and PlatformTour withholds End/X/Escape on such steps while keeping Back/Next, so sharing/requests/explore cannot be skipped from navigation. (4) **Post timing:** post walkthrough target waits raised to 6000ms with the existing online auto-advance/offline note fallbacks. (5) **FAQ:** en + PCM explain the landing entry, navigation awareness-only behavior, retained exit paths and banner spacing.
+- QA gate green in-runner: `npx tsc --noEmit` 0 errors; `npx jest --ci --maxWorkers=2 --silent` 118/118 suites 1261/1261 tests; `npm run lint` no new findings on touched files (pre-existing unrelated repo errors unchanged); `DIRECT_LOCAL_DB=placeholder npm run build` clean (107 static pages).
+- Chain: execute-feature → update-ai-system deep sync executed (Sprint 88 in project-plan/task-queue, this log, dev-history, decisions/lessons, system-architecture, repo-map/dependency-graph, design-system, test-results, in-progress closed).
+
+**Files Modified:**
+
+- Edited: `app/lib/config/{platformTour,faq}.ts`, `app/components/features/tour/PlatformTour.tsx`, `app/components/ui/{AppButton,LandingCtas,GuestBanner}.tsx`, `app/(public)/page.tsx`, `public/locales/{en,pcm}.json`, `app/__tests__/config/{platformTour,guestTourNotice,locales}.test.ts`, ai-system docs
+
+**Next Task:**
+
+Select the next directive from `planning/task-queue.md`.
+
+**Assumptions Made:**
+
+- Hiding End/X/Escape (not just the End button) is the intended reading of "not sure we want users to be able to end the tour from the navigation step": Back/Next remain, so the tour stays escapable through normal progression without letting a quick interaction skip the essential stops.
+- The post walkthrough deserves the default 6s target window because posts exist on the platform; the existing graceful online-advance/offline-note paths still cover missing feed data.
+
+**Notes / Blockers:**
+
+- None. Non-breaking: additive config field/variant/locale key and source-only UI changes; no API/schema/response changes.
 
 ## Session — 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
 

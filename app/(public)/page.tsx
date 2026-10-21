@@ -2,7 +2,7 @@ import { buildMetadata } from "@/app/lib/utils/metadata";
 import { websiteSchema } from "@/app/lib/utils/structuredData";
 import { StructuredData } from "@/app/components/ui/StructuredData";
 import AppLogo from "../components/ui/AppLogo";
-import { HeroCtas, BottomCta, GuestContinueLink } from "@/app/components/ui/LandingCtas";
+import { HeroCtas, LandingCtaActions, GuestContinueLink } from "@/app/components/ui/LandingCtas";
 import { LandingHeroCopy, LandingFeatures, LandingCtaHeading, LandingFeedPreviewHeading, LandingFeedEmpty } from "./LandingCopy";
 import { FeaturedBlogsSection } from "@/app/components/features/blog/FeaturedBlogsSection";
 import { ReviewsCarouselSection } from "@/app/components/features/reviews/ReviewsCarouselSection";
@@ -240,7 +240,7 @@ export default async function LandingPage() {
         style={{ background: "linear-gradient(135deg,#004A2C 0%,#00623B 50%,#00A862 100%)" }}
       >
         <LandingCtaHeading />
-        <BottomCta />
+        <LandingCtaActions />
       </section>
     </>
   );
