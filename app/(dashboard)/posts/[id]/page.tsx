@@ -578,9 +578,10 @@ export default function PostDetailPage() {
         liveTrace ? liveTrace.distance : null,
         liveTrace ? liveTrace.duration : null,
         post?.estimatedMins ?? null,
-        detailVehicle
+        detailVehicle,
+        { intermediateStops: Math.max(0, routePins.length - 2) }
       ),
-    [liveTrace, post?.estimatedMins, detailVehicle]
+    [liveTrace, post?.estimatedMins, detailVehicle, routePins.length]
   )
   const trafficCoords = useMemo(() => {
     if (liveTrace?.polyline) {

@@ -32,6 +32,28 @@
 
 ## Lessons
 
+## Never Position Overlay Cards From Estimates Alone — Measure and Fit
+
+**Context:** Sprint 84. The tour tooltip used `maxWidth` plus hand-computed `top/left`; long copy and targets near the viewport bottom pushed the Next/Finish row off-screen, and short copy let the card shrink unpredictably.
+
+**What We Learned:** Overlay cards need (1) an explicit width (capped by the viewport) so content length cannot change the footprint, (2) the rendered height measured after paint (ResizeObserver + viewport/orientation changes), and (3) a pure layout helper that tries the requested placement, flips/clamps inside a safe margin, and only then allows internal scrolling. Centered/end cards need the same measurement, not a hardcoded `top: 34%`.
+
+**Apply When:** Any floating tooltip, tour card, popover or anchored overlay that contains actions users must reach on small viewports. Keep the math in a pure helper so it is testable without a DOM.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Provider ETAs Are Free-Flow Inputs, Not Display Truth — Calibrate Once
+
+**Context:** Sprint 84. OSRM/ORS/Mapbox durations omitted boarding, pick-up/drop-off dwell and Nigerian toll/agbero time, so route estimates were consistently too short; adding padding at each call site risked double-counting (the distance fallback already includes overhead).
+
+**What We Learned:** Keep raw provider minutes as an input. Apply local calibration + overhead in one resolver with an explicit contract: provider path gets overhead exactly once, distance-derived fallback is already complete. Store the resolved value only; keep traffic as a separate live overlay. Hard-cap the overhead so corrupt stop counts cannot explode an ETA.
+
+**Apply When:** Any ETA/duration feature combining third-party routing with local conditions, especially when some modes are re-derived from distance. Add tests for overhead-once, caps, immune modes and fallback passthrough.
+
+**Supersedes:** None
+**Superseded by:** None
+
 ## Centralize Cross-Cutting Query Defaults in Config; Never Trust a Failed Fetch as End-of-List
 
 **Context:** Sprint 78 (issue #25): every list route carried its own `Math.min(Number(limit) || 10, 50)`-style default (feed drifted to 10 while the client wanted 20), the badge poller (`/api/notifications?limit=1`) shared a first-page Redis key with the page's 20-row cache, and `feedStream.fetchFeed` mapped any transient 500 onto `hasMore: false` — one blip permanently stranded infinite scroll until reload. SEO titles had the same class of bug: the root layout `title.template` AND every page manually appended ` | Along`, producing ` | Along | Along`.

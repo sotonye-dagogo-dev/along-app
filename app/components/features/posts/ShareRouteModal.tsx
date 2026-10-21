@@ -123,6 +123,10 @@ interface ShareRouteModalProps {
     endLat?: number
     endLng?: number
     waypoints?: { lat: number; lng: number }[]
+    /** Road-snapped distance (km) when available — persisted for offline views. */
+    totalDistanceKm?: number
+    /** Calibrated journey duration (minutes) — persisted for offline views. */
+    estimatedMins?: number
   }) => boolean | void | Promise<boolean | void>
   onSubmit?: (data: {
     title: string
@@ -137,6 +141,10 @@ interface ShareRouteModalProps {
     endLat?: number
     endLng?: number
     waypoints?: { lat: number; lng: number }[]
+    /** Road-snapped distance (km) when available — persisted for offline views. */
+    totalDistanceKm?: number
+    /** Calibrated journey duration (minutes) — persisted for offline views. */
+    estimatedMins?: number
     /** Idempotency key for this composer session — dedups double-clicks/retries server-side. */
     clientMutationId?: string
     /** Must resolve `true` on success; anything else (false/void/throw) keeps the modal open with input + draft preserved. */
@@ -554,7 +562,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
     liveTrace ? liveTrace.distance : null,
     liveTrace ? liveTrace.duration : null,
     estimate.durationMins,
-    previewVehicle
+    previewVehicle,
+    { intermediateStops: Math.max(0, realPins.length - 2) }
   )
   // Destination is the final stop — its fare/vehicle are meaningless, so the
   // total only sums the legs that actually travel somewhere (shared helper
@@ -1139,6 +1148,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
           endLat: last?.lat && last !== first ? last.lat : undefined,
           endLng: last?.lng && last !== first ? last.lng : undefined,
           waypoints: waypoints.length > 0 ? waypoints : undefined,
+          ...(displayDistance > 0 ? { totalDistanceKm: Math.round(displayDistance * 10) / 10 } : {}),
+          ...(displayDuration > 0 ? { estimatedMins: displayDuration } : {}),
         })
         // Only explicit `true` counts as success: a void/no-op handler must
         // never clear the composer (previously `void` closed the modal and
@@ -1183,6 +1194,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
         endLat: last?.lat && last !== first ? last.lat : undefined,
         endLng: last?.lng && last !== first ? last.lng : undefined,
         waypoints: waypoints.length > 0 ? waypoints : undefined,
+        ...(displayDistance > 0 ? { totalDistanceKm: Math.round(displayDistance * 10) / 10 } : {}),
+        ...(displayDuration > 0 ? { estimatedMins: displayDuration } : {}),
         clientMutationId: mutationKey,
       })
     } catch {
@@ -1719,21 +1732,23 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
             <span className="text-xs font-medium text-error-text flex-1">{formError}</span>
           </div>
         )}
-        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex flex-col gap-2 px-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
+          <div className="flex items-center gap-2 min-w-0 sm:flex-1">
             <button
               type="button"
               onClick={() => setShowDrafts((open) => !open)}
               aria-expanded={showDrafts}
               aria-controls="route-drafts-panel"
-              className="inline-flex items-center gap-1.5 h-9 px-3 radius-md border border-border bg-transparent text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast shrink-0"
+              className="inline-flex items-center gap-1.5 h-9 px-3 radius-md border border-border bg-transparent text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast min-w-0 max-w-full"
             >
-              <History size={14} />
-              {ROUTE_DRAFTS_CONFIG.panelToggleLabel} ({drafts.length})
+              <History size={14} className="shrink-0" />
+              <span className="truncate">
+                {ROUTE_DRAFTS_CONFIG.panelToggleLabel} ({drafts.length})
+              </span>
             </button>
             <span className="text-xs text-text-muted hidden md:inline truncate">{SHARE_ROUTE_MODAL_CONFIG.actionsNote}</span>
           </div>
-          <div className="flex gap-2 ml-auto shrink-0">
+          <div className="flex items-center justify-end gap-2 shrink-0">
             {/* Drafts stay savable while editing too: a draft saved mid-edit
                 carries the edit target's response linkage (buildDraftInput
                 falls back to editResponseTo), so edit→draft→repost never

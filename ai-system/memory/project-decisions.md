@@ -35,6 +35,34 @@
 
 ## Decisions
 
+## Journey Estimates Model Local Conditions in Config, Applied Exactly Once
+
+**Decision:** Treat routing-provider (OSRM/ORS/Mapbox) durations as free-flow car ETAs. Convert them to display estimates through per-vehicle config: a `providerCalibration` multiplier, plus `boardingWaitMins` + `perStopDwellMins × intermediateStops` + one `checkpointDelayMins` toll/agbero allowance, hard-capped by `maxOverheadMins`. Modes whose durations must be re-derived from distance (trekking/bike/boat/train) keep using their own average speed. The overhead is applied by `resolveJourneyDuration` exactly once; the distance-based fallback is already complete and is returned unchanged.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 84)
+**Supersedes:** None (extends the Sprint 67 journey-time registry)
+**Superseded by:** None
+
+**Reason:** Provider ETAs assume ideal car flow and omit boarding, pick-ups/drop-offs and Nigerian toll/roadside-levy time, so posted journeys read unrealistically short. Centralizing the adjustments keeps every caller (composer preview, post detail, trace fallbacks) consistent and tunable without touching UI code.
+
+**Alternatives Considered:** Inline padding in each call site (rejected: drift/double-counting); adding traffic delay into the stored estimate (rejected: traffic remains a separate live overlay with its own sensitivity and range); a schema migration to store overhead components (rejected: the resolved `estimatedMins` is sufficient for display/fallback).
+
+**Implications:** Any new duration call site must pass `intermediateStops` when known and must not add its own overhead. New vehicles need all four meta fields (defaults fall back to the bus profile). Distance-derived and provider-derived paths must stay visibly distinct to avoid double-counting.
+
+## Viewport-Safe, Measured Tour Cards (Explicit Width; Flip/Clamp; Scroll Last)
+
+**Decision:** Tour cards use a measured, explicit width from config (`tooltipMaxWidthPx`) capped by the viewport, and a pure `resolveTourTooltipLayout` chooses a placement that fits the safe viewport (requested → opposite → other sides → clamp). Height comes from the rendered card; `tooltipMaxHeightRatio` caps it and the card scrolls internally as a last resort. Welcome/end/offline cards share the same centering + caps.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 84)
+**Supersedes:** None (hardens the Sprint 82/83 tour tooltip placement)
+**Superseded by:** None
+
+**Reason:** `maxWidth` alone let short copy shrink the card and long copy grow past the viewport; bottom-anchored placement could render the action row off-screen. Measuring the real card and fitting before rendering keeps Next/Finish reachable on small screens.
+
+**Alternatives Considered:** CSS-only `max-height` without measurement (rejected: bottom/right placements still overflow); fixed top/bottom anchoring (rejected: targets near edges clip); forcing centered modals for every step (rejected: loses spotlight context).
+
+**Implications:** Tour display tuning is config-only. Any new overlay card in the tour must attach the shared ref/measurement effect (or use the helper) rather than computing `top/left` inline. Layout tests cover width stability, flips, clamping and centering.
+
 ## Supabase as Primary PostgreSQL; Prisma Endpoint Retained as Offsite Mirror
 
 **Decision:** Keep Prisma ORM, move the application database to Supabase, use

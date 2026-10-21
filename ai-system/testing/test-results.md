@@ -1,22 +1,23 @@
 # Test Results
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: platform tour enhancements)
-> - last-verified-against-code: 2026-10-20
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 84: tour viewport safety + drafts footer + journey-time accuracy)
+> - last-verified-against-code: 2026-10-21
 > - staleness-policy: overwritten on every test run — always current
 
-> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 1221 tests currently exist across 116 suites (verified by a real `npm test` run in this session 2026-10-20).
+> **Overview:** Latest test run results for Along. Updated by agents after running the test suite. Gives a quick snapshot of current project health. 1231 tests currently exist across 116 suites (verified by a real `npx jest --runInBand` run in this session 2026-10-21).
 
 ---
 
 ## Last Run (Build)
 
-**Date:** 2026-10-20
-**Run by:** AI agent (opencode — execute-feature Sprint 83)
+**Date:** 2026-10-21
+**Run by:** AI agent (opencode — execute-feature Sprint 84)
 
 **Build Result:**
 - `npx tsc --noEmit` — ✓ zero errors (real run this session)
-- `npx jest --runInBand` — 1221/1221 passing (116 suites, real run this session: +5 tests in `platformTour.test.ts` for audience filtering, stepId resume, auto-start routes/timeout clamps, guest/resume defaults + selector contract, and anchor/mount/trigger source assertions; `locales.test.ts` REQUIRED_KEYS extended for the new `tour.*` keys)
-- `npx next lint` — ✓ clean on every Sprint-83-touched file (removed one unused type import; the only remaining warning is the pre-existing `ShareRouteModal` `editPost` exhaustive-deps finding — CI lint runs `continue-on-error: true`)
-- `npx prisma generate` + `npx next build` — ✓ compiled successfully (real run this session; 107 static pages, `/api/tour` present)
+- `npx jest --runInBand` — 1231/1231 passing (116 suites, real run this session; `journeyTime.test.ts` +5 tests for calibration/overhead/caps/immune modes/distance estimates; `platformTour.test.ts` +5 tests for width stability, flip, viewport clamping, centering/tiny viewports, normalize/validate of the new display knobs)
+- `npm run lint` — ✓ no new findings in Sprint-84-touched files (pre-existing unrelated errors remain: `app/api/suggestions` `any`s, `metadata.test.ts` require imports, etc.; CI lint is non-blocking)
+- `npm install` — ✓ 1518 packages (postinstall `prisma generate` needs a datasource URL)
+- `DIRECT_LOCAL_DB=... npx prisma generate` + `npm run build` — ✓ compiled successfully (real run this session; 107 static pages)
 - Zero test failures

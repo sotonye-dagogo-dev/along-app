@@ -71,8 +71,14 @@ export interface PlatformTourDisplayConfig {
   spotRadiusPx: number;
   /** Ring glow thickness (px) around the spot. */
   spotRingPx: number;
-  /** Max width of the tooltip card (px). */
+  /** Max width of the tooltip card (px). The card keeps this width (viewport-capped) so short and long copy render consistently. */
   tooltipMaxWidthPx: number;
+  /** Gap between the spotlighted target and the tooltip/spot card (px). */
+  tooltipGapPx: number;
+  /** Minimum breathing room kept between the card and every viewport edge (px). */
+  tooltipMarginPx: number;
+  /** Hard cap on card height as a share of the viewport (0..1) before it scrolls internally. */
+  tooltipMaxHeightRatio: number;
   /** How long to wait for a step target to appear (ms). */
   targetTimeoutMs: number;
   /** Where the mascot gives up and the app logo takes over. */
@@ -160,6 +166,9 @@ export const DEFAULT_PLATFORM_TOUR_CONFIG: PlatformTourConfig = {
     spotRadiusPx: 24,
     spotRingPx: 4,
     tooltipMaxWidthPx: 360,
+    tooltipGapPx: 12,
+    tooltipMarginPx: 12,
+    tooltipMaxHeightRatio: 0.78,
     targetTimeoutMs: 6000,
     // Empty string = the app logo mark is the mascot fallback (§3: config
     // value with a safe, always-present fallback).
@@ -472,6 +481,15 @@ export function normalizePlatformTourConfig(
     if (typeof d.tooltipMaxWidthPx === "number" && Number.isFinite(d.tooltipMaxWidthPx)) {
       merged.display.tooltipMaxWidthPx = Math.min(Math.max(d.tooltipMaxWidthPx, 260), 520);
     }
+    if (typeof d.tooltipGapPx === "number" && Number.isFinite(d.tooltipGapPx)) {
+      merged.display.tooltipGapPx = Math.min(Math.max(d.tooltipGapPx, 0), 48);
+    }
+    if (typeof d.tooltipMarginPx === "number" && Number.isFinite(d.tooltipMarginPx)) {
+      merged.display.tooltipMarginPx = Math.min(Math.max(d.tooltipMarginPx, 8), 48);
+    }
+    if (typeof d.tooltipMaxHeightRatio === "number" && Number.isFinite(d.tooltipMaxHeightRatio)) {
+      merged.display.tooltipMaxHeightRatio = Math.min(Math.max(d.tooltipMaxHeightRatio, 0.5), 0.95);
+    }
     if (typeof d.targetTimeoutMs === "number" && Number.isFinite(d.targetTimeoutMs)) {
       merged.display.targetTimeoutMs = Math.min(Math.max(d.targetTimeoutMs, 1500), 20000);
     }
@@ -610,10 +628,168 @@ export function validatePlatformTourConfigValue(value: unknown): string | null {
   if (v.display !== undefined && (typeof v.display !== "object" || v.display === null || Array.isArray(v.display))) {
     return "display must be an object.";
   }
+  if (v.display && typeof v.display === "object" && !Array.isArray(v.display)) {
+    const display = v.display as Record<string, unknown>;
+    if ("tooltipGapPx" in display && (typeof display.tooltipGapPx !== "number" || !Number.isFinite(display.tooltipGapPx) || display.tooltipGapPx < 0 || display.tooltipGapPx > 48)) {
+      return "display.tooltipGapPx must be between 0 and 48.";
+    }
+    if ("tooltipMarginPx" in display && (typeof display.tooltipMarginPx !== "number" || !Number.isFinite(display.tooltipMarginPx) || display.tooltipMarginPx < 8 || display.tooltipMarginPx > 48)) {
+      return "display.tooltipMarginPx must be between 8 and 48.";
+    }
+    if ("tooltipMaxHeightRatio" in display && (typeof display.tooltipMaxHeightRatio !== "number" || !Number.isFinite(display.tooltipMaxHeightRatio) || display.tooltipMaxHeightRatio < 0.5 || display.tooltipMaxHeightRatio > 0.95)) {
+      return "display.tooltipMaxHeightRatio must be between 0.5 and 0.95.";
+    }
+  }
   return null;
 }
 
 /** Compact profiling for the tooltip header (first-step welcome flag). */
 export function isWelcomeStep(steps: TourStep[], index: number): boolean {
   return index === 0 && steps.length > 0 && !steps[0].targetSelector;
+}
+
+export interface TourSpotRectLike {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+export interface TourViewportSize {
+  width: number;
+  height: number;
+}
+
+export type TourTooltipPlacement = TourStepPlacement | "center";
+
+export interface TourTooltipLayout {
+  /** Placement actually used (may differ from the step's request after flip). */
+  placement: TourTooltipPlacement;
+  /** Card width in px — always explicit so copy length cannot shrink it. */
+  width: number;
+  left: number;
+  top: number;
+  /** Card max-height; content scrolls internally beyond this. */
+  maxHeight: number;
+}
+
+interface TooltipCandidate {
+  placement: TourStepPlacement;
+  left: number;
+  top: number;
+  overflow: number;
+}
+
+function clampValue(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function candidateOverflow(
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  viewport: TourViewportSize,
+  margin: number,
+): number {
+  const horizontal = Math.max(0, margin - left) + Math.max(0, left + width - (viewport.width - margin));
+  const vertical = Math.max(0, margin - top) + Math.max(0, top + height - (viewport.height - margin));
+  return horizontal + vertical;
+}
+
+/**
+ * Viewport-safe tooltip layout (pure).
+ *
+ * Guarantees:
+ * - the card keeps a consistent, explicit width (capped only by the viewport)
+ * - the card never renders below/above the safe viewport area where its
+ *   actions would be unreachable: requested placement is used when it fits,
+ *   otherwise it flips to the opposite side / another side, and finally
+ *   clamps with internal scrolling
+ * - centered steps (welcome/end) are vertically centered with the same caps
+ *
+ * `measuredHeight` comes from the rendered card; when 0 a conservative
+ * estimate is used for the first pass.
+ */
+export function resolveTourTooltipLayout(
+  requested: TourStepPlacement | undefined,
+  spot: TourSpotRectLike | null,
+  viewport: TourViewportSize,
+  config: PlatformTourConfig,
+  measuredHeight = 0,
+): TourTooltipLayout {
+  const margin = Math.max(8, config.display.tooltipMarginPx);
+  const gap = Math.max(0, config.display.tooltipGapPx);
+  const safeWidth = Math.max(0, viewport.width - margin * 2);
+  const width = Math.max(0, Math.min(config.display.tooltipMaxWidthPx, safeWidth));
+  const maxHeight = Math.max(
+    120,
+    Math.min(viewport.height - margin * 2, viewport.height * config.display.tooltipMaxHeightRatio),
+  );
+  const estimatedHeight = Math.min(maxHeight, Math.max(120, Math.round(maxHeight * 0.55)));
+  const height = Math.min(maxHeight, Math.max(80, measuredHeight || estimatedHeight));
+
+  if (!spot || width <= 0 || viewport.width <= 0 || viewport.height <= 0) {
+    const centeredHeight = Math.min(maxHeight, Math.max(80, measuredHeight || 220));
+    return {
+      placement: "center",
+      width,
+      left: Math.max(0, (viewport.width - width) / 2),
+      top: clampValue(
+        (viewport.height - centeredHeight) / 2,
+        margin,
+        Math.max(margin, viewport.height - centeredHeight - margin),
+      ),
+      maxHeight,
+    };
+  }
+
+  const opposite: Record<TourStepPlacement, TourStepPlacement> = {
+    top: "bottom",
+    bottom: "top",
+    left: "right",
+    right: "left",
+  };
+  const order: TourStepPlacement[] = requested
+    ? [requested, opposite[requested], "bottom", "top", "right", "left"]
+    : ["bottom", "top", "right", "left"];
+  const seen = new Set<TourStepPlacement>();
+
+  const candidates: TooltipCandidate[] = [];
+  for (const placement of order) {
+    if (seen.has(placement)) continue;
+    seen.add(placement);
+    let left = 0;
+    let top = 0;
+    if (placement === "top" || placement === "bottom") {
+      left = clampValue(spot.left + spot.width / 2 - width / 2, margin, Math.max(margin, viewport.width - width - margin));
+      top = placement === "top" ? spot.top - gap - height : spot.top + spot.height + gap;
+    } else {
+      left = placement === "left" ? spot.left - gap - width : spot.left + spot.width + gap;
+      left = clampValue(left, margin, Math.max(margin, viewport.width - width - margin));
+      top = clampValue(
+        spot.top + spot.height / 2 - height / 2,
+        margin,
+        Math.max(margin, viewport.height - height - margin),
+      );
+    }
+    candidates.push({
+      placement,
+      left,
+      top,
+      overflow: candidateOverflow(left, top, width, height, viewport, margin),
+    });
+  }
+
+  const best =
+    candidates.find((candidate) => candidate.overflow === 0) ??
+    candidates.reduce((winner, candidate) => (candidate.overflow < winner.overflow ? candidate : winner));
+
+  return {
+    placement: best.placement,
+    width,
+    left: clampValue(best.left, margin, Math.max(margin, viewport.width - width - margin)),
+    top: clampValue(best.top, margin, Math.max(margin, viewport.height - height - margin)),
+    maxHeight,
+  };
 }

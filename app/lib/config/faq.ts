@@ -69,6 +69,12 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         answer:
           "Nothing is lost. Your input and any saved draft stay in place so you can fix the highlighted fields and try again. Drafts clear only after your post is confirmed published.",
       },
+      {
+        id: "route-time-estimates",
+        question: "How are route time estimates worked out, and why do they differ from other apps?",
+        answer:
+          "We start with the road distance and transport mode, then calibrate the free-flow provider estimate for local Nigerian traffic. Public transport also adds realistic boarding/loading time, pick-up and drop-off time at each stop, and a single toll/roadside-levy allowance for tolls and “agbero” checkpoints. Traffic then widens the shown time range, so heavy traffic reads longer. Estimates are guidance, not a guarantee — actual times move with demand, weather and checkpoints.",
+      },
     ],
   },
   {
@@ -416,6 +422,11 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     question: "Wetin go happen to my draft if sharing fail?",
     answer:
       "Nothing go loss. Your input and any saved draft go remain so you fit fix di highlighted fields come try again. Drafts dey only clear after your post don confam to publish.",
+  },
+  "route-time-estimates": {
+    question: "How una dey calculate route time, and why e dey differ from oda apps?",
+    answer:
+      "We dey start with road distance and transport mode, den calibrate di free-flow estimate for local Naija traffic. Public transport still add boarding/loading time, pick-up and drop-off time for each stop, and one toll/roadside-levy allowance for tolls and “agbero” checkpoints. Traffic den widen di shown time range, so heavy traffic go read longer. Na estimate, no be promise — real time dey change with demand, weather and checkpoints.",
   },
   "map-tracings-pins": {
     question: "How I go take read di maps — tracings and pins?",

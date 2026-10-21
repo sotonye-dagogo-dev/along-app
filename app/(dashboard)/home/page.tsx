@@ -91,7 +91,11 @@ interface NewPostPayload {
   endLat?: number
   endLng?: number
   waypoints?: { lat: number; lng: number }[]
-  /** Idempotency key for this composer session — dedups double-clicks/retries. */
+  /** Road-snapped distance (km) when available — persisted for offline views. */
+  totalDistanceKm?: number
+  /** Calibrated journey duration (minutes) — persisted for offline views. */
+  estimatedMins?: number
+  /** Idempotency key for this composer session — dedups double-clicks/retries server-side. */
   clientMutationId?: string
   /** Ephemeral request fix (ROUTE_REQUEST nearby filtering; never persisted). */
   requestLat?: number

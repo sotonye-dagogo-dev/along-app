@@ -13,16 +13,15 @@ import {
   coerceStepIndex,
   isLastStep,
   isTourAutoStartRoute,
-  isTourPlacement,
   isTourTerminal,
   normalizePlatformTourConfig,
   readTourStateShape,
   resolveTourResumeIndex,
+  resolveTourTooltipLayout,
   selectVisibleTourSteps,
   tourStepTimeoutMs,
   type PlatformTourConfig,
   type TourStep,
-  type TourStepPlacement,
   type VisibleTourStep,
 } from "@/app/lib/config/platformTour";
 import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
@@ -99,36 +98,6 @@ function computeSpotRect(el: HTMLElement, config: PlatformTourConfig): SpotRect 
   };
 }
 
-function tooltipPosition(
-  placement: TourStepPlacement,
-  spot: SpotRect,
-  maxWidth: number,
-  viewportW: number,
-  viewportH: number,
-): React.CSSProperties {
-  const gap = 12;
-  const margin = 12;
-  const width = Math.min(maxWidth, viewportW - margin * 2);
-  const clampLeft = (left: number) => clampNumber(left, margin, Math.max(margin, viewportW - width - margin));
-  const style: React.CSSProperties = { maxWidth: width };
-  if (placement === "left" || placement === "right") {
-    const left = placement === "left" ? spot.left - width - gap : spot.left + spot.width + gap;
-    style.left = clampLeft(left);
-    style.top = clampNumber(spot.top, margin, Math.max(margin, viewportH - 90));
-  } else {
-    style.width = width;
-    style.left = clampLeft(spot.left + spot.width / 2 - width / 2);
-    if (placement === "top" && spot.top > 110) {
-      style.bottom = viewportH - spot.top + gap;
-    } else {
-      style.top = spot.top + spot.height + gap;
-    }
-  }
-  return style;
-}
-
-const centeredStyle = { left: "50%", transform: "translateX(-50%)", top: "34%" } as const;
-
 function readState(config: PlatformTourConfig) {
   try {
     return readTourStateShape(window.localStorage.getItem(config.storage.stateKey));
@@ -195,6 +164,15 @@ export default function PlatformTour() {
   const primaryButtonRef = useRef<HTMLButtonElement | null>(null);
   const targetRef = useRef<HTMLElement | null>(null);
   const findTokenRef = useRef(0);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const centeredRef = useRef<HTMLDivElement | null>(null);
+  const [tooltipHeight, setTooltipHeight] = useState(0);
+  const [centeredHeight, setCenteredHeight] = useState(0);
+  const [viewport, setViewport] = useState(() =>
+    typeof window !== "undefined"
+      ? { width: window.innerWidth, height: window.innerHeight }
+      : { width: 0, height: 0 },
+  );
 
   const visibleSteps = React.useMemo(
     () => selectVisibleTourSteps(config.steps, isGuest),
@@ -222,6 +200,21 @@ export default function PlatformTour() {
       .catch(() => undefined);
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  // Keep the card geometry in sync with viewport/orientation changes.
+  useEffect(() => {
+    const update = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+      vv?.removeEventListener("resize", update);
     };
   }, []);
 
@@ -479,11 +472,73 @@ export default function PlatformTour() {
     if (stepIndex > stepCount - 1) setStepIndex(stepCount - 1);
   }, [active, stepCount, stepIndex]);
 
+  const tooltipVisible =
+    enabled && active && !resumePrompt && !endCard && phase !== "offline-blocked" && (centered || !!spot);
+  const tooltipLayout = React.useMemo(() => {
+    if (!tooltipVisible) return null;
+    return resolveTourTooltipLayout(
+      step?.placement,
+      spot,
+      viewport,
+      config,
+      tooltipHeight,
+    );
+  }, [tooltipVisible, step?.placement, spot, viewport, config, tooltipHeight]);
+  const centeredLayout = React.useMemo(
+    () => resolveTourTooltipLayout(undefined, null, viewport, config, centeredHeight),
+    [viewport, config, centeredHeight],
+  );
+
+  // Measure the rendered card so placement can flip/clamp around its real
+  // height (long copy used to push the action row below the viewport).
+  useEffect(() => {
+    if (!tooltipVisible) {
+      setTooltipHeight(0);
+      return;
+    }
+    const el = tooltipRef.current;
+    if (!el) return;
+    const update = () => {
+      const next = Math.round(el.getBoundingClientRect().height);
+      setTooltipHeight((prev) => (Math.abs(prev - next) < 1 ? prev : next));
+    };
+    update();
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(update);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [tooltipVisible, stepIndex, phase, endCard]);
+
+  // End/offline cards need the same treatment: long copy must stay centered
+  // and keep its actions on-screen on short viewports.
+  useEffect(() => {
+    const visible = active && (endCard || phase === "offline-blocked");
+    if (!visible) {
+      setCenteredHeight(0);
+      return;
+    }
+    const el = centeredRef.current;
+    if (!el) return;
+    const update = () => {
+      const next = Math.round(el.getBoundingClientRect().height);
+      setCenteredHeight((prev) => (Math.abs(prev - next) < 1 ? prev : next));
+    };
+    update();
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(update);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [active, endCard, phase]);
+
   if (!enabled || (!active && !resumePrompt)) return null;
 
   const offlineNote = tt(config.offline.bodyKey ?? "tour.offlineNote", config.offline.note);
-  const tooltipVisible =
-    active && !resumePrompt && !endCard && phase !== "offline-blocked" && (centered || !!spot);
   const title = endCard
     ? tt("tour.thanksTitle", config.endCard.title)
     : phase === "offline-blocked"
@@ -508,7 +563,7 @@ export default function PlatformTour() {
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-auto absolute left-4 right-4 top-20 mx-auto max-w-md bg-bg-card border border-border shadow-md p-3.5 flex items-start gap-3"
+          className="pointer-events-auto absolute left-4 right-4 top-20 mx-auto max-w-md max-h-[70vh] overflow-y-auto bg-bg-card border border-border shadow-md p-3.5 flex items-start gap-3"
           style={{ borderRadius: "var(--radius-lg, 12px)" }}
         >
           <Compass size={18} className="text-primary shrink-0 mt-0.5" aria-hidden />
@@ -553,9 +608,16 @@ export default function PlatformTour() {
 
       {!endCard && phase === "offline-blocked" ? (
         <div
+          ref={centeredRef}
           aria-live="polite"
-          className="pointer-events-auto absolute left-4 right-4 mx-auto bg-bg-card border border-border shadow-md p-4"
-          style={{ ...centeredStyle, borderRadius: "var(--radius-lg, 12px)" }}
+          className="pointer-events-auto absolute bg-bg-card border border-border shadow-md p-4 overflow-y-auto"
+          style={{
+            left: centeredLayout.left,
+            top: centeredLayout.top,
+            width: centeredLayout.width,
+            maxHeight: centeredLayout.maxHeight,
+            borderRadius: "var(--radius-lg, 12px)",
+          }}
         >
           <div className="flex items-start gap-2.5">
             <Compass size={18} className="text-primary shrink-0 mt-0.5" aria-hidden />
@@ -584,22 +646,22 @@ export default function PlatformTour() {
         </div>
       ) : null}
 
-      {tooltipVisible ? (
+      {tooltipVisible && tooltipLayout ? (
         <div
+          ref={tooltipRef}
           aria-live="polite"
-          className="pointer-events-auto absolute bg-bg-card border border-border shadow-md p-4"
-          style={{
-            ...(!centered && spot
-              ? tooltipPosition(
-                  isTourPlacement(step?.placement) ? (step!.placement as TourStepPlacement) : "bottom",
-                  spot!,
-                  config.display.tooltipMaxWidthPx,
-                  window.innerWidth,
-                  window.innerHeight,
-                )
-              : centeredStyle),
-            borderRadius: "var(--radius-lg, 12px)",
-          }}
+          className="pointer-events-auto absolute bg-bg-card border border-border shadow-md p-4 overflow-y-auto"
+          style={
+            tooltipLayout
+              ? {
+                  left: tooltipLayout.left,
+                  top: tooltipLayout.top,
+                  width: tooltipLayout.width,
+                  maxHeight: tooltipLayout.maxHeight,
+                  borderRadius: "var(--radius-lg, 12px)",
+                }
+              : { visibility: "hidden" }
+          }
         >
           <div className="flex items-start gap-3">
             <div className="shrink-0 rounded-full overflow-hidden border border-border bg-primary-muted grid place-items-center w-10 h-10">
@@ -693,9 +755,16 @@ export default function PlatformTour() {
 
       {endCard ? (
         <div
+          ref={centeredRef}
           aria-live="polite"
-          className="pointer-events-auto absolute bg-bg-card border border-border shadow-md p-5 text-center"
-          style={{ ...centeredStyle, borderRadius: "var(--radius-lg, 12px)", maxWidth: 360 }}
+          className="pointer-events-auto absolute bg-bg-card border border-border shadow-md p-5 text-center overflow-y-auto"
+          style={{
+            left: centeredLayout.left,
+            top: centeredLayout.top,
+            width: centeredLayout.width,
+            maxHeight: centeredLayout.maxHeight,
+            borderRadius: "var(--radius-lg, 12px)",
+          }}
         >
           <div className="mx-auto rounded-full overflow-hidden border border-border bg-primary-muted grid place-items-center w-12 h-12">
             {config.display.mascotImage && !mascotFailed ? (

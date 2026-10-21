@@ -109,7 +109,8 @@ export function useRouteTrace(pins: TracePin[] | null | undefined, vehicle?: str
     liveTrace ? liveTrace.distance : null,
     liveTrace ? liveTrace.duration : null,
     estimate.durationMins,
-    mode || null
+    mode || null,
+    { intermediateStops: Math.max(0, validPins.length - 2) }
   );
   return {
     liveTrace,

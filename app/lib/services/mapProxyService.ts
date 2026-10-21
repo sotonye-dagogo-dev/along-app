@@ -11,6 +11,7 @@ import {
   type MapGeocodeProvider,
   type MapRoutingProvider,
 } from "@/app/lib/config/mapStack";
+import { estimateDurationMins, JOURNEY_TIME_CONFIG } from "@/app/lib/config/journeyTime";
 import { sanitizeMapStyleNumericExpressions } from "@/app/lib/utils/mapStyleSanitize";
 import {
   LOCATION_SUGGESTIONS_CONFIG,
@@ -132,7 +133,16 @@ function approximateDistanceKm(pins: MapPin[]): number {
 export function straightLineTrace(pins: MapPin[]): MapTraceResult {
   const distance = approximateDistanceKm(pins);
   const encoded = polyline.encode(pins.map((p) => [p.lat, p.lng]));
-  return { polyline: encoded, distance, duration: Math.round(distance * 15), provider: "straight" };
+  // Straight-line distance ignores road detours; apply the configured road
+  // factor before timing at the default local urban speed. This provider
+  // duration is then calibrated + given boarding/stop overhead by callers.
+  const roadDistanceKm = distance * JOURNEY_TIME_CONFIG.roadFactor;
+  return {
+    polyline: encoded,
+    distance,
+    duration: estimateDurationMins(roadDistanceKm, null),
+    provider: "straight",
+  };
 }
 
 export function routeCacheKey(pins: MapPin[]): string {
@@ -175,7 +185,7 @@ async function traceViaOsrm(pins: MapPin[], profile?: string | null): Promise<Ma
     const distance =
       typeof route.distance === "number" ? Math.round((route.distance / 1000) * 10) / 10 : approximateDistanceKm(limited);
     const duration =
-      typeof route.duration === "number" ? Math.round(route.duration / 60) : Math.round(distance * 2);
+      typeof route.duration === "number" ? Math.round(route.duration / 60) : estimateDurationMins(distance, null);
     return { polyline: encoded, distance, duration, provider: "osrm" };
   } catch {
     return null;
@@ -210,7 +220,7 @@ async function traceViaOrs(pins: MapPin[], profile?: string | null): Promise<Map
     const duration =
       typeof route.summary?.duration === "number"
         ? Math.round(route.summary.duration / 60)
-        : Math.round(distance * 15);
+        : estimateDurationMins(distance, null);
     return { polyline: encoded, distance, duration, provider: "ors" };
   } catch {
     return null;
@@ -238,7 +248,8 @@ async function traceViaMapbox(pins: MapPin[], profile?: string | null): Promise<
     const encoded: string = route.geometry ?? polyline.encode(limited.map((p) => [p.lat, p.lng]));
     const distance =
       typeof route.distance === "number" ? Math.round((route.distance / 1000) * 10) / 10 : approximateDistanceKm(limited);
-    const duration = typeof route.duration === "number" ? Math.round(route.duration / 60) : Math.round(distance * 2);
+    const duration =
+      typeof route.duration === "number" ? Math.round(route.duration / 60) : estimateDurationMins(distance, null);
     return { polyline: encoded, distance, duration, provider: "mapbox" };
   } catch {
     return null;

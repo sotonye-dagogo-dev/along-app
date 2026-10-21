@@ -15,6 +15,9 @@ import {
   adjustDurationForVehicleAndTraffic,
   dominantVehicleForSteps,
   resolveJourneyDuration,
+  journeyOverheadMins,
+  calibrateProviderDurationMins,
+  estimateJourneyDurationMins,
 } from "@/app/lib/config/journeyTime";
 import { remapTrafficSegments } from "@/app/lib/config/traffic";
 
@@ -43,13 +46,71 @@ describe("journey-time vehicle speeds", () => {
     expect(resolveJourneyDuration(10, 20, null, "trekking")).toBe(
       estimateDurationMins(10, "trekking")
     );
-    expect(resolveJourneyDuration(10, 20, null, "car")).toBe(20);
+    expect(resolveJourneyDuration(10, 20, null, "car")).toBe(26);
   });
 
   it("falls back gracefully when every input is missing", () => {
     expect(resolveJourneyDuration(null, null, 33, "car")).toBe(33);
     expect(resolveJourneyDuration(null, null, null, "car")).toBe(0);
     expect(estimateDurationMins(NaN, "car")).toBe(0);
+  });
+});
+
+describe("local journey overhead calibration", () => {
+  it("calibrates provider free-flow time and adds local overhead once", () => {
+    expect(Math.round(calibrateProviderDurationMins(20, "car"))).toBe(24);
+    expect(journeyOverheadMins("car", 0)).toBe(2);
+    expect(resolveJourneyDuration(10, 20, null, "car")).toBe(26);
+    expect(resolveJourneyDuration(10, 20, null, "car", { calibrateProvider: false })).toBe(22);
+    expect(resolveJourneyDuration(10, 20, null, "car", { includeOverhead: false })).toBe(24);
+  });
+
+  it("adds boarding and per-stop dwell for public transport", () => {
+    const bus = JOURNEY_TIME_CONFIG.vehicles.bus;
+    expect(journeyOverheadMins("bus", 3)).toBe(
+      bus.boardingWaitMins + bus.perStopDwellMins * 3 + bus.checkpointDelayMins,
+    );
+    expect(resolveJourneyDuration(10, 20, null, "bus", { intermediateStops: 3 })).toBe(
+      Math.round(calibrateProviderDurationMins(20, "bus")) + Math.round(journeyOverheadMins("bus", 3)),
+    );
+    // More pick-ups/drops always cost more time (up to the defensive cap).
+    expect(resolveJourneyDuration(10, 20, null, "bus", { intermediateStops: 6 })).toBeGreaterThan(
+      resolveJourneyDuration(10, 20, null, "bus", { intermediateStops: 1 }),
+    );
+  });
+
+  it("caps corrupt stop counts and never double-adds fallback overhead", () => {
+    const capped = journeyOverheadMins("bus", 9999);
+    expect(capped).toBeLessThanOrEqual(JOURNEY_TIME_CONFIG.maxOverheadMins);
+    expect(journeyOverheadMins("bus", 9999)).toBe(
+      journeyOverheadMins("bus", JOURNEY_TIME_CONFIG.maxStopsCounted),
+    );
+    expect(journeyOverheadMins("bus", -4)).toBe(journeyOverheadMins("bus", 0));
+    // The client fallback already includes overhead.
+    expect(resolveJourneyDuration(null, null, estimateJourneyDurationMins(10, "bus", 2), "bus", {
+      intermediateStops: 2,
+    })).toBe(estimateJourneyDurationMins(10, "bus", 2));
+  });
+
+  it("keeps immune modes free of road/toll overhead", () => {
+    expect(journeyOverheadMins("trekking", 8)).toBe(0);
+    expect(resolveJourneyDuration(10, 12, null, "trekking", { intermediateStops: 8 })).toBe(
+      estimateDurationMins(10, "trekking"),
+    );
+    expect(resolveJourneyDuration(null, null, null, "boat")).toBe(0);
+  });
+
+  it("estimates distance-based journeys with road factor + overhead", () => {
+    expect(estimateJourneyDurationMins(10, "car", 2)).toBe(
+      estimateDurationMins(10, "car") + journeyOverheadMins("car", 2),
+    );
+    expect(estimateJourneyDurationMins(10, "bus", 4)).toBeGreaterThan(
+      estimateJourneyDurationMins(10, "car", 4),
+    );
+    expect(estimateJourneyDurationMins(0, "bus", 4)).toBe(0);
+    expect(estimateJourneyDurationMins(10, null, 4)).toBe(
+      estimateJourneyDurationMins(10, JOURNEY_TIME_CONFIG.defaultVehicle, 4),
+    );
   });
 });
 
