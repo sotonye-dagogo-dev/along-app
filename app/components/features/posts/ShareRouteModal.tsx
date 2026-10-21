@@ -2,10 +2,10 @@
 
 import { useState, useMemo, useRef, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, ChevronDown, Crosshair, History, Loader2, MapPinned } from "lucide-react"
+import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, Crosshair, History, Loader2, MapPinned, FileText, BarChart3, Info, type LucideIcon } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
-import { SHARE_ROUTE_MODAL_CONFIG } from "@/app/lib/config"
+import { SHARE_ROUTE_MODAL_CONFIG, SHARE_ROUTE_TAB_EVENT, fillShareRouteHintTemplate, resolveShareRouteTabId, type ShareRouteTabConfig, type ShareRouteTabEventDetail, type ShareRouteTabIcon, type ShareRouteTabId } from "@/app/lib/config"
 import { ROUTE_STEPS_CONFIG, showStepFare, showStepVehicle, normalizeRouteSteps, totalFareForSteps } from "@/app/lib/config/routeSteps"
 import {
   ROUTE_VALIDATION_CONFIG,
@@ -123,6 +123,10 @@ interface ShareRouteModalProps {
     endLat?: number
     endLng?: number
     waypoints?: { lat: number; lng: number }[]
+    /** Road-snapped distance (km) when available — persisted for offline views. */
+    totalDistanceKm?: number
+    /** Calibrated journey duration (minutes) — persisted for offline views. */
+    estimatedMins?: number
   }) => boolean | void | Promise<boolean | void>
   onSubmit?: (data: {
     title: string
@@ -137,6 +141,10 @@ interface ShareRouteModalProps {
     endLat?: number
     endLng?: number
     waypoints?: { lat: number; lng: number }[]
+    /** Road-snapped distance (km) when available — persisted for offline views. */
+    totalDistanceKm?: number
+    /** Calibrated journey duration (minutes) — persisted for offline views. */
+    estimatedMins?: number
     /** Idempotency key for this composer session — dedups double-clicks/retries server-side. */
     clientMutationId?: string
     /** Must resolve `true` on success; anything else (false/void/throw) keeps the modal open with input + draft preserved. */
@@ -144,6 +152,14 @@ interface ShareRouteModalProps {
 }
 
 const VEHICLE_OPTIONS = Object.keys(VEHICLE_REGISTRY) as VehicleType[]
+
+/** Config icon keys → Lucide components (the config itself stays zero-dep). */
+const SHARE_ROUTE_TAB_ICONS: Record<ShareRouteTabIcon, LucideIcon> = {
+  details: FileText,
+  map: MapPinned,
+  score: BarChart3,
+  drafts: History,
+}
 
 function newMutationKey(): string {
   try {
@@ -182,7 +198,12 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   const isEditing = Boolean(editPost)
   const [drafts, setDrafts] = useState<RouteDraft[]>([])
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
-  const [showDrafts, setShowDrafts] = useState(false)
+  // Tabbed workspace: one shared panel (Details / Map / Score / Drafts) so
+  // no section is squeezed into a narrow column. Unknown ids resolve safely.
+  const [activeTab, setActiveTab] = useState<ShareRouteTabId>(() =>
+    resolveShareRouteTabId(SHARE_ROUTE_MODAL_CONFIG.defaultTab),
+  )
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [savePromptOpen, setSavePromptOpen] = useState(false)
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
@@ -197,15 +218,13 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isDraggingOver, setIsDraggingOver] = useState(false)
-  const [previewOpen, setPreviewOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.previewDefaultOpen)
   // Sprint 72 — "Find on map": an explicit RouteMap fly-to request; the
   // nonce bumps so repeat requests (same stop) still refocus + re-hint.
   const [focusRequest, setFocusRequest] = useState<{ lat?: number; lng?: number; nonce: number } | null>(null)
   const focusNonceRef = useRef(0)
-  // Always-mounted preview anchor (contains the toggle + conditional panel)
-  // so scrolling does not race the previewOpen render.
+  // Anchor inside the Map tab so "Find on map" can scroll the shared panel
+  // to the preview after switching tabs.
   const previewAnchorRef = useRef<HTMLDivElement>(null)
-  const [formOpen, setFormOpen] = useState(SHARE_ROUTE_MODAL_CONFIG.formDefaultOpen)
   // Double-submit guard: while a post is in flight the Share/Save buttons are
   // disabled with spinner feedback, and re-entry is ignored. `mutationKey`
   // identifies this composer session for server-side idempotency replay.
@@ -241,6 +260,48 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
    * per opened post id; later renders for the same id leave user input alone.
    */
   const editInitRef = useRef<string | null>(null)
+
+  // Config order wins; a defensive single-tab fallback keeps the composer
+  // usable even if a deployment empties the tab metadata by mistake.
+  const shareTabs = useMemo<ShareRouteTabConfig[]>(
+    () =>
+      SHARE_ROUTE_MODAL_CONFIG.tabs.length > 0
+        ? SHARE_ROUTE_MODAL_CONFIG.tabs
+        : [{ id: "details", label: "Details", icon: "details", ariaLabel: "Route details" }],
+    [],
+  )
+
+  const selectTab = useCallback((id: string) => {
+    setActiveTab(resolveShareRouteTabId(id))
+  }, [])
+
+  // Tour hand-off: the spotlight step asks the composer to reveal a specific
+  // tab (e.g. Score) even if the viewer never clicked the tab themselves.
+  useEffect(() => {
+    if (!isOpen) return
+    const onTab = (event: Event) => {
+      const detail = (event as CustomEvent<ShareRouteTabEventDetail>).detail
+      if (detail && typeof detail.tab === "string") selectTab(detail.tab)
+    }
+    window.addEventListener(SHARE_ROUTE_TAB_EVENT, onTab)
+    return () => window.removeEventListener(SHARE_ROUTE_TAB_EVENT, onTab)
+  }, [isOpen, selectTab])
+
+  // ARIA tab pattern: Left/Right cycle, Home/End jump, focus follows.
+  const handleTabKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      let next = index
+      if (event.key === "ArrowRight") next = (index + 1) % shareTabs.length
+      else if (event.key === "ArrowLeft") next = (index - 1 + shareTabs.length) % shareTabs.length
+      else if (event.key === "Home") next = 0
+      else if (event.key === "End") next = shareTabs.length - 1
+      else return
+      event.preventDefault()
+      setActiveTab(shareTabs[next].id)
+      requestAnimationFrame(() => tabRefs.current[next]?.focus())
+    },
+    [shareTabs],
+  )
 
   const doGeocode = useCallback(async (query: string, stepIndex: number) => {
     if (!query || query.length < LOCATION_SUGGESTIONS_CONFIG.minQueryLength) {
@@ -398,7 +459,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   // bias → GPS. Any resolution arms the tap-hint pill inside RouteMap; a
   // total miss still opens the preview (hint only — nothing to fly to).
   const findOnMap = (index: number) => {
-    setPreviewOpen(true)
+    // Jump straight to the Map tab — the preview is no longer collapsible,
+    // so the tap-to-assign hint and fly-to are immediately visible.
+    selectTab("map")
     setStepExtra(index, { _focused: false })
     requestAnimationFrame(() =>
       previewAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
@@ -554,7 +617,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
     liveTrace ? liveTrace.distance : null,
     liveTrace ? liveTrace.duration : null,
     estimate.durationMins,
-    previewVehicle
+    previewVehicle,
+    { intermediateStops: Math.max(0, realPins.length - 2) }
   )
   // Destination is the final stop — its fare/vehicle are meaningless, so the
   // total only sums the legs that actually travel somewhere (shared helper
@@ -616,6 +680,20 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   }, [traceSig, isOpen, previewVehicle])
 
   const evaluation = draftingCoachService.evaluate(draftInput)
+  // Details hint suffixes: the Map link mirrors the Score link by showing the
+  // live distance/time estimate; both templates degrade to the bare label
+  // while their values are unavailable (never a half-filled placeholder).
+  const detailsHintMapValue = fillShareRouteHintTemplate(
+    SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapValueTemplate,
+    {
+      distance: displayDistance > 0 ? Math.round(displayDistance * 10) / 10 : "",
+      duration: displayDuration > 0 ? Math.round(displayDuration) : "",
+    },
+  )
+  const detailsHintScoreValue = fillShareRouteHintTemplate(
+    SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreValueTemplate,
+    { score: evaluation.score, max: evaluation.maxScore },
+  )
 
   // Live composer validity (config-driven): Share stays disabled until every
   // visible step has a location and every fare is a single valid amount.
@@ -869,7 +947,6 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
     // Working on the same draft → prompt: update in place or save as new.
     // Fresh composer → save as a new entry directly.
     if (activeDraftId) {
-      setShowDrafts(false)
       setSavePromptOpen(true)
       return
     }
@@ -878,7 +955,9 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
 
   const restoreDraft = useCallback((draft: RouteDraft) => {
     applyDraft(draft)
-    setShowDrafts(false)
+    // Return to Details so the user can review and continue editing the
+    // restored draft without hunting through tabs.
+    setActiveTab("details")
     setSavePromptOpen(false)
     toastService.success(ROUTE_DRAFTS_CONFIG.restoredToast)
   }, [applyDraft])
@@ -965,10 +1044,10 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
         (editPost.images ?? []).filter((u): u is string => typeof u === "string")
       )
       setActiveDraftId(null)
-      setShowDrafts(false)
+      setActiveTab(resolveShareRouteTabId(SHARE_ROUTE_MODAL_CONFIG.defaultTab))
       setRestoredResponseTo(null)
-      // Drafts stay accessible while editing (footer + panel above) — a draft
-      // saved mid-edit carries the edit target's linkage via editResponseTo.
+      // Drafts stay accessible while editing (Drafts tab + footer save) — a
+      // draft saved mid-edit carries the edit target's linkage via editResponseTo.
       setDrafts(routeDraftsService.listDrafts())
       setFieldErrors({ steps: (prefill.length >= 2 ? prefill : []).map(() => ({})) })
       setFormError(null)
@@ -985,12 +1064,16 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
         setTags((prev) => (prev.length === 0 ? [...responseTags] : prev))
       }
       setDrafts(routeDraftsService.listDrafts())
-      setShowDrafts(false)
+      setActiveTab(resolveShareRouteTabId(SHARE_ROUTE_MODAL_CONFIG.defaultTab))
       return
     }
     const stored = routeDraftsService.listDrafts()
     setDrafts(stored)
-    setShowDrafts(Boolean(startWithDraftsOpen && stored.length > 0))
+    setActiveTab(
+      startWithDraftsOpen && stored.length > 0
+        ? "drafts"
+        : resolveShareRouteTabId(SHARE_ROUTE_MODAL_CONFIG.defaultTab),
+    )
     // Create mode has no live-post originals — every Cloudinary removal is a
     // session/draft orphan and safe for immediate background cleanup.
     editOriginalsRef.current = new Set()
@@ -1139,6 +1222,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
           endLat: last?.lat && last !== first ? last.lat : undefined,
           endLng: last?.lng && last !== first ? last.lng : undefined,
           waypoints: waypoints.length > 0 ? waypoints : undefined,
+          ...(displayDistance > 0 ? { totalDistanceKm: Math.round(displayDistance * 10) / 10 } : {}),
+          ...(displayDuration > 0 ? { estimatedMins: displayDuration } : {}),
         })
         // Only explicit `true` counts as success: a void/no-op handler must
         // never clear the composer (previously `void` closed the modal and
@@ -1183,6 +1268,8 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
         endLat: last?.lat && last !== first ? last.lat : undefined,
         endLng: last?.lng && last !== first ? last.lng : undefined,
         waypoints: waypoints.length > 0 ? waypoints : undefined,
+        ...(displayDistance > 0 ? { totalDistanceKm: Math.round(displayDistance * 10) / 10 } : {}),
+        ...(displayDuration > 0 ? { estimatedMins: displayDuration } : {}),
         clientMutationId: mutationKey,
       })
     } catch {
@@ -1225,7 +1312,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   return (
     <AppModal open={isOpen} onClose={onClose} size="xl">
       <div className="flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between gap-3 px-6 py-5 pb-4 border-b border-border">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 pb-3 border-b border-border">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">
               {isEditing ? "Edit Route" : isResponse ? "Respond to Route Request" : "Share a Route"}
@@ -1239,7 +1326,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
             </p>
           </div>
           {onRequestRoute && SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger && !isResponse && !isEditing && (
-            <div className="pr-8 shrink-0">
+            <div className="pr-8 shrink-0" data-tour="route-request-trigger">
               <RequestRouteTrigger onClick={onRequestRoute} />
             </div>
           )}
@@ -1277,54 +1364,69 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
           </div>
         )}
 
-        {/* Drafts stay accessible in edit mode too (see footer save) — a
-            draft saved mid-edit carries the edit target's response linkage. */}
-        <div className="mx-6 mt-4 border border-border radius-lg bg-bg-elevated">
-          <button
-            type="button"
-            onClick={() => setShowDrafts((open) => !open)}
-            aria-expanded={showDrafts}
-            aria-controls="route-drafts-panel"
-            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 border-none bg-transparent cursor-pointer font-sans text-left"
+        {/* Tabbed workspace: Details / Map / Score / Drafts share one panel.
+            Short labels + icons keep every tab legible (count badge on
+            Drafts), and the footer owns only Save Draft + Share. */}
+        <div className="px-4 sm:px-6 pt-3">
+          <div
+            role="tablist"
+            aria-label={SHARE_ROUTE_MODAL_CONFIG.tabsAriaLabel}
+            aria-orientation="horizontal"
+            className="flex items-stretch gap-1 sm:gap-2 border-b border-border overflow-x-auto overscroll-x-contain -mx-1 px-1 scrollbar-thin"
           >
-            <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-primary">
-              <History size={15} className="text-text-secondary" />
-              {ROUTE_DRAFTS_CONFIG.panelToggleLabel}
-              <span className="text-xs font-medium text-text-muted">
-                ({ROUTE_DRAFTS_CONFIG.draftsCountLabel(drafts.length)})
-              </span>
-            </span>
-            <ChevronDown
-              size={16}
-              className={`text-text-secondary transition-transform duration-fast ${showDrafts ? "rotate-180" : ""}`}
-            />
-          </button>
-          {showDrafts && (
-            <div id="route-drafts-panel" className="px-3 pb-3">
-              <RouteDraftsPanel drafts={drafts} activeDraftId={activeDraftId} onRestore={restoreDraft} onDelete={deleteDraft} onUpdate={persistDraftUpdate} />
-            </div>
-          )}
+            {shareTabs.map((tab, index) => {
+              const TabIcon = SHARE_ROUTE_TAB_ICONS[tab.icon] ?? FileText
+              const selected = activeTab === tab.id
+              const count = tab.badge === "drafts" ? drafts.length : null
+              return (
+                <button
+                  key={tab.id}
+                  ref={(el) => { tabRefs.current[index] = el }}
+                  type="button"
+                  role="tab"
+                  id={`route-tab-${tab.id}`}
+                  aria-selected={selected}
+                  aria-controls={`route-tabpanel-${tab.id}`}
+                  aria-label={
+                    tab.badge === "drafts"
+                      ? `${tab.ariaLabel} (${ROUTE_DRAFTS_CONFIG.draftsCountLabel(drafts.length)})`
+                      : tab.ariaLabel
+                  }
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => selectTab(tab.id)}
+                  onKeyDown={(event) => handleTabKeyDown(event, index)}
+                  data-tour={tab.id === "score" ? "route-score" : undefined}
+                  className={`relative flex-1 basis-0 min-w-[60px] inline-flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-4 py-2.5 border-none bg-transparent text-[11px] sm:text-sm font-medium cursor-pointer font-sans whitespace-nowrap transition-colors duration-fast ${
+                    selected ? "text-primary" : "text-text-secondary hover:text-text-primary"
+                  }`}
+                >
+                  <TabIcon size={14} className="shrink-0 sm:w-[15px] sm:h-[15px]" aria-hidden />
+                  <span>{tab.label}</span>
+                  {count !== null && count > 0 && (
+                    <span
+                      className="inline-flex items-center justify-center min-w-[16px] h-4 px-0.5 radius-pill bg-primary-muted text-primary text-[9px] font-semibold shrink-0"
+                      aria-hidden
+                    >
+                      {count}
+                    </span>
+                  )}
+                  {selected && (
+                    <span className="absolute bottom-0 left-[20%] right-[20%] h-[2.5px] bg-primary radius-pill" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
         </div>
 
-        <div className="flex flex-col lg:flex-row overflow-y-auto flex-1">
-          <div className="flex-1 p-4 sm:p-6 flex flex-col gap-5 overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => setFormOpen((open) => !open)}
-              aria-expanded={formOpen}
-              aria-controls="route-form-panel"
-              className="w-full flex items-center justify-between gap-2 py-1 border-none bg-transparent cursor-pointer font-sans text-left group"
+        <div className="overflow-y-auto flex-1">
+          {activeTab === "details" && (
+            <div
+              id="route-tabpanel-details"
+              role="tabpanel"
+              aria-labelledby="route-tab-details"
+              className="p-4 sm:p-6 flex flex-col gap-5"
             >
-              <span className="text-sm font-semibold text-text-primary">
-                {SHARE_ROUTE_MODAL_CONFIG.formTitle}
-              </span>
-              <ChevronDown
-                size={16}
-                className={`text-text-secondary transition-transform duration-fast ${formOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {formOpen && (
-              <div id="route-form-panel" className="flex flex-col gap-5">
             <div>
               <label className="block text-sm font-medium mb-1 text-text-primary">
                 Route title <span className="text-error-text">*</span>
@@ -1420,6 +1522,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                           onFocus={() => setStepExtra(index, { _focused: true })}
                           onBlur={() => setTimeout(() => setStepExtra(index, { _focused: false }), 160)}
                           placeholder={LOCATION_SUGGESTIONS_CONFIG.locationPlaceholder}
+                          data-tour={index === 0 ? "route-origin" : undefined}
                           aria-label={index === 0 ? "Origin location" : index === steps.length - 1 ? "Destination location" : `Stop ${index} location`}
                           aria-invalid={Boolean(fieldErrors.steps[index]?.location)}
                           className={`w-full h-10 pl-[34px] pr-3 py-2.5 border radius-sm text-sm font-sans outline-none transition-colors duration-fast bg-bg-base text-text-primary focus:border-primary focus:shadow-[0_0_0_3px_rgba(0,98,59,0.12)] placeholder:text-text-muted ${fieldErrorClass(Boolean(fieldErrors.steps[index]?.location))}`}
@@ -1463,6 +1566,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => locateMe(index)}
                           disabled={step._locating}
+                          data-tour={index === 0 ? "route-locate" : undefined}
                           className="inline-flex items-center gap-1.5 px-0 py-0.5 border-none bg-transparent cursor-pointer text-xs font-medium text-primary font-sans disabled:opacity-60 hover:text-primary-light transition-colors"
                         >
                           <Crosshair size={12} className="shrink-0" />
@@ -1472,6 +1576,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => findOnMap(index)}
+                          data-tour={index === 0 ? "route-find-on-map" : undefined}
                           className="inline-flex items-center gap-1.5 px-0 py-0.5 border-none bg-transparent cursor-pointer text-xs font-medium text-text-secondary font-sans hover:text-text-primary transition-colors"
                         >
                           <MapPinned size={12} className="shrink-0" />
@@ -1624,68 +1729,125 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
               </div>
             </div>
 
-            {/* Actions live in the modal footer below preview + score. */}
-              </div>
-            )}
-          </div>
-
-          <div className="w-full lg:w-[280px] shrink-0 p-4 sm:py-5 sm:pr-6 sm:pl-0 flex flex-col gap-4 border-t lg:border-t-0 lg:border-l border-border">
-            <div ref={previewAnchorRef}>
-              <button
-                type="button"
-                onClick={() => setPreviewOpen((open) => !open)}
-                aria-expanded={previewOpen}
-                aria-controls="route-preview-panel"
-                className="w-full flex items-center justify-between gap-2 px-0 py-1.5 border-none bg-transparent cursor-pointer font-sans text-left group"
+              {/* Pre-share nudge: map/score are real buttons that switch tabs. */}
+              <div
+                role="note"
+                aria-label={SHARE_ROUTE_MODAL_CONFIG.detailsHint.ariaLabel}
+                className="flex items-start gap-2 px-3 py-2.5 radius-md bg-info border border-info-border text-info-text text-xs leading-relaxed"
               >
-                <span className="flex items-center gap-1.5 text-sm font-medium text-text-secondary group-hover:text-text-primary transition-colors">
-                  <MapPin size={14} />
+                <Info size={14} className="shrink-0 mt-0.5" aria-hidden />
+                <p>
+                  {SHARE_ROUTE_MODAL_CONFIG.detailsHint.text}{" "}
+                  <button
+                    type="button"
+                    onClick={() => selectTab("map")}
+                    aria-label={shareTabs.find((tab) => tab.id === "map")?.ariaLabel ?? "Map preview"}
+                    className="font-semibold underline underline-offset-2 border-none bg-transparent cursor-pointer font-sans text-info-text hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors"
+                  >
+                    {SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapLabel}
+                    {detailsHintMapValue ? ` ${detailsHintMapValue}` : ""}
+                  </button>{" "}
+                  {SHARE_ROUTE_MODAL_CONFIG.detailsHint.conjunction}{" "}
+                  <button
+                    type="button"
+                    onClick={() => selectTab("score")}
+                    aria-label={shareTabs.find((tab) => tab.id === "score")?.ariaLabel ?? "Route quality score"}
+                    className="font-semibold underline underline-offset-2 border-none bg-transparent cursor-pointer font-sans text-info-text hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors"
+                  >
+                    {SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreLabel}
+                    {detailsHintScoreValue ? ` ${detailsHintScoreValue}` : ""}
+                  </button>{" "}
+                  {SHARE_ROUTE_MODAL_CONFIG.detailsHint.suffix}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "map" && (
+            <div
+              id="route-tabpanel-map"
+              role="tabpanel"
+              aria-labelledby="route-tab-map"
+              className="p-4 sm:p-6 flex flex-col gap-3"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                  <MapPinned size={15} className="text-text-secondary" aria-hidden />
                   {SHARE_ROUTE_MODAL_CONFIG.previewTitle}
                   {tracing && (
                     <span className="text-[10px] font-normal text-text-muted animate-pulse">updating...</span>
                   )}
-                </span>
-                <span className="flex items-center gap-1.5 text-xs text-text-muted">
+                </h3>
+                <span className="text-xs text-text-muted">
                   {displayDistance > 0 ? `${displayDistance} km` : ""}
                   {displayDuration > 0 ? ` · ${displayDuration} min` : ""}
-                  <ChevronDown
-                    size={14}
-                    className={`transition-transform duration-fast ${previewOpen ? "rotate-180" : ""}`}
-                  />
                 </span>
-              </button>
-              {previewOpen && (
-                <div id="route-preview-panel">
-                  <RouteMap
-                    pins={pins}
-                    encodedPolyline={liveTrace?.polyline}
-                    height={180}
-                    editable={false}
-                    showOverlay={true}
-                    distance={displayDistance > 0 ? displayDistance : undefined}
-                    duration={displayDuration > 0 ? displayDuration : undefined}
-                    fare={totalFare > 0 ? `₦${totalFare.toLocaleString()}` : undefined}
-                    vehicle={previewVehicle}
-                    pickOptions={pickOptions}
-                    onPickOption={handlePickOption}
-                    focusRequest={focusRequest}
-                  />
-                  <div className="flex items-center justify-between mt-1 text-[10px] text-text-muted">
-                    <span>{liveTrace ? "Live route" : "Estimated route — updates as you edit"}</span>
-                    <span>{steps.filter((s) => s.location).length} steps</span>
-                  </div>
-                </div>
-              )}
+              </div>
+              <div ref={previewAnchorRef}>
+                <RouteMap
+                  pins={pins}
+                  encodedPolyline={liveTrace?.polyline}
+                  height={SHARE_ROUTE_MODAL_CONFIG.mapPanelHeight}
+                  editable={false}
+                  showOverlay={true}
+                  distance={displayDistance > 0 ? displayDistance : undefined}
+                  duration={displayDuration > 0 ? displayDuration : undefined}
+                  fare={totalFare > 0 ? `₦${totalFare.toLocaleString()}` : undefined}
+                  vehicle={previewVehicle}
+                  pickOptions={pickOptions}
+                  onPickOption={handlePickOption}
+                  focusRequest={focusRequest}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-text-muted">
+                <span>{liveTrace ? "Live route" : "Estimated route — updates as you edit"}</span>
+                <span>{steps.filter((s) => s.location).length} steps</span>
+              </div>
             </div>
+          )}
 
-            <DraftingCoach
-              score={evaluation.score}
-              maxScore={evaluation.maxScore}
-              checkpoints={evaluation.checkpoints}
-              nextSuggestion={evaluation.nextSuggestion}
-              defaultOpen={SHARE_ROUTE_MODAL_CONFIG.scoreDefaultOpen}
-            />
-          </div>
+          {activeTab === "score" && (
+            <div
+              id="route-tabpanel-score"
+              role="tabpanel"
+              aria-labelledby="route-tab-score"
+              className="p-4 sm:p-6"
+            >
+              <DraftingCoach
+                score={evaluation.score}
+                maxScore={evaluation.maxScore}
+                checkpoints={evaluation.checkpoints}
+                nextSuggestion={evaluation.nextSuggestion}
+                defaultOpen
+              />
+            </div>
+          )}
+
+          {activeTab === "drafts" && (
+            <div
+              id="route-tabpanel-drafts"
+              role="tabpanel"
+              aria-labelledby="route-tab-drafts"
+              className="p-4 sm:p-6 flex flex-col gap-3"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-primary">
+                  <History size={15} className="text-text-secondary" aria-hidden />
+                  {ROUTE_DRAFTS_CONFIG.panelTitle}
+                </h3>
+                <span className="text-xs text-text-muted">
+                  {ROUTE_DRAFTS_CONFIG.draftsCountLabel(drafts.length)} · {SHARE_ROUTE_MODAL_CONFIG.actionsNote}
+                </span>
+              </div>
+              <RouteDraftsPanel
+                drafts={drafts}
+                activeDraftId={activeDraftId}
+                onRestore={restoreDraft}
+                onDelete={deleteDraft}
+                onUpdate={persistDraftUpdate}
+              />
+            </div>
+          )}
         </div>
 
         {savePromptOpen && activeDraftId && (
@@ -1715,20 +1877,6 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
           </div>
         )}
         <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              type="button"
-              onClick={() => setShowDrafts((open) => !open)}
-              aria-expanded={showDrafts}
-              aria-controls="route-drafts-panel"
-              className="inline-flex items-center gap-1.5 h-9 px-3 radius-md border border-border bg-transparent text-xs font-semibold text-text-secondary cursor-pointer font-sans hover:bg-bg-elevated hover:text-text-primary transition-all duration-fast shrink-0"
-            >
-              <History size={14} />
-              {ROUTE_DRAFTS_CONFIG.panelToggleLabel} ({drafts.length})
-            </button>
-            <span className="text-xs text-text-muted hidden md:inline truncate">{SHARE_ROUTE_MODAL_CONFIG.actionsNote}</span>
-          </div>
-          <div className="flex gap-2 ml-auto shrink-0">
             {/* Drafts stay savable while editing too: a draft saved mid-edit
                 carries the edit target's response linkage (buildDraftInput
                 falls back to editResponseTo), so edit→draft→repost never
@@ -1753,7 +1901,6 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                 ? (isEditing ? "Saving…" : isResponse ? POST_SUBMIT_CONFIG.responseSharingLabel : POST_SUBMIT_CONFIG.sharingLabel)
                 : (isEditing ? "Save changes" : isResponse ? POST_SUBMIT_CONFIG.responseShareLabel : POST_SUBMIT_CONFIG.shareLabel)}
             </button>
-          </div>
         </div>
       </div>
     </AppModal>

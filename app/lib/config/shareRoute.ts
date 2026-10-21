@@ -1,20 +1,88 @@
 /**
  * Share-route modal section configuration (config-driven, zero app deps).
- * Controls which sections start collapsed so the user sees the preview
- * and quality score before reaching the Share action, and labels for the
- * collapsible section headers.
+ *
+ * The composer is a tabbed workspace: Details, Map, Score and Drafts occupy
+ * one shared panel so no section gets squeezed into a narrow column or
+ * clipped. Tabs use short labels + icons (count badge on Drafts) and the
+ * footer keeps only the two primary actions (Save Draft, Share). The legacy
+ * collapsible flags below are retained for backwards compatibility but the
+ * tabbed layout is now the renderer.
  */
+export type ShareRouteTabId = "details" | "map" | "score" | "drafts";
+
+/** Icon keys resolved to Lucide components inside the modal (config stays zero-dep). */
+export type ShareRouteTabIcon = "details" | "map" | "score" | "drafts";
+
+/**
+ * Cross-surface events (window CustomEvent names). The platform tour uses
+ * these to open the composer on demand and switch to the tab it is talking
+ * about without coupling the two features together.
+ */
+export const SHARE_ROUTE_OPEN_EVENT = "along:share-route-open";
+export const SHARE_ROUTE_TAB_EVENT = "along:share-route-tab";
+
+export interface ShareRouteTabEventDetail {
+  tab: ShareRouteTabId;
+}
+
+export interface ShareRouteTabConfig {
+  id: ShareRouteTabId;
+  /** Short label so it never clips on small screens. */
+  label: string;
+  icon: ShareRouteTabIcon;
+  /** Full accessible name (label may be abbreviated). */
+  ariaLabel: string;
+  /** Optional live count badge. Drafts is the only counted section today. */
+  badge?: "drafts";
+}
+
+/**
+ * "Check map + score before sharing" callout shown at the bottom of Details.
+ * Split into parts so the map/score words can be rendered as real buttons.
+ */
+export interface ShareRouteDetailsHintConfig {
+  text: string;
+  mapLabel: string;
+  conjunction: string;
+  scoreLabel: string;
+  /**
+   * Live distance/time suffix rendered inside the Map link, e.g.
+   * "(12.4 km · 31 min)". `{distance}` / `{duration}` are replaced with the
+   * current estimate. The suffix is omitted until both values are available,
+   * so the label always renders safely on its own.
+   */
+  mapValueTemplate: string;
+  /**
+   * Live score suffix rendered inside the Score link, e.g. "(72/100)".
+   * `{score}` / `{max}` are replaced with the current evaluation. Empty
+   * string always renders the label alone (safe fallback).
+   */
+  scoreValueTemplate: string;
+  suffix: string;
+  ariaLabel: string;
+}
+
 export interface ShareRouteModalConfig {
-  /** Route preview starts collapsed; user expands to verify the trace. */
+  /** @deprecated Kept for compatibility; the preview now lives in the Map tab. */
   previewDefaultOpen: boolean;
-  /** Route quality score starts collapsed. */
+  /** @deprecated Kept for compatibility; the score tab always opens expanded. */
   scoreDefaultOpen: boolean;
-  /** Route form starts expanded (primary task) but can be collapsed. */
+  /** @deprecated Kept for compatibility; Details is the default tab. */
   formDefaultOpen: boolean;
   previewTitle: string;
   scoreTitle: string;
   formTitle: string;
   actionsNote: string;
+  /** Accessible label for the tablist. */
+  tabsAriaLabel: string;
+  /** Tab shown when the composer opens (falls back to Details). */
+  defaultTab: ShareRouteTabId;
+  /** Tab metadata — labels/icons are rendered in config order. */
+  tabs: ShareRouteTabConfig[];
+  /** Pre-share nudge rendered at the bottom of the Details tab. */
+  detailsHint: ShareRouteDetailsHintConfig;
+  /** Map preview height (px) in the Map tab. */
+  mapPanelHeight: number;
   /** Show the "Request?" query-icon trigger in the modal header (opens the request flow). */
   showRequestTrigger: boolean;
   /** Generic route description input (feeds the quality-score description checkpoint). */
@@ -50,6 +118,25 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
   scoreTitle: "Route Quality Score",
   formTitle: "Route details",
   actionsNote: "Drafts are saved locally",
+  tabsAriaLabel: "Route composer sections",
+  defaultTab: "details",
+  tabs: [
+    { id: "details", label: "Detail", icon: "details", ariaLabel: "Route details" },
+    { id: "map", label: "Map", icon: "map", ariaLabel: "Map preview" },
+    { id: "score", label: "Score", icon: "score", ariaLabel: "Route quality score" },
+    { id: "drafts", label: "Drafts", icon: "drafts", ariaLabel: "Saved drafts", badge: "drafts" },
+  ],
+  detailsHint: {
+    text: "Before you share, check the",
+    mapLabel: "map",
+    conjunction: "and",
+    scoreLabel: "score",
+    mapValueTemplate: "({distance} km · {duration} min)",
+    scoreValueTemplate: "({score}/{max})",
+    suffix: "— they help others trust your route.",
+    ariaLabel: "Check the map and route score before sharing",
+  },
+  mapPanelHeight: 380,
   showRequestTrigger: true,
   descriptionTitle: "Route description",
   descriptionPlaceholder: "Describe the route experience, best time to go, cost tips… (min 10 characters)",
@@ -62,3 +149,38 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
   responseBannerDismissLabel: "Stop responding to this request",
   responseBannerDismissTitle: "Dismiss — share a normal route instead",
 };
+
+/**
+ * Fill a details-hint value template (e.g. "({distance} km · {duration} min)")
+ * with live values. Never renders a half-filled or unresolved placeholder:
+ * any missing/blank value or leftover token returns an empty string, so the
+ * hint link always falls back to its label alone.
+ */
+export function fillShareRouteHintTemplate(
+  template: string | undefined,
+  values: Record<string, string | number | null | undefined>,
+): string {
+  if (!template) return "";
+  let output = template;
+  for (const [key, value] of Object.entries(values)) {
+    if (value === null || value === undefined || value === "") return "";
+    output = output.split(`{${key}}`).join(String(value));
+  }
+  return /[{}]/.test(output) ? "" : output;
+}
+
+/**
+ * Resolve any tab id (possibly stale/unknown) to a real configured tab.
+ * Never throws and always returns a tab the UI can render: unknown ids fall
+ * back to `defaultTab`, then the first configured tab, then Details.
+ */
+export function resolveShareRouteTabId(id: unknown): ShareRouteTabId {
+  if (typeof id === "string") {
+    const match = SHARE_ROUTE_MODAL_CONFIG.tabs.find((tab) => tab.id === id);
+    if (match) return match.id;
+  }
+  const preferred = SHARE_ROUTE_MODAL_CONFIG.tabs.find(
+    (tab) => tab.id === SHARE_ROUTE_MODAL_CONFIG.defaultTab,
+  );
+  return preferred?.id ?? SHARE_ROUTE_MODAL_CONFIG.tabs[0]?.id ?? "details";
+}

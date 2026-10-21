@@ -40,6 +40,12 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
           "Tap the 'Share Route' button from the navigation menu. Add your start and end locations, waypoints, fare details, transport mode, and any relevant photos. The more details you provide, the higher your post's quality score. You can park unfinished work with Save Draft and continue it later — reopening a draft lets you update it in place or save it as a new entry.",
       },
       {
+        id: "share-route-tabs",
+        question: "How is the route composer laid out?",
+        answer:
+          "The composer is split into four tabs — Details, Map, Score, and Drafts — so each section gets the full width instead of being squeezed into a collapsible column. Drafts shows a live count badge, and the footer keeps Save Draft and Share at opposite ends so both stay within reach. At the bottom of Details, a quick hint links straight to Map and Score — the Map link shows the live distance and estimated time, like (12.4 km · 31 min), and the Score link shows your live score, like (72/100). Find on map jumps to Map too, so you can check the tracing and improve your Route Quality Score before sharing.",
+      },
+      {
         id: "route-verification",
         question: "How are routes verified?",
         answer:
@@ -68,6 +74,12 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         question: "What happens to my draft if sharing fails?",
         answer:
           "Nothing is lost. Your input and any saved draft stay in place so you can fix the highlighted fields and try again. Drafts clear only after your post is confirmed published.",
+      },
+      {
+        id: "route-time-estimates",
+        question: "How are route time estimates worked out, and why do they differ from other apps?",
+        answer:
+          "We start with the road distance and transport mode, then calibrate the free-flow provider estimate for local Nigerian traffic. Public transport also adds realistic boarding/loading time, pick-up and drop-off time at each stop, and a single toll/roadside-levy allowance for tolls and “agbero” checkpoints. Traffic then widens the shown time range, so heavy traffic reads longer. Estimates are guidance, not a guarantee — actual times move with demand, weather and checkpoints.",
       },
     ],
   },
@@ -175,7 +187,7 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         id: "map-find-on-map",
         question: 'What does "Find on map" do?',
         answer:
-          'Every location field has "Find on map" under it. It opens the route preview, flies the camera to that stop (or the closest thing known — your typed text, an earlier stop, or your area) and shows a short hint that you can tap anywhere to set the point. "Use my current location" fills the field with your live position instead.',
+          'Every location field has "Find on map" under it. It switches to the Map tab, flies the camera to that stop (or the closest thing known — your typed text, an earlier stop, or your area) and shows a short hint that you can tap anywhere to set the point. "Use my current location" fills the field with your live position instead.',
       },
       {
         id: "map-plus-code",
@@ -285,6 +297,72 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
         answer:
           "The About page shows community reviews, also shown on the landing and Invite pages. You'll occasionally see an invite to add your own.",
       },
+      {
+        id: "review-prompt",
+        question: "Why am I seeing a 'leave a review' prompt?",
+        answer:
+          "A few days after you join, Along asks for a quick rating if you haven't left one yet — the form is right in the prompt, no need to go hunting. Dismiss it with 'Not now' and it stays quiet for a week before asking again. Once you've reviewed, it never comes back (you can always update your review from your profile's Reviews tab).",
+      },
+    ],
+  },
+  {
+    id: "tour",
+    category: "Platform Tour",
+    items: [
+      {
+        id: "tour-what-is-it",
+        question: "What is the platform tour?",
+        answer:
+          "A short guided walkthrough of the app: it moves between pages, highlights the exact control it's talking about with a glowing ring, and explains what it does. Use Back/Next to move and watch the step counter. You can always leave with the X (or Escape) and most stops also offer Skip — the navigation stop hides the labelled End button so the essential following stops stay on the path, but the X still works.",
+      },
+      {
+        id: "tour-interact",
+        question: "Can I actually use the highlighted features during the tour?",
+        answer:
+          "Yes — steps that say so are live. Tap the highlighted control (like 'Share a route' or 'Near me'); the tour notices, confirms, and then lets you Continue or End. The navigation stop is awareness-only: it hides the labelled End button so the important sharing, request and explore stops stay on the path (press Next to continue), but the X and Escape still close the tour. The rest of the app stays fully usable while the tour is on.",
+      },
+      {
+        id: "tour-replay-offline",
+        question: "How do I replay the tour, and does it work offline?",
+        answer:
+          "Open your profile's quick links and choose 'Replay platform tour', use the 'Take tour' button in the guest banner, the 'Take the tour' button in the landing page hero and CTA section, the tour button on the FAQ page, or the 'Take the platform tour' link in the footer's Along column — those work for guests and signed-in users. The tour also runs offline: the guide content is stored on your device, and any stop whose page isn't available offline shows an honest note with a 'Skip this stop' option so you can keep going.",
+      },
+      {
+        id: "tour-guests-auth",
+        question: "Can guests take the tour, and does it cover signing in?",
+        answer:
+          "Yes. Guests can start the tour from the FAQ page or the footer without an account, and the guest walkthrough includes sign-in and registration stops (email/password, Google, or continue as guest). If you sign in or register mid-tour, your place is saved and the tour can resume after the page reloads — signed-in users skip the auth stops automatically.",
+      },
+      {
+        id: "tour-composer",
+        question: "Does the tour cover posting a route?",
+        answer:
+          "Yes. Tap the highlighted 'Share a route' trigger, or simply press Next and the tour opens the composer for you. It then covers all three ways to enter a location (type to search, use my current location, find on map), scrolls each highlighted field into view, switches to the Score tab to show the Route Quality Score growing, and helps you set the exact stop on the map so your post earns better trust and reach.",
+      },
+      {
+        id: "tour-posts-requests",
+        question: "Does the tour explain posts and route requests?",
+        answer:
+          "Yes. On your feed, the tour spotlights the first route post it finds (the feed is already ranked, so that is normally a strong example). It walks through the stops, fares and vehicle chips, the trust badge and its breakdown, and how likes, dislikes, comments and reports move a route's validity. It then highlights the Request trigger in the composer and explains how to ask the community for a route when nothing matches your journey.",
+      },
+      {
+        id: "tour-navigation",
+        question: "Does the tour cover the navigation feature?",
+        answer:
+          "Yes. The tour spotlights the Navigate quick link on a route post and explains that it opens the live guide with turn-by-turn stops, the map tracing, distance, time and fare. That stop is awareness-only — tap Navigate if you want to look around the guide, then press Next when you are ready. It hides the labelled End button so the following route-sharing, request and explore stops are not skipped, but you can still close the tour with the X or Escape.",
+      },
+      {
+        id: "tour-guest-prompt",
+        question: "Why don't I see a pop-up asking me to take the tour anymore?",
+        answer:
+          "The floating guest-tour notice was retired to avoid stacking another pop-up beside the cookie bar, install prompt and guest banner. Guests now have a permanent 'Take tour' button in the guest banner, the landing page hero and CTA section, and the footer/FAQ/profile entry points stay available. Nothing needs dismissing, so the tour is always one tap away.",
+      },
+      {
+        id: "tour-resume",
+        question: "What happens if I refresh or leave the app during the tour?",
+        answer:
+          "Your progress is saved on your device. After a refresh or relaunch, a small 'Tour paused' prompt offers to pick up where you left off — choose Resume tour, or Not now to keep it for later. The tour never covers the app: you can still use the theme toggle and every highlighted control while it is open.",
+      },
     ],
   },
   {
@@ -334,6 +412,11 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     answer:
       "Tap di 'Share Route' button from navigation menu. Add where you dey start and where you dey go, stops for middle, fare details, transport mode, and any correct photos. Di more details you drop, di higher your post quality score. You fit park work wey never finish with Save Draft come continue am later — if you reopen draft you fit update am there or save am as new entry.",
   },
+  "share-route-tabs": {
+    question: "How di route composer take arrange?",
+    answer:
+      "Di composer get four tabs — Details, Map, Score, and Drafts — so every section get full width instead of being squeezed inside collapsible column. Drafts dey show live count badge, and di footer keep Save Draft and Share for opposite ends so both dey near your hand. For di bottom of Details, small hint go link you straight to Map and Score — di Map link dey show live distance and estimated time, like (12.4 km · 31 min), and di Score link dey show your live score, like (72/100). Find on map go jump to Map too, so you fit check di tracing and improve your Route Quality Score before you share.",
+  },
   "route-verification": {
     question: "How dem take dey verify routes?",
     answer:
@@ -369,6 +452,11 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     answer:
       "Nothing go loss. Your input and any saved draft go remain so you fit fix di highlighted fields come try again. Drafts dey only clear after your post don confam to publish.",
   },
+  "route-time-estimates": {
+    question: "How una dey calculate route time, and why e dey differ from oda apps?",
+    answer:
+      "We dey start with road distance and transport mode, den calibrate di free-flow estimate for local Naija traffic. Public transport still add boarding/loading time, pick-up and drop-off time for each stop, and one toll/roadside-levy allowance for tolls and “agbero” checkpoints. Traffic den widen di shown time range, so heavy traffic go read longer. Na estimate, no be promise — real time dey change with demand, weather and checkpoints.",
+  },
   "map-tracings-pins": {
     question: "How I go take read di maps — tracings and pins?",
     answer:
@@ -397,7 +485,7 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
   "map-find-on-map": {
     question: 'Wetin "Find on map" dey do?',
     answer:
-      'Every location field get "Find on map" for under am. E open di route preview, move camera go dat stop (or di closest thing wey we know — your typing, one earlier stop, or your area), then e show small hint say you fit tap anywhere make you set di point. "Use my current location" na to fill di field with your current position instead.',
+      'Every location field get "Find on map" for under am. E dey switch go di Map tab, move camera go dat stop (or di closest thing wey we know — your typing, one earlier stop, or your area), then e show small hint say you fit tap anywhere make you set di point. "Use my current location" na to fill di field with your current position instead.',
   },
   "map-plus-code": {
     question: "I fit use Plus Code search, like CGQC+HQ2 Lekki?",
@@ -518,5 +606,55 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     question: "Where I fit read oda people reviews?",
     answer:
       "About page dey show community reviews, dem dey also for landing and Invite pages. Once-once you go see invite make you add your own.",
+  },
+  "review-prompt": {
+    question: "Why I dey see 'leave a review' prompt?",
+    answer:
+      "Few days after you join, Along go ask you for quick rating if you never drop one before — di form dey inside di prompt, you no need go find am. Use 'Not now' to push am aside; e go rest for one week before e ask again. Once you don review, e no go come back (you fit always update am from di Reviews tab for your profile).",
+  },
+  "tour-what-is-it": {
+    question: "Wetin be di platform tour?",
+    answer:
+      "Na small guided walk around di app: e dey move between pages, highlight di exact control e dey talk about with glow ring, come explain wetin e dey do. Use Back/Next to move, watch di step counter. You fit always comot with di X (or Escape) and most stops still get Skip — di navigation stop dey hide di labelled End button so di essential following stops go stay for di path, but di X still dey work.",
+  },
+  "tour-interact": {
+    question: "I fit use di highlighted features while di tour dey go on?",
+    answer:
+      "Yes — steps wey talk so na live. Tap di highlighted control (like 'Share a route' or 'Near me'); di tour go notice, confirm, come allow you Continue or End. Di navigation stop na awareness-only: e dey hide di labelled End button so di important sharing, request and explore stops go remain for di path (press Next to continue), but di X and Escape still dey close di tour. Di rest of di app dey work normal while di tour dey on.",
+  },
+  "tour-replay-offline": {
+    question: "How I go replay di tour, and e dey work offline?",
+    answer:
+      "Open di quick links for your profile come choose 'Replay platform tour', use di 'Take tour' button for di guest banner, di 'Take di tour' button for di landing page hero and CTA section, di tour button for FAQ page, or di 'Take the platform tour' link for di Along column for footer — dem dey work for guests and signed-in users. Di tour dey run offline too: di guide content dey store for your device, and any stop wey page no dey available offline go show you honest note with 'Skip dis stop' option so you fit continue.",
+  },
+  "tour-guests-auth": {
+    question: "Guests fit take di tour, and e dey cover sign in?",
+    answer:
+      "Yes. Guests fit start di tour from FAQ page or footer without account, and di guest walkthrough include sign-in and registration stops (email/password, Google, or continue as guest). If you sign in or register mid-tour, we go save your place and di tour fit resume after di page reload — signed-in users go skip di auth stops automatically.",
+  },
+  "tour-composer": {
+    question: "Di tour dey cover how to post route?",
+    answer:
+      "Yes. Tap di highlighted 'Share a route' trigger, or just press Next and di tour go open di composer for you. E go then cover all three ways to enter location (type to search, use my current location, find on map), scroll each highlighted field enter view, switch to di Score tab to show Route Quality Score dey grow, and help you set di exact stop for map so your post go earn better trust and reach.",
+  },
+  "tour-posts-requests": {
+    question: "Di tour dey explain posts and route requests?",
+    answer:
+      "Yes. For your feed, di tour go spotlight di first route post e find (feed don already rank, so normally na strong example). E go walk through di stops, fares and vehicle chips, di trust badge and im breakdown, and how likes, dislikes, comments and reports dey move route validity. E go then highlight di Request trigger for composer come explain how you fit ask community for route when nothing match your journey.",
+  },
+  "tour-navigation": {
+    question: "Di tour dey cover di navigation feature?",
+    answer:
+      "Yes. Di tour go spotlight di Navigate quick link for route post come explain say e dey open live guide with turn-by-turn stops, map tracing, distance, time and fare. Dat stop na awareness-only — tap Navigate if you want look around di guide, den press Next when you ready. E dey hide di labelled End button so di following route-sharing, request and explore stops no go skip, but you fit still close di tour with di X or Escape.",
+  },
+  "tour-guest-prompt": {
+    question: "Why pop-up wey dey ask me to take tour no dey show again?",
+    answer:
+      "We retire di floating guest-tour notice so e no go stack another pop-up beside cookie bar, install prompt and guest banner. Guests now get permanent 'Take tour' button for di guest banner, di landing page hero and CTA section, and footer/FAQ/profile entry points still dey. Nothing need dismissing, so di tour dey always one tap away.",
+  },
+  "tour-resume": {
+    question: "Wetin happen if I refresh or leave di app during di tour?",
+    answer:
+      "Your progress dey save for your device. After refresh or relaunch, small 'Tour paused' prompt go offer make you continue from where you stop — choose Resume tour, or Not now to keep am for later. Di tour no dey cover di app: you fit still use di theme toggle and every highlighted control while e open.",
   },
 };

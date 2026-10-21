@@ -1,10 +1,13 @@
 import { Github, Twitter, Mail } from "lucide-react";
+import { TOUR_START_EVENT } from "./platformTour";
 
 interface FooterLink {
   label: string;
   href: string;
   /** Optional i18n key for pidgin/dictionary overrides (label = fallback). */
   i18nKey?: string;
+  /** Optional CustomEvent dispatched instead of navigating (e.g. tour replay). */
+  actionEvent?: string;
 }
 
 interface FooterColumn {
@@ -46,6 +49,12 @@ export const FOOTER_CONFIG: FooterConfig = {
       links: [
         { label: "About", href: "/about", i18nKey: "footer.about" },
         { label: "Contact", href: "/contact", i18nKey: "footer.contact" },
+        {
+          label: "Take the platform tour",
+          href: "/faq",
+          i18nKey: "tour.takeTour",
+          actionEvent: TOUR_START_EVENT,
+        },
         { label: "Privacy Policy", href: "/privacy", i18nKey: "footer.privacy" },
         { label: "Terms of Service", href: "/terms", i18nKey: "footer.terms" },
       ],

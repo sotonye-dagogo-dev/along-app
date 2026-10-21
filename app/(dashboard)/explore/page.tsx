@@ -449,6 +449,15 @@ export default function ExplorePage() {
         <div className="relative flex-1">
           <ExploreSearchInput value={searchQuery} onChange={setSearchQuery} onPickPost={handlePickPost} />
         </div>
+        <button
+          onClick={handleNearMe}
+          disabled={locating}
+          className="w-10 h-10 rounded-md border border-border bg-bg-card text-text-secondary flex items-center justify-center shrink-0 cursor-pointer disabled:opacity-60"
+          aria-label={locating ? "Locating…" : "Near me"}
+          title={userLocation ? "Centred on your location" : "Show my location"}
+        >
+          <LocateFixed size={18} className={locating ? "animate-pulse" : ""} />
+        </button>
         <button onClick={() => setMobileFilterOpen(!mobileFilterOpen)} className="w-10 h-10 rounded-md border border-border bg-bg-card text-text-secondary flex items-center justify-center shrink-0 cursor-pointer" aria-label="Filters">
           <SlidersHorizontal size={18} />
         </button>

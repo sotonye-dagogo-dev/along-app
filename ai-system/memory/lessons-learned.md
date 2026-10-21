@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: advisory-lock serialisation for read-then-write races; refresh needs its own rate bucket; regenerate prisma client after schema edits)
-> - last-verified-against-code: 2026-10-19 (Sprint 80 in-runner QA: tsc 0, jest 113/113 suites 1178/1178, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: per-step exit policy, responsive CTA rows)
+> - last-verified-against-code: 2026-10-21 (Sprint 88 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -31,6 +31,94 @@
 ---
 
 ## Lessons
+
+## Guided Tours Need an Exit Policy Per Step, Not Just Global Skip
+
+**Context:** Sprint 88. The navigation step became interactive, which surfaced an End button at exactly the point where the following composer, request and explore lessons matter most. A single global skip affordance let viewers leave before the essential path.
+
+**What We Learned:** Exit affordances are part of step metadata, but accessibility guarantees belong in the component. A default-on `allowEnd` flag lets ordinary steps show every exit while pivotal stops hide only the labelled End button; the header X and Escape must always work. The component should read the flag, not a hardcoded step id, so admin-stored step lists inherit the same rule — and it should refuse to let that metadata remove the escape hatch entirely.
+
+**Apply When:** Adding any tour/onboarding step where the remaining content is essential or materially more complex. Always preserve both a forward path (Next) and an immediate way out (X/Escape), so withholding a labelled action never traps the viewer.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Responsive CTA Rows Should Grow Into Wrapped Space
+
+**Context:** Sprint 88. The guest banner's three CTAs wrapped on narrow screens but kept their content width, leaving dead space on the right when two or one fit a row.
+
+**What We Learned:** Use `flex-auto` (grow with content) instead of `flex-1` (zero basis can prevent wrapping) so wrapped items expand to fill their row; reset to `sm:flex-none` for the compact desktop row. This avoids fixed widths and translation-specific clipping.
+
+**Apply When:** Building mobile-first rows of two to four short actions that may not fit on one line.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Tour Targets Need a Semantic Predicate, Not Just “First Match”
+
+**Context:** Sprint 87. The feed mixes route posts, route requests, and platform notices, so a plain `[data-tour="post-card"]` selector could spotlight a request that has no stops/fares/trust actions, or the first card before feed data settled.
+
+**What We Learned:** Give the component the predicate (`!isRouteRequest && !post.isPlatformGen && routes.length > 0`) and only emit the `data-tour` anchors from that semantic branch. This keeps the tour aligned with what its copy claims and avoids fragile CSS-only selectors. A slightly longer per-step timeout handles feed loading without trapping the tour.
+
+**Apply When:** A tour step explains a specific content type inside a mixed list, especially when data is asynchronously ranked or filtered.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Template Fillers Must Reject Missing and Unresolved Values
+
+**Context:** Sprint 87. The Details hint needed live distance/time beside the Map link, and the existing Score suffix used chained `.replace()` calls that would happily render `(undefined/100)` or a half-filled template if a value was missing.
+
+**What We Learned:** Use one pure filler that returns `""` when any required value is missing/blank and when any `{token}` remains. Callers then append the suffix only when non-empty. The same helper serves both Map and Score, so degraded states always fall back to the bare link label.
+
+**Apply When:** Building optional interpolated UI copy from asynchronous values (estimates, scores, counts). Keep the template in config and the safety rule in a tested pure helper.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Serialize Global Notices in a Pure Gate, Not With CSS
+
+**Context:** Sprint 86. The guest tour nudge would have been the fourth bottom-of-screen notice (after the cookie bar and PWA install card, plus the guest banner). Layout-only fixes (different `bottom` lanes) prevent overlap but still present several cards at once.
+
+**What We Learned:** Put the policy in a pure ordered gate: feature enabled → audience → feature availability → terminal/in-progress → auto-start route → existing notice pending → dismissal TTL. Components become dumb renderers and listeners; coordination happens through small named CustomEvents (`along:cookie-consent-changed`, `along:pwa-install-changed`). This makes the "one notice at a time" contract testable without a DOM, and every unknown/garbage input safely hides the prompt.
+
+**Apply When:** Any new global banner/prompt/toast lane that shares the bottom or top stack with existing notices. Decide the queue order in config, not in z-index.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Tour Steps Should Express Actions as Metadata, Not Component Branches
+
+**Context:** Sprint 86. Pressing Next on the share-route tour stop without tapping the highlighted trigger left the next composer steps looking for targets inside a closed modal; switching to Score required knowing the composer’s tab API from inside PlatformTour.
+
+**What We Learned:** Give steps optional `activateEvent` / `advanceEvent` metadata (`along:*` + flat string details). The tour dispatches them at lifecycle points (step active / Next past it) and the owning surface listens (`home` opens the composer, `ShareRouteModal` selects a tab). This keeps the tour content-driven, prevents platform-specific imports, and lets validation reject arbitrary events from stored admin rows.
+
+**Apply When:** A guided walkthrough needs to change state on a page it does not own (open a modal, select a tab, expand a panel).
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Never Position Overlay Cards From Estimates Alone — Measure and Fit
+
+**Context:** Sprint 84. The tour tooltip used `maxWidth` plus hand-computed `top/left`; long copy and targets near the viewport bottom pushed the Next/Finish row off-screen, and short copy let the card shrink unpredictably.
+
+**What We Learned:** Overlay cards need (1) an explicit width (capped by the viewport) so content length cannot change the footprint, (2) the rendered height measured after paint (ResizeObserver + viewport/orientation changes), and (3) a pure layout helper that tries the requested placement, flips/clamps inside a safe margin, and only then allows internal scrolling. Centered/end cards need the same measurement, not a hardcoded `top: 34%`.
+
+**Apply When:** Any floating tooltip, tour card, popover or anchored overlay that contains actions users must reach on small viewports. Keep the math in a pure helper so it is testable without a DOM.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Provider ETAs Are Free-Flow Inputs, Not Display Truth — Calibrate Once
+
+**Context:** Sprint 84. OSRM/ORS/Mapbox durations omitted boarding, pick-up/drop-off dwell and Nigerian toll/agbero time, so route estimates were consistently too short; adding padding at each call site risked double-counting (the distance fallback already includes overhead).
+
+**What We Learned:** Keep raw provider minutes as an input. Apply local calibration + overhead in one resolver with an explicit contract: provider path gets overhead exactly once, distance-derived fallback is already complete. Store the resolved value only; keep traffic as a separate live overlay. Hard-cap the overhead so corrupt stop counts cannot explode an ETA.
+
+**Apply When:** Any ETA/duration feature combining third-party routing with local conditions, especially when some modes are re-derived from distance. Add tests for overhead-once, caps, immune modes and fallback passthrough.
+
+**Supersedes:** None
+**Superseded by:** None
 
 ## Centralize Cross-Cutting Query Defaults in Config; Never Trust a Failed Fetch as End-of-List
 
@@ -1076,5 +1164,41 @@ Sprint 80's auth session expiry. `/api/auth/refresh` shared the general `auth` b
 Sprint 80 added `Notification.metadata Json?`; `npx prisma generate` failed without a datasource URL, the old client stayed in place, and TypeScript still compiled — Prisma's generated models accept unknown fields through spread assignments (`{ ...data }` bypasses excess-property checks).
 **What We Learned:** Treat `npx prisma generate` (with a real or stub `DATABASE_URL`) as part of the schema-edit step, not an optional build step; run it before `tsc` or the type checker will happily validate against the OLD model. Verify with a direct property reference or `prisma validate`, not just "tsc passed". Same class as "generated code is a build artifact": migrations (`prisma migrate`) change the DB, `prisma generate` changes the types — both are required for a schema change to be real.
 **Apply When:** Touching `prisma/schema.prisma`; adding columns/models the app reads or writes; CI setups where generate runs later than typecheck.
+**Supersedes:** None
+**Superseded by:** None
+
+## Write the gate tests as a CONTRAST matrix against the exported pure helper — not against a restated rule
+
+**Context:**
+Sprint 82's review-notice gate: the first test draft restated the intended rules from memory (input shape, reason strings, evaluation ORDER) and mostly failed against the real implementation — the pure helper owns an exact order (done > dismissed > account-age > review-probe), numeric-only state shaping (`1.5` is accepted, words are not), and "" → empty-object (not null) garbage handling. Rewriting the tests as a direct characterization of `shouldShowReviewNotice`/`readReviewNoticeState` turned a suite into real regression armor in minutes.
+**What We Learned:** When the deliverable is a decision matrix, the test is a CHARACTERIZATION of the exported pure helper (all inputs and actions, boundary stamps, failure paths), not a restatement of a rules paragraph — draft only after reading the implementation, or extract the decision into the pure helper FIRST so both component and test consume one truth. Same class as "config integrity tests": assert the exported config values, not your memory of them.
+**Apply When:** Testing any gate/visibility matrix, validator, or precedence chain; fixing a flaky/leaky component-internal decision; reviewing a PR whose tests read like requirement prose instead of behavior probes.
+**Supersedes:** None
+**Superseded by:** None
+
+## A full-screen overlay is a click shield unless it says otherwise
+
+**Context:**
+Sprint 83's platform tour: the spotlight wizard mounted a transparent `fixed inset-0 z-[60]` container so it could draw the scrim/dimming. The spotlighted page looked usable, but every click outside the tooltip (theme toggle, "Share a route" trigger, modal controls) hit the overlay instead of the app — reported as "pressing share route did nothing".
+**What We Learned:** Any guided-overlay root must be `pointer-events-none`; only the interactive cards (tooltip, resume/offline/end prompt) should set `pointer-events-auto`. Drawing a scrim (box-shadow/backdrop) never requires the container to receive pointer events, and a click-through scrim is also what lets real page handlers fire during interactive steps. If an overlay must block the page, say so explicitly at the container and make the affordance visually obvious — never let transparency imply click-through.
+**Apply When:** Adding spotlight tours, coach marks, modal backdrops, or any fixed full-viewport layer that is not meant to be the sole interaction target; debugging "clicks do nothing but only sometimes" reports.
+**Supersedes:** None
+**Superseded by:** None
+
+## Index the user's PROGRESS by identity, not by position, when the list can change under it
+
+**Context:**
+Sprint 83's guest tour: the step list is audience-filtered, so a guest walking `welcome → auth-sign-in → auth-register → share-route` loses two steps the moment they finish registration (and the page reloads). A stored index would land on the wrong stop — or past the end — after the list shrank.
+**What We Learned:** Persist a stable step `id` alongside the positional index, resolve the id first, and on a miss pick the first still-visible step at or after the stored config index (then clamp). The same rule applies to persisted cursors/tabs/onboarding checklists whenever visibility depends on permissions, feature flags, or account state. Leave the index in the blob for forward-compat/analytics, but never make it the sole resume key.
+**Apply When:** Persisting progress through onboarding/wizards/multi-step forms where steps can be hidden per role/plan/audience; any saved cursor over a filtered list.
+**Supersedes:** None
+**Superseded by:** None
+
+## Split a dense composer into peer tabs before shrinking typography or columns
+
+**Context:**
+Sprint 85's share-route composer: Details, Map, Score and Drafts were stacked as collapsible sections plus a narrow side column. On small screens the Drafts count/save strip overlapped the footer actions, section headers clipped, and the preview/score got squeezed instead of using the modal width.
+**What We Learned:** When several independent, similarly-prioritised sections compete inside one modal, a peer tablist (one full-width panel at a time) is usually the right fix — not smaller text, narrower columns, or more nested accordions. Keep tab metadata config-driven (short label + icon key + optional count badge), resolve unknown ids through a pure fallback helper, and make cross-section references real tab switches rather than prose. Leave the footer for two primary actions only; everything else belongs in a tab. When tour/setup anchors target a now-conditional section, move the anchor to the always-visible tab button so it cannot disappear based on active state.
+**Apply When:** Redesigning dense forms/modals with 3+ peer sections; fixing mobile overlap/clipping caused by stacked collapsibles; preserving guided-tour anchors through layout changes.
 **Supersedes:** None
 **Superseded by:** None

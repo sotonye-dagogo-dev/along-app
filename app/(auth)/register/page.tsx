@@ -162,6 +162,7 @@ export default function RegisterPage() {
           type="email"
           placeholder="you@example.com"
           icon={<Mail size={16} />}
+          data-tour="register-email"
           value={form.email}
           onChange={(e) => updateField("email", e.target.value)}
           error={fieldErrors.email}

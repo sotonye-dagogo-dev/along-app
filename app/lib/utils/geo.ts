@@ -5,7 +5,7 @@
  */
 
 import { LOCATION_FEEDBACK_CONFIG } from "@/app/lib/config/locationFeedback";
-import { speedForVehicle } from "@/app/lib/config/journeyTime";
+import { estimateJourneyDurationMins, JOURNEY_TIME_CONFIG } from "@/app/lib/config/journeyTime";
 
 export interface GeoPoint {
   lat: number;
@@ -13,7 +13,6 @@ export interface GeoPoint {
 }
 
 const EARTH_RADIUS_KM = 6371;
-const AVG_URBAN_SPEED_KMH = 22; // danfo/keke/bus mixed traffic (legacy fallback — vehicle-aware callers pass a mode)
 
 function toRad(deg: number): number {
   return (deg * Math.PI) / 180;
@@ -37,7 +36,8 @@ export interface RouteEstimate {
  * Instant, offline-friendly straight-line estimate for a pin sequence.
  * Non-breaking vehicle-aware extension: pass a vehicle key (e.g. "trekking",
  * "bike", "boat", "train") to estimate at that mode's speed; omitted →
- * the legacy mixed-traffic average.
+ * the mixed-traffic default. Duration includes local boarding/stop/toll
+ * overhead (intermediate stop count = points minus origin/destination).
  */
 export function estimateRoute(points: GeoPoint[], vehicle?: string | null): RouteEstimate {
   if (points.length < 2) return { distanceKm: 0, durationMins: 0 };
@@ -45,18 +45,13 @@ export function estimateRoute(points: GeoPoint[], vehicle?: string | null): Rout
   for (let i = 1; i < points.length; i++) {
     total += haversineKm(points[i - 1], points[i]);
   }
-  // Road travel is typically ~1.3x straight-line distance
-  const distanceKm = Math.round(total * 1.3 * 10) / 10;
-  let speedKmh = AVG_URBAN_SPEED_KMH;
-  try {
-    if (typeof vehicle === "string" && vehicle.trim().length > 0) {
-      const s = speedForVehicle(vehicle);
-      if (Number.isFinite(s) && s > 0) speedKmh = s;
-    }
-  } catch {
-    // Fall back to the legacy average.
-  }
-  const durationMins = Math.max(1, Math.round((distanceKm / speedKmh) * 60));
+  // Road travel is typically ~1.3x straight-line distance (config-driven).
+  const distanceKm =
+    Math.round(total * JOURNEY_TIME_CONFIG.roadFactor * 10) / 10;
+  const durationMins = Math.max(
+    1,
+    estimateJourneyDurationMins(distanceKm, vehicle ?? null, Math.max(0, points.length - 2))
+  );
   return { distanceKm, durationMins };
 }
 

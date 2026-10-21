@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
-> - last-verified-against-code: 2026-10-19 (Sprint 80 in-runner QA: tsc 0, jest 113/113 suites 1178/1178, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: unconditional X/Escape + hero tour entry)
+> - last-verified-against-code: 2026-10-21 (Sprint 89 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -34,6 +34,118 @@
 ---
 
 ## Decisions
+
+## Pivotal Tour Steps Hide the Labelled End, Never the Escape Hatch
+
+**Decision:** Add optional `TourStep.allowEnd` (default `true`, normalized/validated). When `false`, PlatformTour keeps Back/Next and hides the labelled End-tour button, but the header X and Escape always remain available. The navigation stop (`post-navigate`) keeps `allowEnd: false` and stays awareness-only (`interactive: false`) so viewers can still tap Navigate, but they are never trapped in the guide.
+**Date:** 2026-10-21 (refined Sprint 89)
+**Made by:** AI agent (execute-feature Sprint 88, refined Sprint 89)
+**Supersedes:** Pivotal Tour Steps Can Withhold Ending via `allowEnd`
+**Superseded by:** None
+
+**Reason:** The navigation lesson introduced interaction at a point where the following composer/request/explore lessons matter most, so a per-step flag keeps the path intact without hardcoding a step id. User feedback then confirmed that accessibility wins: an always-visible X and Escape are non-negotiable escape hatches even when the labelled End button is hidden.
+
+**Alternatives Considered:** Special-casing `post-navigate` by id (brittle, not config-driven); hiding all exit affordances on pivotal steps (leaves users trapped); removing `allowEnd` entirely (loses the config-driven labelled End policy).
+
+**Implications:** Admin-stored step lists can set `allowEnd: false`; invalid values fail validation. The flag now governs only the labelled End button — X/Escape are structural guarantees in the component. Offline-blocked cards still offer "Skip this stop" (continue) plus the always-on X.
+
+## Landing CTA and Guest Banner Are the Primary Tour Entries
+
+**Decision:** Keep the tour permanently available in both the landing hero (`HeroCtas`) and the bottom CTA section (`LandingCtaActions`) via `TourLaunchButton` for guests and signed-in users, and let the guest-banner CTA row grow/wrap to fill narrow widths (`flex-auto`, `sm:flex-none`). The footer Along column, FAQ button and profile quick link remain secondary/replay entries.
+**Date:** 2026-10-21 (hero added Sprint 89)
+**Made by:** AI agent (execute-feature Sprint 88, hero added Sprint 89)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:** A visitor can now preview the product before deciding to register or sign in, and signed-in users leaving the landing page have the same option without a separate auth branch. Filling wrapped CTA rows removes the mobile dead space without changing the desktop layout.
+
+**Alternatives Considered:** Auth-gating the landing tour (contradicts the directive); a second floating prompt (already retired); fixed-width banner buttons (the source of the right-side gap).
+
+**Implications:** The tour remains a first-class, non-persistent entry point. New landing CTA work should compose with `HeroCtas`/`LandingCtaActions` rather than duplicating the launch event.
+
+## Tour Post Walkthrough Targets the First Route-Bearing Post
+
+**Decision:** Anchor the post tour on the first `PostCard` that is neither a route request nor platform-generated and has at least one route step (`isRouteBearing`). Expose stable anchors for the card (`feed-route-post`), trust badge (`post-trust`), actions row (`post-actions`), and Navigate link (`post-navigate`); put the community-request lesson on a separate composer-header step.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 87)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:** Request posts and platform notices do not carry the same stops/fares/trust actions the walkthrough explains. Because the feed is ranked, the first eligible route is normally a strong example, and the explicit predicate prevents the tour from highlighting an unrelated card while data loads.
+
+**Alternatives Considered:** Highlighting any first card (may teach the wrong surface); a fixed seed/demo post (not guaranteed present); asking the user to choose an example (too much friction for onboarding).
+
+**Implications:** If no route-bearing post is loaded, the post steps wait up to 4.5s and then follow the existing polite-skip behavior. New post surface lessons should hang off the same stable anchors rather than adding CSS selectors.
+
+## Retire the Floating Guest Tour Prompt for a Persistent Banner CTA
+
+**Decision:** Replace the timed floating `GuestTourNotice` with a permanent “Take tour” CTA in `GuestBanner`, alongside Sign in and Sign up. `GUEST_TOUR_NOTICE_CONFIG.enabled` defaults to `false` and `GuestTourNotice` is unmounted from `app/layout.tsx`; the gate/component remain in the codebase for explicit opt-in. Footer, FAQ, and profile replay entry points stay.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 87)
+**Supersedes:** Guest Tour Prompt Is Serialized Behind Existing Notices
+**Superseded by:** None
+
+**Reason:** Even perfectly serialized, the floating prompt competed with the cookie bar, install prompt, guest banner, and other bottom notices. A CTA inside the existing guest banner is always discoverable, never timed, never needs dismissing, and removes a whole notice-state coordination path from the default experience.
+
+**Alternatives Considered:** Keeping the serialized prompt and reducing its delay (still another pop-up); removing the component and config entirely (breaking for forks/deployments that opted in); placing the CTA only in the footer (too easy to miss on mobile).
+
+**Implications:** Default notice pressure drops and the guest banner becomes the primary tour entry. Re-enabling the old prompt requires setting `enabled: true` and explicitly re-mounting the component; no API/schema change is involved.
+
+## Guest Tour Prompt Is Serialized Behind Existing Notices
+
+**Decision:** Show the guest tour prompt only through `shouldShowGuestTourNotice`, an ordered pure gate: feature enabled → guest → tour available → not terminal/in progress → not an auto-start route → install prompt cleared → cookie consent accepted → not dismissed within 14 days. CookieConsent and InstallPrompt dispatch coordination events; the prompt re-evaluates on those events, navigation, focus and storage changes. The permanent entry point stays the footer Along link (moved from Community, not duplicated).
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 86)
+**Supersedes:** None
+**Superseded by:** Retire the Floating Guest Tour Prompt for a Persistent Banner CTA
+
+**Reason:** Guests already see the cookie bar and install card; adding a third bottom card immediately would be noisy and could obscure controls. A gate is testable, config-driven, and degrades safely (unknown inputs hide the prompt). Signed-in users have profile/footer replay entry and are never prompted.
+
+**Alternatives Considered:** CSS-only lane offsets (cards still stack visually); showing the prompt immediately (overwhelms first paint); prompting everyone (unnecessary for signed-in users with replay access).
+
+**Implications:** If a guest never clears the install prompt, the tour prompt stays hidden by design; the footer/FAQ entry remains available. Admin exposure of the delay/TTL would be additive config, not a behavior change.
+
+## Tour Step Actions Are Validated `along:*` Events
+
+**Decision:** Model tour-driven state changes as optional per-step `activateEvent` / `advanceEvent` metadata, restricted by normalization/validation to `along:*` names with a flat string detail map. The tour dispatches them; owning surfaces listen (`SHARE_ROUTE_OPEN_EVENT` in home, `SHARE_ROUTE_TAB_EVENT` in ShareRouteModal). `advanceEvent` fires only when the viewer did not interact with the target.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 86)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:** Keeps `PlatformTour` independent of feature components and makes the composer hand-off work whether the viewer taps the trigger or presses Next. Restricting event names prevents a corrupt/admin-stored config from dispatching arbitrary DOM events.
+
+**Alternatives Considered:** Importing ShareRouteModal state into the tour (couples features); relying on `scrollIntoView` alone (does not open closed modals or switch tabs); hardcoding the hand-off in PlatformTour (breaks the config-driven contract).
+
+**Implications:** New cross-surface tour actions should add a config event + listener, not a component import. Validation and tests must cover the event shape.
+
+## Journey Estimates Model Local Conditions in Config, Applied Exactly Once
+
+**Decision:** Treat routing-provider (OSRM/ORS/Mapbox) durations as free-flow car ETAs. Convert them to display estimates through per-vehicle config: a `providerCalibration` multiplier, plus `boardingWaitMins` + `perStopDwellMins × intermediateStops` + one `checkpointDelayMins` toll/agbero allowance, hard-capped by `maxOverheadMins`. Modes whose durations must be re-derived from distance (trekking/bike/boat/train) keep using their own average speed. The overhead is applied by `resolveJourneyDuration` exactly once; the distance-based fallback is already complete and is returned unchanged.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 84)
+**Supersedes:** None (extends the Sprint 67 journey-time registry)
+**Superseded by:** None
+
+**Reason:** Provider ETAs assume ideal car flow and omit boarding, pick-ups/drop-offs and Nigerian toll/roadside-levy time, so posted journeys read unrealistically short. Centralizing the adjustments keeps every caller (composer preview, post detail, trace fallbacks) consistent and tunable without touching UI code.
+
+**Alternatives Considered:** Inline padding in each call site (rejected: drift/double-counting); adding traffic delay into the stored estimate (rejected: traffic remains a separate live overlay with its own sensitivity and range); a schema migration to store overhead components (rejected: the resolved `estimatedMins` is sufficient for display/fallback).
+
+**Implications:** Any new duration call site must pass `intermediateStops` when known and must not add its own overhead. New vehicles need all four meta fields (defaults fall back to the bus profile). Distance-derived and provider-derived paths must stay visibly distinct to avoid double-counting.
+
+## Viewport-Safe, Measured Tour Cards (Explicit Width; Flip/Clamp; Scroll Last)
+
+**Decision:** Tour cards use a measured, explicit width from config (`tooltipMaxWidthPx`) capped by the viewport, and a pure `resolveTourTooltipLayout` chooses a placement that fits the safe viewport (requested → opposite → other sides → clamp). Height comes from the rendered card; `tooltipMaxHeightRatio` caps it and the card scrolls internally as a last resort. Welcome/end/offline cards share the same centering + caps.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 84)
+**Supersedes:** None (hardens the Sprint 82/83 tour tooltip placement)
+**Superseded by:** None
+
+**Reason:** `maxWidth` alone let short copy shrink the card and long copy grow past the viewport; bottom-anchored placement could render the action row off-screen. Measuring the real card and fitting before rendering keeps Next/Finish reachable on small screens.
+
+**Alternatives Considered:** CSS-only `max-height` without measurement (rejected: bottom/right placements still overflow); fixed top/bottom anchoring (rejected: targets near edges clip); forcing centered modals for every step (rejected: loses spotlight context).
+
+**Implications:** Tour display tuning is config-only. Any new overlay card in the tour must attach the shared ref/measurement effect (or use the helper) rather than computing `top/left` inline. Layout tests cover width stability, flips, clamping and centering.
 
 ## Supabase as Primary PostgreSQL; Prisma Endpoint Retained as Offsite Mirror
 
@@ -1163,4 +1275,50 @@ The reported "bug assigned to multiple admins" symptom was duplicate BugReport r
 - **Drop the access token only (no grace) and redirect harder**: Rejected — the redirect IS the reported bug (PWA users bounced to /login with a perfectly valid refresh token).
 - **AuthProvider: clear session on 429**: Rejected — 429 is transient server pressure, not credential failure; clearing logs the user out exactly when the refresh bucket is hot.
   **Supersedes:** PARTIAL — supersedes the Sprint 79 decision's "Unique DB constraint / migration for true create-race ACID: Deferred" (the advisory-lock transaction now provides the create-race ACID; a unique index remains optional future insurance). Extends the Sprint 79 dedup decisions (idempotency key + reporter scoping kept; title requirement on identity matches dropped as actively harmful).
+  **Superseded by:** None
+
+## Sprint 82 decisions (2026-10-20)
+
+**Decision:** (1) The platform tour's step LIST and step CONTENT (copy, routes, selectors, end card, offline notes, mascot alt) live in the shipped code config (`platformTour.ts`) and are NEVER admin-editable; only operational knobs (`enabled`, `autoStart`, `autoStartDelayMs`) are admin-editable via SiteConfig `platformTourConfig` merged FIELD-WISE over the default (a bad stored row degrades field-by-field to safe values; it can rename/disable nothing about steps). The seed ships ONLY the operational subset. (2) The gates that decide visibility live as pure helpers in config modules (not the components): the tour's `coerceStepIndex`/`isLastStep`/`isTourTerminal`/`readTourStateShape`, and the review notice's ordered matrix `shouldShowReviewNotice` — done-flag > dismissal (7-day TTL) > account age (≥3 days) > has-review probe — with the matrix exported so tests exercise the real code, not a copy of it. (3) The review notice's has-review probe (`GET /api/reviews?mine=1`) is best-effort and fails SAFE to hidden: unknown/offline/failed = do not show. (4) The tour's interactive steps WATCH BY ELEMENT (focus/pointerdown/keyup capture on the spotlighted control) rather than intercepting clicks: the app stays fully interactive during the tour, and the wizard merely notices the interaction, confirms, then offers Continue/End. (5) Tour state is a versioned localStorage blob (`along-tour-state-v1`, `v:1` required, unknown version = never resume) so a future step-revision can force a re-walk without a schema; replay goes through a CustomEvent (`TOUR_START_EVENT`) dispatched by a `kind: "action"` profile quick link — no context/provider plumbing. (6) `/api/tour` is guest-accessible and SWR-cacheable (`s-maxage=300 stale-while-revalidate=600`) + registered cacheable in sw.js/PWA prefixes, but the offline DEFAULTS are self-sufficient: a failed config fetch changes nothing (code fallback serves the identical default config), so PWA-offline tour use never depends on the request.
+**Reason:**
+Admin config keys require a no-code card (design-compliance gate), and step content is UX copy that must evolve with the bundle it targets — selectors like `[aria-label="Share a route"]` MUST match the page version that selector names, so editing them from a DB row bypassing deploys would corrupt the tour for older/other clients. Offline-first: if steps needed a network fetch, the PWA-offline case would need per-step caching logic; shipping defaults makes offline free. Fail-safe gating: nagging a user we cannot vet (unknown review status) is worse than missing a prompt — the notice is an ask, not an alert. Element-watch interactivity keeps one spotlight ring while letting real handlers run (click-interception would double-fire Submit/Explore actions we do not own).
+**Alternatives Considered:**
+
+- **Admin-editable steps (JSON card)**: Rejected — designDH-compliance would force a bespoke editor for a high-risk surface (broken selector = invisible scrim or stray highlight), and content-in-DB desyncs from the pages it points at.
+- **Vet the account age server-side (a `seenTour`/fields migration)**: Rejected — localStorage versioned state covers tour progress with zero schema; the review age gate uses the auth snapshot's `createdAt` (already shipped by OAuth/credentials flows, no migration).
+- **Block page interaction under a full-screen shield during spot steps**: Rejected — trapping navigation breaks "the rest of the app stays usable while on", and the target's own handler is exactly the thing we want to run.
+- **Suspend/force the review probe before render (async gate)**: Rejected — mount-delay + fail-closed keeps the first paint cheap and non-flickering; waiting on a network probe before every page load to decide "maybe show a pill" is the wrong trade.
+- **TTL-based dismiss in cookies**: Rejected — per-user localStorage blob matches the existing floating-notice pattern (push-prompt, safe-refresh flags) and survives across sessions like cookies do, without cookie consent plumbing.
+- **SiteConfig-tunable TTLs (min age / dismiss ttl)**: Deferred — pure constants today; they'd need card + validator surface without an immediate ask; FAQ documents the fixed values.
+- **auto-skip silently on missing target**: Rejected as the ONLY path — offline stops on uncached pages get an explicit, honest offline phase (note + Skip-this-stop/End); when online, a missing target after the knob timeout advances politely so the wizard can never strand mid-tour.
+  **Supersedes:** None
+  **Superseded by:** None
+
+## Sprint 83 decisions (2026-10-20)
+
+**Decision:** (1) **Root-mount the tour, filter by audience.** `PlatformTour` lives in `app/layout.tsx` (not the dashboard layout) and each step declares `audience: "all" | "guest" | "authenticated"`; the component derives the visible list from `useAuth`. Guests therefore get welcome + auth + share + composer + explore steps, and signed-in users get welcome + share + composer + explore + profile + notifications. The guest walkthrough is opt-in through explicit triggers (`TourLaunchButton` on FAQ, footer `actionEvent` link, replay event); auto-start is restricted to `autoStartRoutes` (default `/home`) so public/auth pages never take over first paint. (2) **Persist a step id, not just an index.** `PlatformTourState` gains `stepId`; resume matches the id first, otherwise takes the first still-visible step at/after the stored config index (`resolveTourResumeIndex`). This is what makes the tour survive the full-page reloads of sign-in and registration: the auth stop disappears from a member's list and the tour resumes at share-route instead of skipping or resetting. (3) **Interactive overlays never own the pointer.** The outer scrim is `pointer-events-none`; only tooltip/resume/offline/end cards opt back in with `pointer-events-auto`. Spotlighted controls (share trigger, theme toggle, modal form) remain fully usable. (4) **Resume asks; it does not hijack.** `resume.autoResume` defaults to `false`; an interrupted tour shows a top-center card (Resume / Not now), deliberately outside the bottom-right theme-toggle/toast lane. (5) **Start-timer ownership is a ref.** `bootstrapConfigRef` is set before the config fetch resolves so the effect re-run caused by that resolution cannot cancel the pending auto-start timer. (6) **Config remains backward-compatible.** Every new field (`audience`, `timeoutMs`, `autoStartRoutes`, `guest`, `resume`, state `stepId`) is optional at the stored-row boundary, normalized field-wise over the shipped defaults, and validated at the admin boundary; `/api/tour` needs no change and the seed still stores only `enabled`/`autoStart`/`autoStartDelayMs`.
+**Reason:**
+A single shipped step list must serve two different audiences without duplicating config or hiding the tour from guests; audience tags + pure filtering keep that testable. Step indexes are unstable across auth transitions (the list shrinks by two), while step ids are stable identities authored next to the content. The reported "pressing share route did nothing" was the transparent full-screen overlay, not the share handler — guided overlays must document that their scrim never owns pointer events. A silent resume after a refresh is surprising and hard to dismiss; an explicit prompt is the non-intrusive contract the directive asked for. The config-fetch race was a lifecycle bug: the auto-start timer belongs to the bootstrap decision, not to an effect that the fetch can retrigger.
+**Alternatives Considered:**
+- **Keep the dashboard mount and render a second copy on auth pages**: Rejected — two instances share one localStorage blob and can double-render the scrim during navigation; a single root mount with audience filtering is simpler and testable.
+- **Store only `stepIndex` and clamp on resume**: Rejected — after registration the index points into a shorter/different list and silently skips the composer journey; a stable `stepId` is the minimum information needed.
+- **Make auth steps interactive (wait for sign-in click)**: Rejected — the actual submit navigates/reloads the page; watching for a click cannot survive it, whereas persisted state + first-visible-step resume does.
+- **`pointer-events-auto` on the scrim and forward clicks**: Rejected — re-implementing hit-testing/forwarding duplicates the browser and breaks modal stacking; `pointer-events-none` lets the real handlers run.
+- **Auto-resume on refresh**: Rejected as default — the directive explicitly asked for non-interference; `resume.autoResume` stays as an opt-in for deployments that prefer the old behavior.
+- **Add admin knobs for the new fields**: Rejected — no-code surface has no demonstrated admin need; step content/audience is bundle-coupled like the rest of the step list, and operational `enabled`/`autoStart`/`autoStartDelayMs` remain the admin contract.
+  **Supersedes:** PARTIAL — supersedes Sprint 82 decision (4)'s "capture-click detection" wording only insofar as the overlay must be click-through; interactive steps still watch element focus/pointer/key events, but the scrim never intercepts. Extends Sprint 82 decision (1) by moving the mount to the root and adding audience-gated steps; the content-in-code/config-in-SiteConfig split is unchanged.
+  **Superseded by:** None
+
+## Sprint 85 decisions (2026-10-21)
+
+**Decision:** (1) **The share-route composer is a peer-tab workspace, not nested accordions.** `SHARE_ROUTE_MODAL_CONFIG.tabs` owns the section list/order (Details, Map, Score, Drafts), short labels, icon keys and the Drafts count badge; the component renders exactly one full-width panel at a time so every section gets the modal's full width and no column can clip its controls. (2) **Tab metadata stays in the bundle, not SiteConfig.** Like the platform tour's step list, the tabs are coupled to the component's render branches and selectors; making them admin-editable would require a bespoke validator/card for no user benefit. (3) **Unknown tab ids degrade, never blank.** `resolveShareRouteTabId` maps any stale/unknown/nullish value to `defaultTab` → first configured tab → Details, and `startWithDraftsOpen` only selects Drafts when drafts actually exist. (4) **Cross-section actions are real tab switches.** The Details nudge's map/score words are buttons (`selectTab`), Find on map switches to Map before flying/pinning, restoring a draft returns to Details, and the tour's `route-score` anchor sits on the always-visible Score tab so its step resolves even when Details is active. (5) **Legacy collapse flags remain exported but inert.** `previewDefaultOpen`/`scoreDefaultOpen`/`formDefaultOpen` stay in the config object for non-breaking consumers/tests; the tab renderer intentionally ignores them (the Score tab always opens expanded).
+**Reason:**
+The reported problem was structural: two narrow columns plus nested collapsibles made the drafts count/save controls overlap and shrank sections on mobile. Tabs allocate the full panel to the active task, make Drafts discoverable via a count badge, and keep the primary actions (Save Draft, Share) permanently reachable in the footer. Short labels + icons meet the 320px constraint without losing meaning, while ARIA tabs and keyboard cycling preserve accessibility. Keeping section metadata in code means selectors/render branches and labels cannot drift across deployments; the pure resolver makes persistence/edge inputs safe.
+**Alternatives Considered:**
+- **Keep collapsibles but make the columns wider**: Rejected — the modal is already 800px max; the squeeze is inherent to splitting Details/Map/Score into columns and stacking Drafts above them.
+- **One long scrollable form with all sections expanded**: Rejected — the reported burden was length/overlap; tabs keep each task focused and let Map render at a useful height.
+- **Admin-editable tab labels/order**: Rejected — labels map to fixed render branches and tour anchors; a bad row could hide the only path to Save/Share. Config-in-bundle is the safer contract.
+- **Remove the legacy collapse flags entirely**: Rejected — non-breaking mandate; they are inert but still exported for any consumer/test expecting the old shape.
+- **Open the score tab automatically after a draft restore**: Rejected — restoring means "continue editing"; Details is the useful landing tab, with the nudge one tap away to Map/Score.
+  **Supersedes:** None
   **Superseded by:** None

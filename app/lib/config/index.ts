@@ -26,8 +26,21 @@ export { ENDLESS_CAROUSEL_CONFIG } from "./carousel";
 export type { EndlessCarouselConfig } from "./carousel";
 export { SUGGESTIONS_PANEL_CONFIG } from "./suggestionsPanel";
 export type { SuggestionsPanelConfig } from "./suggestionsPanel";
-export { SHARE_ROUTE_MODAL_CONFIG } from "./shareRoute";
-export type { ShareRouteModalConfig } from "./shareRoute";
+export {
+  SHARE_ROUTE_MODAL_CONFIG,
+  SHARE_ROUTE_OPEN_EVENT,
+  SHARE_ROUTE_TAB_EVENT,
+  fillShareRouteHintTemplate,
+  resolveShareRouteTabId,
+} from "./shareRoute";
+export type {
+  ShareRouteModalConfig,
+  ShareRouteTabConfig,
+  ShareRouteTabEventDetail,
+  ShareRouteTabIcon,
+  ShareRouteTabId,
+  ShareRouteDetailsHintConfig,
+} from "./shareRoute";
 export { ROUTE_STEPS_CONFIG, isDestinationStep, showStepFare, showStepVehicle, normalizeRouteSteps } from "./routeSteps";
 export type { RouteStepsConfig, RouteStepLike } from "./routeSteps";
 export { buildRoutePinsFromPost, buildTraceInputFromPins, ROUTE_PINS_CONFIG } from "./routePins";
@@ -128,12 +141,20 @@ export {
   trafficSensitivityForVehicle,
   shouldRecomputeFromDistance,
   estimateDurationMins,
+  estimateJourneyDurationMins,
+  calibrateProviderDurationMins,
+  journeyOverheadMins,
   legTrafficFactor,
   adjustDurationForVehicleAndTraffic,
   dominantVehicleForSteps,
   resolveJourneyDuration,
 } from "./journeyTime";
-export type { JourneyVehicleMeta, JourneyTimeConfig, JourneyStepLike } from "./journeyTime";
+export type {
+  JourneyVehicleMeta,
+  JourneyTimeConfig,
+  JourneyStepLike,
+  JourneyDurationOptions,
+} from "./journeyTime";
 export { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES, cooldownKeyFor, attemptsKeyFor, maskEmail } from "./authVerification";
 export type { AuthVerificationConfig } from "./authVerification";
 export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";
@@ -273,3 +294,53 @@ export { ROUTE_TAG_CONFIG, parseTagInput } from "./routeTags";
 export type { RouteTagConfig } from "./routeTags";
 export { SAFE_REFRESH_CONFIG } from "./safeRefresh";
 export type { SafeRefreshConfig } from "./safeRefresh";
+export {
+  DEFAULT_PLATFORM_TOUR_CONFIG,
+  PLATFORM_TOUR_CONFIG_KEY,
+  PLATFORM_TOUR_STATE_VERSION,
+  PLATFORM_TOUR_MANAGED_FIELDS,
+  TOUR_START_EVENT,
+  coerceStepIndex,
+  isLastStep,
+  isTourPlacement,
+  isTourScrollBehavior,
+  isTourScrollBlock,
+  isTourTerminal,
+  normalizePlatformTourConfig,
+  normalizeTourStepEvent,
+  readTourStateShape,
+  validatePlatformTourConfigValue,
+} from "./platformTour";
+export type {
+  PlatformTourConfig,
+  PlatformTourScrollConfig,
+  TourScrollBehavior,
+  TourScrollBlock,
+  TourStep,
+  TourStepEvent,
+  TourStepPlacement,
+} from "./platformTour";
+export {
+  COOKIE_CONSENT_EVENT,
+  GUEST_TOUR_NOTICE_CONFIG,
+  PWA_INSTALL_NOTICE_EVENT,
+  hasCookieConsent,
+  isGuestTourNoticeDismissed,
+  isInstallNoticePending,
+  readGuestTourProgress,
+  shouldShowGuestTourNotice,
+} from "./guestTourNotice";
+export type {
+  GuestTourNoticeGateInput,
+  GuestTourNoticeGateReason,
+  GuestTourNoticeGateResult,
+} from "./guestTourNotice";
+export {
+  REVIEW_NOTICE_CONFIG,
+  accountAgeMsFromCreatedAt,
+  isFlagActive,
+  readReviewNoticeState,
+  reviewNoticeStorageKey,
+  shouldShowReviewNotice,
+} from "./reviewNotice";
+export type { ReviewNoticeGateInput, ReviewNoticeGateReason, ReviewNoticeState } from "./reviewNotice";

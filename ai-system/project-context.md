@@ -1,8 +1,8 @@
 # Project Context
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-08 (Sprint 11 close-out)
-> - last-verified-against-code: 2026-10-08 (33 configs, 15 test suites / 149 tests, Sprint 11 posting fix + toast/report/carousel)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
+> - last-verified-against-code: 2026-10-21 (95 configs, 349 en+pcm keys, 118 test suites / 1261 tests, 14 migrations / 21 models)
 > - staleness-policy: re-verify if >10 sessions old or after major scope changes
 
 > **Overview:** Along is a social travel-intelligence platform built for urban commuters in Nigeria and West Africa. It solves the problem of unreliable public transit information by letting users share, verify, and discover transport routes in real time — combining the social dynamics of Twitter with the utility of Google Maps. The platform targets the 80%+ of urban commuters who rely on informal transit (buses, danfos, keke, okada) with no reliable real-time information.
@@ -43,9 +43,9 @@ Along empowers urban commuters to share and verify transport route information i
 
 Phase: Active Development (Application Complete)
 
-The full application codebase has been generated through Phases 0-6 plus Sprint 7 (2026-10-07/08), Sprint 8 search E2E (2026-10-08), Sprint 9 UX tightening (2026-10-08), Sprint 10 carousel ordering + drafts library (2026-10-08), and Sprint 11 posting fix + response/draft linkage + toast/report/carousel (2026-10-08): 33 config registries, 42 universal UI components (App* wrappers), 6+ context providers, 17 OOP services (incl. searchService, routeDraftsService), 60+ API route files (incl. /api/search), and complete page structure for auth, dashboard (incl. /search), admin, and public sections. Push notification system with QStash background workers, blog with MDX content, FAQ page, RxJS reactive feed, i18n (English + Pidgin), dark mode, PWA offline support, route requests E2E (PostType + quoted posts + suggestions API), client caching (memoryCache/useCachedFetch), seed backup tooling, scroll-based suggestions carousel above the feed below the share/request triggers with own overflow container, collapsed-by-default share-modal preview/score with footer actions, RequestRouteTrigger icon, savable route drafts with restore/continue/delete + home resume chip, generic share description input with empty-tolerant validation and first-field error feedback, response tag inheritance + draft linkage, single-timer toasts, working post copy-link/report, About reviews on the shared carousel, 3-col footer grid, and 149 Jest tests across 15 suites are all in place. Last full QA gate (2026-10-08, Sprint 11 session, run in-runner): tsc 0 errors, lint zero-new-errors, 149/149 tests, clean build.
+The full application is in active development with the core product complete: 95 config registries, 43 universal UI components (App* wrappers), 6 context providers, 36 service modules, 60+ API route files, 14 Prisma migrations, 21 models, and 1261 Jest tests across 118 suites. The product includes auth, feed/search, route composition (tabbed Details/Map/Score/Drafts), route requests, live navigation, trust/validity and reactions, PWA offline support + push, internationalisation (English + Pidgin, 349 keys), reviews, referrals/rewards, admin tooling, blog/FAQ, and a config-driven platform tour. Sprint 88 added an always-available tour CTA to the landing CTA section, made the guest-banner CTAs fill narrow rows, added per-step `allowEnd` metadata and gave post steps the full 6s target window. Sprint 89 added the same tour CTA to the landing hero and made the tour's X/Escape escape hatches unconditional (only the labelled End button can be hidden by `allowEnd`). Last full QA gate (2026-10-21, Sprint 89, run in-runner): tsc 0 errors, 118/118 suites / 1261/1261 tests, production build clean.
 
-Active sprint focus: Production readiness — remaining backlog items (live map tracking navigation, carto basemap key wiring, auth provider linking, supercluster clustering, rate-limiter Redis migration).
+Active sprint focus: Production readiness and product polish; select the next directive from `ai-system/planning/task-queue.md` (remaining candidates include live-map tracking improvements, basemap routing credentials, auth provider linking, clustering, and Redis rate limiting).
 
 ---
 

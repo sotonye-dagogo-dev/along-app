@@ -3,7 +3,7 @@
 import React from 'react'
 import { Loader2 } from 'lucide-react'
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'icon'
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'on-primary' | 'destructive' | 'icon'
 type ButtonSize = 'sm' | 'md' | 'lg'
 
 export interface AppButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -18,6 +18,9 @@ const variantStyles: Record<ButtonVariant, string> = {
   primary: 'bg-primary text-text-inverse hover:bg-primary-dark active:bg-primary-dark',
   secondary: 'bg-transparent border-2 border-primary text-primary hover:bg-primary-muted active:bg-primary-muted',
   ghost: 'bg-transparent text-text-secondary hover:bg-bg-elevated active:bg-bg-elevated',
+  // For use on the brand gradient (landing hero/CTA): deliberately explicit
+  // light-on-dark tokens so the primary/secondary variants never fight it.
+  'on-primary': 'bg-transparent border border-white/40 text-white hover:bg-white/10 active:bg-white/20',
   destructive: 'bg-error-text text-text-inverse hover:opacity-90 active:opacity-90',
   icon: 'bg-transparent text-text-secondary hover:bg-bg-elevated active:bg-bg-elevated rounded-circle',
 }

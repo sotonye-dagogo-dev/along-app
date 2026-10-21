@@ -2,10 +2,77 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 89 — Hero tour CTA + unconditional tour escape (2026-10-21, execute-feature)
+
+- [x] Hero entry [Sprint 89]: `HeroCtas` renders `TourLaunchButton` beside Continue to feed (authenticated) or Get Started + Sign In (guests), reusing `landing.cta.takeTour` en/pcm
+- [x] Escape hatch [Sprint 89]: PlatformTour always renders the header X and handles Escape; `allowEnd: false` hides only the labelled End button, never the escape hatch
+- [x] FAQ + QA [Sprint 89]: en/pcm hero entry + X/Escape copy; hero source-contract and unconditional-close tests; tsc 0, jest 118/118 suites 1261/1261, build clean
+
+## Sprint 88 — Landing tour CTA + guest-banner spacing + tour exit policy (2026-10-21, execute-feature)
+
+- [x] Landing CTA [Sprint 88]: `LandingCtaActions` pairs the auth-aware bottom CTA with a permanent `TourLaunchButton` ("Take the tour"); new `AppButton` `on-primary` variant keeps the outlined action legible on the brand gradient; `landing.cta.takeTour` en/pcm
+- [x] Guest banner spacing [Sprint 88]: the three CTAs now `flex-auto` wrap and grow to fill each narrow row (`sm:flex-none` restores the compact desktop row), removing the dead space on the right
+- [x] Tour exit policy [Sprint 88]: additive per-step `allowEnd` metadata (default true, normalized/validated); `post-navigate` is awareness-only (`interactive` off, `allowEnd: false`) and hides End/X/Escape so the essential sharing/request/explore stops stay on the path
+- [x] Post timing [Sprint 88]: post-overview/post-trust/post-actions/post-navigate target windows raised to 6000ms, preserving online auto-advance and offline note fallbacks
+- [x] FAQ + QA [Sprint 88]: en/pcm navigation awareness/exit copy, landing-page entry, banner spacing; tests extended for allowEnd and landing/banner wiring; tsc 0, jest 118/118 suites 1261/1261, build clean
+
+## Sprint 87 — Post/request/navigation tour + guest-banner tour CTA (2026-10-21, execute-feature)
+
+- [x] Share hint [Sprint 87]: `SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapValueTemplate` + pure `fillShareRouteHintTemplate`; Details Map link renders live `(distance km · duration min)`, degrading to the bare label when values are unavailable
+- [x] Post tour [Sprint 87]: four feed steps (`post-overview`, `post-trust`, `post-actions`, interactive `post-navigate`) anchored on the first route-bearing `PostCard`; requests/platform posts intentionally excluded
+- [x] Route-request tour [Sprint 87]: interactive `route-request` step on the composer header trigger, with `SHARE_ROUTE_OPEN_EVENT` reopening a closed composer
+- [x] Navigation coverage [Sprint 87]: `data-tour` anchors on `NavigationGuide` and `LiveNavigationModal`; post step explains live guide, tracing, distance/time/fare
+- [x] Guest entry [Sprint 87]: `GuestBanner` gains a responsive “Take tour” CTA (tour/sign-in/sign-up); floating `GuestTourNotice` retired (disabled + unmounted, code retained for opt-in)
+- [x] FAQ + QA [Sprint 87]: en/pcm post/request/navigation + retired-prompt + map-hint copy; tsc 0, jest 118/118 suites 1259/1259, build clean
+
+## Sprint 86 — Guest tour prompt + tour hand-off/scroll + share modal polish (2026-10-21, execute-feature)
+
+- [x] Guest prompt [Sprint 86]: `guestTourNotice.ts` ordered gate matrix + dismiss TTL/install/cookie readers; `GuestTourNotice.tsx` delayed, dismissible, guest-only root-mounted card; cookie/install coordination events
+- [x] Footer/floating [Sprint 86]: tour link moved to Along (single entry), guest prompt lanes registered, tests updated
+- [x] Tour hand-off/scroll [Sprint 86]: `scroll` knobs + per-step override, safe `along:*` activate/advance events; PlatformTour scrolls targets, opens composer on Next, switches Score; home/modal event listeners
+- [x] Share modal polish [Sprint 86]: space-between footer, tighter header/tab spacing, live score in Details hint
+- [x] FAQ + QA [Sprint 86]: en/pcm updates; new `guestTourNotice.test.ts`; tsc 0, jest 118/118 suites 1257/1257, build clean
+
+## Sprint 85 — Tabbed share-route composer (2026-10-21, execute-feature)
+
+- [x] Tab metadata [Sprint 85]: `SHARE_ROUTE_MODAL_CONFIG.tabs` (Details/Map/Score/Drafts short labels + icon keys), `defaultTab`, `tabsAriaLabel`, `detailsHint`, `mapPanelHeight`, Drafts badge; pure `resolveShareRouteTabId` fallback
+- [x] Composer layout [Sprint 85]: one full-width ARIA tabpanel replaces nested collapsibles; keyboard tab cycling; footer reduced to Save Draft + Share; Drafts count badge
+- [x] Cross-section actions [Sprint 85]: Details nudge buttons switch to Map/Score; Find on map switches to Map; draft restore returns to Details; tour score anchor moved to the Score tab
+- [x] FAQ/tests [Sprint 85]: `share-route-tabs` en + PCM, Map-tab wording in `map-find-on-map`; new `shareRouteTabs.test.ts`; full gate green (tsc 0, 117/117 suites 1246/1246, build clean)
+
+## Sprint 84 — Tour viewport safety + drafts footer + Nigeria-aware journey times (2026-10-21, execute-feature)
+
+- [x] Tour layout [Sprint 84]: config knobs (`tooltipGapPx`, `tooltipMarginPx`, `tooltipMaxHeightRatio`) + pure `resolveTourTooltipLayout`; explicit card width, edge flip/clamp, internal scroll cap; measured tooltip/end/offline/centered cards keep actions reachable
+- [x] Drafts footer [Sprint 84]: composer footer stacks on mobile, drafts toggle truncates, Save Draft/Share stay on their own row
+- [x] Journey calibration [Sprint 84]: per-vehicle boarding wait, per-stop pick-up/drop-off dwell, toll/agbero allowance, provider free-flow multiplier; overhead applied exactly once and hard-capped
+- [x] Duration wiring + persistence [Sprint 84]: `geo.estimateRoute`, `useRouteTrace`, `ShareRouteModal` (persists `totalDistanceKm`/`estimatedMins`), post detail stops, `mapProxyService` straight-line/provider fallbacks
+- [x] FAQ + QA [Sprint 84]: `route-time-estimates` en+pcm; calibration/layout tests; tsc 0, jest 116/116 suites 1231/1231, lint no new findings, build clean
+
+---
+
+## Sprint 83 — Platform tour enhancements (2026-10-20, execute-feature)
+
+- [x] Guest access + triggers [Sprint 83]: mount `PlatformTour` at the root layout (removed from dashboard layout), audience-filtered steps (`guest`/`authenticated`/`all`), `TourLaunchButton` on FAQ + config-driven footer `actionEvent` link, guest-safe `TOUR_START_EVENT` replay
+- [x] Auth walkthrough [Sprint 83]: `auth-sign-in`/`auth-register` guest steps with `login-email`/`register-email` anchors; `stepId` persisted so registration/sign-in reloads resume at the first still-visible step (`resolveTourResumeIndex`)
+- [x] Click-through spotlight [Sprint 83]: `pointer-events-none` scrim + `pointer-events-auto` cards; theme toggle, share trigger and modal controls stay usable; route guard per tick
+- [x] Route-composer coverage [Sprint 83]: origin input / use-current-location / find-on-map / route-score steps anchored via `data-tour` in `ShareRouteModal`, per-step `timeoutMs`; persistent mobile "Near me" button fixes the explore step on small screens
+- [x] Persistence without hijack [Sprint 83]: top-center resume prompt (`resume.enabled`, `resume.autoResume:false`, configurable delay/copy), auto-start restricted to `autoStartRoutes` (default `/home`), state survives config-fetch failure/timer races via `bootstrapConfigRef`
+- [x] Docs/tests [Sprint 83]: en+pcm auth/composer/resume/takeTour keys (17), FAQ guests-auth/composer/resume (en+pcm), `platformTour.test.ts` audience/resume/timeout/anchor/mount contract, `locales.test.ts` keys; full gate green in-runner (tsc 0, 116/116 suites 1221/1221, lint clean touched, build clean)
+
+---
+
+## Sprint 82 — Platform tour + review notice (2026-10-20, execute-feature)
+
+- [x] Platform tour [Sprint 82]: config/metadata-driven interactive spotlight wizard (5 steps, 3 interactive, stable selectors, spot-ring + scrim, mascot w/ app-logo fallback, prev/next/skip + "Step n of m", Esc), thank-you end card with CTA, resume/auto-start-once, replay via profile quick-link `kind: "action"` → `TOUR_START_EVENT`; offline-first (step content in code config; `/api/tour` serves admin override SWR-cached + registered in sw.js/PWA prefixes/apiRegistry); admin `platformTourConfig` operational-knobs simple card + central validator + seed entry
+- [x] Review notice [Sprint 82]: dismissible floating quick-review prompt on a dedicated `reviewNoticeBottomPx` lane; pure gate matrix (authed, ≥3-day account age, no review, 7-day dismissal TTL, done-forever flag, fail-safe unknown-probe), `/api/reviews?mine=1` best-effort probe + POST via `useRequireOnline`; mounted root-layout
+- [x] Shared work: FAQ `tour` category (3 items en+pcm) + `review-prompt` item; en/pcm `tour.*`/`reviewNotice.*` keys (27); `REQUIRED_KEYS` extended; NEW `platformTour.test.ts` (18) + `reviewNotice.test.ts` (16); full gate green in-runner (tsc 0, 116/116 suites 1216/1216, lint clean touched, build clean)
+
+---
 
 ## Sprint 80 — Duplicate-proof bug assignment + admin notification deep links + auth session persistence (2026-10-19, execute-feature)
 

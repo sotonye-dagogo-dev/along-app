@@ -98,6 +98,9 @@ export const PWA_CACHEABLE_API_PREFIXES = [
   // Approved platform reviews back the About page; GET-only caching is safe
   // (the SW only caches GET — review POSTs always hit the network).
   "/api/reviews",
+  // Platform-tour config (GET-only; the tour runs offline from bundled
+  // defaults, this cached copy covers admin overrides while offline).
+  "/api/tour",
 ] as const;
 
 export function isNeverCacheApi(pathname: string): boolean {

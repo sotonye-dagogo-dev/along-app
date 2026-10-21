@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AppButton } from "./";
+import { COOKIE_CONSENT_EVENT } from "@/app/lib/config/guestTourNotice";
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
@@ -19,6 +20,13 @@ export function CookieConsent() {
 
   const handleAccept = () => {
     document.cookie = "cookieConsent=true;max-age=31536000;path=/";
+    // Let serialized notices (e.g. the guest tour prompt) know the cookie bar
+    // has cleared so they can take their turn instead of stacking.
+    try {
+      window.dispatchEvent(new CustomEvent(COOKIE_CONSENT_EVENT));
+    } catch {
+      /* best-effort — the prompt also re-checks on focus/visibility */
+    }
     setDismissed(true);
     setTimeout(() => setVisible(false), 200);
   };

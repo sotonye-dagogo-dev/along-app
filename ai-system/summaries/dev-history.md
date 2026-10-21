@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
-> - last-verified-against-code: 2026-10-19 (Sprint 80 in-runner QA: tsc 0, jest 113/113 suites 1178/1178, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
+> - last-verified-against-code: 2026-10-21 (Sprint 89 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,133 @@
 ---
 
 ## History
+
+## 2026-10-21 — Hero Tour CTA + Unconditional Escape (Sprint 89)
+
+**Summary:**
+Closed the final tour polish directive while keeping the feature config-driven. The landing hero now offers the tour beside the existing starter CTAs for both audiences, and the tour's header X/Escape always work so metadata can no longer trap a viewer on a pivotal stop. Only the labelled End button remains governed by `allowEnd`.
+
+**Completed:**
+- `HeroCtas` renders `TourLaunchButton` for guests (beside Get Started/Sign In) and signed-in users (beside Continue to feed), reusing `landing.cta.takeTour` en/pcm
+- PlatformTour always renders the tooltip/offline X and handles Escape; `allowEnd: false` now hides only the labelled End button
+- `post-navigate` keeps its awareness-only `allowEnd: false` metadata, but the escape hatch is guaranteed
+- FAQ en + PCM updated for the hero entry and the always-available X/Escape
+- Tests extended for the hero source contract and unconditional-close wiring
+
+**Key Changes:**
+- Step metadata can shape the offered CTA but can no longer remove the user's immediate escape hatch
+- The tour is reachable from the landing hero as well as the bottom CTA, guest banner, footer, FAQ and profile
+- No schema, migration, API, or config-shape change
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`.
+
+## 2026-10-21 — Landing Tour CTA + Tour Exit Policy (Sprint 88)
+
+**Summary:**
+Polished the tour's entry points and pacing without changing its config-driven architecture. The landing CTA section now offers a permanent tour action for guests and signed-in visitors, the guest-banner CTAs fill narrow rows instead of leaving dead space, and the navigation stop is now an awareness-only lesson that cannot end the tour before the essential sharing/request/explore stops.
+
+**Completed:**
+- `LandingCtaActions` pairs the auth-aware bottom CTA with `TourLaunchButton`; additive `AppButton` `on-primary` variant for the brand gradient; `landing.cta.takeTour` en/pcm
+- Guest banner three-CTA row uses `flex-auto` growth/wrap on narrow screens with `sm:flex-none` for the desktop row
+- Additive `TourStep.allowEnd` metadata (default true, normalized/validated); `post-navigate` becomes `interactive: false` + `allowEnd: false`; PlatformTour withholds End/X/Escape on such steps while keeping Back/Next
+- Post walkthrough targets (`post-overview`, `post-trust`, `post-actions`, `post-navigate`) now use the full 6000ms target window
+- FAQ en + PCM explain the landing entry, navigation awareness-only behavior, and retained exit paths
+- Tests extended for `allowEnd` normalize/validate/component wiring and the landing/guest-banner source contract
+
+**Key Changes:**
+- Tour steps can now declare whether ending is offered; pivotal teaching stops keep the path intact without trapping users (Next/Back always work)
+- The landing page is a first-class guest tour entry alongside the guest banner, footer, FAQ and profile
+- No schema, migration, or API change
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`. No further tour follow-up is required from this directive.
+
+## 2026-10-21 — Post/Request/Navigation Tour + Guest-Banner Tour CTA (Sprint 87)
+
+**Summary:**
+Expanded the config-driven tour from the route-composer journey into the core reading experience: a real route post now teaches stops, fares, vehicles, trust breakdown, reactions, and live navigation, while a separate step follows the community route-request path. Guests get a permanent tour entry in the banner, replacing the floating prompt that competed with other notices, and the composer’s Details hint now shows live distance and time beside the Map link.
+
+**Completed:**
+- `SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapValueTemplate` (`({distance} km · {duration} min)`) + reusable `fillShareRouteHintTemplate`; Map and Score suffixes render only when complete
+- Four `platformTour` post steps (`post-overview`, `post-trust`, `post-actions`, interactive `post-navigate`) anchored on the first route-bearing `PostCard`; requests and platform-generated posts excluded
+- Interactive `route-request` step on the composer header request trigger; `SHARE_ROUTE_OPEN_EVENT` reopens a closed composer
+- `data-tour` anchors on request origin/destination, `NavigationGuide`, and `LiveNavigationModal`; `AppCard` gained a `dataTour` passthrough
+- `GuestBanner` now renders three responsive CTAs (Take tour / Sign in / Sign up); `GuestTourNotice` is retired by default and unmounted, with code retained for opt-in deployments
+- English + Pidgin FAQ updates for posts/trust/reactions, requests, navigation, guest entry points, retired prompt, and the live map hint
+- Tests extended for the hint helper/template, tour ids/anchors/events, guest banner/retired mount, and locale parity
+
+**Key Changes:**
+- Tour content now spans reading, requesting, and navigating — not only account creation and route composition
+- The first route-bearing post is the canonical walkthrough target; because the feed is ranked, it is normally a representative route rather than a request
+- Global notice policy moved from a floating guest-tour card to a persistent banner CTA, removing one competing timed prompt while keeping every entry point
+- No schema, migration, or API change; deprecated notice code remains available but disabled
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`. Optional follow-ups: add explicit tour steps for the in-guide/live-navigation anchors if the walkthrough should enter navigation rather than explain its trigger, and consider shortening post-step timeouts when no route post is present.
+
+## 2026-10-21 — Guest Tour Prompt + Tour Hand-Off/Scroll + Share Modal Polish (Sprint 86)
+
+**Summary:**
+Closed the follow-up tour/composer directive without changing the config-driven architecture. Guests now get a single, dismissible tour prompt that is serialized behind the cookie bar and install prompt; the tour itself can open the composer and switch its tab when the viewer only presses Next, smooth-scrolls offscreen targets into view, and the footer entry moved to Along. The share modal lost its dead footer space, gained a live score in the Details hint, and tightened its header/tab rhythm.
+
+**Completed:**
+- `guestTourNotice.ts` pure gate matrix (eligible/disabled/not-guest/tour-unavailable/terminal/in-progress/auto-start/install-pending/cookie-pending/dismissed) + safe dismiss TTL/install/cookie readers + config copy/i18n keys; `GuestTourNotice.tsx` delayed root-mounted card that re-evaluates on notice/tour/focus events and never prompts signed-in users; CookieConsent + InstallPrompt coordination events.
+- Footer tour link moved into the Along column (single source, `actionEvent` unchanged); floating lane `guestTourNoticeBottomPx`/offline added.
+- Tour hand-off: `platformTour.scroll` knobs, per-step `scrollIntoView`, normalized/validated `activateEvent`/`advanceEvent` (`along:*` + flat string details); PlatformTour scrolls targets and dispatches hand-off events; home listens for `SHARE_ROUTE_OPEN_EVENT`; ShareRouteModal listens for `SHARE_ROUTE_TAB_EVENT`.
+- Share modal: `justify-between` footer, tighter header/tab padding, `scoreValueTemplate: "({score}/{max})"` rendered live beside the Details Score link.
+- FAQ en + PCM (guest prompt, footer location, auto-open/scroll, live score); en/pcm `tourNotice.*`; extended tests.
+
+**Key Changes:**
+- Notice serialization is an explicit ordered gate (not CSS): the prompt only takes its turn after the two existing bottom notices clear, so no fourth card stacks.
+- Step actions are metadata (`activateEvent`/`advanceEvent`), so the tour stays content/config-driven and admin rows can only fire safe `along:*` events.
+
+**Files:**
+- Created: `app/lib/config/guestTourNotice.ts`, `app/components/features/tour/GuestTourNotice.tsx`, `app/__tests__/config/guestTourNotice.test.ts`
+- Edited: `app/lib/config/{platformTour,shareRoute,footer,floatingUi,index,faq}.ts`, `app/components/features/tour/PlatformTour.tsx`, `app/components/features/posts/ShareRouteModal.tsx`, `app/components/ui/CookieConsent.tsx`, `app/components/pwa/InstallPrompt.tsx`, `app/(dashboard)/home/page.tsx`, `app/layout.tsx`, `public/locales/{en,pcm}.json`, `app/__tests__/config/{platformTour,shareRouteTabs,locales}.test.ts`
+
+## 2026-10-21 — Tabbed Share-Route Composer (Sprint 85)
+
+**Summary:**
+Reworked the share-route modal from cramped stacked collapsibles into one config-driven tabbed workspace: Details, Map, Score and Drafts share the full modal width, with short labels/icons and a live Drafts count badge so each section is legible on small screens. The footer now holds only Save Draft and Share. A pre-share nudge at the bottom of Details links directly to Map and Score (both highlighted), Find on map jumps to the Map tab, restoring a draft returns to Details, and the tour's score anchor sits on the always-visible Score tab. FAQs (English + PCM) document the layout.
+
+**Completed:**
+- `SHARE_ROUTE_MODAL_CONFIG` tab metadata (`tabs`, `defaultTab`, `tabsAriaLabel`, `detailsHint`, `mapPanelHeight`) + pure `resolveShareRouteTabId` fallback helper; legacy collapse flags retained
+- `ShareRouteModal` ARIA tablist with keyboard navigation, full-width Details form, Map preview, expanded Score coach, Drafts panel; tab-switching Details hint; Find-on-map tab jump; footer reduced to Save Draft + Share
+- `data-tour="route-score"` moved to the Score tab button; FAQ `share-route-tabs` (en + PCM) + Map-tab wording in `map-find-on-map`
+- New `shareRouteTabs.test.ts` covering metadata, fallback matrix, source wiring/footer contract and FAQ parity
+
+**Key Changes:**
+- Sections are peers in one workspace rather than nested accordions — no column-width squeeze and no hidden-state stacking
+- Tab ids resolve through a pure helper; unknown/stale ids degrade to Details rather than rendering an empty modal
+- No schema/migration/API changes; config additions are additive and the old flags still exist for compatibility
+
+**QA:** tsc 0 errors; jest 117/117 suites, 1246/1246 tests; lint no new findings in touched files; `prisma generate` + `next build` clean (107 static pages).
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`. Optional polish: per-tab completion indicators or remembering the last-used tab per session.
+
+## 2026-10-21 — Tour Viewport Safety, Drafts Footer, Nigeria-Aware Journey Times (Sprint 84)
+
+**Summary:**
+Closed the issue #240 follow-up with four config-driven, non-breaking changes. Tour cards now measure themselves and use an explicit width with edge-aware flipping/clamping plus a scroll cap, so long copy can never push the Next/Finish row below the viewport (welcome, end, offline and resume cards included). The composer footer stacks on small screens so the drafts count no longer collides with Save Draft/Share. Journey estimates were rebuilt around local conditions: provider free-flow car ETAs are calibrated per vehicle, public transport adds boarding plus per-stop pick-up/drop-off time, and every road journey gets one capped toll/agbero allowance — applied exactly once. A new FAQ (English + PCM) explains the estimate.
+
+**Completed:**
+- `platformTour.ts` display knobs + pure `resolveTourTooltipLayout` (explicit width, viewport-safe flip/clamp, max height); `PlatformTour.tsx` measures rendered tooltip/end/offline cards via ResizeObserver + viewport listeners
+- Composer footer responsive restructure with truncating drafts toggle
+- `journeyTime.ts` meta (`boardingWaitMins`, `perStopDwellMins`, `checkpointDelayMins`, `providerCalibration`) + `journeyOverheadMins`/`calibrateProviderDurationMins`/`estimateJourneyDurationMins`; `resolveJourneyDuration` options with overhead-once semantics
+- Wiring: `geo.estimateRoute` road factor, `useRouteTrace` stops, `ShareRouteModal` preview + persisted distance/estimate, post detail stops, `mapProxyService` straight-line/fallback durations
+- FAQ `route-time-estimates` en + PCM; tests extended in `journeyTime.test.ts` and `platformTour.test.ts`
+
+**Key Changes:**
+- Provider ETAs are treated as free-flow car travel; local calibration/overhead live in config, not inline in call sites
+- Fallback estimates are already overhead-inclusive; `resolveJourneyDuration` never double-adds
+- No schema/migration or removed API fields; optional `totalDistanceKm`/`estimatedMins` reuse existing post schema support
+
+**QA:** tsc 0 errors; jest 116/116 suites, 1231/1231 tests; lint no new findings in touched files; `prisma generate` + `next build` clean (107 static pages).
+
+**Next Sprint Focus:**
+Optional admin knobs for the calibration/overhead values, or surfacing the persisted estimate on feed cards. Otherwise select the next directive from `planning/task-queue.md`.
 
 ## 2026-10-17 — Supabase Database Transfer and Recovery (Sprint 73)
 
@@ -1818,3 +1945,43 @@ Fixed a timing-dependent bug where the home feed could remain on its loading ske
 **Files:**
 - Edited: `app/(dashboard)/home/page.tsx`, ai-system docs
 - Created: `app/__tests__/config/feedFirstLoad.test.ts`
+
+## 2026-10-20 — Sprint 82: Platform tour + review notice
+
+**Summary:**
+Shipped two non-breaking Issue-#25 features end to end: a config/metadata-driven interactive platform tour (spotlight overlay wizard across dashboard pages, replayable, offline-aware) and a dismissible floating review prompt with an embedded quick form, plus the shared FAQ/i18n/PWA/admin work they ride on. Tree-shaking-safe design: all gate/logic lives in pure config-module helpers so components stay dumb and the behavior matrices are directly unit-testable.
+
+**Completed:**
+- Platform tour: `platformTour.ts` config (5 steps, 3 interactive, stable selectors, spot-ring knobs, end card, offline copy, localStorage state), guest `/api/tour` GET serving the SiteConfig-merged config (SWR-cached and registered in sw.js/PWA prefixes/apiRegistry), `PlatformTour.tsx` spot-ring + tooltip wizard with interactive steps, offline blocked phase, resume/auto-start/replay, mounts + profile quick-link `action` kind replay entry.
+- Review notice: `reviewNotice.ts` pure gate matrix (3-day age, 7-day dismiss TTL, done flag, fail-safe has-review probe), `reviewNoticeBottomPx` lane, `ReviewNotice.tsx` floating collapse-to-pill card reusing `/api/reviews` + `reviews.*` i18n, root-layout mount.
+- Docs: en+pcm FAQ (new `tour` category, `review-prompt`), 27 new i18n keys, admin `platformTourConfig` simple card + validator branch + seed entry.
+- Tests: `platformTour.test.ts` (18) + `reviewNotice.test.ts` (16); suites 116, tests 1216, all green with the full QA gate.
+
+**Key Changes:**
+- New precedent: operational knobs in SiteConfig + `ADMIN_SIMPLE_CONFIG_CARDS`, content in code config — the tour never depends on the network for its step list, which is what makes it PWA-offline usable.
+- New floating-UI lane `reviewNoticeBottomPx` keeps stacked notices collision-free.
+
+**Files:**
+- Created: `app/lib/config/platformTour.ts`, `app/lib/config/reviewNotice.ts`, `app/api/tour/route.ts`, `app/components/features/tour/PlatformTour.tsx`, `app/components/features/reviews/ReviewNotice.tsx`, `app/__tests__/config/platformTour.test.ts`, `app/__tests__/config/reviewNotice.test.ts`
+- Edited: `app/lib/config/{floatingUi,admin,index,profileQuickLinks,pwa,apiRegistry}.ts`, `app/(dashboard)/{layout.tsx,profile/page.tsx}`, `app/layout.tsx`, `app/lib/config/faq.ts`, `public/locales/{en,pcm}.json`, `app/__tests__/config/locales.test.ts`, `prisma/seed.ts`, `public/sw.js`
+
+## 2026-10-20 — Sprint 83: Platform tour enhancements
+
+**Summary:**
+Extended the shipped platform tour without changing its config-driven architecture: guests now get the tour (including a sign-in/register walkthrough) from the root layout, the spotlight scrim is click-through, the route composer and explore mobile bar are covered, and interrupted tours resume through an explicit top-center prompt instead of a silent hijack.
+
+**Completed:**
+- Guest + auth journey: `PlatformTour` moved from the dashboard layout to `app/layout.tsx`; steps carry an `audience` (`all`/`guest`/`authenticated`), added `auth-sign-in`/`auth-register` anchored on login/register email inputs, and `stepId` persists so a full-page registration/sign-in reload resumes at the first still-visible step (`resolveTourResumeIndex`).
+- Non-blocking spotlight: outer overlay is `pointer-events-none` with `pointer-events-auto` on tooltip/resume/offline/end cards, so theme toggle, share trigger, modal controls and normal page actions keep working.
+- Composer + explore: `data-tour` anchors on the first origin input, locate-me, find-on-map and route-score in `ShareRouteModal`, per-step `timeoutMs`; persistent mobile "Near me" button on `/explore`.
+- Entry points + persistence: `TourLaunchButton` on FAQ, config-driven footer `actionEvent` link, auto-start only on `autoStartRoutes` (default `/home`), top-center resume prompt (`resume.autoResume` false), and `bootstrapConfigRef` so config-fetch resolution no longer cancels the start timer.
+- Docs/copy: en+pcm auth/composer/resume/takeTour keys (+17, 331 total) and FAQ guests-auth/composer/resume (en+pcm); tests extended for audience/resume/auto-start/timeout/normalize/validate and anchor/mount/trigger source assertions.
+- QA full in-runner: `npx tsc --noEmit` 0 errors; jest 116/116 suites 1221/1221 tests; lint clean on touched files; `next build` clean (107 static pages).
+
+**Key Changes:**
+- Audience filtering is the mechanism that makes one shipped step list valid for both guests and signed-in users; `stepId` (not just an index) is what survives the auth transition.
+- Interactive steps must not capture the pointer globally — a `pointer-events-none` scrim is now the standing rule for any guided overlay.
+
+**Files:**
+- Created: `app/components/features/tour/TourLaunchButton.tsx`
+- Edited: `app/lib/config/{platformTour,faq,footer}.ts`, `app/components/features/tour/PlatformTour.tsx`, `app/components/features/posts/ShareRouteModal.tsx`, `app/components/ui/AppFooter.tsx`, `app/(public)/faq/FaqClient.tsx`, `app/(auth)/{login,register}/page.tsx`, `app/(dashboard)/{layout.tsx,explore/page.tsx}`, `app/layout.tsx`, `public/locales/{en,pcm}.json`, `app/__tests__/config/{platformTour,locales}.test.ts`

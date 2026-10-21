@@ -56,6 +56,7 @@ Base unit 4px: 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96
 - **Secondary**: Outlined with `--color-primary` border, primary text color
 - **Destructive**: Solid `--color-error-text` background, white text
 - **Ghost**: No background/border, used in navigation contexts
+- **On-primary**: Transparent with a `white/40` border and white text, for actions placed on the brand gradient (landing hero/CTA). Added Sprint 88.
 - **Disabled state**: Opacity 0.4, pointer-events none
 - App* wrapper: `AppButton` — pure Tailwind + `lucide-react` Loader2 spinner (no Ant Design import in code; verified 2026-10-08)
 
