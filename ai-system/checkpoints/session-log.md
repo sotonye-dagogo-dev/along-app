@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
-> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 118/118 suites 1261/1261, lint no new findings on touched files, next build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
+> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 119/119 suites 1265/1265, lint no new findings on touched files, next build clean)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,32 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
+
+**Completed:**
+
+- Closed the Issue #240 minor-polish directive, non-breaking (config/component/tests/docs only; no schema, migration, API or persisted-state change). (1) **Desktop suggestions rail:** the sticky xl panel now caps to the viewport (`max-h-[calc(100vh-2rem)]`) and scrolls vertically on its own (`overflow-y-auto`, `scroll-thin scroll-stable`, `overscroll-contain`), applied through additive `SUGGESTIONS_PANEL_CONFIG.panel` metadata to both the loading skeleton and live panel — every card stays reachable on short/large desktops. (2) **Mobile Share Route trigger:** the bottom-bar FAB is now a `type="button"` that opens DashboardNav's local `ShareRouteModal` state (the same composer + `handleShareSubmit` as the desktop sidebar) instead of linking to `/home?share=true`. That removes the silent no-op when the URL was already `/home?share=true` after closing the modal or when Next treated the identical href as a no-op. (3) **Tests:** extended `suggestionsPanel.test.ts` and added `mobileShareTrigger.test.ts`.
+- QA gate green in-runner: `npx tsc --noEmit` 0 errors; `npx jest --ci --maxWorkers=2 --silent` 119/119 suites 1265/1265 tests; `npm run lint` no new findings on touched files (pre-existing unrelated repo errors unchanged); `DIRECT_LOCAL_DB=placeholder npm run build` clean (107 static pages).
+- Chain: execute-feature → update-ai-system deep sync executed (Sprint 90 in project-plan/task-queue, this log, dev-history, decisions, repair-system, system-architecture, design-system, test-results, indexes, in-progress closed).
+
+**Files Modified:**
+
+- Edited: `app/lib/config/suggestionsPanel.ts`, `app/components/ui/SuggestionsPanel.tsx`, `app/components/ui/DashboardNav.tsx`, `app/__tests__/config/suggestionsPanel.test.ts`, ai-system docs
+- Added: `app/__tests__/config/mobileShareTrigger.test.ts`
+
+**Next Task:**
+
+Select the next directive from `planning/task-queue.md`.
+
+**Assumptions Made:**
+
+- "Suggestions panel/section" means the desktop `xl` sidebar rail (`SuggestionsPanel`), not the mobile `SuggestionsRail`, which already owns a horizontal scroller.
+- The FAB should work on every dashboard route, so it opens the already-mounted local composer instead of requiring a navigation to `/home`; guests keep the same access they had with the old query link.
+
+**Notes / Blockers:**
+
+- None. The home page keeps its own composer/query hand-off for `?share=true` and tour events; the bottom FAB no longer depends on it.
 
 ## Session — 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
 

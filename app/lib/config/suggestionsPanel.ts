@@ -6,8 +6,23 @@
  * of growing the sidebar. The carousel viewport is a native `overflow-x-auto`
  * scroller, so keyboard/touch users can always scrub freely even when
  * autoplay is paused or reduced-motion is on.
+ *
+ * The rail itself is sticky at `top-4`. On short desktop viewports its
+ * stacked cards can exceed the screen, so the panel owns an independent
+ * vertical scroller capped to the viewport (minus the sticky offset). Every
+ * section stays reachable without the page having to scroll the rail away.
  */
 export interface SuggestionsPanelConfig {
+  panel: {
+    /** Viewport cap for the sticky rail (top-4 = 1rem above + 1rem below). */
+    maxHeightClass: string;
+    /** Native vertical scroller so trackpad/keyboard/touch all work. */
+    overflowClass: string;
+    /** Slim themed scrollbar (design-system tokens). */
+    scrollbarClass: string;
+    /** Keep wheel/touch gestures inside the rail once it bottoms out. */
+    overscrollClass: string;
+  };
   openRequests: {
     /** Item count at/above which the section switches to carousel mode. */
     minForCarousel: number;
@@ -25,6 +40,12 @@ export interface SuggestionsPanelConfig {
 }
 
 export const SUGGESTIONS_PANEL_CONFIG: SuggestionsPanelConfig = {
+  panel: {
+    maxHeightClass: "max-h-[calc(100vh-2rem)]",
+    overflowClass: "overflow-y-auto",
+    scrollbarClass: "scroll-thin scroll-stable",
+    overscrollClass: "overscroll-contain",
+  },
   openRequests: {
     minForCarousel: 2,
     cardWidthClass: "w-[228px]",

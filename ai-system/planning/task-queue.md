@@ -2,11 +2,24 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
-> - last-synced: 2026-10-21 (Sprint 89)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
+> - last-synced: 2026-10-21 (Sprint 90)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 90 — Scrollable desktop suggestions + reliable mobile share trigger (2026-10-21, execute-feature) [S]
+
+> **Section summary:** Issue #240 follow-up, non-breaking (config/component/test/docs only; no schema, migration, API or persisted-state change). The sticky xl suggestions rail now caps to the viewport and scrolls independently, so every card remains reachable on short/large desktops. The mobile bottom-bar Share Route FAB now opens the same local composer instance as the desktop sidebar instead of navigating to `/home?share=true`, removing the no-op when the URL was already on that query (reported "button sometimes does nothing"). QA full in-runner: tsc 0, jest 119/119 suites 1265/1265, lint no new findings, prisma generate + next build clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [S] | `suggestionsPanel.ts` — additive `panel` metadata (`maxHeightClass` = `max-h-[calc(100vh-2rem)]`, `overflowClass` = `overflow-y-auto`, themed `scrollbarClass`, `overscrollClass`); component applies it to both loading + live asides | [x] |
+| [S] | `DashboardNav.tsx` — mobile Share Route FAB becomes a `type="button"` that sets local `showShareModal` (same `<ShareRouteModal>` + `handleShareSubmit` as desktop sidebar); no `/home?share=true` navigation/no-op path | [x] |
+| [S] | Tests — `suggestionsPanel.test.ts` panel-cap/config-wiring assertions + NEW `mobileShareTrigger.test.ts` local-state/FAB contract | [x] |
+| [S] | QA + deep sync — tsc, full jest, lint, build; task queue, project plan, architecture, decisions, repair entry, checkpoints, history, test results, indexes | [x] |
+
+---
 
 ## Sprint 89 — Hero tour CTA + unconditional tour escape (2026-10-21, execute-feature) [S]
 

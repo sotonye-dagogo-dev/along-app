@@ -2,10 +2,16 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 90 — Scrollable desktop suggestions + reliable mobile share trigger (2026-10-21, execute-feature)
+
+- [x] Desktop suggestions rail [Sprint 90]: sticky xl panel is viewport-capped (`max-h-[calc(100vh-2rem)]`) with its own `overflow-y-auto` + `scroll-thin scroll-stable overscroll-contain`; loading skeleton shares the same shell, so every card is reachable on short large screens
+- [x] Mobile share FAB [Sprint 90]: bottom-bar Share Route is a button that opens DashboardNav's local composer state/modal (same as desktop sidebar) instead of navigating to `/home?share=true`; eliminates the identical-href/closed-modal no-op
+- [x] QA + tests [Sprint 90]: panel config/wiring + mobile trigger contracts; tsc 0, jest 119/119 suites 1265/1265, lint no new findings, build clean
 
 ## Sprint 89 — Hero tour CTA + unconditional tour escape (2026-10-21, execute-feature)
 

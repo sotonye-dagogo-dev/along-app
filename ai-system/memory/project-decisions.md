@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: unconditional X/Escape + hero tour entry)
-> - last-verified-against-code: 2026-10-21 (Sprint 89 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: viewport-capped suggestions rail + local mobile share trigger)
+> - last-verified-against-code: 2026-10-21 (Sprint 90 in-runner QA: tsc 0, jest 119/119 suites 1265/1265, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -34,6 +34,20 @@
 ---
 
 ## Decisions
+
+## Sticky Rails Cap Themselves; Cross-Surface Share Opens Local State
+
+**Decision:** (1) The desktop `xl` suggestions rail is a sticky element whose content can exceed the viewport, so `SUGGESTIONS_PANEL_CONFIG.panel` gives it `max-h-[calc(100vh-2rem)]` (top-4 + bottom-4), `overflow-y-auto`, the themed `scroll-thin scroll-stable` scrollbar and `overscroll-contain`. The loading skeleton and live panel share the same shell. (2) The mobile bottom-tab Share Route FAB is a `<button>` that opens `DashboardNav`'s local `ShareRouteModal` (`setShowShareModal(true)`) — the exact composer + `handleShareSubmit` used by the desktop sidebar — rather than a `<Link href="/home?share=true">`.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 90)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:** A sticky rail cannot be reached by scrolling the page once its content drops below the fold, so it must own a vertical scroller inside a viewport cap. The query-link FAB silently no-oped whenever the URL was already `/home?share=true` (e.g. after closing the modal) or Next treated the identical href as a no-op; the desktop trigger never had that failure because it used local state. Using the already-mounted local state makes the action route-independent.
+
+**Alternatives Considered:** Letting the whole page scroll the sticky rail (impossible by definition); `max-h-screen` (ignores the `top-4` offset and can clip the last card); clearing the `share` query on close (fixes one path but still navigates/remounts and loses the toolbar context); dispatching `SHARE_ROUTE_OPEN_EVENT` from the FAB (only the home page listens, so it would fail elsewhere).
+
+**Implications:** Any future sticky sidebar/rail with stacked cards should cap + scroll rather than rely on page scroll. The home page's `?share=true` query hand-off remains for deep links and tour events; the bottom FAB no longer depends on it. Guest access is unchanged because the same modal opens for everyone.
 
 ## Pivotal Tour Steps Hide the Labelled End, Never the Escape Hatch
 

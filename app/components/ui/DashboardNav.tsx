@@ -135,15 +135,22 @@ export default function DashboardNav() {
       <nav className="fixed lg:hidden bottom-0 left-0 right-0 z-20 bg-bg-card/88 backdrop-blur-xl border-t border-border flex items-center justify-around h-16 px-2">
         {MOBILE_TABS.map((tab) => {
           if (tab.isFab) {
+            // Open the local composer directly (same instance the desktop
+            // sidebar uses) instead of navigating to `/home?share=true`.
+            // The query-link approach silently no-oped whenever the URL was
+            // already `/home?share=true` (e.g. after closing the modal), or
+            // when Next treated the identical href as a no-op — the reported
+            // "bottom Share Route button sometimes does nothing" bug.
             return (
-              <Link
+              <button
                 key={tab.label}
-                href={tab.href}
-                className="w-14 h-14 rounded-full bg-primary text-white grid place-items-center -mt-5 shadow-primary shadow-lg transition-transform hover:scale-105"
+                type="button"
+                onClick={() => setShowShareModal(true)}
+                className="w-14 h-14 rounded-full bg-primary text-white grid place-items-center -mt-5 shadow-primary shadow-lg transition-transform hover:scale-105 cursor-pointer"
                 aria-label={tab.label}
               >
                 <MapPin className="w-6 h-6" />
-              </Link>
+              </button>
             )
           }
           const active = isActive(tab.href)

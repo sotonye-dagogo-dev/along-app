@@ -1,7 +1,7 @@
 # Design System
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-15 (Sprint 61: flag/badge visibility contract — vehicle -100 washes + borders, trust token classes, tier-shield display registry, white-on-pastel pill sweep)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: viewport-capped sticky rails + mobile tab bar share trigger)
 > - last-verified-against-code: 2026-10-15 (VEHICLE_REGISTRY borderClass + chip border/semibold; TrustBadge bg-trust-*/text-trust-*/border-trust-* tokens; REWARD_TIER_DISPLAY pills; AuthLinkPanel/admin-email/admin-users/notifications token pairings; tsc 0, jest 85/85)
 > - staleness-policy: re-verify if UI components or styling dependencies change
 
@@ -67,7 +67,7 @@ Base unit 4px: 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96
 - App* wrappers: `AppInput`, `AppTextarea`, `AppSelect`, `ConfigDrivenForm` — Tailwind-based (no Ant Design Form import in code)
 
 ### Navigation
-- **Mobile**: Bottom tab bar (`DashboardNav` MOBILE_TABS, verified 2026-10-08) — Home, Explore, Share-Route FAB (center), Bookmarks, Profile
+- **Mobile**: Bottom tab bar (`DashboardNav` MOBILE_TABS, verified 2026-10-21) — Home, Explore, Share-Route FAB (center, opens the local composer), Notifications, Profile
 - **Desktop**: Collapsible sidebar (`w-60` / `w-16`) with main nav items via `filterNavItems(role, "main")` + top nav actions
 - **Admin**: Left sidebar with collapsible menu
 - No Ant Design Menu in code — nav is Tailwind + `lucide-react` icons + `next/link`
@@ -83,6 +83,7 @@ Base unit 4px: 0, 4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96
 - Firefox: `scrollbar-width: thin` + `scrollbar-color`; WebKit/Blink: `::-webkit-scrollbar` family (10px base, transparent track, `content-box` halo so the thumb never touches the edge).
 - Utilities (class names owned by `SCROLLBAR_CONFIG`, `app/lib/config/scrollbar.ts` — never hardcoded strings): `.scroll-thin` (6px, tooltips/dropdowns/sidebar rails), `.scroll-stable` (`scrollbar-gutter: stable`, no layout shift).
 - Floating/tooltip panels that scroll internally (e.g. TrustBadge breakdown) use `.scroll-thin` + a config-driven max-height.
+- Sticky rails whose stacked cards can exceed the viewport (e.g. the desktop suggestions panel) cap to `max-h-[calc(100vh-2rem)]` and own a vertical `.scroll-thin .scroll-stable` scroller with `overscroll-contain`; page scroll alone cannot reveal content below the fold on a sticky element. Config: `SUGGESTIONS_PANEL_CONFIG.panel` [Sprint 90].
 
 ### Modals / Dialogs
 - `AppModal` — Tailwind-based modal wrapper (no Ant Design Modal import in code; verified 2026-10-08)

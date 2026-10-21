@@ -12,6 +12,19 @@ import { SUGGESTIONS_PANEL_CONFIG } from "@/app/lib/config"
 import { filterVisibleUsers, isVisibleUser } from "@/app/lib/config/userVisibility"
 import type { SuggestionsData, SuggestionPost } from "@/app/components/features/suggestions/types"
 
+/**
+ * Sticky desktop rail + its own vertical scroller. On short large screens the
+ * stacked cards exceed the viewport; without a cap they would sit below the
+ * fold with no way to reach them (the page scroll cannot move a sticky rail).
+ */
+const SUGGESTIONS_PANEL_CLASS = [
+  "hidden xl:block w-80 shrink-0 sticky top-4 self-start space-y-4",
+  SUGGESTIONS_PANEL_CONFIG.panel.maxHeightClass,
+  SUGGESTIONS_PANEL_CONFIG.panel.overflowClass,
+  SUGGESTIONS_PANEL_CONFIG.panel.scrollbarClass,
+  SUGGESTIONS_PANEL_CONFIG.panel.overscrollClass,
+].join(" ")
+
 function OpenRequestCard({ req }: { req: SuggestionPost }) {
   return (
     <Link
@@ -70,7 +83,7 @@ export function SuggestionsPanel() {
 
   if (authLoading || (loading && !data)) {
     return (
-      <aside className="hidden xl:block w-80 shrink-0 sticky top-4 self-start space-y-4" aria-label="Suggestions">
+      <aside className={SUGGESTIONS_PANEL_CLASS} aria-label="Suggestions">
         {[0, 1, 2].map((i) => (
           <div key={i} className="bg-bg-card border border-border rounded-xl p-4 space-y-2.5 animate-pulse">
             <div className="h-3.5 w-28 bg-bg-elevated rounded" />
@@ -83,7 +96,7 @@ export function SuggestionsPanel() {
   }
 
   return (
-    <aside className="hidden xl:block w-80 shrink-0 sticky top-4 self-start space-y-4" aria-label="Suggestions">
+    <aside className={SUGGESTIONS_PANEL_CLASS} aria-label="Suggestions">
       {/* Who to follow */}
       <div className="bg-bg-card border border-border rounded-xl overflow-hidden shadow-sm">
         <div className="px-4 py-3 text-sm font-semibold border-b border-border flex items-center gap-1.5">
