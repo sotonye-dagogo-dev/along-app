@@ -2,7 +2,7 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-19 (Sprint 80: duplicate bug-report / multi-admin assignment race entry)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 90: bottom-bar share query-link no-op + sticky rail overflow)
 > - last-verified-against-code: 2026-10-19
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
@@ -1456,4 +1456,52 @@ If correctness depends on "nobody wrote between my check and my write", put chec
 - `app/lib/config/reportAttachments.ts` (BUG_REPORT_DEDUP_CONFIG)
 
 **Date:** 2026-10-19
+**Status:** Active
+---
+
+## Bottom-Bar Share Route Sometimes Does Nothing (Query-Link No-Op)
+
+**Symptom:**
+On mobile, tapping the center Share Route FAB in the bottom tab bar intermittently did nothing, while the desktop sidebar Share Route entry and the home feed composer trigger always worked.
+
+**Root Cause:**
+The FAB was a `<Link href="/home?share=true">`. The home page opens its modal from a `useSearchParams` effect. If the URL was already `/home?share=true` (for example after closing the modal once), or Next.js treated the identical href as a no-op navigation, the search params never changed and the effect never re-ran — no modal. Every other trigger used local React state (`setShowShareModal(true)`), which has no URL dependency.
+
+**Fix Applied:**
+`DashboardNav` now renders the FAB as a `type="button"` that sets the local `showShareModal` state, reusing the already-mounted `<ShareRouteModal>` and `handleShareSubmit` that the desktop sidebar uses. No navigation or query-string dependency. The home `?share=true` hand-off remains for deep links/tour events.
+
+**Prevention:**
+When an action is available on every route and the owning component is already mounted, trigger its local state directly. Never make an action depend on navigating to the URL you may already be on — identical-href navigations can be treated as no-ops. Add a source-contract test when an interactive trigger is migrated.
+
+**Files Affected:**
+
+- `app/components/ui/DashboardNav.tsx`
+- `app/__tests__/config/mobileShareTrigger.test.ts`
+
+**Date:** 2026-10-21
+**Status:** Active
+
+---
+
+## Sticky Suggestions Rail Cards Unreachable Below the Fold
+
+**Symptom:**
+On shorter desktop/large-screen viewports, the lower suggestions sections (trending tags, explore) could not be reached: the page scrolled but the sticky rail stayed put, with the remaining cards rendered below the viewport.
+
+**Root Cause:**
+A `sticky top-4 self-start` element is removed from page scroll. Its stacked cards had no height cap and no own scroller, so any content taller than the viewport was simply inaccessible.
+
+**Fix Applied:**
+Additive `SUGGESTIONS_PANEL_CONFIG.panel` metadata and a shared `SUGGESTIONS_PANEL_CLASS` in `SuggestionsPanel.tsx`: `max-h-[calc(100vh-2rem)]` (sticky top-4 + bottom breathing room), `overflow-y-auto`, `scroll-thin scroll-stable`, `overscroll-contain`. Both the loading skeleton and live panel use it.
+
+**Prevention:**
+Every sticky sidebar/rail with vertical content must cap its height and own its scroll. Use the viewport minus sticky offsets (not `max-h-screen`), and keep the skeleton/live shells identical so loading cannot overflow either.
+
+**Files Affected:**
+
+- `app/lib/config/suggestionsPanel.ts`
+- `app/components/ui/SuggestionsPanel.tsx`
+- `app/__tests__/config/suggestionsPanel.test.ts`
+
+**Date:** 2026-10-21
 **Status:** Active

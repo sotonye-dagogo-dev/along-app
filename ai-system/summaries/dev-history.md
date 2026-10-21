@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
-> - last-verified-against-code: 2026-10-21 (Sprint 89 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
+> - last-verified-against-code: 2026-10-21 (Sprint 90 in-runner QA: tsc 0, jest 119/119 suites 1265/1265, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,23 @@
 ---
 
 ## History
+
+## 2026-10-21 — Scrollable Desktop Suggestions + Reliable Mobile Share Trigger (Sprint 90)
+
+**Summary:**
+Closed a small but high-impact polish directive without touching schemas or APIs. The desktop suggestions rail now scrolls within a viewport cap, and the mobile bottom-bar Share Route button reliably opens the composer locally instead of depending on a URL query hand-off.
+
+**Completed:**
+- `SUGGESTIONS_PANEL_CONFIG.panel` metadata caps the sticky xl rail (`max-h-[calc(100vh-2rem)]`) and gives it a themed vertical scroller (`overflow-y-auto`, `scroll-thin scroll-stable`, `overscroll-contain`); loading + live asides share the class
+- `DashboardNav` mobile Share Route FAB opens the same local `ShareRouteModal`/`handleShareSubmit` as the desktop sidebar
+- New `mobileShareTrigger.test.ts` + expanded `suggestionsPanel.test.ts`; full QA gate green
+
+**Key Changes:**
+- Sticky sidebars must cap their height and own their scroll when stacked content can exceed the viewport
+- Cross-surface triggers should prefer the already-mounted local state over navigation/query side effects when the action is present on every route
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`.
 
 ## 2026-10-21 — Hero Tour CTA + Unconditional Escape (Sprint 89)
 

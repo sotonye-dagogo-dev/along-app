@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 88: per-step exit policy, responsive CTA rows)
-> - last-verified-against-code: 2026-10-21 (Sprint 88 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: sticky rails own their scroll; cross-surface triggers use local state)
+> - last-verified-against-code: 2026-10-21 (Sprint 90 in-runner QA: tsc 0, jest 119/119 suites 1265/1265, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -31,6 +31,28 @@
 ---
 
 ## Lessons
+
+## Sticky Rails Must Cap Height and Own Their Scroll
+
+**Context:** Sprint 90. The desktop suggestions rail was `sticky top-4 self-start` with four stacked cards. On shorter desktops the lower cards rendered below the viewport, and page scrolling could never reveal them because a sticky element stays fixed relative to the viewport.
+
+**What We Learned:** A sticky sidebar/rail is outside normal page scroll, so any content that can exceed the viewport needs an explicit `max-height` (`calc(100vh - sticky offsets)`) plus `overflow-y-auto` (and `overscroll-contain` so the page does not take over). Put the geometry and scrollbar utilities in config, apply the same shell to loading and live states, and test the config wiring.
+
+**Apply When:** Building any sticky/sidebar panel with stacked cards, especially one whose card count or text length varies with data or locale.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Prefer Already-Mounted Local State Over Navigation for Cross-Surface Actions
+
+**Context:** Sprint 90. The mobile bottom-bar Share Route FAB was a `<Link href="/home?share=true">`; the home page opened its composer from a search-param effect. After closing the modal the URL was already the same, so tapping the FAB could be a no-op — while the desktop sidebar (local `setShowShareModal(true)`) always worked.
+
+**What We Learned:** When the owning component is mounted on every relevant route and the action is purely local UI (open a composer), trigger its local state directly. Do not make repeated actions depend on navigating to a URL you may already be on: identical-href navigation can be optimized away, and URL state must then be manually cleared. Keep query/event hand-offs for deep links and tour automation.
+
+**Apply When:** A persistent nav/action is reported to work "sometimes" while another entry point works; deciding between a link and a local handler for modals, drawers, or tabs.
+
+**Supersedes:** None
+**Superseded by:** None
 
 ## Guided Tours Need an Exit Policy Per Step, Not Just Global Skip
 
