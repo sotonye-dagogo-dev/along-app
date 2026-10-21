@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 89: hero tour CTA + unconditional tour escape)
-> - last-verified-against-code: 2026-10-21 (Sprint 89 in-runner QA: tsc 0, jest 118/118 suites 1261/1261, build clean; config count 95 re-verified)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
+> - last-verified-against-code: 2026-10-21 (Sprint 90 in-runner QA: tsc 0, jest 119/119 suites 1265/1265, build clean; config count 95 re-verified)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -33,7 +33,7 @@ Page Components (app/(auth|dashboard|admin|public|admin)/)
         → suggestions/EndlessCarousel (scroll-based autoplay, own overflow wrapper, ENDLESS_CAROUSEL_CONFIG) + SuggestionsRail (mobile, xl:hidden, feed-owned) + FollowButton + About reviews tape (same wrapper, real /api/reviews + ReviewCtaPanel cadence [Sprint 25]) + blog/FeaturedBlogsSection (same wrapper, FEATURED_BLOGS_CONFIG + /api/blog; landing server-fed, about after reviews, invite after leaderboard [Sprint 52]; covers via blogImages resolver [Sprint 54]) + blog/BlogPostArticle (shared by public [slug] + Studio preview [Sprint 54]) + blog/BlogImageUpload (cover/inline → /api/upload folder=blog → cleanup blog sources [Sprint 54])
         → reviews/ReviewsPanel (star form + guest gate + FAQ + list; own profile reviews tab + #reviews deep link; other-profile read-only authorId scope [Sprint 25]) + reviews/ReviewsCarouselSection (same EndlessCarousel + CTA cadence; landing below blogs, invite compact below blogs [Sprint 53])
         → (public)/LandingCopy (landing i18n islands: hero/features/CTA/feed-preview [Sprint 25])
-        → ui/SuggestionsPanel (live /api/suggestions: who-to-follow, open requests, trending tags)
+        → ui/SuggestionsPanel (live /api/suggestions: who-to-follow, open requests, trending tags; Sprint 90 viewport-capped sticky rail with own vertical scroll)
     → App-level Hooks (app/hooks/useAuth, useFeedInteractions)
     → Client Cache (app/lib/cache/memoryCache + app/lib/hooks/useCachedFetch)
     → User Location (app/lib/hooks/useUserLocation → explore + post-detail maps [Sprint 23])
