@@ -128,12 +128,20 @@ export {
   trafficSensitivityForVehicle,
   shouldRecomputeFromDistance,
   estimateDurationMins,
+  estimateJourneyDurationMins,
+  calibrateProviderDurationMins,
+  journeyOverheadMins,
   legTrafficFactor,
   adjustDurationForVehicleAndTraffic,
   dominantVehicleForSteps,
   resolveJourneyDuration,
 } from "./journeyTime";
-export type { JourneyVehicleMeta, JourneyTimeConfig, JourneyStepLike } from "./journeyTime";
+export type {
+  JourneyVehicleMeta,
+  JourneyTimeConfig,
+  JourneyStepLike,
+  JourneyDurationOptions,
+} from "./journeyTime";
 export { AUTH_VERIFICATION_CONFIG, OTP_TTL_MINUTES, cooldownKeyFor, attemptsKeyFor, maskEmail } from "./authVerification";
 export type { AuthVerificationConfig } from "./authVerification";
 export { PUSH_PROMPT_CONFIG, isLikelyIos } from "./pushPrompt";

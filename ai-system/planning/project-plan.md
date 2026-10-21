@@ -2,10 +2,20 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: platform tour enhancements)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 84: tour viewport safety + drafts footer + journey-time accuracy)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 84 — Tour viewport safety + drafts footer + Nigeria-aware journey times (2026-10-21, execute-feature)
+
+- [x] Tour layout [Sprint 84]: config knobs (`tooltipGapPx`, `tooltipMarginPx`, `tooltipMaxHeightRatio`) + pure `resolveTourTooltipLayout`; explicit card width, edge flip/clamp, internal scroll cap; measured tooltip/end/offline/centered cards keep actions reachable
+- [x] Drafts footer [Sprint 84]: composer footer stacks on mobile, drafts toggle truncates, Save Draft/Share stay on their own row
+- [x] Journey calibration [Sprint 84]: per-vehicle boarding wait, per-stop pick-up/drop-off dwell, toll/agbero allowance, provider free-flow multiplier; overhead applied exactly once and hard-capped
+- [x] Duration wiring + persistence [Sprint 84]: `geo.estimateRoute`, `useRouteTrace`, `ShareRouteModal` (persists `totalDistanceKm`/`estimatedMins`), post detail stops, `mapProxyService` straight-line/provider fallbacks
+- [x] FAQ + QA [Sprint 84]: `route-time-estimates` en+pcm; calibration/layout tests; tsc 0, jest 116/116 suites 1231/1231, lint no new findings, build clean
+
+---
 
 ## Sprint 83 — Platform tour enhancements (2026-10-20, execute-feature)
 

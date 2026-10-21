@@ -2,11 +2,27 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-20 (Sprint 83: platform tour enhancements)
-> - last-synced: 2026-10-20 (Sprint 83)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 84: tour viewport safety + drafts footer + journey-time accuracy)
+> - last-synced: 2026-10-21 (Sprint 84)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 84 — Tour viewport safety + drafts footer + Nigeria-aware journey times (2026-10-21, execute-feature) [L]
+
+> **Section summary:** Issue #240 follow-up directive, non-breaking (config/component/helper changes; no schema/migration). (1) Tour cards keep a stable explicit width, flip/clamp around the safe viewport and cap height with internal scroll so long copy never pushes actions off-screen; welcome/end/offline/resume cards get the same treatment. (2) Composer footer stacks on small screens so the drafts count no longer collides with Save Draft/Share. (3) Journey durations are calibrated for Nigerian conditions: provider free-flow ETAs get a per-vehicle multiplier, public transport adds boarding + per-stop pick-up/drop-off dwell, every road journey gets one toll/agbero allowance (hard-capped), and composer submits persist distance/estimate for detail/offline fallback. (4) FAQ (en + pcm) explains the estimate. QA full in-runner: tsc 0 errors, jest 116/116 suites 1231/1231 tests, lint no new findings, prisma generate + next build clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [M] | `platformTour.ts` — display knobs `tooltipGapPx`/`tooltipMarginPx`/`tooltipMaxHeightRatio` with normalize/validate; pure `resolveTourTooltipLayout` (explicit width, edge-aware flip/clamp, max-height) | [x] |
+| [M] | `PlatformTour.tsx` — measure tooltip/end/offline cards (ResizeObserver + viewport/orientation/visualViewport); apply computed layout so actions stay reachable; resume card scroll cap | [x] |
+| [S] | `ShareRouteModal.tsx` — mobile-stacked footer (`flex-col` → `sm:flex-row`), truncating drafts toggle, actions on their own row | [x] |
+| [M] | `journeyTime.ts` — per-vehicle boarding/dwell/checkpoint/provider-calibration meta; `journeyOverheadMins`/`calibrateProviderDurationMins`/`estimateJourneyDurationMins`; `resolveJourneyDuration` options + overhead-once contract; `maxOverheadMins`/`maxStopsCounted` guards | [x] |
+| [M] | Duration wiring — `geo.estimateRoute` road factor, `useRouteTrace` stops, ShareRouteModal preview + persisted `totalDistanceKm`/`estimatedMins`, post detail stops, `mapProxyService` straight-line/provider fallback durations | [x] |
+| [S] | FAQ — `route-time-estimates` (en + PCM) covering calibration, traffic, boarding/pick-ups, tolls/agberos | [x] |
+| [S] | Tests — journey-time calibration/overhead/cap/immune-mode coverage + tour layout width/flip/clamp/centered/normalize/validate coverage | [x] |
+
+---
 
 ## Sprint 83 — Platform tour enhancements (2026-10-20, execute-feature) [L]
 

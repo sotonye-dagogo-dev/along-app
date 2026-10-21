@@ -35,6 +35,36 @@
 
 ## Sessions
 
+## Session — 2026-10-21 (Sprint 84: tour viewport safety + drafts footer + Nigeria-aware journey times)
+
+**Completed:**
+
+- Closed the issue #240 follow-up directive end-to-end, four config-driven, non-breaking lanes. (1) **Tour viewport safety:** `platformTour.display` += `tooltipGapPx` / `tooltipMarginPx` / `tooltipMaxHeightRatio` (normalized + validated); new pure `resolveTourTooltipLayout` keeps an explicit card width (copy length no longer shrinks it), flips/clamps around every viewport edge, and caps height with internal scroll as the last resort; `PlatformTour` now measures the rendered tooltip/end/offline cards (ResizeObserver + resize/orientation/visualViewport listeners) and applies the computed layout so the action row is always reachable, including centered welcome/end cards. (2) **Drafts footer overlap:** composer footer stacks on mobile (`flex-col` → `sm:flex-row`), the drafts toggle truncates instead of squeezing, and Save Draft/Share keep their own row. (3) **Nigeria-aware journey times:** `journeyTime.vehicles` += `boardingWaitMins` / `perStopDwellMins` / `checkpointDelayMins` / `providerCalibration`; new pure `journeyOverheadMins` (boarding + per-stop pick-up/drop-off + toll/agbero allowance, hard-capped), `calibrateProviderDurationMins`, `estimateJourneyDurationMins`; `resolveJourneyDuration` accepts `{ intermediateStops, calibrateProvider, includeOverhead }` and adds overhead exactly once (fallback is treated as already complete). Wired through `geo.estimateRoute` (config road factor), `useRouteTrace`, `ShareRouteModal` preview/submit (persists `totalDistanceKm`/`estimatedMins`), post detail (stop-aware), and `mapProxyService` straight-line/provider fallback durations. (4) **FAQ + quality:** one concise `route-time-estimates` item (English + PCM) explaining calibration, traffic, boarding/stops and tolls/agberos; journey-time and tour-layout tests extended.
+
+**Files Modified:**
+
+- `app/lib/config/journeyTime.ts`, `app/lib/config/index.ts`, `app/lib/utils/geo.ts`, `app/lib/hooks/useRouteTrace.ts`, `app/lib/services/mapProxyService.ts`
+- `app/components/features/posts/ShareRouteModal.tsx`, `app/(dashboard)/posts/[id]/page.tsx`, `app/(dashboard)/home/page.tsx`
+- `app/lib/config/platformTour.ts`, `app/components/features/tour/PlatformTour.tsx`
+- `app/lib/config/faq.ts`; `app/__tests__/config/journeyTime.test.ts`, `app/__tests__/config/platformTour.test.ts`
+
+**Next Task:**
+
+- None in-repo — Sprint 84 closed; pipeline handles push/PR. Follow-ups if requested: expose journey-time calibration knobs in admin, or show the persisted estimate/distance on feed cards (detail already falls back to the stored `estimatedMins`).
+
+**Assumptions Made:**
+
+- Provider free-flow durations model ideal car flow; local calibration + overhead are applied client-side/server-side at display time, while `estimatedMins` persists the same resolved value for offline/detail fallback (no migration).
+- `estimatedMins`/`totalDistanceKm` were already accepted by the posts schema/API and are safe optional client fields; no API contract change.
+- Timed `resolveJourneyDuration` fallback is already overhead-inclusive, so adding overhead there would double-count.
+- Interactive go/no-go verification skipped (GitHub Actions context — no live site to probe).
+
+**Notes / Blockers:**
+
+- Non-breaking: no schema/migration, no removed API fields, additive config knobs with clamping/validation; unknown vehicles keep the safe default-road fallback.
+- QA: `npx tsc --noEmit` 0; `npx jest --runInBand` 116/116 suites 1231/1231 tests; `npm run lint` no new findings in touched files (pre-existing unrelated errors remain; CI lint is non-blocking); `DIRECT_LOCAL_DB=... npx prisma generate && npm run build` clean (107 static pages). `npm install` postinstall Prisma generate needed a datasource env — generated explicitly for build.
+- Chain: execute-feature → chained update-ai-system.md executed (task-queue + project-plan + session log + dev-history + project-decisions + lessons + test-results + architecture/index + in-progress reset).
+
 ## Session — 2026-10-19 (Sprint 80: duplicate-proof bug assignment + notification deep links + auth session persistence)
 
 **Completed:**

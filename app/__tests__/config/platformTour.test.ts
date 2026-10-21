@@ -19,6 +19,7 @@ import {
   normalizePlatformTourConfig,
   readTourStateShape,
   resolveTourResumeIndex,
+  resolveTourTooltipLayout,
   selectVisibleTourSteps,
   tourStepTimeoutMs,
   validatePlatformTourConfigValue,
@@ -389,5 +390,86 @@ describe("platform tour FAQ (en + pidgin)", () => {
       expect(FAQ_PCM[id]?.question).toBeTruthy();
       expect(FAQ_PCM[id]?.answer).toBeTruthy();
     }
+  });
+});
+
+
+describe("platform tour tooltip layout", () => {
+  const viewport = { width: 390, height: 780 };
+
+  it("keeps an explicit, stable width so long copy never shrinks the card", () => {
+    const spot = { top: 380, left: 120, width: 110, height: 40 };
+    const short = resolveTourTooltipLayout("bottom", spot, viewport, DEFAULT_PLATFORM_TOUR_CONFIG, 140);
+    const tall = resolveTourTooltipLayout("bottom", spot, viewport, DEFAULT_PLATFORM_TOUR_CONFIG, 520);
+    expect(short.width).toBe(DEFAULT_PLATFORM_TOUR_CONFIG.display.tooltipMaxWidthPx);
+    expect(tall.width).toBe(short.width);
+    expect(tall.maxHeight).toBe(short.maxHeight);
+  });
+
+  it("flips a bottom card up when the target sits near the viewport bottom", () => {
+    const spot = { top: 700, left: 120, width: 100, height: 48 };
+    const layout = resolveTourTooltipLayout(
+      "bottom",
+      spot,
+      viewport,
+      DEFAULT_PLATFORM_TOUR_CONFIG,
+      180,
+    );
+    expect(layout.placement).toBe("top");
+    expect(layout.top + 180).toBeLessThanOrEqual(spot.top);
+  });
+
+  it("clamps every placement inside the safe viewport (actions reachable)", () => {
+    const spots = [
+      { top: 0, left: 0, width: 60, height: 40 },
+      { top: 740, left: 340, width: 40, height: 40 },
+      { top: 300, left: 370, width: 20, height: 80 },
+    ];
+    for (const spot of spots) {
+      for (const placement of ["top", "bottom", "left", "right"] as const) {
+        for (const height of [120, 400, 900]) {
+          const layout = resolveTourTooltipLayout(
+            placement,
+            spot,
+            viewport,
+            DEFAULT_PLATFORM_TOUR_CONFIG,
+            height,
+          );
+          const margin = DEFAULT_PLATFORM_TOUR_CONFIG.display.tooltipMarginPx;
+          const effectiveHeight = Math.min(height, layout.maxHeight);
+          expect(layout.width).toBeGreaterThan(0);
+          expect(layout.left).toBeGreaterThanOrEqual(margin);
+          expect(layout.left + layout.width).toBeLessThanOrEqual(viewport.width - margin);
+          expect(layout.top).toBeGreaterThanOrEqual(margin);
+          expect(layout.top + effectiveHeight).toBeLessThanOrEqual(viewport.height - margin);
+        }
+      }
+    }
+  });
+
+  it("centers no-target steps with the same caps and degrades tiny viewports safely", () => {
+    const centered = resolveTourTooltipLayout(undefined, null, viewport, DEFAULT_PLATFORM_TOUR_CONFIG);
+    expect(centered.placement).toBe("center");
+    expect(centered.left).toBeGreaterThan(0);
+    expect(centered.top).toBeGreaterThan(0);
+    expect(centered.width).toBeLessThanOrEqual(viewport.width);
+    const tiny = resolveTourTooltipLayout("top", { top: 10, left: 10, width: 10, height: 10 }, { width: 120, height: 160 }, DEFAULT_PLATFORM_TOUR_CONFIG, 300);
+    expect(tiny.width).toBeGreaterThanOrEqual(0);
+    expect(tiny.width).toBeLessThanOrEqual(120);
+    expect(tiny.maxHeight).toBeGreaterThan(0);
+  });
+
+  it("normalizes and validates the new display knobs", () => {
+    const merged = normalizePlatformTourConfig(
+      { display: { tooltipGapPx: 999, tooltipMarginPx: 1, tooltipMaxHeightRatio: 2 } },
+      DEFAULT_PLATFORM_TOUR_CONFIG,
+    );
+    expect(merged.display.tooltipGapPx).toBe(48);
+    expect(merged.display.tooltipMarginPx).toBe(8);
+    expect(merged.display.tooltipMaxHeightRatio).toBe(0.95);
+    expect(validatePlatformTourConfigValue({ display: { tooltipGapPx: -1 } })).not.toBeNull();
+    expect(validatePlatformTourConfigValue({ display: { tooltipMarginPx: 2 } })).not.toBeNull();
+    expect(validatePlatformTourConfigValue({ display: { tooltipMaxHeightRatio: 1 } })).not.toBeNull();
+    expect(validatePlatformTourConfigValue({ display: { tooltipGapPx: 16 } })).toBeNull();
   });
 });

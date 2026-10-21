@@ -34,6 +34,28 @@
 
 ## History
 
+## 2026-10-21 — Tour Viewport Safety, Drafts Footer, Nigeria-Aware Journey Times (Sprint 84)
+
+**Summary:**
+Closed the issue #240 follow-up with four config-driven, non-breaking changes. Tour cards now measure themselves and use an explicit width with edge-aware flipping/clamping plus a scroll cap, so long copy can never push the Next/Finish row below the viewport (welcome, end, offline and resume cards included). The composer footer stacks on small screens so the drafts count no longer collides with Save Draft/Share. Journey estimates were rebuilt around local conditions: provider free-flow car ETAs are calibrated per vehicle, public transport adds boarding plus per-stop pick-up/drop-off time, and every road journey gets one capped toll/agbero allowance — applied exactly once. A new FAQ (English + PCM) explains the estimate.
+
+**Completed:**
+- `platformTour.ts` display knobs + pure `resolveTourTooltipLayout` (explicit width, viewport-safe flip/clamp, max height); `PlatformTour.tsx` measures rendered tooltip/end/offline cards via ResizeObserver + viewport listeners
+- Composer footer responsive restructure with truncating drafts toggle
+- `journeyTime.ts` meta (`boardingWaitMins`, `perStopDwellMins`, `checkpointDelayMins`, `providerCalibration`) + `journeyOverheadMins`/`calibrateProviderDurationMins`/`estimateJourneyDurationMins`; `resolveJourneyDuration` options with overhead-once semantics
+- Wiring: `geo.estimateRoute` road factor, `useRouteTrace` stops, `ShareRouteModal` preview + persisted distance/estimate, post detail stops, `mapProxyService` straight-line/fallback durations
+- FAQ `route-time-estimates` en + PCM; tests extended in `journeyTime.test.ts` and `platformTour.test.ts`
+
+**Key Changes:**
+- Provider ETAs are treated as free-flow car travel; local calibration/overhead live in config, not inline in call sites
+- Fallback estimates are already overhead-inclusive; `resolveJourneyDuration` never double-adds
+- No schema/migration or removed API fields; optional `totalDistanceKm`/`estimatedMins` reuse existing post schema support
+
+**QA:** tsc 0 errors; jest 116/116 suites, 1231/1231 tests; lint no new findings in touched files; `prisma generate` + `next build` clean (107 static pages).
+
+**Next Sprint Focus:**
+Optional admin knobs for the calibration/overhead values, or surfacing the persisted estimate on feed cards. Otherwise select the next directive from `planning/task-queue.md`.
+
 ## 2026-10-17 — Supabase Database Transfer and Recovery (Sprint 73)
 
 **Summary:**
