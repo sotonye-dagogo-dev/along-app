@@ -2,10 +2,18 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed share-route composer)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: guest tour prompt + tour hand-off/scroll)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 86 — Guest tour prompt + tour hand-off/scroll + share modal polish (2026-10-21, execute-feature)
+
+- [x] Guest prompt [Sprint 86]: `guestTourNotice.ts` ordered gate matrix + dismiss TTL/install/cookie readers; `GuestTourNotice.tsx` delayed, dismissible, guest-only root-mounted card; cookie/install coordination events
+- [x] Footer/floating [Sprint 86]: tour link moved to Along (single entry), guest prompt lanes registered, tests updated
+- [x] Tour hand-off/scroll [Sprint 86]: `scroll` knobs + per-step override, safe `along:*` activate/advance events; PlatformTour scrolls targets, opens composer on Next, switches Score; home/modal event listeners
+- [x] Share modal polish [Sprint 86]: space-between footer, tighter header/tab spacing, live score in Details hint
+- [x] FAQ + QA [Sprint 86]: en/pcm updates; new `guestTourNotice.test.ts`; tsc 0, jest 118/118 suites 1257/1257, build clean
 
 ## Sprint 85 — Tabbed share-route composer (2026-10-21, execute-feature)
 

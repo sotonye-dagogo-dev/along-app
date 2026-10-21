@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, Crosshair, History, Loader2, MapPinned, FileText, BarChart3, Info, type LucideIcon } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
-import { SHARE_ROUTE_MODAL_CONFIG, resolveShareRouteTabId, type ShareRouteTabConfig, type ShareRouteTabIcon, type ShareRouteTabId } from "@/app/lib/config"
+import { SHARE_ROUTE_MODAL_CONFIG, SHARE_ROUTE_TAB_EVENT, resolveShareRouteTabId, type ShareRouteTabConfig, type ShareRouteTabEventDetail, type ShareRouteTabIcon, type ShareRouteTabId } from "@/app/lib/config"
 import { ROUTE_STEPS_CONFIG, showStepFare, showStepVehicle, normalizeRouteSteps, totalFareForSteps } from "@/app/lib/config/routeSteps"
 import {
   ROUTE_VALIDATION_CONFIG,
@@ -274,6 +274,18 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   const selectTab = useCallback((id: string) => {
     setActiveTab(resolveShareRouteTabId(id))
   }, [])
+
+  // Tour hand-off: the spotlight step asks the composer to reveal a specific
+  // tab (e.g. Score) even if the viewer never clicked the tab themselves.
+  useEffect(() => {
+    if (!isOpen) return
+    const onTab = (event: Event) => {
+      const detail = (event as CustomEvent<ShareRouteTabEventDetail>).detail
+      if (detail && typeof detail.tab === "string") selectTab(detail.tab)
+    }
+    window.addEventListener(SHARE_ROUTE_TAB_EVENT, onTab)
+    return () => window.removeEventListener(SHARE_ROUTE_TAB_EVENT, onTab)
+  }, [isOpen, selectTab])
 
   // ARIA tab pattern: Left/Right cycle, Home/End jump, focus follows.
   const handleTabKeyDown = useCallback(
@@ -1286,7 +1298,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   return (
     <AppModal open={isOpen} onClose={onClose} size="xl">
       <div className="flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between gap-3 px-6 py-5 pb-4 border-b border-border">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 pb-3 border-b border-border">
           <div>
             <h2 className="text-lg font-semibold tracking-tight">
               {isEditing ? "Edit Route" : isResponse ? "Respond to Route Request" : "Share a Route"}
@@ -1341,7 +1353,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
         {/* Tabbed workspace: Details / Map / Score / Drafts share one panel.
             Short labels + icons keep every tab legible (count badge on
             Drafts), and the footer owns only Save Draft + Share. */}
-        <div className="px-4 sm:px-6 pt-4">
+        <div className="px-4 sm:px-6 pt-3">
           <div
             role="tablist"
             aria-label={SHARE_ROUTE_MODAL_CONFIG.tabsAriaLabel}
@@ -1370,7 +1382,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                   onClick={() => selectTab(tab.id)}
                   onKeyDown={(event) => handleTabKeyDown(event, index)}
                   data-tour={tab.id === "score" ? "route-score" : undefined}
-                  className={`relative flex-1 basis-0 min-w-[60px] inline-flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-4 py-3 border-none bg-transparent text-[11px] sm:text-sm font-medium cursor-pointer font-sans whitespace-nowrap transition-colors duration-fast ${
+                  className={`relative flex-1 basis-0 min-w-[60px] inline-flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-4 py-2.5 border-none bg-transparent text-[11px] sm:text-sm font-medium cursor-pointer font-sans whitespace-nowrap transition-colors duration-fast ${
                     selected ? "text-primary" : "text-text-secondary hover:text-text-primary"
                   }`}
                 >
@@ -1728,6 +1740,11 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                     className="font-semibold underline underline-offset-2 border-none bg-transparent cursor-pointer font-sans text-info-text hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors"
                   >
                     {SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreLabel}
+                    {SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreValueTemplate
+                      ? ` ${SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreValueTemplate
+                          .replace("{score}", String(evaluation.score))
+                          .replace("{max}", String(evaluation.maxScore))}`
+                      : ""}
                   </button>{" "}
                   {SHARE_ROUTE_MODAL_CONFIG.detailsHint.suffix}
                 </p>
@@ -1848,7 +1865,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
             <span className="text-xs font-medium text-error-text flex-1">{formError}</span>
           </div>
         )}
-        <div className="flex items-center justify-end gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-t border-border bg-bg-card shrink-0">
             {/* Drafts stay savable while editing too: a draft saved mid-edit
                 carries the edit target's response linkage (buildDraftInput
                 falls back to editResponseTo), so edit→draft→repost never

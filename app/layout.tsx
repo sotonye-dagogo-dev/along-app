@@ -17,6 +17,7 @@ import { OfflineBanner } from "@/app/components/pwa/OfflineBanner";
 import { PwaNotices } from "@/app/components/pwa/PwaNotices";
 import ReviewNotice from "@/app/components/features/reviews/ReviewNotice";
 import PlatformTour from "@/app/components/features/tour/PlatformTour";
+import GuestTourNotice from "@/app/components/features/tour/GuestTourNotice";
 import { ServiceWorkerRegistrar } from "@/app/components/pwa/ServiceWorkerRegistrar";
 import { MAP_STACK_CONFIG } from "@/app/lib/config/mapStack";
 import { DEFAULT_META } from "@/app/lib/config";
@@ -152,6 +153,7 @@ export default function RootLayout({
                         <OfflineBanner />
                         <PwaNotices />
                         <ReviewNotice />
+                        <GuestTourNotice />
                         <PlatformTour />
                         <ServiceWorkerRegistrar />
                       </CookieConsentProvider>

@@ -2,11 +2,26 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: share-route composer tabs)
-> - last-synced: 2026-10-21 (Sprint 85)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: guest tour prompt + tour hand-off/scroll)
+> - last-synced: 2026-10-21 (Sprint 86)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 86 — Guest tour prompt + tour hand-off/scroll + share modal polish (2026-10-21, execute-feature) [M]
+
+> **Section summary:** Follow-up directive, non-breaking (additive config/events/components; no schema/migration/API changes). Guests get one dismissible tour prompt that waits for the cookie bar and install prompt, respects tour state/auto-start routes, hides for 14 days after dismissal, and never prompts signed-in users; the footer link stays permanent in Along. The tour can smooth-scroll offscreen targets, open the share composer on Next, and switch the composer to Score. The share modal footer uses space-between, its header/tab spacing is tighter, and the Details Score link shows the live score. FAQ + en/pcm updated. QA full in-runner: tsc 0, jest 118/118 suites 1257/1257, lint no new findings, prisma generate + next build clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [M] | `guestTourNotice.ts` — ordered pure gate matrix (guest/disabled/tour/terminal/in-progress/auto-start/install/cookie/dismiss TTL), safe storage/cookie/install readers, config copy + `tourNotice.*` i18n keys | [x] |
+| [M] | `GuestTourNotice.tsx` — delayed root-mounted dismissible card, event-driven re-evaluation, footer hint, `TOUR_START_EVENT` start, guest-only; CookieConsent + InstallPrompt notice-state events | [x] |
+| [S] | Footer/floating UI — tour link moved into Along (not duplicated); `guestTourNoticeBottomPx`/offline lanes; tests updated | [x] |
+| [M] | Tour hand-off/scroll — `scroll` config + per-step `scrollIntoView`, validated `along:*` `activateEvent`/`advanceEvent`; PlatformTour scrolls targets, opens composer on Next, activates Score; home `SHARE_ROUTE_OPEN_EVENT`, modal `SHARE_ROUTE_TAB_EVENT` | [x] |
+| [S] | Share modal polish — `justify-between` footer, tighter header/tab padding, live `({score}/{max})` in Details hint | [x] |
+| [S] | FAQ + tests — en/pcm guest prompt/footer/auto-open/scroll/live score; NEW `guestTourNotice.test.ts` + platformTour/shareRouteTabs/locales contracts; full gate green | [x] |
+
+---
 
 ## Sprint 85 — Tabbed share-route composer (2026-10-21, execute-feature) [M]
 

@@ -26,10 +26,16 @@ export { ENDLESS_CAROUSEL_CONFIG } from "./carousel";
 export type { EndlessCarouselConfig } from "./carousel";
 export { SUGGESTIONS_PANEL_CONFIG } from "./suggestionsPanel";
 export type { SuggestionsPanelConfig } from "./suggestionsPanel";
-export { SHARE_ROUTE_MODAL_CONFIG, resolveShareRouteTabId } from "./shareRoute";
+export {
+  SHARE_ROUTE_MODAL_CONFIG,
+  SHARE_ROUTE_OPEN_EVENT,
+  SHARE_ROUTE_TAB_EVENT,
+  resolveShareRouteTabId,
+} from "./shareRoute";
 export type {
   ShareRouteModalConfig,
   ShareRouteTabConfig,
+  ShareRouteTabEventDetail,
   ShareRouteTabIcon,
   ShareRouteTabId,
   ShareRouteDetailsHintConfig,
@@ -296,12 +302,38 @@ export {
   coerceStepIndex,
   isLastStep,
   isTourPlacement,
+  isTourScrollBehavior,
+  isTourScrollBlock,
   isTourTerminal,
   normalizePlatformTourConfig,
+  normalizeTourStepEvent,
   readTourStateShape,
   validatePlatformTourConfigValue,
 } from "./platformTour";
-export type { PlatformTourConfig, TourStep, TourStepPlacement } from "./platformTour";
+export type {
+  PlatformTourConfig,
+  PlatformTourScrollConfig,
+  TourScrollBehavior,
+  TourScrollBlock,
+  TourStep,
+  TourStepEvent,
+  TourStepPlacement,
+} from "./platformTour";
+export {
+  COOKIE_CONSENT_EVENT,
+  GUEST_TOUR_NOTICE_CONFIG,
+  PWA_INSTALL_NOTICE_EVENT,
+  hasCookieConsent,
+  isGuestTourNoticeDismissed,
+  isInstallNoticePending,
+  readGuestTourProgress,
+  shouldShowGuestTourNotice,
+} from "./guestTourNotice";
+export type {
+  GuestTourNoticeGateInput,
+  GuestTourNoticeGateReason,
+  GuestTourNoticeGateResult,
+} from "./guestTourNotice";
 export {
   REVIEW_NOTICE_CONFIG,
   accountAgeMsFromCreatedAt,

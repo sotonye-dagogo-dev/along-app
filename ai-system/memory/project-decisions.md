@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed share-route composer)
-> - last-verified-against-code: 2026-10-21 (Sprint 85 in-runner QA: tsc 0, jest 117/117 suites 1246/1246, build clean)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: guest tour prompt + step hand-off events)
+> - last-verified-against-code: 2026-10-21 (Sprint 86 in-runner QA: tsc 0, jest 118/118 suites 1257/1257, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -34,6 +34,34 @@
 ---
 
 ## Decisions
+
+## Guest Tour Prompt Is Serialized Behind Existing Notices
+
+**Decision:** Show the guest tour prompt only through `shouldShowGuestTourNotice`, an ordered pure gate: feature enabled → guest → tour available → not terminal/in progress → not an auto-start route → install prompt cleared → cookie consent accepted → not dismissed within 14 days. CookieConsent and InstallPrompt dispatch coordination events; the prompt re-evaluates on those events, navigation, focus and storage changes. The permanent entry point stays the footer Along link (moved from Community, not duplicated).
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 86)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:** Guests already see the cookie bar and install card; adding a third bottom card immediately would be noisy and could obscure controls. A gate is testable, config-driven, and degrades safely (unknown inputs hide the prompt). Signed-in users have profile/footer replay entry and are never prompted.
+
+**Alternatives Considered:** CSS-only lane offsets (cards still stack visually); showing the prompt immediately (overwhelms first paint); prompting everyone (unnecessary for signed-in users with replay access).
+
+**Implications:** If a guest never clears the install prompt, the tour prompt stays hidden by design; the footer/FAQ entry remains available. Admin exposure of the delay/TTL would be additive config, not a behavior change.
+
+## Tour Step Actions Are Validated `along:*` Events
+
+**Decision:** Model tour-driven state changes as optional per-step `activateEvent` / `advanceEvent` metadata, restricted by normalization/validation to `along:*` names with a flat string detail map. The tour dispatches them; owning surfaces listen (`SHARE_ROUTE_OPEN_EVENT` in home, `SHARE_ROUTE_TAB_EVENT` in ShareRouteModal). `advanceEvent` fires only when the viewer did not interact with the target.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 86)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:** Keeps `PlatformTour` independent of feature components and makes the composer hand-off work whether the viewer taps the trigger or presses Next. Restricting event names prevents a corrupt/admin-stored config from dispatching arbitrary DOM events.
+
+**Alternatives Considered:** Importing ShareRouteModal state into the tour (couples features); relying on `scrollIntoView` alone (does not open closed modals or switch tabs); hardcoding the hand-off in PlatformTour (breaks the config-driven contract).
+
+**Implications:** New cross-surface tour actions should add a config event + listener, not a component import. Validation and tests must cover the event shape.
 
 ## Journey Estimates Model Local Conditions in Config, Applied Exactly Once
 

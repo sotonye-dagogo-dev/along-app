@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed share-route composer)
-> - last-verified-against-code: 2026-10-21 (Sprint 85 in-runner QA: tsc 0, jest 117/117 suites 1246/1246, build clean)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: serialized guest tour prompt + tour hand-off/scroll)
+> - last-verified-against-code: 2026-10-21 (Sprint 86 in-runner QA: tsc 0, jest 118/118 suites 1257/1257, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,26 @@
 ---
 
 ## History
+
+## 2026-10-21 — Guest Tour Prompt + Tour Hand-Off/Scroll + Share Modal Polish (Sprint 86)
+
+**Summary:**
+Closed the follow-up tour/composer directive without changing the config-driven architecture. Guests now get a single, dismissible tour prompt that is serialized behind the cookie bar and install prompt; the tour itself can open the composer and switch its tab when the viewer only presses Next, smooth-scrolls offscreen targets into view, and the footer entry moved to Along. The share modal lost its dead footer space, gained a live score in the Details hint, and tightened its header/tab rhythm.
+
+**Completed:**
+- `guestTourNotice.ts` pure gate matrix (eligible/disabled/not-guest/tour-unavailable/terminal/in-progress/auto-start/install-pending/cookie-pending/dismissed) + safe dismiss TTL/install/cookie readers + config copy/i18n keys; `GuestTourNotice.tsx` delayed root-mounted card that re-evaluates on notice/tour/focus events and never prompts signed-in users; CookieConsent + InstallPrompt coordination events.
+- Footer tour link moved into the Along column (single source, `actionEvent` unchanged); floating lane `guestTourNoticeBottomPx`/offline added.
+- Tour hand-off: `platformTour.scroll` knobs, per-step `scrollIntoView`, normalized/validated `activateEvent`/`advanceEvent` (`along:*` + flat string details); PlatformTour scrolls targets and dispatches hand-off events; home listens for `SHARE_ROUTE_OPEN_EVENT`; ShareRouteModal listens for `SHARE_ROUTE_TAB_EVENT`.
+- Share modal: `justify-between` footer, tighter header/tab padding, `scoreValueTemplate: "({score}/{max})"` rendered live beside the Details Score link.
+- FAQ en + PCM (guest prompt, footer location, auto-open/scroll, live score); en/pcm `tourNotice.*`; extended tests.
+
+**Key Changes:**
+- Notice serialization is an explicit ordered gate (not CSS): the prompt only takes its turn after the two existing bottom notices clear, so no fourth card stacks.
+- Step actions are metadata (`activateEvent`/`advanceEvent`), so the tour stays content/config-driven and admin rows can only fire safe `along:*` events.
+
+**Files:**
+- Created: `app/lib/config/guestTourNotice.ts`, `app/components/features/tour/GuestTourNotice.tsx`, `app/__tests__/config/guestTourNotice.test.ts`
+- Edited: `app/lib/config/{platformTour,shareRoute,footer,floatingUi,index,faq}.ts`, `app/components/features/tour/PlatformTour.tsx`, `app/components/features/posts/ShareRouteModal.tsx`, `app/components/ui/CookieConsent.tsx`, `app/components/pwa/InstallPrompt.tsx`, `app/(dashboard)/home/page.tsx`, `app/layout.tsx`, `public/locales/{en,pcm}.json`, `app/__tests__/config/{platformTour,shareRouteTabs,locales}.test.ts`
 
 ## 2026-10-21 — Tabbed Share-Route Composer (Sprint 85)
 

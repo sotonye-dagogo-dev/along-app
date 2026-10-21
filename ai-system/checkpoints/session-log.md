@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 85: tabbed share-route composer)
-> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 117/117 suites 1246/1246, lint no new findings on touched files, next build clean)
+> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: guest tour prompt + tour hand-off/scroll + share modal polish)
+> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 118/118 suites 1257/1257, lint no new findings on touched files, next build clean)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,35 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-21 (Sprint 86: guest tour prompt + tour hand-off/scroll + share modal polish)
+
+**Completed:**
+
+- Closed the follow-up directive end-to-end, config-driven and non-breaking (no schema/migration/API changes). (1) **Guest tour prompt:** NEW `config/guestTourNotice.ts` owns the ordered gate matrix (disabled → not guest → tour unavailable → terminal/in-progress → auto-start route → install pending → cookie consent pending → 14-day dismissal TTL), safe localStorage/cookie/install readers and a serialization contract; NEW root-mounted `GuestTourNotice` waits 12s, re-evaluates on cookie/install/tour/focus/storage events, points at the permanent footer Along entry, dispatches `TOUR_START_EVENT`, and never prompts signed-in users. CookieConsent and InstallPrompt emit coordination events. (2) **Footer placement:** the "Take the platform tour" action moved into the Along column (removed from Community). (3) **Tour hand-off/scroll:** `platformTour.scroll` knobs + per-step `scrollIntoView`, safe `along:*` step events (`activateEvent`/`advanceEvent`), normalized/validated; PlatformTour smooth-scrolls offscreen targets, opens the share composer when Next is pressed without tapping the trigger, and asks the composer to reveal the Score tab. Home listens for `SHARE_ROUTE_OPEN_EVENT`; ShareRouteModal listens for `SHARE_ROUTE_TAB_EVENT`. (4) **Share modal polish:** header/tab spacing tightened, footer actions use `justify-between`, and the Details hint's Score link appends the live `({score}/{max})` (config `scoreValueTemplate`). (5) FAQ (en + PCM) updated for the footer location, guest prompt, auto-open/scroll and live score; en/pcm `tourNotice.*` keys added.
+- QA gate green in-runner: `npx tsc --noEmit` 0 errors; `npx jest --runInBand` 118/118 suites 1257/1257 tests (NEW `guestTourNotice.test.ts`; extended platformTour/shareRouteTabs/locales contracts); lint no new findings on touched files (pre-existing unrelated repo errors unchanged); `prisma generate` + full `next build` clean (107 static pages, run with a placeholder `DIRECT_LOCAL_DB` because the runner has no DB env).
+
+**Files Modified:**
+
+- Created: `app/lib/config/guestTourNotice.ts`, `app/components/features/tour/GuestTourNotice.tsx`, `app/__tests__/config/guestTourNotice.test.ts`.
+- Edited: `app/lib/config/{platformTour,shareRoute,footer,floatingUi,index,faq}.ts`, `app/components/features/tour/PlatformTour.tsx`, `app/components/features/posts/ShareRouteModal.tsx`, `app/components/ui/CookieConsent.tsx`, `app/components/pwa/InstallPrompt.tsx`, `app/(dashboard)/home/page.tsx`, `app/layout.tsx`, `public/locales/{en,pcm}.json`, `app/__tests__/config/{platformTour,shareRouteTabs,locales}.test.ts`, ai-system docs.
+
+**Next Task:**
+
+- None in-repo — Sprint 86 closed; pipeline handles push/PR. Optional follow-ups: expose the guest-prompt delay/TTL as admin knobs, or add a composer-tab completion indicator.
+
+**Assumptions Made:**
+
+- The guest prompt is serialized behind cookie consent and the install prompt on purpose: one bottom notice at a time is the non-overwhelming contract. If a guest never dismisses the install card, the tour prompt stays hidden; the footer/FAQ entry remains available throughout.
+- `advanceEvent` is skipped when the viewer already interacted with the target (phase `interacted`) so a real tap cannot open a second composer; `activateEvent` is intentionally idempotent (tab selection).
+- Scroll is skipped for targets already comfortably in view (`onlyWhenOffscreen` + 12px margin), and `scrollIntoView` is best-effort (detached nodes/targets that never mount degrade to the existing polite timeout).
+- Config events accept only `along:*` names with flat string details so stored admin rows cannot dispatch arbitrary page events.
+
+**Notes / Blockers:**
+
+- ACID is N/A: no DB writes in this sprint. Persistence is best-effort localStorage (dismissal timestamp) with TTL; storage failures degrade to session-only dismissal, never a crash.
+- Non-breaking: additive config fields/events/helpers and one additive component; existing notices untouched; footer link moved rather than duplicated.
+- Chain: execute-feature → chained update-ai-system.md executed (task-queue/project-plan Sprint 86, this log, dev-history, in-progress, repo-map, dependency-graph, architecture, lessons, decisions).
 
 ## Session — 2026-10-21 (Sprint 85: tabbed share-route composer)
 

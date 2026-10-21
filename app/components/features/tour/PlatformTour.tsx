@@ -22,6 +22,7 @@ import {
   tourStepTimeoutMs,
   type PlatformTourConfig,
   type TourStep,
+  type TourStepEvent,
   type VisibleTourStep,
 } from "@/app/lib/config/platformTour";
 import { useOnlineStatus } from "@/app/providers/OnlineStatusProvider";
@@ -40,6 +41,27 @@ interface SpotRect {
   width: number;
   height: number;
   borderRadius: number;
+}
+
+/** Fire an optional step action (open the composer, switch a tab, …). */
+function dispatchTourStepEvent(action: TourStepEvent | undefined): void {
+  if (!action || typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(new CustomEvent(action.event, { detail: action.detail }));
+  } catch {
+    // Best-effort — the tour itself must never break on a failed dispatch.
+  }
+}
+
+/** True when the element is comfortably inside the visual viewport. */
+function isTargetInViewport(el: HTMLElement, margin: number): boolean {
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.top >= margin &&
+    rect.left >= margin &&
+    rect.bottom <= window.innerHeight - margin &&
+    rect.right <= window.innerWidth - margin
+  );
 }
 
 const ttf = (t: (key: string) => string, key: string, fallback: string): string => {
@@ -156,6 +178,10 @@ export default function PlatformTour() {
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [phase, setPhase] = useState<TourPhase>("finding");
+  // Read by goNext without making it depend on phase (which would re-arm the
+  // step-activation finder loop on every phase transition).
+  const phaseRef = useRef<TourPhase>("finding");
+  phaseRef.current = phase;
   const [spot, setSpot] = useState<SpotRect | null>(null);
   const [endCard, setEndCard] = useState(false);
   const [mascotFailed, setMascotFailed] = useState(false);
@@ -280,6 +306,13 @@ export default function PlatformTour() {
     return () => window.removeEventListener(TOUR_START_EVENT, onStart);
   }, [enabled, beginTour]);
 
+  // Step-scoped activation (e.g. switch the composer to the Score tab so the
+  // content being described is actually on screen when the spotlight lands).
+  useEffect(() => {
+    if (!active || endCard || !step) return;
+    dispatchTourStepEvent(step.activateEvent);
+  }, [active, endCard, step]);
+
   const resetVisuals = useCallback(() => {
     setSpot(null);
     setPhase("finding");
@@ -318,6 +351,12 @@ export default function PlatformTour() {
     if (isLastStep(stepIndex, stepCount)) {
       finish();
       return;
+    }
+    // If the viewer pressed Next without tapping the highlighted control,
+    // perform the step's advance action for them (e.g. open the composer the
+    // next stops live inside).
+    if (step.advanceEvent && phaseRef.current !== "interacted") {
+      dispatchTourStepEvent(step.advanceEvent);
     }
     const nextIndex = stepIndex + 1;
     persistStep(config, visibleSteps[nextIndex], nextIndex);
@@ -373,6 +412,25 @@ export default function PlatformTour() {
         targetRef.current = target;
         setSpot(computeSpotRect(target, config));
         setPhase("ready");
+        // Bring off-screen targets (composer fields/tabs, lower page sections)
+        // into view before the viewer has to hunt for the glow. The scroll
+        // listener above recreates the spot as the smooth scroll progresses.
+        const scroll = config.scroll;
+        const shouldScroll = step.scrollIntoView ?? scroll.enabled;
+        if (shouldScroll && !(scroll.onlyWhenOffscreen && isTargetInViewport(target, scroll.visibilityMarginPx))) {
+          window.setTimeout(() => {
+            if (token !== findTokenRef.current || !target.isConnected) return;
+            try {
+              target.scrollIntoView({ behavior: scroll.behavior, block: scroll.block, inline: "nearest" });
+            } catch {
+              try {
+                target.scrollIntoView();
+              } catch {
+                // Detached viewport — nothing to do.
+              }
+            }
+          }, Math.max(scroll.delayMs, 0));
+        }
         return;
       }
       if (Date.now() - startedAt >= timeoutMs) {

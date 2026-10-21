@@ -13,6 +13,18 @@ export type ShareRouteTabId = "details" | "map" | "score" | "drafts";
 /** Icon keys resolved to Lucide components inside the modal (config stays zero-dep). */
 export type ShareRouteTabIcon = "details" | "map" | "score" | "drafts";
 
+/**
+ * Cross-surface events (window CustomEvent names). The platform tour uses
+ * these to open the composer on demand and switch to the tab it is talking
+ * about without coupling the two features together.
+ */
+export const SHARE_ROUTE_OPEN_EVENT = "along:share-route-open";
+export const SHARE_ROUTE_TAB_EVENT = "along:share-route-tab";
+
+export interface ShareRouteTabEventDetail {
+  tab: ShareRouteTabId;
+}
+
 export interface ShareRouteTabConfig {
   id: ShareRouteTabId;
   /** Short label so it never clips on small screens. */
@@ -33,6 +45,12 @@ export interface ShareRouteDetailsHintConfig {
   mapLabel: string;
   conjunction: string;
   scoreLabel: string;
+  /**
+   * Live score suffix rendered inside the Score link, e.g. "(72/100)".
+   * `{score}` / `{max}` are replaced with the current evaluation. Empty
+   * string always renders the label alone (safe fallback).
+   */
+  scoreValueTemplate: string;
   suffix: string;
   ariaLabel: string;
 }
@@ -106,6 +124,7 @@ export const SHARE_ROUTE_MODAL_CONFIG: ShareRouteModalConfig = {
     mapLabel: "map",
     conjunction: "and",
     scoreLabel: "score",
+    scoreValueTemplate: "({score}/{max})",
     suffix: "— they help others trust your route.",
     ariaLabel: "Check the map and route score before sharing",
   },
