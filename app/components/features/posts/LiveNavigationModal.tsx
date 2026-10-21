@@ -101,7 +101,10 @@ export default function LiveNavigationModal({
       }}
     >
       <style>{`@media (min-width: 768px) { .live-nav-panel { width: ${LIVE_NAVIGATION_CONFIG.sidePanelWidthPx}px; } }`}</style>
-      <div className="w-full max-w-4xl h-[92dvh] flex flex-col bg-bg-card radius-xl overflow-hidden shadow-2xl">
+      <div
+        className="w-full max-w-4xl h-[92dvh] flex flex-col bg-bg-card radius-xl overflow-hidden shadow-2xl"
+        data-tour="live-navigation"
+      >
         <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border shrink-0">
           <span className="w-8 h-8 rounded-circle bg-primary flex items-center justify-center text-white shrink-0">
             <Navigation size={16} />

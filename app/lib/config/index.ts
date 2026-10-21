@@ -30,6 +30,7 @@ export {
   SHARE_ROUTE_MODAL_CONFIG,
   SHARE_ROUTE_OPEN_EVENT,
   SHARE_ROUTE_TAB_EVENT,
+  fillShareRouteHintTemplate,
   resolveShareRouteTabId,
 } from "./shareRoute";
 export type {

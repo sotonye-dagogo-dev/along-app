@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: serialize notices, metadata step actions)
-> - last-verified-against-code: 2026-10-21 (Sprint 86 in-runner QA: tsc 0, jest 118/118 suites 1257/1257, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: route-bearing tour target, safe value templates)
+> - last-verified-against-code: 2026-10-21 (Sprint 87 in-runner QA: tsc 0, jest 118/118 suites 1259/1259, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -31,6 +31,28 @@
 ---
 
 ## Lessons
+
+## Tour Targets Need a Semantic Predicate, Not Just “First Match”
+
+**Context:** Sprint 87. The feed mixes route posts, route requests, and platform notices, so a plain `[data-tour="post-card"]` selector could spotlight a request that has no stops/fares/trust actions, or the first card before feed data settled.
+
+**What We Learned:** Give the component the predicate (`!isRouteRequest && !post.isPlatformGen && routes.length > 0`) and only emit the `data-tour` anchors from that semantic branch. This keeps the tour aligned with what its copy claims and avoids fragile CSS-only selectors. A slightly longer per-step timeout handles feed loading without trapping the tour.
+
+**Apply When:** A tour step explains a specific content type inside a mixed list, especially when data is asynchronously ranked or filtered.
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Template Fillers Must Reject Missing and Unresolved Values
+
+**Context:** Sprint 87. The Details hint needed live distance/time beside the Map link, and the existing Score suffix used chained `.replace()` calls that would happily render `(undefined/100)` or a half-filled template if a value was missing.
+
+**What We Learned:** Use one pure filler that returns `""` when any required value is missing/blank and when any `{token}` remains. Callers then append the suffix only when non-empty. The same helper serves both Map and Score, so degraded states always fall back to the bare link label.
+
+**Apply When:** Building optional interpolated UI copy from asynchronous values (estimates, scores, counts). Keep the template in config and the safety rule in a tested pure helper.
+
+**Supersedes:** None
+**Superseded by:** None
 
 ## Serialize Global Notices in a Pure Gate, Not With CSS
 

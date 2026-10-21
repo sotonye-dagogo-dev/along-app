@@ -8,6 +8,8 @@ interface AppCardProps {
   variant?: CardVariant
   hover?: boolean
   className?: string
+  /** Optional guided-tour anchor (rendered as `data-tour`) for card surfaces. */
+  dataTour?: string
   children: React.ReactNode
 }
 
@@ -23,10 +25,12 @@ export function AppCard({
   variant = 'default',
   hover = false,
   className,
+  dataTour,
   children,
 }: AppCardProps) {
   return (
     <div
+      data-tour={dataTour}
       className={cn(
         variantClasses[variant],
         hover && 'transition-all duration-base hover:-translate-y-0.5 hover:shadow-md',

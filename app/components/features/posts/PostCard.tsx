@@ -218,6 +218,10 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
   const showMap = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.map)
   const showTrust = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.trustScore)
   const showFare = !(isRouteRequest && MODERATION_CONFIG.routeRequestHides.fare)
+  // Stable tour anchors: the first route-bearing card in the feed is the
+  // walkthrough example for understanding a post (requests/suggestions are
+  // not routes and are intentionally excluded).
+  const isRouteBearing = !isRouteRequest && !post.isPlatformGen && routes.length > 0
   const viewerId = (auth?.user as { id?: string } | null)?.id ?? null
   const viewerRole = (auth?.user as { role?: string } | null)?.role ?? null
 
@@ -286,7 +290,12 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
   const textLinksEnabled = POST_ACTIONS_CONFIG.detailTextLinksEnabled !== false
 
   return (
-    <AppCard variant={cardVariant} hover className={post.isPlatformGen ? "" : ""}>
+    <AppCard
+      variant={cardVariant}
+      hover
+      className={post.isPlatformGen ? "" : ""}
+      dataTour={isRouteBearing ? "feed-route-post" : undefined}
+    >
       {post.isPlatformGen && (
         <div className="inline-flex items-center gap-1 px-2 py-0.5 radius-pill text-xs font-semibold text-primary bg-primary-muted ml-4 mt-3">
           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -542,6 +551,7 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             href={POST_ACTIONS_CONFIG.navigatePath(post.id)}
             onClick={(e) => e.stopPropagation()}
             aria-label={`${POST_ACTIONS_CONFIG.navigateAriaLabel} for ${post.title}`}
+            data-tour="post-navigate"
             className={`mt-1.5 ${POST_ACTIONS_CONFIG.navigateClass}`}
           >
             <Navigation size={13} aria-hidden />
@@ -586,7 +596,10 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
         />
       )}
 
-      <div className="flex items-center gap-1 px-4 py-2 border-t border-border">
+      <div
+        className="flex items-center gap-1 px-4 py-2 border-t border-border"
+        data-tour={isRouteBearing ? "post-actions" : undefined}
+      >
         <button
           onClick={(e) => { e.stopPropagation(); handleLike(); }}
           className={`flex items-center gap-1 px-2.5 py-1.5 radius-md text-sm text-text-secondary hover:bg-bg-elevated transition-colors duration-fast border-none bg-transparent cursor-pointer font-sans ${state.liked ? POST_ACTIONS_CONFIG.likeActiveClass : ""}`}
@@ -633,7 +646,11 @@ export default function PostCard({ post, onLike, onDislike, onBookmark, onShare,
             <Share2 size={16} />
           </button>
 
-          {showTrust && <TrustBadge level={trustLevel} score={post.validityScore} size="sm" variant="compact" breakdown={post.validityBreakdown ?? null} />}
+          {showTrust && (
+            <div className="inline-flex" data-tour={isRouteBearing ? "post-trust" : undefined}>
+              <TrustBadge level={trustLevel} score={post.validityScore} size="sm" variant="compact" breakdown={post.validityBreakdown ?? null} />
+            </div>
+          )}
         </div>
       </div>
     </AppCard>

@@ -2,11 +2,27 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: guest tour prompt + tour hand-off/scroll)
-> - last-synced: 2026-10-21 (Sprint 86)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest-banner tour CTA)
+> - last-synced: 2026-10-21 (Sprint 87)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 87 — Post/request/navigation tour + guest-banner tour CTA (2026-10-21, execute-feature) [M]
+
+> **Section summary:** Issue #240 follow-up, non-breaking (config/component/anchors/FAQ/tests; no schema/migration/API changes). The share-route Details hint now shows live distance/time beside the Map link. The guided tour grows to 16 steps and explains a real route post (stops/fares/vehicles, trust breakdown, reactions, interactive Navigate) plus the community route-request path. Guests get a permanent “Take tour” CTA in the banner; the floating guest-tour notice is retired (config disabled, component unmounted) to stop notice stacking. FAQ en + PCM updated. QA full in-runner: tsc 0, jest 118/118 suites 1259/1259, prisma generate + next build clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [S] | `shareRoute.ts` — additive `detailsHint.mapValueTemplate` + pure `fillShareRouteHintTemplate` (missing/unresolved values render nothing); ShareRouteModal renders live distance/time beside Map and reuses the helper for Score | [x] |
+| [M] | `platformTour.ts` — new `post-overview`/`post-trust`/`post-actions`/`post-navigate` steps + interactive `route-request`; 16 steps total, all audience/timing/event contracts preserved | [x] |
+| [M] | Tour anchors — `AppCard` `dataTour` passthrough; route-bearing `PostCard` (`feed-route-post`, `post-trust`, `post-actions`, `post-navigate`), composer request trigger, `NavigationGuide`, `LiveNavigationModal`; request origin/destination fields | [x] |
+| [S] | Guest banner — responsive 3-CTA layout (Take tour, Sign in, Sign up), `guest.takeTour` en/pcm; retire `GuestTourNotice` mount + default disable, keep code/non-breaking opt-in | [x] |
+| [S] | FAQ — en + PCM for route-post/trust/reaction walkthrough, route requests, navigation, retired guest prompt, banner CTA, map distance/time hint | [x] |
+| [S] | Tests — map hint template/filler, post/request/navigation step ids/anchors/events, guest banner CTA + retired mount, locale parity; full gate green | [x] |
+| [S] | Deep sync — update ai-system architecture, indexes, history, decisions, lessons, current test results, checkpoints | [x] |
+
+---
 
 ## Sprint 86 — Guest tour prompt + tour hand-off/scroll + share modal polish (2026-10-21, execute-feature) [M]
 

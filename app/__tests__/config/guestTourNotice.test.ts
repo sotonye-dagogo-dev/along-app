@@ -115,9 +115,13 @@ describe("guest tour prompt gate", () => {
 describe("guest tour prompt wiring", () => {
   const read = (relative: string) => fs.readFileSync(path.join(process.cwd(), relative), "utf8");
 
-  it("mounts beside the tour in the root layout only", () => {
-    expect(read("app/layout.tsx")).toContain("GuestTourNotice");
+  it("retires the floating prompt and moves the guest CTA into the banner", () => {
+    expect(GUEST_TOUR_NOTICE_CONFIG.enabled).toBe(false);
+    expect(read("app/layout.tsx")).not.toContain("GuestTourNotice");
     expect(read("app/(dashboard)/layout.tsx")).not.toContain("GuestTourNotice");
+    const banner = read("app/components/ui/GuestBanner.tsx");
+    expect(banner).toContain("TourLaunchButton");
+    expect(banner).toContain("guest.takeTour");
   });
 
   it("keeps the tour link in the Along footer column", () => {

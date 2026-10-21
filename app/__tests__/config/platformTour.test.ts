@@ -166,9 +166,9 @@ describe("platform tour helpers", () => {
       stepId: authEntry.step.id,
     };
     // Signed in after registration: the auth stop is gone; resume at the
-    // first still-visible step at/after it (share route), never out of range.
+    // first still-visible step at/after it (post walkthrough), never out of range.
     const resumed = resolveTourResumeIndex(memberSteps, stored);
-    expect(memberSteps[resumed]?.step.id).toBe("share-route");
+    expect(memberSteps[resumed]?.step.id).toBe("post-overview");
     expect(resolveTourResumeIndex(memberSteps, { ...stored, stepIndex: 999, stepId: undefined })).toBe(
       memberSteps.length - 1,
     );
@@ -194,10 +194,15 @@ describe("platform tour helpers", () => {
     for (const id of [
       "auth-sign-in",
       "auth-register",
+      "post-overview",
+      "post-trust",
+      "post-actions",
+      "post-navigate",
       "composer-locations",
       "composer-locate",
       "composer-find-on-map",
       "composer-score",
+      "route-request",
     ]) {
       expect(ids).toContain(id);
     }
@@ -207,6 +212,15 @@ describe("platform tour helpers", () => {
     expect(
       DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((s) => s.id === "composer-score")?.targetSelector,
     ).toContain("route-score");
+    expect(
+      DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((s) => s.id === "post-overview")?.targetSelector,
+    ).toContain("feed-route-post");
+    expect(
+      DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((s) => s.id === "route-request")?.targetSelector,
+    ).toContain("route-request-trigger");
+    expect(
+      DEFAULT_PLATFORM_TOUR_CONFIG.steps.find((s) => s.id === "route-request")?.activateEvent?.event,
+    ).toBe(SHARE_ROUTE_OPEN_EVENT);
   });
 
   it("normalize merges stored rows field-wise and survives corruption", () => {
@@ -384,9 +398,26 @@ describe("platform tour registration (offline + api surface)", () => {
       path.join(process.cwd(), "app", "components", "features", "posts", "ShareRouteModal.tsx"),
       "utf8",
     );
-    for (const token of ["route-origin", "route-locate", "route-find-on-map", "route-score"]) {
+    for (const token of ["route-origin", "route-locate", "route-find-on-map", "route-score", "route-request-trigger"]) {
       expect(composer).toContain(token);
     }
+    const postCard = fs.readFileSync(
+      path.join(process.cwd(), "app", "components", "features", "posts", "PostCard.tsx"),
+      "utf8",
+    );
+    for (const token of ["feed-route-post", "post-trust", "post-actions", "post-navigate"]) {
+      expect(postCard).toContain(token);
+    }
+    const requestModal = fs.readFileSync(
+      path.join(process.cwd(), "app", "components", "features", "posts", "RequestRouteModal.tsx"),
+      "utf8",
+    );
+    expect(requestModal).toContain("request-route-origin");
+    const navigation = fs.readFileSync(
+      path.join(process.cwd(), "app", "components", "features", "posts", "LiveNavigationModal.tsx"),
+      "utf8",
+    );
+    expect(navigation).toContain("live-navigation");
   });
 
   it("profile quick links expose the tour replay action", () => {
@@ -408,6 +439,8 @@ describe("platform tour FAQ (en + pidgin)", () => {
     "tour-replay-offline",
     "tour-guests-auth",
     "tour-composer",
+    "tour-posts-requests",
+    "tour-navigation",
     "tour-guest-prompt",
     "tour-resume",
   ];

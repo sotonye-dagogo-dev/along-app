@@ -1,8 +1,8 @@
 # Architecture History
 
 > **Metadata**
-> - last-updated-by: execute-feature 2026-10-14 (Sprint 55 tightening)
-> - last-verified-against-code: 2026-10-08
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest CTA)
+> - last-verified-against-code: 2026-10-21
 > - staleness-policy: historical entries do not go stale — only the current architecture (in system-architecture.md) needs re-verification
 
 > **Overview:** Chronological record of how the Along system architecture has evolved. Useful for understanding why things are structured the way they are, and for identifying patterns in how the codebase has grown.
@@ -10,6 +10,21 @@
 ---
 
 ## History
+
+### 2026-10-21 — Tour Covers Reading/Requesting/Navigating; Guest Prompt Retired
+
+**State:**
+The platform tour remains a root-mounted, config-driven walkthrough but now targets post comprehension and community requests in addition to auth and route composition. `platformTour` ships 16 steps: the new `post-overview`, `post-trust`, `post-actions`, and interactive `post-navigate` steps anchor on the first route-bearing `PostCard`; interactive `route-request` anchors on the composer’s request trigger and can reopen the composer. `NavigationGuide` and `LiveNavigationModal` expose stable `data-tour` anchors for future navigation-entry steps. The share-route Details hint uses `fillShareRouteHintTemplate` with a config template for live distance/time beside the Map link. `GuestBanner` now carries the permanent Take tour CTA, while `GuestTourNotice` is default-disabled and unmounted.
+
+**Rationale:**
+Onboarding previously explained how to create a route but not how to read one, judge its trust, react, navigate, or ask the community when no route exists. The feed is heterogeneous, so the tour needed a semantic route-bearing predicate rather than a positional selector. The floating guest prompt was retired because a persistent CTA in the existing banner removes notice stacking without losing discoverability.
+
+**Key Architectural Decisions:**
+- Tour steps remain pure metadata (`targetSelector`, `activateEvent`/`advanceEvent`, `audience`, `timeoutMs`) — no feature-component imports.
+- Tour anchors are emitted only from semantically valid surfaces; requests/platform posts are excluded from the post walkthrough.
+- Optional interpolated hint suffixes share one safe filler that returns empty on missing/unresolved values.
+- Retiring a global prompt is an `enabled: false` + unmount change; code stays for backwards-compatible opt-in.
+- No schema, migration, or API changes.
 
 ### 2026-06-02 — Initial Architecture
 

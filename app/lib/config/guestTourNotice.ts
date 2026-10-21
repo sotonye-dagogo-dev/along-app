@@ -1,16 +1,20 @@
 /**
  * Guest tour prompt — config/metadata-driven, notice-queue aware.
  *
- * Guests get a single dismissible nudge to try the platform tour. It is
- * deliberately *late and polite*: it waits for the cookie-consent bar and the
- * PWA install prompt to clear first (one notice at a time), never appears on
- * a route where the tour auto-starts (the tour opens itself there), never
- * appears while a tour is in progress/paused, and never nags a guest who
- * dismissed it within the TTL. Signed-in users are never prompted here — they
- * can replay the tour from their profile or the footer.
+ * @deprecated The floating guest-tour notice is retired. Guests now get a
+ * permanent "Take tour" CTA in the guest banner (alongside sign-in/sign-up),
+ * and the footer/profile/FAQ entry points remain. Keeping the gate helper and
+ * component in place is non-breaking for deployments that still want the old
+ * prompt: set `enabled` to true and re-mount `GuestTourNotice` explicitly.
  *
- * The footer link remains the permanent entry point (Along column). All
- * constants live here so the component and tests share one contract.
+ * When enabled, the prompt is deliberately *late and polite*: it waits for the
+ * cookie-consent bar and the PWA install prompt to clear first (one notice at
+ * a time), never appears on a route where the tour auto-starts (the tour opens
+ * itself there), never appears while a tour is in progress/paused, and never
+ * nags a guest who dismissed it within the TTL. Signed-in users are never
+ * prompted here — they can replay the tour from their profile or the footer.
+ *
+ * All constants live here so the component and tests share one contract.
  */
 
 import { PWA_INSTALL_CONFIG } from "./pwa";
@@ -38,7 +42,8 @@ export interface GuestTourNoticeCopy {
 }
 
 export const GUEST_TOUR_NOTICE_CONFIG = {
-  enabled: true,
+  /** Retired in favour of the guest-banner "Take tour" CTA. */
+  enabled: false,
   /** Wait before the first paint of the prompt (lets the page settle). */
   delayMs: 12_000,
   /** A dismissal keeps the prompt away for 14 days (mirrors install prompt). */

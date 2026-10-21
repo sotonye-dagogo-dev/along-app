@@ -5,7 +5,7 @@ import dynamic from "next/dynamic"
 import { X, MapPin, GripVertical, Plus, Upload, Navigation, Save, Crosshair, History, Loader2, MapPinned, FileText, BarChart3, Info, type LucideIcon } from "lucide-react"
 import { AppModal } from "@/app/components/ui"
 import { VEHICLE_REGISTRY } from "@/app/lib/config"
-import { SHARE_ROUTE_MODAL_CONFIG, SHARE_ROUTE_TAB_EVENT, resolveShareRouteTabId, type ShareRouteTabConfig, type ShareRouteTabEventDetail, type ShareRouteTabIcon, type ShareRouteTabId } from "@/app/lib/config"
+import { SHARE_ROUTE_MODAL_CONFIG, SHARE_ROUTE_TAB_EVENT, fillShareRouteHintTemplate, resolveShareRouteTabId, type ShareRouteTabConfig, type ShareRouteTabEventDetail, type ShareRouteTabIcon, type ShareRouteTabId } from "@/app/lib/config"
 import { ROUTE_STEPS_CONFIG, showStepFare, showStepVehicle, normalizeRouteSteps, totalFareForSteps } from "@/app/lib/config/routeSteps"
 import {
   ROUTE_VALIDATION_CONFIG,
@@ -680,6 +680,20 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
   }, [traceSig, isOpen, previewVehicle])
 
   const evaluation = draftingCoachService.evaluate(draftInput)
+  // Details hint suffixes: the Map link mirrors the Score link by showing the
+  // live distance/time estimate; both templates degrade to the bare label
+  // while their values are unavailable (never a half-filled placeholder).
+  const detailsHintMapValue = fillShareRouteHintTemplate(
+    SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapValueTemplate,
+    {
+      distance: displayDistance > 0 ? Math.round(displayDistance * 10) / 10 : "",
+      duration: displayDuration > 0 ? Math.round(displayDuration) : "",
+    },
+  )
+  const detailsHintScoreValue = fillShareRouteHintTemplate(
+    SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreValueTemplate,
+    { score: evaluation.score, max: evaluation.maxScore },
+  )
 
   // Live composer validity (config-driven): Share stays disabled until every
   // visible step has a location and every fare is a single valid amount.
@@ -1312,7 +1326,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
             </p>
           </div>
           {onRequestRoute && SHARE_ROUTE_MODAL_CONFIG.showRequestTrigger && !isResponse && !isEditing && (
-            <div className="pr-8 shrink-0">
+            <div className="pr-8 shrink-0" data-tour="route-request-trigger">
               <RequestRouteTrigger onClick={onRequestRoute} />
             </div>
           )}
@@ -1731,6 +1745,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                     className="font-semibold underline underline-offset-2 border-none bg-transparent cursor-pointer font-sans text-info-text hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors"
                   >
                     {SHARE_ROUTE_MODAL_CONFIG.detailsHint.mapLabel}
+                    {detailsHintMapValue ? ` ${detailsHintMapValue}` : ""}
                   </button>{" "}
                   {SHARE_ROUTE_MODAL_CONFIG.detailsHint.conjunction}{" "}
                   <button
@@ -1740,11 +1755,7 @@ export default function ShareRouteModal({ isOpen, onClose, responseTo, onClearRe
                     className="font-semibold underline underline-offset-2 border-none bg-transparent cursor-pointer font-sans text-info-text hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary transition-colors"
                   >
                     {SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreLabel}
-                    {SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreValueTemplate
-                      ? ` ${SHARE_ROUTE_MODAL_CONFIG.detailsHint.scoreValueTemplate
-                          .replace("{score}", String(evaluation.score))
-                          .replace("{max}", String(evaluation.maxScore))}`
-                      : ""}
+                    {detailsHintScoreValue ? ` ${detailsHintScoreValue}` : ""}
                   </button>{" "}
                   {SHARE_ROUTE_MODAL_CONFIG.detailsHint.suffix}
                 </p>

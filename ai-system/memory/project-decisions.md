@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 86: guest tour prompt + step hand-off events)
-> - last-verified-against-code: 2026-10-21 (Sprint 86 in-runner QA: tsc 0, jest 118/118 suites 1257/1257, build clean)
+> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: persistent guest CTA replaces floating prompt)
+> - last-verified-against-code: 2026-10-21 (Sprint 87 in-runner QA: tsc 0, jest 118/118 suites 1259/1259, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -35,13 +35,41 @@
 
 ## Decisions
 
+## Tour Post Walkthrough Targets the First Route-Bearing Post
+
+**Decision:** Anchor the post tour on the first `PostCard` that is neither a route request nor platform-generated and has at least one route step (`isRouteBearing`). Expose stable anchors for the card (`feed-route-post`), trust badge (`post-trust`), actions row (`post-actions`), and Navigate link (`post-navigate`); put the community-request lesson on a separate composer-header step.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 87)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:** Request posts and platform notices do not carry the same stops/fares/trust actions the walkthrough explains. Because the feed is ranked, the first eligible route is normally a strong example, and the explicit predicate prevents the tour from highlighting an unrelated card while data loads.
+
+**Alternatives Considered:** Highlighting any first card (may teach the wrong surface); a fixed seed/demo post (not guaranteed present); asking the user to choose an example (too much friction for onboarding).
+
+**Implications:** If no route-bearing post is loaded, the post steps wait up to 4.5s and then follow the existing polite-skip behavior. New post surface lessons should hang off the same stable anchors rather than adding CSS selectors.
+
+## Retire the Floating Guest Tour Prompt for a Persistent Banner CTA
+
+**Decision:** Replace the timed floating `GuestTourNotice` with a permanent “Take tour” CTA in `GuestBanner`, alongside Sign in and Sign up. `GUEST_TOUR_NOTICE_CONFIG.enabled` defaults to `false` and `GuestTourNotice` is unmounted from `app/layout.tsx`; the gate/component remain in the codebase for explicit opt-in. Footer, FAQ, and profile replay entry points stay.
+**Date:** 2026-10-21
+**Made by:** AI agent (execute-feature Sprint 87)
+**Supersedes:** Guest Tour Prompt Is Serialized Behind Existing Notices
+**Superseded by:** None
+
+**Reason:** Even perfectly serialized, the floating prompt competed with the cookie bar, install prompt, guest banner, and other bottom notices. A CTA inside the existing guest banner is always discoverable, never timed, never needs dismissing, and removes a whole notice-state coordination path from the default experience.
+
+**Alternatives Considered:** Keeping the serialized prompt and reducing its delay (still another pop-up); removing the component and config entirely (breaking for forks/deployments that opted in); placing the CTA only in the footer (too easy to miss on mobile).
+
+**Implications:** Default notice pressure drops and the guest banner becomes the primary tour entry. Re-enabling the old prompt requires setting `enabled: true` and explicitly re-mounting the component; no API/schema change is involved.
+
 ## Guest Tour Prompt Is Serialized Behind Existing Notices
 
 **Decision:** Show the guest tour prompt only through `shouldShowGuestTourNotice`, an ordered pure gate: feature enabled → guest → tour available → not terminal/in progress → not an auto-start route → install prompt cleared → cookie consent accepted → not dismissed within 14 days. CookieConsent and InstallPrompt dispatch coordination events; the prompt re-evaluates on those events, navigation, focus and storage changes. The permanent entry point stays the footer Along link (moved from Community, not duplicated).
 **Date:** 2026-10-21
 **Made by:** AI agent (execute-feature Sprint 86)
 **Supersedes:** None
-**Superseded by:** None
+**Superseded by:** Retire the Floating Guest Tour Prompt for a Persistent Banner CTA
 
 **Reason:** Guests already see the cookie bar and install card; adding a third bottom card immediately would be noisy and could obscure controls. A gate is testable, config-driven, and degrades safely (unknown inputs hide the prompt). Signed-in users have profile/footer replay entry and are never prompted.
 

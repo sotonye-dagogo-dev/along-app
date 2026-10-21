@@ -5,6 +5,7 @@ import { LogIn, UserPlus } from 'lucide-react'
 import { useTranslation } from '@/app/providers/I18nProvider'
 import { useOnlineStatus } from '@/app/providers/OnlineStatusProvider'
 import { readAuthSnapshot } from '@/app/lib/config/authOffline'
+import TourLaunchButton from '@/app/components/features/tour/TourLaunchButton'
 import { useMemo } from 'react'
 
 export default function GuestBanner() {
@@ -21,11 +22,14 @@ export default function GuestBanner() {
   if (hasOfflineSession) return null
   return (
     <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-b border-primary/10">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-        <p className="text-sm text-text-primary">
+      <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+        <p className="text-sm text-text-primary min-w-0 sm:flex-1">
           <span className="font-semibold">{t("guest.banner")}</span>
         </p>
-        <div className="flex items-center gap-2">
+        {/* Three guest CTAs: tour, sign in, sign up. Wraps instead of
+            squeezing on narrow screens; sign-up stays last and primary. */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <TourLaunchButton label={t("guest.takeTour")} variant="ghost" size="sm" className="text-primary" />
           <Link
             href="/login"
             className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary transition-colors px-3 py-1.5"
