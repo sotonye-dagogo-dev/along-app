@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
-> - last-verified-against-code: 2026-10-21 (Sprint 90 in-runner QA: tsc 0, jest 119/119 suites 1265/1265, build clean)
+> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
+> - last-verified-against-code: 2026-10-24 (Sprint 91 in-runner QA: tsc 0, jest 120/120 suites 1285/1285, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,24 @@
 ---
 
 ## History
+
+## 2026-10-24 — Interactive Navigation Camera: Pan-Yield + Center/North-up Toggle (Sprint 91)
+
+**Summary:**
+Live navigation is now interactive end-to-end without losing the user. The camera follows heading-up but yields to pan/zoom/pinch/wheel/key gestures, re-centring itself after an idle window, and a single on-map button interchanges between "North up" (release to true north, no auto-return) and "Center" (snap back to location + heading). The change is additive and opt-in: only the live-navigation modal's map uses it, so every other RouteMap is untouched.
+
+**Completed:**
+- New `app/lib/config/navigationCamera.ts`: `NAVIGATION_CAMERA_CONFIG` (idle resume/poll, follow/center/north-up zoom+durations, heading-jitter threshold, token-only control chrome, action/aria/hint copy) + pure `normalizeHeading`, `bearingDelta`, `shouldRotateToHeading`, `shouldResumeNavigationCamera` (delegates to `shouldDeferFit`)
+- `RouteMap` gains additive `navigationCamera`: gesture pauses following, token-guarded idle watcher resumes, `handleCameraToggle` releases to true north / re-centres, user arrow `rotationAlignment="map"`, jitter-gated bearing updates
+- `LiveNavigationModal` passes `navigationCamera` on its map (only consumer); FAQ en + PCM `map-navigation-camera`; new `navigationCamera.test.ts`; full QA gate green
+
+**Key Changes:**
+- Navigation camera interaction is a temporary *pause* that self-heals, distinct from an explicit *free* (true-north) release — model the two as separate concepts so auto-return never fights a deliberate decenter
+- A heading-up map must rotation-align its directional user marker to the map, or the arrow points the wrong way once the map rotates
+- Gate heading changes behind a jitter threshold; stationary geolocation fixes repeat with enough noise to twitch a heading-up camera
+
+**Next Sprint Focus:**
+Select the next directive from `planning/task-queue.md`.
 
 ## 2026-10-21 — Scrollable Desktop Suggestions + Reliable Mobile Share Trigger (Sprint 90)
 

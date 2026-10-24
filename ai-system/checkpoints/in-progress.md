@@ -2,9 +2,9 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90 closed)
+> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91 closed)
 > - status: idle
 
 ## Active Work
 
-None. Sprint 90 (viewport-capped/scrollable desktop suggestions rail + mobile bottom-bar Share Route opening the local composer instead of a query-link navigation) is complete and verified. Next work should be selected from `planning/task-queue.md` or a new directive.
+None. Sprint 91 (interactive live-navigation camera: gestures pause following and auto-recentre after an idle window, plus a one-button Center/North-up toggle with a map-aligned heading arrow) is complete and verified. Next work should be selected from `planning/task-queue.md` or a new directive.

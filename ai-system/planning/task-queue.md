@@ -2,11 +2,26 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
-> - last-synced: 2026-10-21 (Sprint 90)
+> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
+> - last-synced: 2026-10-24 (Sprint 91)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 91 — Interactive navigation camera: pan-yield + Center/North-up toggle (2026-10-24, execute-feature) [S]
+
+> **Section summary:** Directive follow-up to the live-navigation modal, non-breaking (config/component/FAQ/test/docs only; no schema, migration, API or persisted-state change). During live navigation the camera now follows the user's heading-up but yields to pan/zoom/pinch/keyboard — following pauses and auto-recentres after an idle window instead of yanking the camera mid-gesture. A single on-map toggle interchanges between "North up" (release the camera to true north, no auto-return) and "Center" (snap back to location + heading-up). The user arrow is map-rotation-aligned so it stays true while the map rotates; heading jitter is threshold-gated. FAQ en + PCM refreshed. QA full in-runner: tsc 0, jest 120/120 suites 1285/1285, lint no new findings, prisma generate + next build clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [S] | `navigationCamera.ts` — additive `NAVIGATION_CAMERA_CONFIG` (idle resume, poll, follow/center/north-up zoom+durations, heading-jitter threshold, token-only control chrome, action/aria/hint copy) + pure `normalizeHeading`, `bearingDelta`, `shouldRotateToHeading`, `shouldResumeNavigationCamera` (reuses `shouldDeferFit`) | [x] |
+| [S] | `RouteMap.tsx` — additive `navigationCamera` prop: gesture pauses following (pointer/wheel/key → `cameraPaused`), token-guarded idle watcher resumes to heading-up, `handleCameraToggle` releases to true north / re-centres, map-rotation-aligned user arrow, jitter-gated bearing | [x] |
+| [S] | `LiveNavigationModal.tsx` — passes `navigationCamera` on its RouteMap (only consumer); all other maps untouched | [x] |
+| [S] | FAQ — en + PCM `map-navigation-camera` (move map while navigating, auto-recentre, North up/Center toggle) | [x] |
+| [S] | Tests — NEW `navigationCamera.test.ts` (heading normalise/delta/jitter, resume gate, config sanity, RouteMap + modal source contracts) | [x] |
+| [S] | QA + deep sync — tsc, full jest, lint, build; task queue, project plan, architecture, decisions, lessons, checkpoints, history, test results, indexes | [x] |
+
+---
 
 ## Sprint 90 — Scrollable desktop suggestions + reliable mobile share trigger (2026-10-21, execute-feature) [S]
 
