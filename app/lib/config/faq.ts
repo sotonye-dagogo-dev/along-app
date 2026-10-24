@@ -178,6 +178,12 @@ export const DEFAULT_FAQ_ITEMS: FaqCategory[] = [
           "Drag with one finger to move the map. Pinch with two fingers to zoom in and out, or double-tap to zoom in. Tap any numbered dot to preview that route, or use Expand for a full-screen view.",
       },
       {
+        id: "map-navigation-camera",
+        question: "Can I move the map while navigating, and what does the Center button do?",
+        answer:
+          "Yes. While live navigation is on, the map follows you with your heading up, but you can always pan or zoom to look around — following pauses and then re-centres on you automatically after a few seconds of inactivity. The on-map button toggles the two states: while it reads “North up”, tap it to release the camera and explore in true north (it stays free until you bring it back); while it reads “Center”, tap it to snap back to your location and heading-up following.",
+      },
+      {
         id: "map-tap-assign",
         question: "How do I set a stop by tapping the map?",
         answer:
@@ -476,6 +482,11 @@ export const FAQ_PCM: Record<string, { question?: string; answer?: string }> = {
     question: "How I go take zoom and move map for mobile?",
     answer:
       "Drag with one finger make di map move. Pinch with two fingers make you zoom in and out, or double-tap make you zoom in. Tap any number dot make you preview dat route, or use Expand for full-screen view.",
+  },
+  "map-navigation-camera": {
+    question: "I fit move di map while navigation dey on, and wetin di Center button dey do?",
+    answer:
+      "Yes. While live navigation dey on, di map dey follow you with your heading up, but you fit always pan or zoom to look around — following go pause, come re-center on you by itself after few seconds wey you no touch am. Di button for map dey toggle di two states: when e talk “North up”, tap am make you release di camera go explore for true north (e go stay free until you bring am back); when e talk “Center”, tap am make e snap back to your location and heading-up following.",
   },
   "map-tap-assign": {
     question: "How I go take set stop by tapping di map?",

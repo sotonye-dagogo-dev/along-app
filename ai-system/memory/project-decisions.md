@@ -1336,3 +1336,18 @@ The reported problem was structural: two narrow columns plus nested collapsibles
 - **Open the score tab automatically after a draft restore**: Rejected — restoring means "continue editing"; Details is the useful landing tab, with the nudge one tap away to Map/Score.
   **Supersedes:** None
   **Superseded by:** None
+
+## Sprint 91 decisions (2026-10-24)
+
+**Decision:**
+(1) **Interaction is a pause; decenter is a mode.** The live-navigation camera has two independent states: `cameraPaused` (transient — set by any pan/zoom/pinch/wheel/key gesture while `centered`, cleared by a token-guarded idle watcher after `NAVIGATION_CAMERA_CONFIG.idleResumeMs`) and `cameraMode` (`centered` heading-up follow vs `free` true-north release). Pausing never ends following; an explicit "North up" tap enters `free` and suppresses auto-return until the user taps "Center". This keeps normal-map interactivity (look around, then it comes back) without fighting a deliberate decenter. (2) **One button, label interchanges with state.** The on-map control shows "North up" while following (release) and "Center" while free *or* paused (return), with `aria-pressed`/title/hint text driven from config — no second control. (3) **Heading-up requires map-aligned markers and a jitter gate.** The user-dot `Marker` uses `rotationAlignment="map"` under `navigationCamera` so its heading arrow tracks the rotating map; `shouldRotateToHeading` ignores changes below `headingJitterDeg` (4°) and `normalizeHeading` maps `NaN`/null/out-of-range to a safe value, so stationary fixes cannot twitch the camera. (4) **Additive and opt-in only.** `navigationCamera` defaults false; `LiveNavigationModal` is the sole consumer, so post-card/detail/explore cameras are unchanged. No new provider, key, lookup or persisted state was introduced.
+**Reason:**
+The reported friction was that panning during navigation was impossible because every GPS tick re-flew the camera. Splitting pause from mode is the minimum model that satisfies both "let me look around, then recentre" and "keep true north when I ask for it". A heading-up map cannot have a screen-aligned directional arrow, and raw sensor headings are noisy when stationary; both are correctness issues, not polish. Keeping the feature opt-in protects the many other RouteMap callers whose camera contracts are already locked by tests.
+**Alternatives Considered:**
+- **Auto-switch to `free` on the first pan**: Rejected — the directive explicitly wanted auto-return after inactivity; permanent free mode would never recentre.
+- **Two separate controls (recenter + north-up)**: Rejected — the directive asked for one button with interchanging text; the pause label reads "Center" so the common recovery is still one tap.
+- **Rotate the heading arrow in screen space by `heading - bearing`**: Rejected — requires plumbing live bearing into the marker each frame; `rotationAlignment="map"` is the framework-native, drift-free approach.
+- **Disable map rotation entirely (north-up always)**: Rejected — the directive wanted Google-Maps-style heading-up following, with true north as the decenter option.
+- **Admin-tunable camera knobs**: Rejected for now — tuning constants live in code config next to their pure helpers; no admin need demonstrated.
+  **Supersedes:** None
+  **Superseded by:** None

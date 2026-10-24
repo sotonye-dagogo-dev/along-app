@@ -149,6 +149,7 @@ export default function LiveNavigationModal({
                 vehicle={vehicle}
                 userLocation={userLocation}
                 followUser={!!userLocation}
+                navigationCamera
               />
             </div>
           </div>

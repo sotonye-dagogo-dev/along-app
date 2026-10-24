@@ -2,10 +2,16 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
+> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 91 — Interactive navigation camera: pan-yield + Center/North-up toggle (2026-10-24, execute-feature)
+
+- [x] Config [Sprint 91]: NEW `navigationCamera.ts` — additive `NAVIGATION_CAMERA_CONFIG` (idle resume/poll, follow/center/north-up zoom+durations, heading-jitter threshold, token-only control chrome, action/aria/hint copy) + pure `normalizeHeading`/`bearingDelta`/`shouldRotateToHeading`/`shouldResumeNavigationCamera`
+- [x] Camera [Sprint 91]: `RouteMap` gains additive `navigationCamera` — follow yields to pan/zoom/pinch/keys (pauses, never ends), auto-recentres after the idle window, map-rotation-aligned user arrow, jitter-gated heading; `LiveNavigationModal` is the only consumer
+- [x] Toggle + FAQ + QA [Sprint 91]: single "North up"/"Center" on-map button releases to true north / snaps back; `map-navigation-camera` en + PCM; NEW `navigationCamera.test.ts`; tsc 0, jest 120/120 suites 1285/1285, lint no new findings, build clean
 
 ## Sprint 90 — Scrollable desktop suggestions + reliable mobile share trigger (2026-10-21, execute-feature)
 

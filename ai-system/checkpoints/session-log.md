@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
-> - last-verified-against-code: 2026-10-21 (tsc 0 errors, jest 119/119 suites 1265/1265, lint no new findings on touched files, next build clean)
+> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
+> - last-verified-against-code: 2026-10-24 (tsc 0 errors, jest 120/120 suites 1285/1285, lint no new findings on touched files, next build clean)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,33 @@
 ---
 
 ## Sessions
+
+## Session — 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
+
+**Completed:**
+
+- Closed the live-navigation interactivity directive, non-breaking (config/component/FAQ/tests/docs only; no schema, migration, API or persisted-state change). (1) **Yielding follow camera:** while navigating, the map follows each GPS fix with the user's heading up, but any pan/zoom/pinch/wheel/key gesture pauses following (`cameraPaused`) instead of fighting the user; a token-guarded idle watcher clears the pause after `NAVIGATION_CAMERA_CONFIG.idleResumeMs` (6s) so the camera re-centres on its own. (2) **Center ↔ North-up toggle:** a single on-map button interchanges its label with the state — "North up" releases the camera to true north with no auto-return, "Center" snaps back to location + heading-up. While paused it reads "Center" so a distracted user can return with one tap. (3) **Arrow fidelity:** the user-dot marker uses `rotationAlignment="map"` during navigation so the heading arrow stays true when the map rotates; heading changes below the jitter threshold are ignored to stop stationary-fix twitch. (4) **Scope:** `navigationCamera` is additive and opt-in — `LiveNavigationModal` is the only consumer, so post cards/detail/explore cameras are byte-for-byte unchanged. (5) **FAQ:** en + PCM `map-navigation-camera` explains moving the map mid-navigation and the toggle.
+- QA gate green in-runner: `npx tsc --noEmit` 0 errors; `npx jest --ci --maxWorkers=2 --silent` 120/120 suites 1285/1285 tests; `npm run lint` no new findings on touched files (pre-existing unrelated repo errors unchanged); `DIRECT_LOCAL_DB=... npm run build` clean.
+- Chain: execute-feature → update-ai-system deep sync executed (Sprint 91 in project-plan/task-queue, this log, dev-history, decisions/lessons, system-architecture, test-results, indexes, in-progress closed).
+
+**Files Modified:**
+
+- Edited: `app/components/features/posts/RouteMap.tsx`, `app/components/features/posts/LiveNavigationModal.tsx`, `app/lib/config/faq.ts`, `app/lib/config/index.ts`, ai-system docs
+- Added: `app/lib/config/navigationCamera.ts`, `app/__tests__/config/navigationCamera.test.ts`
+
+**Next Task:**
+
+Select the next directive from `planning/task-queue.md`.
+
+**Assumptions Made:**
+
+- "Interaction then auto-return" applies only to the live-navigation camera; it is implemented as a temporary pause (not a mode change) so following self-heals. An explicit "North up" tap is a durable release with no auto-return, matching normal map explore behaviour.
+- One button toggles both states; its text (plus icon) interchanges rather than adding a second control.
+- Heading-up uses the browser geolocation `heading`; when it is null/NaN (stationary), the camera re-centres without rotating.
+
+**Notes / Blockers:**
+
+- None. No new providers/keys/lookups were introduced — the camera is pure MapLibre state and the existing geolocation watch.
 
 ## Session — 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
 
