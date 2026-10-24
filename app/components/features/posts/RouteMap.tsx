@@ -3,7 +3,7 @@
 import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
-import { Navigation, Clock, DollarSign, Crosshair, Maximize2, Minimize2, X } from 'lucide-react'
+import { Navigation, Clock, DollarSign, Compass, Crosshair, LocateFixed, Maximize2, Minimize2, X } from 'lucide-react'
 import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -40,6 +40,13 @@ import {
 import { legTrafficFactor } from '@/app/lib/config/journeyTime'
 import { MAP_PINS_CONFIG } from '@/app/lib/config/mapPins'
 import { MAP_VIEW_CONFIG, shouldDeferFit } from '@/app/lib/config/mapView'
+import {
+  NAVIGATION_CAMERA_CONFIG,
+  normalizeHeading,
+  shouldResumeNavigationCamera,
+  shouldRotateToHeading,
+  type NavigationCameraMode,
+} from '@/app/lib/config/navigationCamera'
 import { MAP_PICKER_CONFIG, type MapPickOption } from '@/app/lib/config/mapPicker'
 import { MapRoutePin, MapUserDot } from './MapPins'
 import { TrafficLegend } from './TrafficLegend'
@@ -67,6 +74,14 @@ interface RouteMapProps {
   className?: string
   userLocation?: { lat: number; lng: number; accuracy?: number; heading?: number | null } | null
   followUser?: boolean
+  /**
+   * Sprint 91 — live-navigation camera (non-breaking additive). When true
+   * alongside `followUser`, the map follows the user's heading, yields to
+   * gestures, auto-recentres after inactivity, and renders an on-map
+   * Center/North-up toggle. Default false keeps every other RouteMap's
+   * camera behaviour identical.
+   */
+  navigationCamera?: boolean
   /**
    * Traffic overlay (non-breaking additive):
    * - `showTraffic` (default true): fetch per-chunk traffic and paint
@@ -158,6 +173,7 @@ function RouteMap({
   className = '',
   userLocation = null,
   followUser = false,
+  navigationCamera = false,
   showTraffic = true,
   trafficOverride,
   trafficAdjustedMins = null,
@@ -177,6 +193,11 @@ function RouteMap({
   const [expanded, setExpanded] = useState(false)
   const [pickPoint, setPickPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [focusHintVisible, setFocusHintVisible] = useState(false)
+  // Sprint 91 — navigation camera: `centered` follows the live fix with
+  // heading-up; `free` is the explicit true-north release. `paused` is a
+  // temporary, self-healing yield while the user is gesturing.
+  const [cameraMode, setCameraMode] = useState<NavigationCameraMode>("centered")
+  const [cameraPaused, setCameraPaused] = useState(false)
   const mapRef = useRef<MapRef>(null)
   // Stable mapLib promise: `import()` inline creates a fresh promise every
   // render, which react-map-gl can treat as a new library and re-init the
@@ -661,19 +682,24 @@ function RouteMap({
   // Pointer/wheel/key activity on the container marks interaction; the
   // gesture "end" is watched on window so a release outside the map still
   // counts. Re-attached on `expanded` because the container node changes
-  // (inline card ↔ portalled dialog).
+  // (inline card ↔ portalled dialog). Sprint 91: while the navigation camera
+  // is centred, the first gesture pauses following (never ends it) so the
+  // auto-resume watcher below can re-centre after the idle window.
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
     const st = interactionRef.current
-    const onPointerDown = () => { st.interacting = true; st.lastAt = Date.now() }
+    const pauseNavigationCamera = () => {
+      if (navigationCamera && cameraMode === "centered") setCameraPaused(true)
+    }
+    const onPointerDown = () => { st.interacting = true; st.lastAt = Date.now(); pauseNavigationCamera() }
     const onPointerMove = (e: PointerEvent) => { if (e.buttons) st.lastAt = Date.now() }
     const endGesture = () => {
       if (st.interacting) st.interacting = false
       st.lastAt = Date.now()
     }
-    const onWheel = () => { st.lastAt = Date.now() }
-    const onKeyDown = () => { st.lastAt = Date.now() }
+    const onWheel = () => { st.lastAt = Date.now(); pauseNavigationCamera() }
+    const onKeyDown = () => { st.lastAt = Date.now(); pauseNavigationCamera() }
     el.addEventListener('pointerdown', onPointerDown)
     el.addEventListener('pointermove', onPointerMove)
     el.addEventListener('wheel', onWheel, { passive: true })
@@ -688,13 +714,15 @@ function RouteMap({
       window.removeEventListener('pointerup', endGesture)
       window.removeEventListener('pointercancel', endGesture)
     }
-  }, [expanded])
+  }, [expanded, navigationCamera, cameraMode])
 
   // Follow-nav is an EXPLICIT camera owner: compute a boolean so GPS
   // ticks (userLocation identity changes every fix) never re-run this
   // effect — previously each tick refit the whole route out from under a
   // pan on post detail.
   const followActive = followUser && !!userLocation
+  const navCameraActive = navigationCamera && followActive
+  const userHeading = normalizeHeading(userLocation?.heading)
 
   useEffect(() => {
     if (mapLoaded && bounds) {
@@ -739,12 +767,86 @@ function RouteMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- focusRequest identity is unstable per render; the nonce is the trigger
   }, [focusNonce])
 
-  // Follow user location when in live mode
+  // Follow user location when in live mode. Sprint 91: the navigation
+  // camera yields while gestured (`cameraPaused`) and releases entirely in
+  // `free` (true-north) mode; legacy callers keep the exact flyTo.
   useEffect(() => {
-    if (followUser && userLocation && mapLoaded && mapRef.current) {
-      mapRef.current.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 15, duration: 600 })
+    if (!followUser || !userLocation || !mapLoaded || !mapRef.current) return
+    const map = mapRef.current
+    if (navigationCamera) {
+      if (cameraMode !== "centered" || cameraPaused) return
+      const target: Parameters<typeof map.easeTo>[0] = {
+        center: [userLocation.lng, userLocation.lat],
+        zoom: NAVIGATION_CAMERA_CONFIG.followZoom,
+        duration: NAVIGATION_CAMERA_CONFIG.followDurationMs,
+      }
+      let currentBearing = 0
+      try {
+        currentBearing = (map as unknown as { getBearing?: () => number }).getBearing?.() ?? 0
+      } catch {
+        currentBearing = 0
+      }
+      if (shouldRotateToHeading(userHeading, currentBearing)) {
+        target.bearing = userHeading as number
+      }
+      map.easeTo(target)
+      return
     }
-  }, [userLocation, followUser, mapLoaded])
+    map.flyTo({ center: [userLocation.lng, userLocation.lat], zoom: 15, duration: 600 })
+  }, [userLocation, followUser, mapLoaded, navigationCamera, cameraMode, cameraPaused, userHeading])
+
+  // Auto-resume watcher (Sprint 91): while the centred camera is paused by a
+  // gesture, poll until the idle window elapses then clear the pause so the
+  // follow effect above re-centres. Free mode never auto-resumes.
+  useEffect(() => {
+    if (!navCameraActive || cameraMode !== "centered" || !cameraPaused) return
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const run = () => {
+      if (cancelled) return
+      const st = interactionRef.current
+      if (
+        shouldResumeNavigationCamera({
+          mode: cameraMode,
+          interacting: st.interacting,
+          lastInteractionAt: st.lastAt,
+          now: Date.now(),
+        })
+      ) {
+        setCameraPaused(false)
+        return
+      }
+      timer = setTimeout(run, NAVIGATION_CAMERA_CONFIG.pollMs)
+    }
+    timer = setTimeout(run, NAVIGATION_CAMERA_CONFIG.pollMs)
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [navCameraActive, cameraMode, cameraPaused])
+
+  // Center ↔ North-up toggle. Centers immediately (clearing any pause) or
+  // releases to true north without ending navigation.
+  const handleCameraToggle = useCallback(() => {
+    const map = mapRef.current
+    const wasFollowing = cameraMode === "centered" && !cameraPaused
+    if (wasFollowing) {
+      setCameraMode("free")
+      setCameraPaused(false)
+      try {
+        map?.easeTo({ bearing: 0, pitch: 0, duration: NAVIGATION_CAMERA_CONFIG.northUpDurationMs })
+      } catch {
+        // Soft-fail: state still flips; the next explicit recenter recovers.
+      }
+      return
+    }
+    interactionRef.current.interacting = false
+    interactionRef.current.lastAt = null
+    setCameraPaused(false)
+    setCameraMode("centered")
+  }, [cameraMode, cameraPaused])
+
+  const cameraFollowing = cameraMode === "centered" && !cameraPaused
 
   const renderMarker = useCallback(
     (pin: RoutePin, index: number) => {
@@ -874,6 +976,7 @@ function RouteMap({
             longitude={userLocation.lng}
             anchor={MAP_PINS_CONFIG.markerAnchor}
             offset={MAP_PINS_CONFIG.markerOffset as unknown as [number, number]}
+            rotationAlignment={navigationCamera ? "map" : "viewport"}
           >
             <MapUserDot accuracy={userLocation.accuracy} heading={userLocation.heading} />
           </Marker>
@@ -1188,6 +1291,22 @@ function RouteMap({
           estimated={traffic.estimated}
           className={editable && onAutoTrace ? "absolute top-12 right-2 z-[4]" : "absolute top-2 right-2 z-[4]"}
         />
+      )}
+
+      {/* Sprint 91 — Center ↔ North-up camera toggle. Shown only in live
+          navigation once a fix exists, so every other map is untouched. */}
+      {navCameraActive && (
+        <button
+          type="button"
+          onClick={handleCameraToggle}
+          aria-label={cameraFollowing ? NAVIGATION_CAMERA_CONFIG.labels.releaseAria : NAVIGATION_CAMERA_CONFIG.labels.centerAria}
+          aria-pressed={cameraFollowing}
+          title={cameraFollowing ? NAVIGATION_CAMERA_CONFIG.labels.releaseHint : NAVIGATION_CAMERA_CONFIG.labels.centerHint}
+          className={NAVIGATION_CAMERA_CONFIG.controlClass}
+        >
+          {cameraFollowing ? <Compass size={13} aria-hidden /> : <LocateFixed size={13} aria-hidden />}
+          {cameraFollowing ? NAVIGATION_CAMERA_CONFIG.labels.releaseAction : NAVIGATION_CAMERA_CONFIG.labels.centerAction}
+        </button>
       )}
 
       {!mapLoaded && (

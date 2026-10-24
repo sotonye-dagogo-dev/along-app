@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
-> - last-verified-against-code: 2026-10-21 (Sprint 90 in-runner QA: tsc 0, jest 119/119 suites 1265/1265, build clean; config count 95 re-verified)
+> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
+> - last-verified-against-code: 2026-10-24 (Sprint 91 in-runner QA: tsc 0, jest 120/120 suites 1285/1285, build clean; config count 96 re-verified)
 > - staleness-policy: auto-regenerable — can be derived from import analysis tools. Manual content only for conventions and rules that cannot be inferred from code.
 
 > **Overview:** Maps how modules depend on each other in the Along application. Agents use this to understand the impact of changes before modifying a module. This file is **auto-regenerable** — prefer tool-based import analysis for ground truth, and treat manual entries as supplementary.
@@ -230,7 +230,7 @@ Map API Routes (`app/api/maps/route|geocode|reverse`)
     → Consumers (client-only, same-origin): RouteStepInput + ShareRouteModal (debounced, abortable, granted-only geoBias near-rank [Sprint 50]) + geo.ts reverseGeocode
 
 Map Renderers (RouteMap.tsx, explore/page.tsx)
-    → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset; dark light-parity — filter `"none"`, dark raster mirrors light) + mapPins (`MAP_PINS_CONFIG` center anchor/zero offset, `routePinLabel` 1-based, `snapEndpointsToPolyline`, `tracking` timeouts [Sprint 23]) + routePins (`buildRoutePinsFromPost` origin+intermediates+destination, `buildTraceInputFromPins`, `ROUTE_PINS_CONFIG` [Sprint 28]) + mapView (Sprint 72 deferred baseline recenter: `MAP_VIEW_CONFIG` idle/poll knobs + pure `shouldDeferFit`; fit effect deps on `followActive` + token-guarded idle watcher) + mapPicker (Sprint 72 tap-assign card + focus flyTo/hint copy — armed only via `pickOptions`/`onPickOption`/`focusRequest`; Sprint 75 += `cardMaxHeight` 42vh + scrollable `optionListClass`)
+    → Config: mapStack (`getMapStyleStack` vector-primary + raster step-down, onError walk, theme reset; dark light-parity — filter `"none"`, dark raster mirrors light) + mapPins (`MAP_PINS_CONFIG` center anchor/zero offset, `routePinLabel` 1-based, `snapEndpointsToPolyline`, `tracking` timeouts [Sprint 23]) + routePins (`buildRoutePinsFromPost` origin+intermediates+destination, `buildTraceInputFromPins`, `ROUTE_PINS_CONFIG` [Sprint 28]) + mapView (Sprint 72 deferred baseline recenter: `MAP_VIEW_CONFIG` idle/poll knobs + pure `shouldDeferFit`; fit effect deps on `followActive` + token-guarded idle watcher) + navigationCamera (Sprint 91 live-nav camera: `NAVIGATION_CAMERA_CONFIG` idle-resume/poll/zoom/duration/jitter + control chrome + pure `normalizeHeading`/`bearingDelta`/`shouldRotateToHeading`/`shouldResumeNavigationCamera` → RouteMap `navigationCamera` mode, LiveNavigationModal consumer; gesture pause → idle self-recenter; "North up"/"Center" toggle) + mapPicker (Sprint 72 tap-assign card + focus flyTo/hint copy — armed only via `pickOptions`/`onPickOption`/`focusRequest`; Sprint 75 += `cardMaxHeight` 42vh + scrollable `optionListClass`)
     → Shared visuals: MapPins.tsx (`MapRoutePin` numbered dot, `MapUserDot` info-blue + glory ring + radar) — token classes only, no hardcoded hex
     → Shared location: `useUserLocation` hook (passive fix + watch; explore override + post-detail fallback [Sprint 23])
     → Shared trace: `useRouteTrace` hook (estimate + debounced `/api/routes/trace` + memory cache + silent fallback [Sprint 28] — composer preview + post detail; Sprint 67 += optional vehicle → mode-aware durations via `resolveJourneyDuration`; Sprint 72 += vehicle POST + shared `traceCacheKey(sig, vehicle?)` + geo.ts `resolveFindOnMapTarget` pure focus resolver)

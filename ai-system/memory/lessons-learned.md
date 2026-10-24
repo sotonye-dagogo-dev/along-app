@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: sticky rails own their scroll; cross-surface triggers use local state)
-> - last-verified-against-code: 2026-10-21 (Sprint 90 in-runner QA: tsc 0, jest 119/119 suites 1265/1265, build clean)
+> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: navigation camera yields then self-heals; heading-up needs map-aligned markers + jitter gate)
+> - last-verified-against-code: 2026-10-24 (Sprint 91 in-runner QA: tsc 0, jest 120/120 suites 1285/1285, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -31,6 +31,28 @@
 ---
 
 ## Lessons
+
+## Navigation Camera: Yield-and-Self-Heal, With an Explicit Free Mode
+
+**Context:** Sprint 91. During live navigation the camera flew to the user on every GPS fix, so a user who panned was immediately yanked back. The directive asked for normal-map interactivity — pan freely, then auto-return after inactivity — plus a one-button center/decenter where decentering adopts true north like Google Maps.
+
+**What We Learned:** Model interaction and intent as two separate concepts. A transient gesture is a *pause* (`cameraPaused`) that self-heals through an idle watcher using the existing `shouldDeferFit` gate; an explicit decenter is a durable *mode* (`free`) that never auto-returns. Collapsing them into one boolean produces either a camera that fights the user or one that never comes back. Keep the idle window, poll cadence and animation durations in config so the behaviour is tunable and unit-testable.
+
+**Apply When:** Any auto-following camera/map/scroller that must also allow manual control. Separate "I'm temporarily looking around" from "I want this off."
+
+**Supersedes:** None
+**Superseded by:** None
+
+## Heading-Up Maps Need Map-Aligned Directional Markers + a Jitter Gate
+
+**Context:** Sprint 91. Rotating the navigation map to the user's heading meant the user-location arrow was drawn in screen space while the map rotated underneath it — the arrow would point the wrong way.
+
+**What We Learned:** When the map bearing follows a sensor heading, any directional overlay must be aligned to the map (`rotationAlignment="map"` in MapLibre/react-map-gl), not the viewport, so the arrow tracks the map plane. Also gate rotation behind a minimum heading delta: stationary geolocation fixes repeat with a few degrees of noise, which makes a heading-up camera twitch continuously. Normalise headings defensively — browsers report `NaN`/null when stationary.
+
+**Apply When:** Building heading/bearing-driven camera modes with directional indicators (navigation, AR, compass, racing games).
+
+**Supersedes:** None
+**Superseded by:** None
 
 ## Sticky Rails Must Cap Height and Own Their Scroll
 
