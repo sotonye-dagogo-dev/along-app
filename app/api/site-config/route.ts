@@ -31,7 +31,7 @@ export async function GET() {
       await Promise.all([
         getSiteConfig<unknown>(
           SITE_NOTICE_CONFIG.siteConfigKeys.maintenance,
-          false,
+          true,
         ),
         getSiteConfig<unknown>(SITE_NOTICE_CONFIG.siteConfigKeys.announcement, ""),
         getSiteConfig<unknown>(SITE_NOTICE_CONFIG.siteConfigKeys.refresh, false),
