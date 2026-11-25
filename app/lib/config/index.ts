@@ -352,3 +352,9 @@ export {
   shouldShowReviewNotice,
 } from "./reviewNotice";
 export type { ReviewNoticeGateInput, ReviewNoticeGateReason, ReviewNoticeState } from "./reviewNotice";
+export {
+  CLIENT_POLLING_CONFIG,
+  PUBLIC_READ_CACHE_CONFIG,
+  publicReadCacheControl,
+} from "./performance";
+export type { ClientPollingConfig, PublicReadCacheConfig } from "./performance";

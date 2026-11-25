@@ -175,7 +175,12 @@ export function useRouteTraffic(
     // Somewhat-live refresh while mounted (bounded by the server hourly
     // bucket + maps rate-limit bucket upstream).
     if (TRAFFIC_CONFIG.refreshIntervalSec > 0) {
-      interval = setInterval(() => void fetchOnce(true), TRAFFIC_CONFIG.refreshIntervalSec * 1000);
+      interval = setInterval(() => {
+        // Never refresh traffic from a hidden tab — no user benefit, and each
+        // call invokes the rate-limited maps proxy (Fluid Active CPU).
+        if (typeof document !== "undefined" && document.hidden) return;
+        void fetchOnce(true);
+      }, TRAFFIC_CONFIG.refreshIntervalSec * 1000);
     }
     return () => {
       cancelled = true;

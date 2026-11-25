@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: viewport-capped suggestions rail + local mobile share trigger)
-> - last-verified-against-code: 2026-10-21 (Sprint 90 in-runner QA: tsc 0, jest 119/119 suites 1265/1265, build clean)
+> - last-updated-by: update-ai-system 2026-11-25 (Sprint 92: Vercel Fluid Active CPU guardrails)
+> - last-verified-against-code: 2026-11-25 (Sprint 92 in-runner QA: tsc 0, jest 121/121 suites 1298/1298, lint no new findings, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Log of significant architectural, technical, and product decisions made during Along development. Agents consult this before proposing changes to avoid contradicting prior reasoning. Each entry records what was decided, why, and what the alternatives were. Uses supersedes/superseded-by links so contradictory entries are explicitly resolved rather than both appearing equally valid.
@@ -34,6 +34,26 @@
 ---
 
 ## Decisions
+
+## Fluid-CPU Budget: Visibility-Aware Pollers + CDN-Owned Caching + Compute-Once Feed
+
+**Decision:** Treat Vercel Fluid **Active CPU** as a first-class budget artifact. (1) All background client timers go through `useVisibilityInterval` and pause while the document is hidden (one catch-up tick on return); `CLIENT_POLLING_CONFIG` owns the policy and the heartbeat cadence is 60s. (2) No catch-all `Cache-Control` in `next.config.mjs`; public non-personalised reads opt into `s-maxage + stale-while-revalidate` through `publicReadCacheControl`, authenticated responses never do. (3) A cached response must be serve-ready: the authenticated feed cache stores the live-trust-enriched snapshot and cache hits return it directly; guest page 1 is read-through cached for 60s. (4) A missing `maintenanceMode` config row means **off**.
+**Date:** 2026-11-25
+**Made by:** AI agent (execute-feature Sprint 92)
+**Supersedes:** None
+**Superseded by:** None
+
+**Reason:**
+Fluid bills actual CPU execution, not I/O wait, so the dedicated-account overage was compute volume: a global `must-revalidate` header that defeated static/CDN caching, forever-running hidden-tab pollers, and an O(posts × candidatePool) trust recomputation inside the feed cache-hit path. These are cost bugs with no user-facing benefit.
+
+**Alternatives Considered:**
+- Raise the feed poll interval: rejected — feed freshness is a product feature; making each poll cheap is better than making it rare.
+- CDN-cache the authenticated feed: rejected — personalised responses cannot be shared at the edge without leaking/incorrect data.
+- Remove all polling (events-only): rejected — captive-portal/offline detection and unread badges still need a passive fallback; visibility pause keeps it cheap.
+- Keep the catch-all cache header for "freshness": rejected — Next/Vercel defaults already encode the correct per-route behaviour.
+
+**Implications:**
+Every new background poller must use `useVisibilityInterval`; every new public read route that wants edge caching must opt in explicitly and stay non-personalised; every new cached read must enrich before the cache write, never inside the hit path. Admin-facing site notice changes can take up to ~30s to reach the edge.
 
 ## Sticky Rails Cap Themselves; Cross-Surface Share Opens Local State
 

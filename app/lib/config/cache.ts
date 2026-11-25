@@ -2,6 +2,13 @@ import { PAGINATION_CONFIG } from "./pagination";
 
 export const CACHE_TTL = {
   feed: 300,
+  /**
+   * Non-personalised guest feed (most-recent public posts + live trust).
+   * Short TTL: guests poll every 30s, and recomputing the batched trust
+   * breakdown per poll was pure Fluid Active CPU. 60s absorbs the polling
+   * cadence without making a public "latest" list noticeably stale.
+   */
+  guestFeed: 60,
   post: 600,
   userProfile: 300,
   suggestions: 1800,
@@ -18,6 +25,8 @@ export const CACHE_TTL = {
 
 export const CACHE_KEYS = {
   feed: (userId: string, cursor?: string) => `feed:${userId}:${cursor ?? "start"}`,
+  /** Guest first page — keyed by page size so limits can never cross. */
+  guestFeed: (limit: number) => `feed:guest:${limit}`,
   post: (postId: string) => `post:${postId}`,
   userProfile: (userId: string) => `user:${userId}:profile`,
   suggestions: (userId: string) => `suggestions:${userId}`,

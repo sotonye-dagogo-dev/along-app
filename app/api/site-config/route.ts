@@ -6,6 +6,10 @@ import {
   normalizeAnnouncementText,
   normalizeAnnouncements,
 } from "@/app/lib/config/siteNotice";
+import {
+  PUBLIC_READ_CACHE_CONFIG,
+  publicReadCacheControl,
+} from "@/app/lib/config/performance";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +35,9 @@ export async function GET() {
       await Promise.all([
         getSiteConfig<unknown>(
           SITE_NOTICE_CONFIG.siteConfigKeys.maintenance,
-          true,
+          // Missing config must never imply maintenance is ON — a cache/DB
+          // miss would otherwise block every mutating API for everyone.
+          false,
         ),
         getSiteConfig<unknown>(SITE_NOTICE_CONFIG.siteConfigKeys.announcement, ""),
         getSiteConfig<unknown>(SITE_NOTICE_CONFIG.siteConfigKeys.refresh, false),
@@ -44,7 +50,15 @@ export async function GET() {
         announcementBanner: normalizeAnnouncementText(announcementRaw),
         announcements: normalizeAnnouncements(announcementsRaw),
       },
-      { status: 200, headers: { "Cache-Control": "no-store" } },
+      {
+        status: 200,
+        headers: {
+          // Public read polled by every client — let the Vercel edge absorb
+          // the 60s cadence (short window keeps admin toggles prompt). The
+          // fallback below stays no-store so transient errors are never cached.
+          "Cache-Control": publicReadCacheControl(PUBLIC_READ_CACHE_CONFIG.siteConfig),
+        },
+      },
     );
   } catch {
     // getSiteConfig already never-throws; this is belt-and-braces so the

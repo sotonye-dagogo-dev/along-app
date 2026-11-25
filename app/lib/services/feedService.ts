@@ -216,6 +216,25 @@ class FeedService {
         const cacheKey = CACHE_KEYS.feed(userId);
         const cached = await redis.get<{ posts: FeedPost[]; nextCursor: string | null }>(cacheKey);
         if (cached) {
+          // Vercel Fluid Active CPU: the cached snapshot was ALREADY enriched
+          // with live trust before it was written (see the cache write below).
+          // Re-running the batched corroboration on every poll re-scored up to
+          // ~posts × candidatePool pairs in memory each request — for a 20-row
+          // feed that is ~16k similarity comparisons every 30s per viewer,
+          // dwarfing the cache's benefit. Serve the enriched snapshot for its
+          // TTL; only legacy/partial caches (no breakdown object) pay the
+          // re-enrichment so feed == detail parity is still restored once.
+          const enriched =
+            Array.isArray(cached.posts) &&
+            cached.posts.every(
+              (p) =>
+                p &&
+                typeof (p as { validityBreakdown?: unknown }).validityBreakdown === "object" &&
+                (p as { validityBreakdown?: unknown }).validityBreakdown !== null,
+            );
+          if (enriched) {
+            return { posts: cached.posts, nextCursor: cached.nextCursor };
+          }
           try {
             const { attachLiveBreakdownsToPosts } = await import(
               "@/app/lib/services/trustBreakdownService"

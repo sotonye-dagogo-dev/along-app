@@ -1,8 +1,8 @@
 # Architecture History
 
 > **Metadata**
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 87: post/request/navigation tour + guest CTA)
-> - last-verified-against-code: 2026-10-21
+> - last-updated-by: update-ai-system 2026-11-25 (Sprint 92: Vercel Fluid Active CPU guardrails)
+> - last-verified-against-code: 2026-11-25
 > - staleness-policy: historical entries do not go stale — only the current architecture (in system-architecture.md) needs re-verification
 
 > **Overview:** Chronological record of how the Along system architecture has evolved. Useful for understanding why things are structured the way they are, and for identifying patterns in how the codebase has grown.
@@ -10,6 +10,17 @@
 ---
 
 ## History
+
+### 2026-11-25 — Runtime Cost Becomes an Architecture Concern (Vercel Fluid Active CPU)
+
+**State:**
+Client cadence and public-read caching are now explicit, shared policy surfaces. `app/lib/config/performance.ts` owns `CLIENT_POLLING_CONFIG` and `PUBLIC_READ_CACHE_CONFIG`, and `app/lib/hooks/useVisibilityInterval.ts` is the only sanctioned background timer (pause while hidden, one catch-up tick on visible). `next.config.mjs` no longer sets a catch-all `Cache-Control`, so Next/Vercel defaults apply to static pages and explicit `s-maxage` routes reach the edge. The feed cache stores live-trust-enriched snapshots and cache hits serve them directly; the guest first page is read-through cached for 60s. `/api/site-config` treats a missing `maintenanceMode` row as `false`.
+
+**Rationale:**
+Vercel Fluid bills actual CPU execution, not I/O wait, so a global `must-revalidate` header, hidden-tab pollers and O(posts × candidate-pool) recomputation inside a cache-hit path exhausted the allowance even without a traffic spike. Making cadence and caching first-class config keeps the budget tunable and prevents the same waste from creeping back in through new routes and pollers.
+
+**Files:**
+`app/lib/config/performance.ts`, `app/lib/hooks/useVisibilityInterval.ts`, `app/lib/hooks/useUnreadNotifications.ts`, `app/lib/hooks/useRouteTraffic.ts`, `app/components/ui/SiteNotices.tsx`, `app/providers/OnlineStatusProvider.tsx`, `app/lib/config/pwa.ts`, `app/lib/config/cache.ts`, `app/lib/services/feedService.ts`, `app/api/posts/feed/route.ts`, `app/api/site-config/route.ts`, `next.config.mjs`
 
 ### 2026-10-21 — Tour Covers Reading/Requesting/Navigating; Guest Prompt Retired
 
