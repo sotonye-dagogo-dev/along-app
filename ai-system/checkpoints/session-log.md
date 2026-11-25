@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
-> - last-verified-against-code: 2026-10-24 (tsc 0 errors, jest 120/120 suites 1285/1285, lint no new findings on touched files, next build clean)
+> - last-updated-by: update-ai-system 2026-11-25 (Sprint 92: Vercel Fluid Active CPU guardrails)
+> - last-verified-against-code: 2026-11-25 (tsc 0 errors, jest 121/121 suites 1298/1298, lint no new findings on touched files, prisma generate + next build clean)
 > - staleness-policy: append-only — never modify past entries
 
 > **Overview:** Append-only running log of development sessions. Each entry records what was completed, what comes next, and which files were modified. Agents write here at the end of every session so work can be resumed without re-reading the entire codebase. This file is the **append-only historical record** — use `checkpoints/in-progress.md` for current in-progress work.
@@ -34,6 +34,38 @@
 ---
 
 ## Sessions
+
+## Session — 2026-11-25 (Sprint 92: Vercel Fluid Active CPU guardrails)
+
+**Completed:**
+Investigated the second Fluid **Active CPU** overage on the dedicated Vercel account. Root cause was compute volume, not traffic: a catch-all `Cache-Control: public, max-age=0, must-revalidate` in `next.config.mjs` disabled static/CDN caching, background pollers ran in hidden tabs, and the authenticated feed cache-hit path re-ran the O(posts × candidate-pool) live-trust computation. Shipped visibility-aware polling, removed the header override, opted `/api/site-config` into a 30s edge cache, made feed cache hits serve the enriched snapshot, and added a 60s guest page-1 feed cache. Reverted `maintenanceMode`'s missing-config default to `false`.
+
+**Files Modified:**
+- `app/lib/config/performance.ts` (new) — polling + public-read cache policy
+- `app/lib/hooks/useVisibilityInterval.ts` (new) — visibility-aware shared timer
+- `app/lib/config/index.ts` — barrel exports
+- `app/lib/hooks/useUnreadNotifications.ts`, `app/components/ui/SiteNotices.tsx`, `app/providers/OnlineStatusProvider.tsx` — use the hook
+- `app/lib/config/pwa.ts` — heartbeat 30s→60s
+- `app/lib/hooks/useRouteTraffic.ts` — skip hidden documents
+- `app/lib/config/cache.ts` — `guestFeed` key/TTL
+- `app/lib/services/feedService.ts` — cache-hit short-circuit
+- `app/api/posts/feed/route.ts` — guest read-through cache
+- `app/api/site-config/route.ts` — CDN cache header + safe maintenance default
+- `next.config.mjs` — removed catch-all Cache-Control
+- `app/__tests__/config/performance.test.ts` (new) — regression coverage
+- ai-system docs (repair/architecture/decisions/lessons/history/queue/plan/map/test-results/checkpoints)
+
+**Next Task:**
+Watch the Vercel Fluid usage dashboard after deploy. If usage still trends high, profile the search/list validity path for the same O(n×m) pattern.
+
+**Assumptions Made:**
+- The previous `a7f4b760` edit to `/api/site-config` was accidental; `maintenanceMode` omitting the row means off.
+- Guest page-1 feeds are identical for all callers (no cursor, no `exclude`), so a 60s shared cache is safe.
+- Cached page-1 feeds written by older deploys may lack `validityBreakdown`; those still enrich once and self-heal.
+
+**Notes / Blockers:**
+- `npx next lint` still reports only pre-existing findings; CI lint is non-blocking.
+- Do not reintroduce a global `Cache-Control` in `next.config.mjs` or `setInterval` pollers; use `publicReadCacheControl` / `useVisibilityInterval`.
 
 ## Session — 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
 

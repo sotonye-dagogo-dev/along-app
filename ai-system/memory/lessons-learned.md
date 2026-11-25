@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: navigation camera yields then self-heals; heading-up needs map-aligned markers + jitter gate)
-> - last-verified-against-code: 2026-10-24 (Sprint 91 in-runner QA: tsc 0, jest 120/120 suites 1285/1285, build clean)
+> - last-updated-by: update-ai-system 2026-11-25 (Sprint 92: Fluid Active CPU — polling volume and compute-inside-cache-hit are the real cost drivers)
+> - last-verified-against-code: 2026-11-25 (Sprint 92 in-runner QA: tsc 0, jest 121/121 suites 1298/1298, lint no new findings, build clean)
 > - staleness-policy: each entry has its own staleness — check supersedes links
 
 > **Overview:** Practical knowledge accumulated during Along development — things that worked well, things that didn't, and patterns worth repeating. Different from repair-system.md (which tracks errors); this file tracks development process insights and architectural wisdom. Uses supersedes/superseded-by links for evolving practices.
@@ -31,6 +31,17 @@
 ---
 
 ## Lessons
+
+## "Fluid Active CPU" Is a Compute Budget, Not a Traffic Budget
+
+**Context:** Sprint 92. Hosting was paused for exceeding the Vercel Fluid Active CPU allowance — first on a busy personal account, then again on a dedicated account that only runs Along. Raw traffic had not changed much, so the assumption "it's just more users" was wrong.
+
+**What We Learned:** Fluid bills actual CPU execution; waiting on Postgres/Redis/email is cheap, but *invocation count* × *per-invocation compute* is not. Three smells surfaced: (1) a catch-all `Cache-Control: public, max-age=0, must-revalidate` that quietly disabled static/CDN caching and made every visit invoke work; (2) `setInterval` pollers (heartbeat/badges/notices) that keep firing in hidden tabs and installed PWAs; and (3) a cache-hit path that re-ran an O(posts × candidate-pool) trust scorer, so the cache avoided I/O but not CPU. Fixing those was invisible to users and cut the dominant cost.
+
+**Apply When:** A serverless/managed host bills for CPU/GB-seconds and usage spikes without a traffic spike. Audit in order: background timer volume and visibility gating, response caching headers (is the CDN actually allowed to cache?), then algorithmic hot paths that run even when data is "cached". Never put derived/expensive computation after a cache read — enrich before the write.
+
+**Supersedes:** None
+**Superseded by:** None
 
 ## Navigation Camera: Yield-and-Self-Heal, With an Explicit Free Mode
 

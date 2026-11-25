@@ -131,10 +131,18 @@ export const PWA_SYNC_TAGS = {
   offlineQueue: "along-offline-queue",
 } as const;
 
-/** Offline heartbeat — detects captive portals / flaky networks. */
+/**
+ * Offline heartbeat — detects captive portals / flaky networks.
+ *
+ * Raised 30s → 60s and gated by `useVisibilityInterval` (paused while the
+ * tab is hidden, one catch-up tick on return). Connectivity events already
+ * fire instantly; the passive sweep only needs to catch captive portals, so
+ * halving the cadence + dropping background ticks keeps detection without
+ * invoicing a function per tab per 30s (Vercel Fluid Active CPU).
+ */
 export const PWA_HEARTBEAT = {
   url: "/api/health",
-  intervalMs: 30_000,
+  intervalMs: 60_000,
   timeoutMs: 6_000,
 } as const;
 

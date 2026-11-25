@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { NOTIFICATION_BADGE_CONFIG } from "@/app/lib/config/navigation";
+import { useVisibilityInterval } from "@/app/lib/hooks/useVisibilityInterval";
 
 export function useUnreadNotifications(enabled: boolean): number {
   const [count, setCount] = useState(0);
@@ -29,6 +30,10 @@ export function useUnreadNotifications(enabled: boolean): number {
     }
   }, []);
 
+  const pollCount = useCallback(() => {
+    void fetchCount();
+  }, [fetchCount]);
+
   useEffect(() => {
     if (!enabled) {
       setCount(0);
@@ -36,15 +41,12 @@ export function useUnreadNotifications(enabled: boolean): number {
     }
     const controller = new AbortController();
     void fetchCount(controller.signal);
-    const timer = setInterval(
-      () => void fetchCount(),
-      NOTIFICATION_BADGE_CONFIG.pollMs
-    );
-    return () => {
-      controller.abort();
-      clearInterval(timer);
-    };
+    return () => controller.abort();
   }, [enabled, fetchCount]);
+
+  // Visibility-aware cadence: paused in hidden tabs (no Fluid CPU burned in
+  // backgrounded PWAs) and refreshed once when the tab becomes visible.
+  useVisibilityInterval(pollCount, NOTIFICATION_BADGE_CONFIG.pollMs, enabled);
 
   return count;
 }

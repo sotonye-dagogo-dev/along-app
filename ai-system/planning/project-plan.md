@@ -2,10 +2,17 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
+> - last-updated-by: update-ai-system 2026-11-25 (Sprint 92: Vercel Fluid Active CPU guardrails)
 > - staleness-policy: re-verify if project scope or phase changes
 
 > **Overview:** High-level feature checklist for Along — a social travel-intelligence platform for West African urban commuters. Phases follow the Roadmap (docs/ROADMAP.md). Agents update checkboxes as work is completed.
+
+## Sprint 92 — Vercel Fluid Active CPU guardrails (2026-11-25, execute-feature)
+
+- [x] Polling policy [Sprint 92]: NEW `performance.ts` (`CLIENT_POLLING_CONFIG`, `PUBLIC_READ_CACHE_CONFIG`, `publicReadCacheControl`) + NEW `useVisibilityInterval` hook; heartbeat/badge/site-notice pollers pause while hidden and refresh once on return; heartbeat 30s→60s; traffic refresh skips hidden documents
+- [x] Caching [Sprint 92]: removed catch-all `Cache-Control` from `next.config.mjs` so static pages and `s-maxage` API routes actually cache at the edge; `/api/site-config` opts into `s-maxage=30, stale-while-revalidate=60`; `maintenanceMode` missing-config default back to `false`
+- [x] Compute [Sprint 92]: authenticated feed cache hits return the already-enriched snapshot (no per-poll O(posts × candidate-pool) trust recompute; legacy caches enrich once); guest page-1 feed read-through cached 60s
+- [x] QA + docs [Sprint 92]: NEW `performance.test.ts`; tsc 0, jest 121/121 suites 1298/1298, lint no new findings, `prisma generate` + build clean; repair/architecture/decision/lesson/history/checkpoint docs updated
 
 ## Sprint 91 — Interactive navigation camera: pan-yield + Center/North-up toggle (2026-10-24, execute-feature)
 

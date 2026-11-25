@@ -2,11 +2,23 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-21 (Sprint 90: scrollable desktop suggestions + reliable mobile share trigger)
-> - last-verified-against-code: 2026-10-21 (Sprint 90 in-runner QA: tsc 0, jest 119/119 suites 1265/1265, build clean; 95 config files / 349 en+pcm keys re-verified)
+> - last-updated-by: update-ai-system 2026-11-25 (Sprint 92: Vercel Fluid Active CPU guardrails — visibility-aware polling + CDN cache + feed compute)
+> - last-verified-against-code: 2026-11-25 (Sprint 92 in-runner QA: tsc 0, jest 121/121 suites 1298/1298, lint no new findings, prisma generate + next build clean)
 > - staleness-policy: re-verify before trusting if any architecture-affecting commits have been made since last-verified-against-code
 
 > **Overview:** Along is a single Next.js 15 application serving both frontend and API routes. The architecture follows a layered pattern: Next.js App Router (pages + layouts) on top of API routes, which delegate to an OOP service layer using the repository pattern, backed by PostgreSQL via Prisma and Redis for caching. The frontend uses a universal component library (App\* wrappers around Ant Design) with context-driven state management. The application is PWA-enabled with offline support and push notifications.
+
+---
+
+## Runtime Cost Controls (Vercel Fluid Active CPU)
+
+Vercel Fluid bills **Active CPU** (actual compute time) separately from the wall-clock memory window, so cost is driven by *how often* a function runs and *how much compute* each run does — not by traffic alone. The platform therefore treats idle/background compute as a budget:
+
+- **Visibility-aware pollers** — `app/lib/hooks/useVisibilityInterval.ts` owns every background timer (connectivity heartbeat, notification badge, site notices). It stops the timer while `document.visibilityState !== "visible"` and runs one catch-up tick on return, so an installed PWA left open costs nothing between visits. Policy lives in `app/lib/config/performance.ts` (`CLIENT_POLLING_CONFIG`); traffic refresh additionally skips hidden documents.
+- **Compute-once caching** — the authenticated feed cache write already attaches canonical live trust; cache hits now return that enriched snapshot instead of re-running the batched corroboration (~posts × candidate-pool similarity comparisons) on every 30s poll. Legacy/partial caches still enrich once, so feed ↔ detail parity self-heals. The non-personalised guest first page is read-through cached for 60s (`CACHE_KEYS.guestFeed`).
+- **Cache the CDN can actually use** — no catch-all `Cache-Control` in `next.config.mjs` (it previously overrode Next/Vercel caching for static pages and `s-maxage` API routes). Public, non-personalised reads opt in explicitly via `publicReadCacheControl` (e.g. `/api/site-config`, `/api/tour`, `/api/reviews`, `/api/maps/style`); authenticated/personalised responses never do.
+
+**Avoid:** background polling in hidden tabs, recomputing derived scores inside a cache-hit path, and global response-header overrides that disable framework/CDN caching.
 
 ---
 

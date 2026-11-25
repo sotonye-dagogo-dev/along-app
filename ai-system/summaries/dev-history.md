@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
-> - last-verified-against-code: 2026-10-24 (Sprint 91 in-runner QA: tsc 0, jest 120/120 suites 1285/1285, build clean)
+> - last-updated-by: update-ai-system 2026-11-25 (Sprint 92: Vercel Fluid Active CPU guardrails)
+> - last-verified-against-code: 2026-11-25 (Sprint 92 in-runner QA: tsc 0, jest 121/121 suites 1298/1298, lint no new findings, build clean)
 > - staleness-policy: historical entries do not go stale
 
 > **Overview:** Chronological log of completed development work for Along. Each sprint ends with a summary entry. Agents add entries after completing tasks. Useful for understanding what has been built and when decisions were made.
@@ -33,6 +33,24 @@
 ---
 
 ## History
+
+## 2026-11-25 — Vercel Fluid Active CPU Guardrails (Sprint 92)
+
+**Summary:**
+Along exhausted Vercel's Fluid Active CPU allowance twice (a busy shared account, then a dedicated one), so the runtime was audited for compute waste. Fluid bills actual CPU time, and the audit found three compounding cost bugs rather than a traffic problem: a global `Cache-Control` that defeated static/CDN caching, always-on background pollers in hidden tabs, and an expensive live-trust recomputation inside the feed cache-hit path. All three were fixed non-breaking and invisibly to users.
+
+**Completed:**
+- Shared `useVisibilityInterval` hook pauses heartbeat/badge/site-notice pollers while hidden and refreshes once on return; heartbeat 30s→60s; traffic refresh skips hidden docs.
+- Removed the catch-all `Cache-Control` override from `next.config.mjs`; `/api/site-config` gained a 30s edge cache; `/api/tour`, `/api/reviews`, `/api/maps/style` `s-maxage` rules now actually take effect.
+- Authenticated feed cache hits serve the already-enriched snapshot; guest page-1 feed read-through cached 60s.
+- Reverted `maintenanceMode`'s missing-config default to `false`; added `performance.test.ts` + repair/architecture/decision/lesson docs.
+
+**Key Changes:**
+- `app/lib/config/performance.ts` + `app/lib/hooks/useVisibilityInterval.ts` are the new shared policy surfaces for client cadence and public-read CDN caching.
+- Cached reads must be serve-ready: compute/enrich before the cache write, never after the hit.
+
+**Next Sprint Focus:**
+Monitor the Vercel Fluid usage dashboard after deploy; consider a short per-post validity cache if search/list compute still trends high.
 
 ## 2026-10-24 — Interactive Navigation Camera: Pan-Yield + Center/North-up Toggle (Sprint 91)
 

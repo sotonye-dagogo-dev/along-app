@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUserFromRequest } from "@/app/lib/utils/auth";
 import { feedService } from "@/app/lib/services/feedService";
 import { prisma } from "@/app/lib/db/prisma";
-import { clampPageLimit } from "@/app/lib/config";
+import { redis } from "@/app/lib/db/redis";
+import { clampPageLimit, CACHE_KEYS, CACHE_TTL } from "@/app/lib/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,6 +34,23 @@ export async function GET(request: NextRequest) {
           : undefined;
       const result = await feedService.getFeed(user.id as string, { cursor, limit, excludeIds, ...(viewerLocation ? { viewerLocation } : {}) });
       return NextResponse.json(result, { status: 200 });
+    }
+
+    // Guest page-1 feed is public and non-personalised → safe read-through
+    // cache. This absorbs the 30s guest poll and — critically — stops the
+    // expensive batched live-trust computation from re-running on every
+    // poll (Vercel Fluid Active CPU). Cursor/exclude pages stay uncached.
+    const guestCacheable = !cursor && excludeSet.size === 0;
+    const guestCacheKey = CACHE_KEYS.guestFeed(limit);
+    if (guestCacheable) {
+      try {
+        const cached = await redis.get<{ posts: unknown[]; nextCursor: string | null }>(guestCacheKey);
+        if (cached && Array.isArray(cached.posts)) {
+          return NextResponse.json(cached, { status: 200 });
+        }
+      } catch {
+        // Redis unavailable — fall through to compute (never fail the feed).
+      }
     }
 
     // Guest access: return public posts (most recent). Archived posts are excluded.
@@ -86,7 +104,15 @@ export async function GET(request: NextRequest) {
         "@/app/lib/services/trustBreakdownService"
       );
       const withTrust = await attachLiveBreakdownsToPosts(prisma, resultPosts as { id: string }[]);
-      return NextResponse.json({ posts: withTrust, nextCursor }, { status: 200 });
+      const payload = { posts: withTrust, nextCursor };
+      if (guestCacheable) {
+        try {
+          await redis.set(guestCacheKey, payload, { ex: CACHE_TTL.guestFeed });
+        } catch {
+          // Cache write is non-critical.
+        }
+      }
+      return NextResponse.json(payload, { status: 200 });
     } catch {
       return NextResponse.json({ posts: resultPosts, nextCursor }, { status: 200 });
     }
