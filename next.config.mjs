@@ -78,10 +78,13 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "geolocation=(self), camera=(), microphone=()",
           },
-          {
-            key: "Cache-Control",
-            value: "public, max-age=0, must-revalidate",
-          },
+          // NOTE: deliberately NO catch-all Cache-Control here. A global
+          // `public, max-age=0, must-revalidate` overrides Next/Vercel's
+          // optimized caching for statically generated pages AND for routes
+          // that opt into edge caching with `s-maxage` (site-config, tour,
+          // reviews, map style), forcing every visit/request to invoke a
+          // function. Let the framework/route own Cache-Control so static
+          // pages and opted-in public reads are served from the CDN.
         ],
       },
 

@@ -2,11 +2,26 @@
 
 > **Metadata**
 >
-> - last-updated-by: update-ai-system 2026-10-24 (Sprint 91: interactive navigation camera — pan-yield + Center/North-up toggle)
-> - last-synced: 2026-10-24 (Sprint 91)
+> - last-updated-by: update-ai-system 2026-11-25 (Sprint 92: Vercel Fluid Active CPU guardrails — visibility-aware polling + CDN cache + feed compute)
+> - last-synced: 2026-11-25 (Sprint 92)
 > - staleness-policy: re-verify before each session
 
 > **Overview:** Sprint-level task queue for the Along application rebuild. Agents execute tasks top to bottom within the current sprint.
+
+## Sprint 92 — Vercel Fluid Active CPU guardrails (2026-11-25, execute-feature) [M]
+
+> **Section summary:** Hosting moved to a dedicated Vercel account after the previous account's Fluid **Active CPU** allowance was exhausted. Fluid bills actual CPU execution (not I/O wait), so continuous client polling and per-request trust computation — not traffic alone — drove the overage. Non-breaking, config-driven fixes: (1) a shared `useVisibilityInterval` hook pauses every background poller (health heartbeat, notification badge, site notices) in hidden tabs and runs one catch-up tick on return; heartbeat cadence raised 30s→60s; traffic refresh skips hidden documents. (2) Removed the catch-all `Cache-Control: public, max-age=0, must-revalidate` in `next.config.mjs` that overrode Next/Vercel caching for statically-generated pages and CDN-opted API routes; `/api/site-config` now opts into a 30s edge cache. (3) The authenticated feed cache-hit path no longer re-runs the batched live-trust computation (was ~16k pair comparisons per 30s poll); legacy caches still self-heal once. (4) Guest page-1 feed is read-through cached for 60s. Also reverted `maintenanceMode`'s missing-config default to `false` (a cache/DB miss must never imply maintenance). QA full in-runner: tsc 0, jest 121/121 suites 1298/1298, lint no new findings, `prisma generate` + `next build` clean.
+
+| Size | Task | Status |
+| ---- | ---- | ------ |
+| [S] | NEW `app/lib/config/performance.ts` — `CLIENT_POLLING_CONFIG` (pauseWhenHidden/refreshOnVisible/resumeDelayMs) + `PUBLIC_READ_CACHE_CONFIG` + `publicReadCacheControl`; barrel export | [x] |
+| [S] | NEW `app/lib/hooks/useVisibilityInterval.ts` — shared visibility-aware timer (ref-held callback, pause/stop on hidden, one catch-up tick on visible, SSR-safe) | [x] |
+| [S] | Poller wiring — `useUnreadNotifications`, `SiteNotices`, `OnlineStatusProvider` use the hook; `PWA_HEARTBEAT.intervalMs` 30s→60s; `useRouteTraffic` skips hidden documents | [x] |
+| [M] | Compute — `feedService.getFeed` serves the already-enriched cached feed (no per-poll trust recompute; legacy/partial caches still enrich once); NEW `CACHE_KEYS.guestFeed` + `CACHE_TTL.guestFeed` (60s) read-through cache in `GET /api/posts/feed` guest page-1 | [x] |
+| [S] | Caching — remove global `Cache-Control` override from `next.config.mjs` `/:path*` (keep security headers); `/api/site-config` success response opts into `s-maxage=30, stale-while-revalidate=60` (fallback stays no-store); maintenance missing-config default back to `false` | [x] |
+| [S] | Tests + deep sync — NEW `performance.test.ts` (policy + source contracts); repair entry, architecture section, decisions, lessons, history, checkpoints, repo map, test results | [x] |
+
+---
 
 ## Sprint 91 — Interactive navigation camera: pan-yield + Center/North-up toggle (2026-10-24, execute-feature) [S]
 

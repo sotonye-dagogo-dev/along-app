@@ -12,6 +12,7 @@ import {
   type NormalizedAnnouncement,
 } from "@/app/lib/config/siteNotice";
 import { safeClientRefresh } from "@/app/lib/pwa/safeClientRefresh";
+import { useVisibilityInterval } from "@/app/lib/hooks/useVisibilityInterval";
 
 type NoticeState = {
   maintenanceMode: boolean;
@@ -101,6 +102,15 @@ export function SiteNotices() {
     return keys;
   }, [notices.announcements]);
 
+  // Visibility-aware cadence (config-driven): paused in hidden tabs so an
+  // installed PWA left open does not poll the edge/function every minute.
+  // Focus/online remain immediate triggers below.
+  useVisibilityInterval(
+    () => void load(),
+    SITE_NOTICE_CONFIG.refresh.intervalMs,
+    true,
+  );
+
   useEffect(() => {
     void load();
     try {
@@ -108,8 +118,7 @@ export function SiteNotices() {
     } catch {
       /* ignore */
     }
-    const { intervalMs, onFocus, onOnline } = SITE_NOTICE_CONFIG.refresh;
-    const timer = setInterval(() => void load(), intervalMs);
+    const { onFocus, onOnline } = SITE_NOTICE_CONFIG.refresh;
     const onFocusHandler = onFocus ? () => void load() : null;
     const onOnlineHandler = onOnline ? () => void load() : null;
     try {
@@ -119,7 +128,6 @@ export function SiteNotices() {
       /* non-critical */
     }
     return () => {
-      clearInterval(timer);
       try {
         if (onFocusHandler) window.removeEventListener("focus", onFocusHandler);
         if (onOnlineHandler) window.removeEventListener("online", onOnlineHandler);

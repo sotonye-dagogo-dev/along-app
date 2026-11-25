@@ -2,8 +2,8 @@
 
 > **Metadata**
 >
-> - last-updated-by: execute-feature 2026-10-21 (Sprint 90: bottom-bar share query-link no-op + sticky rail overflow)
-> - last-verified-against-code: 2026-10-19
+> - last-updated-by: execute-feature 2026-11-25 (Sprint 92: Vercel Fluid Active CPU overage — cache-busting header + recompute-on-poll)
+> - last-verified-against-code: 2026-11-25
 > - staleness-policy: individual entries may be stale if the code has changed around them — verify fix still applies before reusing
 
 > **Overview:** A living knowledge base of errors encountered during development, their root causes, and how they were fixed. Agents should consult this before diagnosing new errors. Every fixed bug should be logged here to prevent recurrence. This file is pre-populated with known error patterns for the Along tech stack (Next.js 15 + React 19 + Ant Design 5 + Tailwind 4).
@@ -1504,4 +1504,49 @@ Every sticky sidebar/rail with vertical content must cap its height and own its 
 - `app/__tests__/config/suggestionsPanel.test.ts`
 
 **Date:** 2026-10-21
+**Status:** Active
+
+---
+
+## Vercel Fluid Active CPU Allowance Exhausted — Cache-Busting Header + Recompute-On-Poll
+
+**Symptom:**
+Vercel paused hosting for exceeding the **Fluid Active CPU** allowance — first on a shared personal account (many projects) and then again after moving Along to its own dedicated account. No single deploy failure; the month's compute simply ran out.
+
+**Root Cause:**
+Fluid bills actual CPU execution (not I/O wait), so the overage was compute volume, not raw traffic. Three compounding sources:
+1. `next.config.mjs` set a catch-all `Cache-Control: public, max-age=0, must-revalidate` on `/:path*`. That overrode Next/Vercel's optimized caching for statically-generated pages (most dashboard routes build as `○ Static`) and for routes that deliberately opt into `s-maxage` (`/api/site-config`, `/api/tour`, `/api/reviews`, `/api/maps/style`), forcing origin/function work on every visit and poll.
+2. Background timers ran forever: a 30s `/api/health` heartbeat, a 60s notification-badge poll and a 60s site-notice poll all kept firing in hidden/backgrounded tabs and installed PWAs. Browsers throttle hidden timers but do not stop them.
+3. The authenticated feed caches page 1 for 300s but re-ran `attachLiveBreakdownsToPosts` on every cache hit. That batched corroboration scores each row against a candidate pool (~`posts × maxCandidates`), so a 20-row feed at a 30s poll cadence was ~16k in-memory similarity comparisons per viewer per poll — the cache saved the DB fetch but not the expensive CPU work. Guest feeds had no cache at all and recomputed on every poll.
+
+**Fix Applied:**
+- NEW `app/lib/config/performance.ts` (`CLIENT_POLLING_CONFIG`, `PUBLIC_READ_CACHE_CONFIG`, `publicReadCacheControl`) and NEW `app/lib/hooks/useVisibilityInterval.ts`. The hook pauses on hidden documents and does one catch-up tick on return; wired into `useUnreadNotifications`, `SiteNotices`, `OnlineStatusProvider`. Heartbeat raised 30s→60s; `useRouteTraffic` skips `document.hidden`.
+- Removed the catch-all `Cache-Control` from `next.config.mjs` (security headers retained, `/_next/static`, `/sw.js`, `/manifest.json` rules unchanged). `/api/site-config` success now sends `public, s-maxage=30, stale-while-revalidate=60` (fallback stays `no-store`).
+- `feedService.getFeed` returns the already-enriched cached snapshot (legacy/partial caches still enrich once). Guest page-1 feed read-through cached 60s via `CACHE_KEYS.guestFeed` / `CACHE_TTL.guestFeed`.
+- Reverted `/api/site-config` `maintenanceMode` missing-config default to `false` — a cache/DB miss must never imply maintenance (which would block every mutating API and provoke retries).
+
+**Prevention:**
+- Never set a global `Cache-Control` in `next.config.mjs`; let the framework own defaults and opt individual public routes into `s-maxage + stale-while-revalidate` via `publicReadCacheControl`.
+- Background timers must be visibility-aware via `useVisibilityInterval` — no `setInterval` polling in hidden tabs.
+- A cache-hit path must not recompute derived/expensive values; enrich before the cache write and serve the snapshot. If a legacy shape needs repair, gate it behind a shape check so it runs once.
+- When a "free/cheap" plan is exceeded, check invocation *volume* (polling, crons, middleware, CDN bypass) and per-invocation *compute* (O(n×m) scoring, JSON transforms) before optimizing I/O.
+
+**Files Affected:**
+
+- `app/lib/config/performance.ts` (new)
+- `app/lib/hooks/useVisibilityInterval.ts` (new)
+- `app/lib/hooks/useUnreadNotifications.ts`
+- `app/lib/hooks/useRouteTraffic.ts`
+- `app/components/ui/SiteNotices.tsx`
+- `app/providers/OnlineStatusProvider.tsx`
+- `app/lib/config/pwa.ts`
+- `app/lib/config/cache.ts`
+- `app/lib/services/feedService.ts`
+- `app/api/posts/feed/route.ts`
+- `app/api/site-config/route.ts`
+- `next.config.mjs`
+- `app/lib/config/index.ts`
+- `app/__tests__/config/performance.test.ts` (new)
+
+**Date:** 2026-11-25
 **Status:** Active

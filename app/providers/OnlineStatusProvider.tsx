@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useRef } f
 import { offlineQueue } from '@/app/lib/services/offlineQueue'
 import { toastService } from '@/app/lib/services/toastService'
 import { PWA_HEARTBEAT, PWA_TOAST_COPY, PWA_SYNC_TAGS } from '@/app/lib/config/pwa'
+import { useVisibilityInterval } from '@/app/lib/hooks/useVisibilityInterval'
 
 interface OnlineStatusContextValue {
   isOnline: boolean
@@ -102,6 +103,18 @@ export function OnlineStatusProvider({ children }: { children: React.ReactNode }
     return ok
   }, [goOnline, goOffline])
 
+  // Passive heartbeat — visibility-aware so a backgrounded tab/PWA never
+  // burns Fluid CPU pinging /api/health. Connectivity events still fire
+  // immediately, and one catch-up check runs when the tab becomes visible.
+  const pollConnection = useCallback(() => {
+    void heartbeat().then((ok) => {
+      if (ok && !onlineRef.current) goOnline()
+      else if (!ok && onlineRef.current && !navigator.onLine) goOffline()
+    })
+  }, [goOnline, goOffline])
+
+  useVisibilityInterval(pollConnection, PWA_HEARTBEAT.intervalMs, true)
+
   useEffect(() => {
     firstPaint.current = false
     setIsOnline(navigator.onLine)
@@ -117,13 +130,8 @@ export function OnlineStatusProvider({ children }: { children: React.ReactNode }
     }
     navigator.serviceWorker?.addEventListener?.('message', onMessage)
 
-    // Heartbeat catches captive portals / flaky networks navigator.onLine misses.
-    const timer = setInterval(() => {
-      void heartbeat().then((ok) => {
-        if (ok && !onlineRef.current) goOnline()
-        else if (!ok && onlineRef.current && !navigator.onLine) goOffline()
-      })
-    }, PWA_HEARTBEAT.intervalMs)
+    // Heartbeat catches captive portals / flaky networks navigator.onLine
+    // misses — cadence owned by the visibility-aware hook above.
 
     // Flush queued mutations whenever the tab regains focus while online.
     const onFocus = () => {
@@ -135,7 +143,6 @@ export function OnlineStatusProvider({ children }: { children: React.ReactNode }
       window.removeEventListener('online', goOnline)
       window.removeEventListener('offline', goOffline)
       window.removeEventListener('focus', onFocus)
-      clearInterval(timer)
     }
   }, [goOnline, goOffline])
 
